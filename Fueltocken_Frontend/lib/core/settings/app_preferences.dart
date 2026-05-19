@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AppPreferences {
+  AppPreferences._();
+
+  static const _kLocale = 'ft_app_locale';
+  static const _kDark = 'ft_app_dark_mode';
+
+  /// Langues supportées par l’app (UI + préférences) : français et arabe uniquement.
+  static const String defaultLocaleCode = 'fr';
+
+  static Future<String> localeCode() async {
+    final p = await SharedPreferences.getInstance();
+    var stored = p.getString(_kLocale);
+    if (stored == null || stored.isEmpty) {
+      await p.setString(_kLocale, defaultLocaleCode);
+      return defaultLocaleCode;
+    }
+    if (stored == 'en') {
+      await p.setString(_kLocale, 'fr');
+      return 'fr';
+    }
+    switch (stored) {
+      case 'ar':
+      case 'fr':
+        return stored;
+      default:
+        await p.setString(_kLocale, defaultLocaleCode);
+        return defaultLocaleCode;
+    }
+  }
+
+  static Future<void> setLocaleCode(String code) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kLocale, code);
+  }
+
+  static Future<bool> darkMode() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_kDark) ?? false;
+  }
+
+  static Future<void> setDarkMode(bool v) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kDark, v);
+  }
+
+  static Locale localeFromCode(String code) {
+    switch (code) {
+      case 'ar':
+        return const Locale('ar');
+      case 'fr':
+      default:
+        return const Locale('fr');
+    }
+  }
+
+  static String labelForCode(String code) {
+    switch (code) {
+      case 'ar':
+        return 'العربية';
+      case 'fr':
+      default:
+        return 'Français';
+    }
+  }
+}

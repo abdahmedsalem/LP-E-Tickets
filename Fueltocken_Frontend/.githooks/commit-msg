@@ -1,0 +1,10 @@
+#!/bin/sh
+# Retire les lignes Co-authored-by injectées par l’agent Cursor (préférence projet).
+set -e
+msg_file=${1:?}
+[ -f "$msg_file" ] || exit 0
+tmp=$(mktemp "${msg_file}.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+sed -e '/^Co-authored-by:[[:space:]]*Cursor[[:space:]]*</Id' \
+    -e '/cursoragent@cursor\.com/Id' "$msg_file" >"$tmp"
+cmp -s "$msg_file" "$tmp" || cat "$tmp" >"$msg_file"

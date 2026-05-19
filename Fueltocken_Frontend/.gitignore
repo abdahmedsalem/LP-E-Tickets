@@ -1,0 +1,74 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# URL backend OTP local (optionnel pour tool/otp_smoke_test.dart)
+tool/otp_api_base_url.txt
+
+# Local probe clones (never commit)
+_tawssil_probe/
+
+# ── Secrets & environnement local (ne pas versionner) ──
+.env
+.env.local
+.env.*.local
+*.secret
+# Surcharges personnelles uniquement (la config équipe est versionnée)
+scripts/env/flutter.mobile.local.env
+**/credentials.json
+**/service-account*.json
+
+# Android signing
+**/android/key.properties
+**/*.jks
+**/*.keystore
+
+# Clés / certificats
+*.pem
+*.p8
+AuthKey_*.p8
+
+# Android SDK path local
+**/android/local.properties
