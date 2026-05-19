@@ -1,0 +1,76 @@
+<odoo>
+    <record id="view_fuel_purchase_list" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.list</field>
+        <field name="model">acpec.fuel.purchase</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="public_code"/>
+                <field name="partner_id"/>
+                <field name="state"/>
+                <field name="amount_total"/>
+                <field name="face_qty_total"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="approved_at"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_fuel_purchase_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.form</field>
+        <field name="model">acpec.fuel.purchase</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" type="object" string="Soumettre" invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_approve" type="object" string="Valider" invisible="state not in ('draft', 'submitted')" class="btn-primary" groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+                    <button name="action_reject" type="object" string="Rejeter" invisible="state not in ('draft', 'submitted')" groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="public_code" readonly="1"/>
+                            <field name="partner_id" readonly="state == 'approved'"/>
+                            <field name="company_id" readonly="state == 'approved'" groups="base.group_multi_company"/>
+                            <field name="payment_reference" readonly="state == 'approved'"/>
+                        </group>
+                        <group>
+                            <field name="amount_total" readonly="1"/>
+                            <field name="face_qty_total" readonly="1"/>
+                            <field name="approved_by" readonly="1"/>
+                            <field name="approved_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Lignes de carnets">
+                            <field name="line_ids" readonly="state == 'approved'">
+                                <list editable="bottom">
+                                    <field name="carnet_type_id"/>
+                                    <field name="carnet_qty"/>
+                                    <field name="face_count" readonly="1"/>
+                                    <field name="face_value" readonly="1"/>
+                                    <field name="generated_face_qty" readonly="1"/>
+                                    <field name="amount_total" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Preuves de paiement">
+                            <field name="proof_attachment_ids" widget="many2many_binary" readonly="state == 'approved'"/>
+                        </page>
+                        <page string="Rejet">
+                            <field name="rejection_reason"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_fuel_purchase" model="ir.actions.act_window">
+        <field name="name">Lots d’achat</field>
+        <field name="res_model">acpec.fuel.purchase</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_fuel_purchase" name="Lots d’achat" parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations" action="action_fuel_purchase" sequence="10"/>
+</odoo>

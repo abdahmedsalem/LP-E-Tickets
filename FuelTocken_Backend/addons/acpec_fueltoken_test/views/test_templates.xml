@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="test_page" name="ACPEC FuelToken API Test">
+        <t t-call="web.layout">
+            <div id="wrap" class="oe_structure">
+                <style>
+                    .acpec-api-page { background: #f6f8fb; min-height: 100vh; padding: 32px 0; }
+                    .acpec-api-shell { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+                    .acpec-hero { background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border-radius: 18px; padding: 28px 32px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18); margin-bottom: 24px; }
+                    .acpec-hero h1 { margin: 0 0 8px 0; font-size: 30px; font-weight: 700; }
+                    .acpec-hero p { margin: 0; color: rgba(255, 255, 255, 0.88); line-height: 1.6; }
+                    .acpec-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; }
+                    .acpec-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); overflow: hidden; }
+                    .acpec-card-head { padding: 18px 22px; border-bottom: 1px solid #eef2f7; background: #fbfcfe; }
+                    .acpec-card-head h2 { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+                    .acpec-card-head p { margin: 6px 0 0 0; color: #64748b; font-size: 14px; }
+                    .acpec-card-body { padding: 22px; }
+                    .acpec-field { margin-bottom: 18px; }
+                    .acpec-label { display: block; margin-bottom: 7px; font-weight: 600; color: #0f172a; }
+                    .acpec-input, .acpec-select, .acpec-textarea { width: 100%; border: 1px solid #d1d9e6; border-radius: 12px; padding: 11px 13px; font-size: 14px; background: #fff; color: #0f172a; outline: none; box-sizing: border-box; }
+                    .acpec-input:focus, .acpec-select:focus, .acpec-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+                    .acpec-textarea { min-height: 270px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace; line-height: 1.45; }
+                    .acpec-result-box { min-height: 520px; background: #0b1220; color: #d8f3dc; border: 1px solid #1e293b; }
+                    .acpec-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+                    .acpec-btn { border: none; border-radius: 12px; padding: 11px 16px; font-weight: 600; cursor: pointer; transition: 0.18s ease; }
+                    .acpec-btn-primary { background: #2563eb; color: #fff; }
+                    .acpec-btn-primary:hover { background: #1d4ed8; }
+                    .acpec-btn-secondary { background: #eef2f7; color: #0f172a; }
+                    .acpec-btn-secondary:hover { background: #e2e8f0; }
+                    .acpec-hint { margin-top: 8px; color: #64748b; font-size: 13px; line-height: 1.5; }
+                    .acpec-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; line-height: 1.5; }
+                    .acpec-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+                    .acpec-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+                    .acpec-status-neutral { background: #e2e8f0; color: #334155; }
+                    .acpec-status-pending { background: #fef3c7; color: #92400e; }
+                    .acpec-status-success { background: #dcfce7; color: #166534; }
+                    .acpec-status-error { background: #fee2e2; color: #991b1b; }
+                    .acpec-order { margin: 0; padding-left: 18px; color: #334155; }
+                    .acpec-order li + li { margin-top: 6px; }
+                    @media (max-width: 992px) { .acpec-grid { grid-template-columns: 1fr; } .acpec-result-box { min-height: 360px; } }
+                </style>
+
+                <div class="acpec-api-page">
+                    <div class="acpec-api-shell">
+                        <div class="acpec-hero">
+                            <h1>ACPEC FuelToken API Test Console</h1>
+                            <p>Console navigateur pour tester les APIs réelles du bundle courant : <strong>acpec_mobile_auth</strong> et <strong>acpec_fueltoken_api</strong>. Les appels protégés utilisent le token mobile Bearer retourné par login ou OTP.</p>
+                        </div>
+
+                        <div class="acpec-grid">
+                            <div class="acpec-card">
+                                <div class="acpec-card-head">
+                                    <h2>Configuration de l’appel</h2>
+                                    <p>Toutes les requêtes sont envoyées en <strong>POST</strong> avec une enveloppe <strong>JSON-RPC 2.0</strong>, car les contrôleurs Odoo sont en <code>type='jsonrpc'</code>.</p>
+                                </div>
+                                <div class="acpec-card-body">
+                                    <div class="acpec-warning">
+                                        Cette console est un outil de test. Elle ne crée pas de données de démonstration automatiquement : les types de carnets, les validations de lots et les stations doivent être préparés dans le backend. Après /login, /password-login ou /verify-otp, le token Bearer est capturé automatiquement.
+                                    </div>
+
+                                    <div class="acpec-field">
+                                        <label class="acpec-label" for="access_token_box">Access token courant</label>
+                                        <input type="text" class="acpec-input" id="access_token_box" placeholder="Aucun token capturé"/>
+                                        <div class="acpec-hint">Ce token est envoyé dans <code>Authorization: Bearer ...</code> pour les routes protégées. Vous pouvez aussi le coller manuellement.</div>
+                                    </div>
+
+                                    <div class="acpec-field">
+                                        <label class="acpec-label" for="refresh_token_box">Refresh token courant</label>
+                                        <input type="text" class="acpec-input" id="refresh_token_box" placeholder="Aucun refresh token capturé"/>
+                                        <div class="acpec-hint">Utilisé par l’endpoint refresh via <code>X-ACPEC-Refresh-Token</code>.</div>
+                                    </div>
+
+                                    <div class="acpec-field">
+                                        <label class="acpec-label" for="api_selector">API</label>
+                                        <select class="acpec-select" id="api_selector"></select>
+                                        <div class="acpec-hint" id="api_note"></div>
+                                    </div>
+
+                                    <div class="acpec-field">
+                                        <label class="acpec-label" for="http_method">Méthode</label>
+                                        <input type="text" class="acpec-input" id="http_method" value="POST (JSON-RPC)" readonly="readonly"/>
+                                    </div>
+
+                                    <div class="acpec-field">
+                                        <label class="acpec-label" for="endpoint_path">Endpoint</label>
+                                        <input type="text" class="acpec-input" id="endpoint_path"/>
+                                        <div class="acpec-hint">Vous pouvez modifier l’URL si nécessaire, par exemple pour changer un identifiant dans une route admin.</div>
+                                    </div>
+
+                                    <div class="acpec-field">
+                                        <label class="acpec-label" for="request_payload">Payload JSON</label>
+                                        <textarea class="acpec-textarea" id="request_payload"></textarea>
+                                        <div class="acpec-hint">Le JSON saisi ici est injecté dans <code>params</code> de l’enveloppe JSON-RPC.</div>
+                                    </div>
+
+                                    <div class="acpec-actions">
+                                        <button type="button" class="acpec-btn acpec-btn-primary" id="send_request">Envoyer la requête</button>
+                                        <button type="button" class="acpec-btn acpec-btn-secondary" id="reset_sample">Recharger l’exemple</button>
+                                        <button type="button" class="acpec-btn acpec-btn-secondary" id="clear_result">Vider le résultat</button>
+                                        <button type="button" class="acpec-btn acpec-btn-secondary" id="clear_tokens">Vider les tokens</button>
+                                    </div>
+
+                                    <div class="acpec-card" style="margin-top:18px; border-radius:14px; box-shadow:none;">
+                                        <div class="acpec-card-head">
+                                            <h2 style="font-size:16px;">Ordre de test conseillé</h2>
+                                        </div>
+                                        <div class="acpec-card-body" style="padding-top:16px;">
+                                            <ol class="acpec-order">
+                                                <li>Version check et signup companies.</li>
+                                                <li>Signup client, puis validation de la demande par un administrateur.</li>
+                                                <li>Login client ou verify OTP, puis vérification de session avec Bearer token.</li>
+                                                <li>Wallet courant.</li>
+                                                <li>Création d’un lot d’achat avec un <code>carnet_type_id</code> réel.</li>
+                                                <li>Validation du lot dans le backend pour générer les faces.</li>
+                                                <li>Liste des faces, émission QR, détail QR et split si nécessaire.</li>
+                                                <li>Connexion avec un utilisateur station, puis station/profile, station/qr/check et consommation QR.</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="acpec-card">
+                                <div class="acpec-card-head">
+                                    <h2>Résultat</h2>
+                                    <p>Réponse brute du serveur, formatée pour lecture.</p>
+                                </div>
+                                <div class="acpec-card-body">
+                                    <div class="acpec-meta">
+                                        <div></div>
+                                        <span class="acpec-status acpec-status-neutral" id="result_status">Aucun appel</span>
+                                    </div>
+                                    <textarea class="acpec-textarea acpec-result-box" id="result_box" readonly="readonly"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script id="api_catalog_data" type="application/json">
+                    <t t-raw="api_catalog_json"/>
+                </script>
+
+                <script type="text/javascript">
+                <![CDATA[
+                    (function () {
+                        const apiCatalog = JSON.parse(
+                            document.getElementById('api_catalog_data').textContent || '[]'
+                        );
+                        const selector = document.getElementById('api_selector');
+                        const methodInput = document.getElementById('http_method');
+                        const endpointInput = document.getElementById('endpoint_path');
+                        const payloadInput = document.getElementById('request_payload');
+                        const resultBox = document.getElementById('result_box');
+                        const resultStatus = document.getElementById('result_status');
+                        const apiNote = document.getElementById('api_note');
+                        const resetButton = document.getElementById('reset_sample');
+                        const clearButton = document.getElementById('clear_result');
+                        const clearTokensButton = document.getElementById('clear_tokens');
+                        const sendButton = document.getElementById('send_request');
+                        const accessTokenBox = document.getElementById('access_token_box');
+                        const refreshTokenBox = document.getElementById('refresh_token_box');
+
+                        let accessToken = window.localStorage.getItem('acpec_ft_access_token') || '';
+                        let refreshToken = window.localStorage.getItem('acpec_ft_refresh_token') || '';
+
+                        function syncTokenBoxes() {
+                            accessTokenBox.value = accessToken || '';
+                            refreshTokenBox.value = refreshToken || '';
+                        }
+
+                        function saveTokens(newAccessToken, newRefreshToken) {
+                            if (newAccessToken) {
+                                accessToken = newAccessToken;
+                                window.localStorage.setItem('acpec_ft_access_token', accessToken);
+                            }
+                            if (newRefreshToken) {
+                                refreshToken = newRefreshToken;
+                                window.localStorage.setItem('acpec_ft_refresh_token', refreshToken);
+                            }
+                            syncTokenBoxes();
+                        }
+
+                        function clearTokens() {
+                            accessToken = '';
+                            refreshToken = '';
+                            window.localStorage.removeItem('acpec_ft_access_token');
+                            window.localStorage.removeItem('acpec_ft_refresh_token');
+                            syncTokenBoxes();
+                        }
+
+                        function captureTokens(result) {
+                            const data = result && result.result && result.result.data ? result.result.data : {};
+                            saveTokens(data.access_token, data.refresh_token);
+                        }
+
+                        function statusClass(kind) {
+                            if (kind === 'success') {
+                                return 'acpec-status acpec-status-success';
+                            }
+                            if (kind === 'error') {
+                                return 'acpec-status acpec-status-error';
+                            }
+                            if (kind === 'pending') {
+                                return 'acpec-status acpec-status-pending';
+                            }
+                            return 'acpec-status acpec-status-neutral';
+                        }
+
+                        function setResult(label, text, kind) {
+                            resultStatus.className = statusClass(kind);
+                            resultStatus.textContent = label;
+                            resultBox.value = text || '';
+                        }
+
+                        function buildOptions() {
+                            selector.innerHTML = '';
+                            apiCatalog.forEach(function (item, index) {
+                                const option = document.createElement('option');
+                                option.value = String(index);
+                                option.textContent = '[' + item.group + '] ' + item.label;
+                                selector.appendChild(option);
+                            });
+                        }
+
+                        function applySample() {
+                            const idx = parseInt(selector.value || '0', 10);
+                            const item = apiCatalog[idx];
+                            if (!item) {
+                                return;
+                            }
+                            methodInput.value = 'POST (JSON-RPC)';
+                            endpointInput.value = item.route || '/';
+                            payloadInput.value = JSON.stringify(item.payload || {}, null, 2);
+                            apiNote.textContent = item.note || '';
+                        }
+
+                        async function sendRequest() {
+                            const endpoint = endpointInput.value || '/';
+                            let userPayload = {};
+
+                            try {
+                                userPayload = payloadInput.value ? JSON.parse(payloadInput.value) : {};
+                            } catch (error) {
+                                setResult('JSON invalide', 'Erreur de parsing : ' + error.toString(), 'error');
+                                return;
+                            }
+
+                            const jsonRpcPayload = {
+                                jsonrpc: '2.0',
+                                method: 'call',
+                                params: userPayload,
+                                id: Date.now()
+                            };
+
+                            accessToken = accessTokenBox.value || accessToken;
+                            refreshToken = refreshTokenBox.value || refreshToken;
+
+                            const headers = {
+                                'Content-Type': 'application/json'
+                            };
+                            if (accessToken) {
+                                headers.Authorization = 'Bearer ' + accessToken;
+                            }
+                            if (refreshToken) {
+                                headers['X-ACPEC-Refresh-Token'] = refreshToken;
+                            }
+
+                            const options = {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: headers,
+                                body: JSON.stringify(jsonRpcPayload)
+                            };
+
+                            setResult('En cours', 'Appel JSON-RPC POST vers ' + endpoint + ' ...', 'pending');
+
+                            try {
+                                const response = await fetch(endpoint, options);
+                                const result = await response.json();
+                                captureTokens(result);
+                                const formatted = JSON.stringify(result, null, 2);
+
+                                if (!response.ok) {
+                                    setResult('HTTP ' + response.status, formatted, 'error');
+                                } else if (result.error) {
+                                    setResult('SERVER ERROR', formatted, 'error');
+                                } else if (result.result && result.result.ok === false) {
+                                    setResult('API ERROR', formatted, 'error');
+                                } else {
+                                    setResult('200 OK', formatted, 'success');
+                                }
+                            } catch (error) {
+                                setResult('Erreur réseau ou format', error.toString(), 'error');
+                            }
+                        }
+
+                        buildOptions();
+                        applySample();
+
+                        selector.addEventListener('change', applySample);
+                        resetButton.addEventListener('click', applySample);
+                        clearButton.addEventListener('click', function () {
+                            setResult('Aucun appel', '', 'neutral');
+                        });
+                        clearTokensButton.addEventListener('click', function () {
+                            clearTokens();
+                            setResult('Tokens vidés', '', 'neutral');
+                        });
+                        syncTokenBoxes();
+                        sendButton.addEventListener('click', sendRequest);
+                    })();
+                ]]>
+                </script>
+            </div>
+        </t>
+    </template>
+</odoo>

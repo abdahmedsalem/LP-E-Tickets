@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fuel_purchase_user,acpec.fuel.purchase user,model_acpec_fuel_purchase,acpec_fueltoken_base.group_fuel_user,1,0,1,0
+access_fuel_purchase_manager,acpec.fuel.purchase manager,model_acpec_fuel_purchase,acpec_fueltoken_base.group_fuel_manager,1,1,1,0
+access_fuel_purchase_admin,acpec.fuel.purchase admin,model_acpec_fuel_purchase,acpec_fueltoken_base.group_fuel_admin,1,1,1,1
+access_fuel_purchase_line_user,acpec.fuel.purchase.line user,model_acpec_fuel_purchase_line,acpec_fueltoken_base.group_fuel_user,1,0,1,0
+access_fuel_purchase_line_manager,acpec.fuel.purchase.line manager,model_acpec_fuel_purchase_line,acpec_fueltoken_base.group_fuel_manager,1,1,1,0
+access_fuel_purchase_line_admin,acpec.fuel.purchase.line admin,model_acpec_fuel_purchase_line,acpec_fueltoken_base.group_fuel_admin,1,1,1,1

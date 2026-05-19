@@ -1,0 +1,21 @@
+{
+    'name': 'ACPEC FuelToken Core',
+    'version': '1.0.0',
+    'category': 'ACPEC/FuelToken',
+    'summary': 'Cœur FuelToken: faces agrégées, wallet calculé, QR, station et transactions',
+    'author': 'ACPEC SARL',
+    'website': 'https://acpec.odoorim.com',
+    'license': 'OPL-1',
+    'depends': ['acpec_fueltoken_purchase'],
+    'data': [
+        'security/ir.model.access.csv',
+        'security/fueltoken_core_rules.xml',
+        'data/ir_cron_data.xml',
+        'views/fuel_wallet_views.xml',
+        'views/fuel_face_line_views.xml',
+        'views/fuel_qr_views.xml',
+        'views/fuel_station_views.xml',
+        'views/fuel_transaction_views.xml',
+    ],
+    'installable': True,
+}

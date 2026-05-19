@@ -1,0 +1,324 @@
+import hashlib
+import logging
+import re
+
+from odoo import http, _, fields
+from odoo.exceptions import AccessError, ValidationError
+from odoo.http import request
+
+_logger = logging.getLogger(__name__)
+
+
+class AcpecMobileAuthApiCommon(http.Controller):
+
+    EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+    def _json_response(self, data=None, ok=True):
+        """Backward compatible API response.
+
+        The former mobile API returned {ok, data}.  The new Flutter/Odoo
+        contract can also consume {success, data}.  Keeping both avoids a
+        hard mobile cutover while the app is being migrated away from Django.
+        """
+        return {
+            'ok': ok,
+            'success': ok,
+            'data': data or {},
+        }
+
+    def _error_response(self, code, message, details=False):
+        payload = {
+            'ok': False,
+            'success': False,
+            'error': {
+                'code': code,
+                'message': message,
+            }
+        }
+        if details:
+            payload['error']['details'] = details
+        return payload
+
+    def _handle_exception_response(self, exc):
+        if isinstance(exc, ValidationError):
+            _logger.warning(str(exc))
+            return self._error_response('VALIDATION_ERROR', str(exc))
+        if isinstance(exc, AccessError):
+            _logger.warning(str(exc))
+            return self._error_response('ACCESS_ERROR', str(exc))
+        _logger.exception('Unhandled API error')
+        return self._error_response(
+            'SERVER_ERROR',
+            _('An unexpected server error occurred.'),
+        )
+
+    def _require_keys(self, params, required_keys):
+        missing_keys = [key for key in required_keys if key not in params]
+        if missing_keys:
+            raise ValidationError(
+                _("Missing required parameter(s): %s") % ", ".join(missing_keys)
+            )
+
+    def _get_clean_str(self, params, key):
+        value = params.get(key)
+        return (str(value) if value not in (False, None) else '').strip()
+
+    def _get_optional_int(self, params, key, default=False):
+        value = params.get(key, default)
+        if value in (False, None, ''):
+            return default
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            raise ValidationError(
+                _("Parameter '%s' must be an integer.") % key
+            )
+
+    def _get_optional_float(self, params, key, default=False):
+        value = params.get(key, default)
+        if value in (False, None, ''):
+            return default
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            raise ValidationError(
+                _("Parameter '%s' must be a number.") % key
+            )
+
+    def _get_bool_param(self, value, default=False):
+        if value in (False, None, ''):
+            return default
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'oui')
+
+    def _get_config_bool(self, key, default=False):
+        value = request.env['ir.config_parameter'].sudo().get_param(key)
+        if value in (False, None, ''):
+            return default
+        return self._get_bool_param(value, default=default)
+
+    def _get_config_int(self, key, default=0):
+        value = request.env['ir.config_parameter'].sudo().get_param(key)
+        if value in (False, None, ''):
+            return default
+        try:
+            return int(value)
+        except Exception:
+            return default
+
+    def _validate_selection(self, value, key, allowed_values):
+        if value and value not in allowed_values:
+            raise ValidationError(
+                _("Invalid value for '%s'. Allowed values: %s") % (
+                    key, ", ".join(allowed_values)
+                )
+            )
+
+    def _admin_guard(self):
+        session = self._get_mobile_session(required=False)
+        user = session.user_id if session else request.env.user
+        if not user or user._is_public():
+            raise AccessError(_('Administrator rights are required.'))
+        if not user.has_group('acpec_mobile_auth.group_mobile_auth_admin') and not user.has_group('base.group_system'):
+            raise AccessError(_('Administrator rights are required.'))
+        return user.sudo()
+
+    def _get_company(self, company_id=False):
+        company = request.env['res.company'].sudo().browse(
+            company_id or request.env.company.id
+        ).exists()
+        if not company:
+            raise ValidationError(_('Company not found.'))
+        if not company.acpec_mobile_auth_enabled:
+            raise ValidationError(_('This company does not accept mobile application registration.'))
+        return company
+
+    def _validate_secret_code(self, secret_code):
+        if not secret_code or not secret_code.isdigit() or len(secret_code) != 6:
+            raise ValidationError(_('The secret code must contain exactly 6 digits.'))
+
+    def _get_account_request_or_404(self, request_id):
+        rec = request.env['acpec.mobile.auth.account.request'].sudo().browse(request_id).exists()
+        return rec if rec else False
+
+    def _validate_phone_number(self, phone_number):
+        if not (len(phone_number) == 8 and phone_number[0] in ['2', '3', '4'] and phone_number.isdigit()):
+            raise ValidationError(
+                _('The phone number must contain 8 digits and start with 2, 3, or 4.')
+            )
+
+    def _validate_email(self, email):
+        if not self.EMAIL_RE.match(email or ''):
+            raise ValidationError(_('Invalid email address.'))
+
+    def _parse_signup_identifier(self, signup_identifier):
+        identifier = (signup_identifier or '').strip()
+        if not identifier:
+            raise ValidationError(_('Signup identifier is required.'))
+
+        if '@' in identifier:
+            email = identifier.lower()
+            self._validate_email(email)
+            return {
+                'signup_identifier': email,
+                'signup_identifier_type': 'email',
+                'login': email,
+                'phone': False,
+                'email': email,
+            }
+
+        self._validate_phone_number(identifier)
+        return {
+            'signup_identifier': identifier,
+            'signup_identifier_type': 'phone',
+            'login': identifier,
+            'phone': identifier,
+            'email': False,
+        }
+
+    def _get_signup_companies(self):
+        companies = request.env['res.company'].sudo().search([
+            ('acpec_mobile_auth_enabled', '=', True)
+        ], order='name')
+        return [{
+            'id': company.id,
+            'name': company.name,
+        } for company in companies]
+
+    def _has_group_safe(self, user, xmlid):
+        try:
+            return user.has_group(xmlid)
+        except Exception:
+            return False
+
+    def _get_mobile_profile(self, user):
+        if (
+            user.has_group('base.group_system')
+            or self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin')
+            or self._has_group_safe(user, 'acpec_mobile_auth.group_mobile_auth_admin')
+        ):
+            return 'admin'
+        if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager'):
+            return 'manager'
+        if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_station'):
+            return 'station'
+        return 'user'
+
+    def _requires_mobile_approval(self, user):
+        if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_station'):
+            return False
+        if 'acpec.fuel.station' not in request.env.registry:
+            return True
+        station = request.env['acpec.fuel.station'].sudo().search([
+            ('user_id', '=', user.id),
+            ('active', '=', True),
+        ], limit=1)
+        return not bool(station)
+
+    def _normalize_bearer_token(self, token=False):
+        token = (token or '').strip()
+        if token.lower().startswith('bearer '):
+            token = token[7:].strip()
+        return token
+
+    def _get_bearer_token(self):
+        header = request.httprequest.headers.get('Authorization') or ''
+        token = self._normalize_bearer_token(header)
+        if not token:
+            token = self._normalize_bearer_token(request.httprequest.headers.get('X-ACPEC-Mobile-Token') or '')
+        return token
+
+    def _get_refresh_token(self, params=None):
+        params = params or {}
+        token = self._get_clean_str(params, 'refresh_token') if params else ''
+        if not token:
+            token = self._normalize_bearer_token(request.httprequest.headers.get('X-ACPEC-Refresh-Token') or '')
+        return token
+
+    def _get_mobile_session(self, required=True):
+        token = self._get_bearer_token()
+        if not token:
+            if required:
+                raise AccessError(_('Authentification mobile requise.'))
+            return request.env['acpec.mobile.session']
+        session = request.env['acpec.mobile.session'].sudo().authenticate_access_token(token)
+        if not session:
+            if required:
+                raise AccessError(_('Session mobile invalide ou expirée.'))
+            return request.env['acpec.mobile.session']
+        return session
+
+    def _require_mobile_auth(self):
+        session = self._get_mobile_session(required=True)
+        return session.user_id.sudo()
+
+    def _mobile_profile_payload(self, user, session=False):
+        data = {
+            'uid': user.id,
+            'name': user.name,
+            'login': user.login,
+            'partner_id': user.partner_id.id,
+            'mobile_phone': user.mobile_phone,
+            'email': user.email,
+            'mobile_state': user.mobile_state,
+            'profile': self._get_mobile_profile(user),
+            'company_id': user.company_id.id,
+            'company_name': user.company_id.name,
+        }
+        if session:
+            data.update({
+                'session_ref': session.name,
+                'expires_at': fields.Datetime.to_string(session.expires_at) if session.expires_at else False,
+                'refresh_expires_at': fields.Datetime.to_string(session.refresh_expires_at) if session.refresh_expires_at else False,
+                'device_uid': session.device_uid or False,
+            })
+        return data
+
+    def _session_payload(self, session, tokens=False):
+        data = self._mobile_profile_payload(session.user_id, session=session)
+        if tokens:
+            data.update(tokens)
+        return data
+
+    def _session_device_values(self, params):
+        return {
+            'device_uid': self._get_clean_str(params, 'device_uid') or False,
+            'device_name': self._get_clean_str(params, 'device_name') or False,
+            'platform': self._get_clean_str(params, 'platform') or False,
+            'app_version': self._get_clean_str(params, 'app_version') or False,
+            'ip_address': request.httprequest.remote_addr or False,
+            'user_agent': request.httprequest.headers.get('User-Agent') or False,
+        }
+
+    def _create_mobile_session_payload(self, user, params=None):
+        params = params or {}
+        token_data = request.env['acpec.mobile.session'].sudo().create_for_user(
+            user.sudo(),
+            self._session_device_values(params),
+        )
+        session = token_data.pop('session')
+        return self._session_payload(session, tokens=token_data)
+
+    def _require_fuel_group(self, user, expected):
+        if user.has_group('base.group_system'):
+            return True
+        if expected == 'client':
+            if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_user'):
+                return True
+        elif expected == 'station':
+            if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_station'):
+                return True
+        elif expected == 'manager':
+            if (
+                self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager')
+                or self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin')
+            ):
+                return True
+        elif expected == 'admin':
+            if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin'):
+                return True
+        raise AccessError(_('Droits insuffisants pour cette opération.'))
+
+    def _hash_public_value(self, value):
+        return hashlib.sha256((value or '').encode('utf-8')).hexdigest()

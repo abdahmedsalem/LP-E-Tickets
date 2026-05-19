@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_acpec_mobile_auth_account_request_admin,access.acpec.mobile.auth.account.request.admin,model_acpec_mobile_auth_account_request,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,1
+access_acpec_mobile_app_version_policy_admin,access.acpec.mobile.app.version.policy.admin,model_acpec_mobile_app_version_policy,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,1
+access_acpec_mobile_session_admin,access.acpec.mobile.session.admin,model_acpec_mobile_session,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,0

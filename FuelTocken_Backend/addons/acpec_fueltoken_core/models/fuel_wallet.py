@@ -1,0 +1,86 @@
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+
+
+class AcpecFuelWallet(models.Model):
+    _name = 'acpec.fuel.wallet'
+    _description = 'Compte FuelToken calculé'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'partner_id'
+
+    name = fields.Char(string='Nom', compute='_compute_name', store=True)
+    partner_id = fields.Many2one('res.partner', string='Client', required=True, index=True)
+    company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
+    currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
+    balance = fields.Monetary(string='Solde disponible', compute='_compute_quantities', store=False)
+    qty_available = fields.Integer(string='Faces disponibles', compute='_compute_quantities', store=False)
+    qty_qr_active = fields.Integer(string='Faces en QR actif', compute='_compute_quantities', store=False)
+    qty_qr_blocked = fields.Integer(string='Faces en QR bloqué', compute='_compute_quantities', store=False)
+    qty_consumed = fields.Integer(string='Faces consommées', compute='_compute_quantities', store=False)
+    qty_expired = fields.Integer(string='Faces expirées', compute='_compute_quantities', store=False)
+    amount_qr_active = fields.Monetary(string='Montant en QR actif', compute='_compute_quantities', store=False)
+    amount_qr_blocked = fields.Monetary(string='Montant en QR bloqué', compute='_compute_quantities', store=False)
+    amount_consumed = fields.Monetary(string='Montant consommé', compute='_compute_quantities', store=False)
+    amount_expired = fields.Monetary(string='Montant expiré', compute='_compute_quantities', store=False)
+    face_line_ids = fields.One2many('acpec.fuel.face.line', 'wallet_id', string='Lignes de faces')
+
+    _sql_constraints = [
+        ('partner_company_unique', 'unique(partner_id, company_id)', 'Un client ne peut avoir qu’un compte FuelToken par société.'),
+    ]
+
+    @api.depends('partner_id', 'company_id')
+    def _compute_name(self):
+        for rec in self:
+            rec.name = '%s - %s' % (rec.partner_id.display_name or '', rec.company_id.name or '')
+
+    def _compute_quantities(self):
+        fields_to_zero = ['balance', 'qty_available', 'qty_qr_active', 'qty_qr_blocked', 'qty_consumed', 'qty_expired', 'amount_qr_active', 'amount_qr_blocked', 'amount_consumed', 'amount_expired']
+        for rec in self:
+            for fname in fields_to_zero:
+                rec[fname] = 0
+        if not self.ids:
+            return
+        groups = self.env['acpec.fuel.face.line'].sudo().read_group(
+            [('wallet_id', 'in', self.ids)],
+            ['wallet_id', 'face_value', 'qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
+            ['wallet_id', 'face_value'],
+            lazy=False,
+        )
+        by_wallet = {wallet.id: {
+            'balance': 0, 'qty_available': 0, 'qty_qr_active': 0, 'qty_qr_blocked': 0, 'qty_consumed': 0, 'qty_expired': 0,
+            'amount_qr_active': 0, 'amount_qr_blocked': 0, 'amount_consumed': 0, 'amount_expired': 0,
+        } for wallet in self}
+        for item in groups:
+            wallet_id = item['wallet_id'][0]
+            face_value = item.get('face_value') or 0
+            qty_available = item.get('qty_available') or 0
+            qty_qr_active = item.get('qty_qr_active') or 0
+            qty_qr_blocked = item.get('qty_qr_blocked') or 0
+            qty_consumed = item.get('qty_consumed') or 0
+            qty_expired = item.get('qty_expired') or 0
+            values = by_wallet[wallet_id]
+            values['qty_available'] += qty_available
+            values['qty_qr_active'] += qty_qr_active
+            values['qty_qr_blocked'] += qty_qr_blocked
+            values['qty_consumed'] += qty_consumed
+            values['qty_expired'] += qty_expired
+            values['balance'] += qty_available * face_value
+            values['amount_qr_active'] += qty_qr_active * face_value
+            values['amount_qr_blocked'] += qty_qr_blocked * face_value
+            values['amount_consumed'] += qty_consumed * face_value
+            values['amount_expired'] += qty_expired * face_value
+        for rec in self:
+            for fname, value in by_wallet[rec.id].items():
+                rec[fname] = value
+
+    @api.model
+    def get_or_create(self, partner, company):
+        wallet = self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
+        if wallet:
+            return wallet
+        return self.sudo().create({'partner_id': partner.id, 'company_id': company.id})
+
+    def write(self, vals):
+        if 'balance' in vals:
+            raise UserError(_('Le solde FuelToken est calculé et ne peut pas être modifié directement.'))
+        return super().write(vals)

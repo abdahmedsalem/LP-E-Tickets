@@ -1,0 +1,67 @@
+<odoo>
+    <record id="action_report_purchases" model="ir.actions.act_window">
+        <field name="name">Achats FuelToken</field>
+        <field name="res_model">acpec.fuel.purchase</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'group_by': 'state'}</field>
+    </record>
+
+    <record id="action_report_faces_available" model="ir.actions.act_window">
+        <field name="name">Faces disponibles</field>
+        <field name="res_model">acpec.fuel.face.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('qty_available', '&gt;', 0)]</field>
+    </record>
+
+    <record id="action_report_qr_active" model="ir.actions.act_window">
+        <field name="name">QR actifs</field>
+        <field name="res_model">acpec.fuel.qr</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'active')]</field>
+    </record>
+
+    <record id="action_report_qr_blocked" model="ir.actions.act_window">
+        <field name="name">QR bloqués</field>
+        <field name="res_model">acpec.fuel.qr</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'blocked')]</field>
+    </record>
+
+    <record id="action_report_qr_consumed" model="ir.actions.act_window">
+        <field name="name">QR consommés</field>
+        <field name="res_model">acpec.fuel.qr</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'consumed')]</field>
+    </record>
+
+    <record id="action_report_qr_expired" model="ir.actions.act_window">
+        <field name="name">QR expirés</field>
+        <field name="res_model">acpec.fuel.qr</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'expired')]</field>
+    </record>
+
+    <record id="action_report_station_consumptions" model="ir.actions.act_window">
+        <field name="name">Consommations par station</field>
+        <field name="res_model">acpec.fuel.transaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('transaction_type', '=', 'consommation_station')]</field>
+        <field name="context">{'group_by': 'station_id'}</field>
+    </record>
+
+    <record id="action_report_customer_transactions" model="ir.actions.act_window">
+        <field name="name">Transactions clients</field>
+        <field name="res_model">acpec.fuel.transaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'group_by': 'wallet_id'}</field>
+    </record>
+
+    <menuitem id="menu_report_purchases" name="Achats" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_purchases" sequence="10"/>
+    <menuitem id="menu_report_faces_available" name="Faces disponibles" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_faces_available" sequence="20"/>
+    <menuitem id="menu_report_qr_active" name="QR actifs" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_active" sequence="25"/>
+    <menuitem id="menu_report_qr_blocked" name="QR bloqués" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_blocked" sequence="30"/>
+    <menuitem id="menu_report_qr_consumed" name="QR consommés" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_consumed" sequence="40"/>
+    <menuitem id="menu_report_qr_expired" name="QR expirés" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_expired" sequence="50"/>
+    <menuitem id="menu_report_station_consumptions" name="Consommations station" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_station_consumptions" sequence="60"/>
+    <menuitem id="menu_report_customer_transactions" name="Transactions clients" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_customer_transactions" sequence="70"/>
+</odoo>

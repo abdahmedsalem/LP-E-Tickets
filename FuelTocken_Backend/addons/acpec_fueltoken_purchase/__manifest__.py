@@ -1,0 +1,16 @@
+{
+    'name': 'ACPEC FuelToken Purchase',
+    'version': '1.0.0',
+    'category': 'ACPEC/FuelToken',
+    'summary': 'Lots d’achat de carnets FuelToken',
+    'author': 'ACPEC SARL',
+    'website': 'https://acpec.odoorim.com',
+    'license': 'OPL-1',
+    'depends': ['acpec_fueltoken_catalog'],
+    'data': [
+        'security/ir.model.access.csv',
+        'security/fueltoken_purchase_rules.xml',
+        'views/fuel_purchase_views.xml',
+    ],
+    'installable': True,
+}

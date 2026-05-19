@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_acpec_mobile_auth_otp_tree" model="ir.ui.view">
+        <field name="name">acpec.mobile.auth.otp.list</field>
+        <field name="model">acpec.mobile.auth.otp</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="identifier"/>
+                <field name="purpose"/>
+                <field name="user_id"/>
+                <field name="expires_at"/>
+                <field name="attempt_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_auth_otp_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.auth.otp.form</field>
+        <field name="model">acpec.mobile.auth.otp</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,verified,expired,blocked,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="identifier" readonly="1"/>
+                            <field name="mobile" readonly="1"/>
+                            <field name="email" readonly="1"/>
+                            <field name="purpose" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="user_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="expires_at" readonly="1"/>
+                            <field name="verified_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="attempt_count" readonly="1"/>
+                        <field name="max_attempts" readonly="1"/>
+                        <field name="blocked_until" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_acpec_mobile_auth_otp" model="ir.actions.act_window">
+        <field name="name">OTP Challenges</field>
+        <field name="res_model">acpec.mobile.auth.otp</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_mobile_auth_otp" name="OTP Challenges" parent="acpec_mobile_auth.menu_mobile_auth_operations" action="action_acpec_mobile_auth_otp" sequence="30" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+</odoo>

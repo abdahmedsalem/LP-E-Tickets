@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_acpec_mobile_auth_account_request_tree" model="ir.ui.view">
+        <field name="name">acpec.mobile.auth.account.request.list</field>
+        <field name="model">acpec.mobile.auth.account.request</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="name_display"/>
+                <field name="signup_identifier"/>
+                <field name="signup_identifier_type"/>
+                <field name="company_id"/>
+                <field name="state"/>
+                <field name="requested_at"/>
+                <field name="reviewed_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_auth_account_request_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.auth.account.request.form</field>
+        <field name="model">acpec.mobile.auth.account.request</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve" type="object" string="Approve" invisible="state != 'pending'" class="oe_highlight"/>
+                    <button name="action_reject" type="object" string="Reject" invisible="state != 'pending'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,approved,rejected"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="name_display"/>
+                            <field name="signup_identifier"/>
+                            <field name="signup_identifier_type"/>
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="login"/>
+                            <field name="company_id"/>
+                        </group>
+                        <group>
+                            <field name="user_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="requested_at" readonly="1"/>
+                            <field name="reviewed_at" readonly="1"/>
+                            <field name="reviewed_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note"/>
+                        <field name="rejection_reason" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_app_version_policy_tree" model="ir.ui.view">
+        <field name="name">acpec.mobile.app.version.policy.list</field>
+        <field name="model">acpec.mobile.app.version.policy</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence"/>
+                <field name="platform"/>
+                <field name="min_supported_version"/>
+                <field name="latest_version"/>
+                <field name="force_update"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_app_version_policy_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.app.version.policy.form</field>
+        <field name="model">acpec.mobile.app.version.policy</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="platform"/>
+                            <field name="active"/>
+                            <field name="force_update"/>
+                        </group>
+                        <group>
+                            <field name="min_supported_version"/>
+                            <field name="latest_version"/>
+                            <field name="min_supported_build"/>
+                            <field name="latest_build"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="message"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_acpec_mobile_auth_account_request" model="ir.actions.act_window">
+        <field name="name">Account Requests</field>
+        <field name="res_model">acpec.mobile.auth.account.request</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_acpec_mobile_app_version_policy" model="ir.actions.act_window">
+        <field name="name">App Version Policies</field>
+        <field name="res_model">acpec.mobile.app.version.policy</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_acpec_mobile_session_tree" model="ir.ui.view">
+        <field name="name">acpec.mobile.session.list</field>
+        <field name="model">acpec.mobile.session</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="partner_id"/>
+                <field name="company_id"/>
+                <field name="device_name"/>
+                <field name="platform"/>
+                <field name="expires_at"/>
+                <field name="refresh_expires_at"/>
+                <field name="last_seen_at"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_session_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.session.form</field>
+        <field name="model">acpec.mobile.session</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_revoke" type="object" string="Revoke" invisible="state != 'active'" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="active,expired,revoked"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="user_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="device_uid" readonly="1"/>
+                            <field name="device_name" readonly="1"/>
+                            <field name="platform" readonly="1"/>
+                            <field name="app_version" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="expires_at" readonly="1"/>
+                            <field name="refresh_expires_at" readonly="1"/>
+                            <field name="last_seen_at" readonly="1"/>
+                            <field name="revoked_at" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="ip_address" readonly="1"/>
+                            <field name="user_agent" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_acpec_mobile_session" model="ir.actions.act_window">
+        <field name="name">Mobile Sessions</field>
+        <field name="res_model">acpec.mobile.session</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>
