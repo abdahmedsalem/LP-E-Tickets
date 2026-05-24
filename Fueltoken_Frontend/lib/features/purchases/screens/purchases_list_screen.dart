@@ -1,0 +1,763 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/config/app_environment.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../data/models/purchase_lot.dart';
+import '../../../data/services/acpec_purchases_mapper.dart';
+import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/status_badge.dart';
+import '../../auth/bloc/auth_bloc.dart';
+
+/// Liste des achats (données locales ou synchronisées ACPEC selon la configuration).
+class PurchasesListScreen extends StatefulWidget {
+  const PurchasesListScreen({super.key});
+
+  @override
+  State<PurchasesListScreen> createState() => _PurchasesListScreenState();
+}
+
+class _PurchasesListScreenState extends State<PurchasesListScreen> {
+  List<PurchaseLot> _lots = [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) {
+      setState(() {
+        _lots = [];
+        _loading = false;
+        _error = 'Session requise.';
+      });
+      return;
+    }
+
+    if (AppEnvironment.useAcpecLiveData) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+      try {
+        final raw = await OdooFueltokenFacade().purchasesList(
+          const <String, dynamic>{},
+        );
+        final lots = AcpecPurchasesMapper.fromRpcResult(
+          raw,
+          clientId: user.id,
+          clientName: user.name,
+          companyId: AppEnvironment.companyIdForUser(user),
+        );
+        if (!mounted) return;
+        setState(() {
+          _lots = lots;
+          _loading = false;
+        });
+      } on OdooJsonRpcException catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = e.isOdooSessionExpired
+              ? 'Session expirée. Reconnectez-vous pour actualiser la liste.'
+              : e.message;
+          _lots = [];
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _lots = [];
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _loading = false;
+      _error = 'Connexion serveur ACPEC requise pour afficher vos achats.';
+      _lots = [];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final minEmptyHeight = math.max(
+      320.0,
+      MediaQuery.sizeOf(context).height - 200,
+    );
+    final totalLots = _lots.length;
+    final approvedLots =
+        _lots.where((lot) => lot.state == PurchaseLotState.approved).length;
+    final rejectedLots =
+        _lots.where((lot) => lot.state == PurchaseLotState.rejected).length;
+    final totalAmount = _lots.fold<int>(0, (sum, lot) => sum + lot.totalAmount);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7F5),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await context.push('/purchases/new');
+          await _refresh();
+        },
+        backgroundColor: const Color(0xFF0F7A5A),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Nouvel achat'),
+      ),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF8FBFA),
+                Color(0xFFF2F5F3),
+                Color(0xFFF4F7F5),
+              ],
+            ),
+          ),
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0F7A5A), Color(0xFF1A9A6B)],
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F7A5A).withValues(alpha: 0.22),
+                    blurRadius: 30,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => context.pop(),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.16),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '$totalLots achats',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Mes achats',
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.05,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Chaque carte résume le carnet, le montant total et la date de validation.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SummaryPill(
+                          label: 'Validés',
+                          value: '$approvedLots',
+                          color: const Color(0xFFDCFCE7),
+                          foreground: const Color(0xFF0F7A5A),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SummaryPill(
+                          label: 'Rejetés',
+                          value: '$rejectedLots',
+                          color: const Color(0xFFFFE4E6),
+                          foreground: const Color(0xFFB91C1C),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SummaryPill(
+                          label: 'Montant',
+                          value: Formatters.money(totalAmount),
+                          color: Colors.white.withValues(alpha: 0.14),
+                          foreground: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: _loading
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                      children: const [
+                        SizedBox(height: 18),
+                        AppLoadingSkeleton(
+                          style: AppLoadingSkeletonStyle.qrCards,
+                          itemCount: 4,
+                        ),
+                      ],
+                    )
+                  : _error != null
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(20),
+                          children: [
+                            SizedBox(
+                              height: minEmptyHeight,
+                              child: _EmptyPanel(
+                                icon: Icons.cloud_off_outlined,
+                                title: 'Connexion requise',
+                                message: _error!,
+                                actionLabel: 'Réessayer',
+                                onAction: _refresh,
+                              ),
+                            ),
+                          ],
+                        )
+                      : RefreshIndicator(
+                          color: scheme.primary,
+                          onRefresh: _refresh,
+                          child: _lots.isEmpty
+                              ? ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    20,
+                                    20,
+                                    20,
+                                    96,
+                                  ),
+                                  children: [
+                                    SizedBox(
+                                      height: minEmptyHeight,
+                                      child: _EmptyPanel(
+                                        icon: Icons.receipt_long_outlined,
+                                        title: 'Aucun achat',
+                                        message:
+                                            'Créez un nouvel achat pour faire apparaître ici le carnet, le montant et sa validation.',
+                                        actionLabel: 'Nouvel achat',
+                                        onAction: () async {
+                                          await context.push('/purchases/new');
+                                          await _refresh();
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : ListView.separated(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    4,
+                                    16,
+                                    96,
+                                  ),
+                                  itemCount: _lots.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(height: 14),
+                                  itemBuilder: (ctx, i) {
+                                    final lot = _lots[i];
+                                    return _PurchaseTile(
+                                      lot: lot,
+                                      onTap: () => context
+                                          .push('/purchases/${lot.id}')
+                                          .then((_) => _refresh()),
+                                    );
+                                  },
+                                ),
+                        ),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseTile extends StatelessWidget {
+  const _PurchaseTile({required this.lot, required this.onTap});
+
+  final PurchaseLot lot;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final stateColor = switch (lot.state) {
+      PurchaseLotState.approved => const Color(0xFF0F7A5A),
+      PurchaseLotState.submitted => const Color(0xFFB45309),
+      PurchaseLotState.rejected => const Color(0xFFB91C1C),
+      PurchaseLotState.draft => const Color(0xFF6B7280),
+    };
+    final typeLabel = _purchaseTypeLabel(lot);
+    final validationLabel = lot.validationDate != null
+        ? Formatters.date(lot.validationDate!)
+        : 'En attente de validation';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(26),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white, Color(0xFFF8FAF9)],
+            ),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: Colors.white),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            stateColor.withValues(alpha: 0.16),
+                            stateColor.withValues(alpha: 0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        color: stateColor,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  typeLabel,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                    color: scheme.onSurface,
+                                    height: 1.08,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              StatusBadge.lot(lot.state),
+                            ],
+                          ),
+                          const SizedBox(height: 7),
+                          Text(
+                            lot.internalRef,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MetricBlock(
+                        title: 'Type de carnet',
+                        value: typeLabel,
+                        icon: Icons.style_outlined,
+                        accent: stateColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _MetricBlock(
+                        title: 'Montant total',
+                        value: Formatters.money(lot.totalAmount),
+                        icon: Icons.payments_outlined,
+                        accent: const Color(0xFF0F7A5A),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _MetricBlock(
+                  title: 'Date de validation',
+                  value: validationLabel,
+                  icon: Icons.event_available_outlined,
+                  accent: stateColor,
+                  fullWidth: true,
+                ),
+                if (lot.state == PurchaseLotState.rejected &&
+                    lot.rejectionReason != null &&
+                    lot.rejectionReason!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1F2),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.report_gmailerrorred_outlined,
+                          color: scheme.error,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            lot.rejectionReason!,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              height: 1.35,
+                              color: scheme.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _purchaseTypeLabel(PurchaseLot lot) {
+  if (lot.lines.isEmpty) return 'Achat';
+  final codes = lot.lines
+      .map((line) => line.carnetTypeCode.trim())
+      .where((code) => code.isNotEmpty && code != '—')
+      .toList();
+  if (codes.isEmpty) return 'Achat';
+  if (codes.length == 1) return codes.first;
+  return '${codes.first} +${codes.length - 1}';
+}
+
+class _MetricBlock extends StatelessWidget {
+  const _MetricBlock({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.accent,
+    this.fullWidth = false,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color accent;
+  final bool fullWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6EAE8)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 18, color: accent),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF64748B),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF111827),
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  const _SummaryPill({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.foreground,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: foreground.withValues(alpha: 0.88),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyPanel extends StatelessWidget {
+  const _EmptyPanel({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFE5EAE7)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFEAF7EE), Color(0xFFDFF3EA)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(icon, size: 30, color: const Color(0xFF0F7A5A)),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: onAction,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F7A5A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 14,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
