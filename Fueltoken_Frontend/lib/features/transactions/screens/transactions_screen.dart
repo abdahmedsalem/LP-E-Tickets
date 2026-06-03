@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -31,7 +31,13 @@ class TransactionsScreen extends StatefulWidget {
   State<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-enum _HistoryQuickFilter { all, activeBlocked, purchases, consumption }
+enum _HistoryQuickFilter {
+  all,
+  activeBlocked,
+  purchases,
+  submittedPurchases,
+  consumption,
+}
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
@@ -133,11 +139,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       case _HistoryQuickFilter.activeBlocked:
         return t.type == TxType.qrEmission ||
             t.type == TxType.qrSplit ||
+            t.type == TxType.qrRetirer ||
             t.type == TxType.qrBlocked;
       case _HistoryQuickFilter.purchases:
         return t.type == TxType.purchaseValidated ||
             t.type == TxType.purchaseSubmitted ||
             t.type == TxType.purchaseRejected;
+      case _HistoryQuickFilter.submittedPurchases:
+        return t.type == TxType.purchaseSubmitted;
       case _HistoryQuickFilter.consumption:
         return t.type == TxType.stationConsumption;
     }
@@ -527,6 +536,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   ) async {
     final scheme = Theme.of(context).colorScheme;
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final facts = _transactionFacts(tx);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -564,101 +574,73 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                tx.type.label,
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.3,
-                                  color: scheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                Formatters.dateTime(tx.date),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(
-                    height: 1,
-                    color: scheme.outline.withValues(alpha: 0.2),
-                  ),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: ListView(
                       controller: scrollController,
                       padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
                       children: [
-                        Text(
-                          'D\u00e9tail des tickets',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                            color: scheme.onSurfaceVariant,
+                        _TransactionOverviewCard(tx: tx),
+                        const SizedBox(height: 14),
+                        _TransactionFactsGrid(facts: facts),
+                        if (tx.lines.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'D\u00e9tail des lignes',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        ...tx.lines.map((l) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: scheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.35),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: scheme.outline.withValues(alpha: 0.22),
+                          const SizedBox(height: 12),
+                          ...tx.lines.map((l) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  FaceValueChip(value: l.faceValue),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      '${l.qty} ticket${l.qty > 1 ? 's' : ''}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: scheme.outline.withValues(
+                                      alpha: 0.22,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    FaceValueChip(value: l.faceValue),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        '${l.qty} ticket${l.qty > 1 ? 's' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurface,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${Formatters.numberFr(l.amount)} MRU',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
                                         color: scheme.onSurface,
                                       ),
                                     ),
-                                  ),
-                                  Text(
-                                    '${Formatters.numberFr(l.amount)} MRU',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: scheme.onSurface,
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }),
+                            );
+                          }),
+                        ],
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -1193,7 +1175,7 @@ class _TxCard extends StatelessWidget {
 String _historyTxTitle(TxType type) {
   switch (type) {
     case TxType.purchaseSubmitted:
-      return 'Achats en attente';
+      return 'Achats soumis';
     case TxType.purchaseValidated:
       return 'Achats validés';
     case TxType.purchaseRejected:
@@ -1202,6 +1184,10 @@ String _historyTxTitle(TxType type) {
       return 'Em\u00e9ission QR';
     case TxType.qrSplit:
       return 'Split de QR';
+    case TxType.qrRetirer:
+      return 'Retrait de tickets';
+    case TxType.carnetTransfer:
+      return 'Transfert de carnets';
     case TxType.qrBlocked:
       return 'QR bloqu\u00e9';
     case TxType.stationConsumption:
@@ -1217,6 +1203,11 @@ String _compactDate(DateTime date) {
   return DateFormat('dd-MM-yyyy').format(date);
 }
 
+String _popupDetailTitle(TxType type) {
+  if (type == TxType.walletLedger) return 'Mouvement';
+  return type.label;
+}
+
 Color _historyAmountColor(TxType type) {
   switch (type) {
     case TxType.purchaseSubmitted:
@@ -1230,6 +1221,10 @@ Color _historyAmountColor(TxType type) {
     case TxType.qrEmission:
     case TxType.qrSplit:
       return const Color(0xFFD97706);
+    case TxType.qrRetirer:
+      return AppColors.warning;
+    case TxType.carnetTransfer:
+      return AppColors.primary;
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return AppColors.ink;
@@ -1306,6 +1301,7 @@ class _HistoryFilterChips extends StatelessWidget {
       (_HistoryQuickFilter.all, 'Tout transaction'),
       (_HistoryQuickFilter.activeBlocked, 'Active / Bloqu\u00e9es'),
       (_HistoryQuickFilter.purchases, 'Achats'),
+      (_HistoryQuickFilter.submittedPurchases, 'Soumis'),
       (_HistoryQuickFilter.consumption, 'Consommation'),
     ];
 
@@ -1399,4 +1395,392 @@ class _TransactionDetailLoadingDialog extends StatelessWidget {
   }
 }
 
+class _TransactionOverviewCard extends StatelessWidget {
+  const _TransactionOverviewCard({required this.tx});
 
+  final BusinessTransaction tx;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final amountColor = _historyAmountColor(tx.type);
+    final amountLabel = tx.totalAmount < 0 ? 'Débit' : 'Crédit';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: amountColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.receipt_long_rounded, color: amountColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _popupDetailTitle(tx.type),
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  Formatters.dateTime(tx.date),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                if ((tx.note ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    tx.note!.trim(),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                amountLabel,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: amountColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${Formatters.numberFr(tx.totalAmount.abs())} MRU',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: amountColor,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionFactsGrid extends StatelessWidget {
+  const _TransactionFactsGrid({required this.facts});
+
+  final List<_TransactionFact> facts;
+
+  @override
+  Widget build(BuildContext context) {
+    if (facts.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [for (final fact in facts) _TransactionFactCard(fact: fact)],
+    );
+  }
+}
+
+class _TransactionFactCard extends StatelessWidget {
+  const _TransactionFactCard({required this.fact});
+
+  final _TransactionFact fact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: (MediaQuery.sizeOf(context).width - 42) / 2,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(fact.icon, size: 16, color: fact.color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  fact.label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            fact.value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionFact {
+  const _TransactionFact({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+}
+
+List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
+  final green = const Color(0xFF1B8F3A);
+  final amber = const Color(0xFFF59E0B);
+  final blue = const Color(0xFF2563EB);
+  final violet = const Color(0xFF7C3AED);
+  final gray = AppColors.muted;
+  final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
+  final lineCount = tx.lines.length;
+  final qr = tx.qrPublicCode ?? tx.qrId;
+  final lotRef = tx.lotInternalRef ?? tx.lotId;
+  final station = tx.stationName ?? tx.stationId;
+  final client = tx.userName.trim().isNotEmpty ? tx.userName : tx.userId;
+  final amount = '${Formatters.numberFr(tx.totalAmount.abs())} MRU';
+
+  switch (tx.type) {
+    case TxType.purchaseSubmitted:
+    case TxType.purchaseValidated:
+    case TxType.purchaseRejected:
+      return [
+        _TransactionFact(
+          label: 'Commande',
+          value: lotRef ?? '—',
+          icon: Icons.shopping_bag_outlined,
+          color: green,
+        ),
+        _TransactionFact(
+          label: 'Client',
+          value: client,
+          icon: Icons.person_outline_rounded,
+          color: blue,
+        ),
+        _TransactionFact(
+          label: 'Lignes',
+          value: '$lineCount',
+          icon: Icons.view_list_rounded,
+          color: violet,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+      ];
+    case TxType.qrEmission:
+      return [
+        _TransactionFact(
+          label: 'QR source',
+          value: qr ?? 'â€”',
+          icon: Icons.qr_code_2_rounded,
+          color: blue,
+        ),
+        _TransactionFact(
+          label: 'Tickets',
+          value: '$totalQty',
+          icon: Icons.confirmation_number_outlined,
+          color: green,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+        if (lotRef != null)
+          _TransactionFact(
+            label: 'Lot',
+            value: lotRef,
+            icon: Icons.receipt_long_outlined,
+            color: gray,
+          ),
+      ];
+    case TxType.qrSplit:
+      return [
+        _TransactionFact(
+          label: 'Tickets',
+          value: '$totalQty',
+          icon: Icons.call_split_rounded,
+          color: violet,
+        ),
+        _TransactionFact(
+          label: 'Lignes',
+          value: '$lineCount',
+          icon: Icons.view_list_rounded,
+          color: gray,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+      ];
+    case TxType.qrRetirer:
+      return [
+        _TransactionFact(
+          label: 'Tickets retirés',
+          value: '$totalQty',
+          icon: Icons.remove_circle_outline_rounded,
+          color: amber,
+        ),
+        _TransactionFact(
+          label: 'Lignes',
+          value: '$lineCount',
+          icon: Icons.view_list_rounded,
+          color: gray,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+      ];
+    case TxType.carnetTransfer:
+      return [
+        _TransactionFact(
+          label: 'Référence',
+          value: lotRef ?? '—',
+          icon: Icons.swap_horiz_rounded,
+          color: blue,
+        ),
+        _TransactionFact(
+          label: 'Tickets',
+          value: '$totalQty',
+          icon: Icons.inventory_2_outlined,
+          color: violet,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+        _TransactionFact(
+          label: 'Client',
+          value: client,
+          icon: Icons.person_outline_rounded,
+          color: gray,
+        ),
+      ];
+    case TxType.qrBlocked:
+      return [
+        _TransactionFact(
+          label: 'Tickets',
+          value: '$totalQty',
+          icon: Icons.confirmation_number_outlined,
+          color: gray,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+        if (tx.note != null && tx.note!.trim().isNotEmpty)
+          _TransactionFact(
+            label: 'Note',
+            value: tx.note!.trim(),
+            icon: Icons.info_outline_rounded,
+            color: blue,
+          ),
+      ];
+    case TxType.stationConsumption:
+      return [
+        _TransactionFact(
+          label: 'Station',
+          value: station ?? '—',
+          icon: Icons.local_gas_station_outlined,
+          color: green,
+        ),
+        _TransactionFact(
+          label: 'Tickets',
+          value: '$totalQty',
+          icon: Icons.water_drop_outlined,
+          color: amber,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+      ];
+    case TxType.expiration:
+      return [
+        _TransactionFact(
+          label: 'Référence',
+          value: lotRef ?? '—',
+          icon: Icons.event_busy_outlined,
+          color: amber,
+        ),
+        _TransactionFact(
+          label: 'Tickets expirés',
+          value: '$totalQty',
+          icon: Icons.hourglass_bottom_rounded,
+          color: gray,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+      ];
+    case TxType.walletLedger:
+      return const [];
+  }
+}

@@ -130,10 +130,10 @@ class StationQrCheckResult extends Equatable {
         reason = 'QR expiré';
       } else if (state.contains('block') || state.contains('bloqu')) {
         can = false;
-        reason ??= 'Ce QR est bloqué. Le client doit le partager (split) avant utilisation.';
+        reason ??= 'Ce QR est bloqué. Le client doit le séparer avant utilisation.';
       } else if (state == 'split' || state.contains('split')) {
         can = false;
-        reason ??= 'Ce QR parent a été partagé ; scannez un QR enfant actif.';
+        reason ??= 'Ce QR parent a été séparé ; scannez un QR enfant actif.';
       } else if (explicitCan == null) {
         can = false;
       }

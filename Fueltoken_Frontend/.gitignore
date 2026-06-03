@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/web/
 
 # Symbolication related
 app.*.symbols
@@ -49,6 +50,9 @@ tool/otp_api_base_url.txt
 
 # Local probe clones (never commit)
 _tawssil_probe/
+
+# Archives locales
+*.rar
 
 # ── Secrets & environnement local (ne pas versionner) ──
 .env

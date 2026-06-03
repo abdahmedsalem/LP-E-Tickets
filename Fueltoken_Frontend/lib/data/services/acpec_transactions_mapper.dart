@@ -46,6 +46,10 @@ class AcpecTransactionsMapper {
         return _looksLikeQrEmission(tx);
       case TxType.qrSplit:
         return _looksLikeQrSplit(tx);
+      case TxType.qrRetirer:
+        return _looksLikeQrRetirer(tx);
+      case TxType.carnetTransfer:
+        return _looksLikeCarnetTransfer(tx);
       case TxType.stationConsumption:
         return _looksLikeStationConsumption(tx);
       case TxType.expiration:
@@ -68,6 +72,41 @@ class AcpecTransactionsMapper {
       tx.id,
     ];
     return parts.join(' ').toLowerCase();
+  }
+
+  static TxType? _purchaseStateType(Map<String, dynamic> row) {
+    final hasPurchase =
+        _has(row, 'purchase_id', 'lot_id') ||
+        _has(row, 'purchase_name', 'lot_name');
+    if (!hasPurchase) return null;
+
+    final stateBlob = _blob(
+      row['purchase_state'],
+      row['state'],
+      row['status'],
+      row['purchase_status'],
+    );
+    if (stateBlob.isEmpty) return null;
+
+    if (stateBlob.contains('reject') ||
+        stateBlob.contains('rejet') ||
+        stateBlob.contains('cancel') ||
+        stateBlob.contains('annul')) {
+      return TxType.purchaseRejected;
+    }
+    if (stateBlob.contains('submit') ||
+        stateBlob.contains('soumis') ||
+        stateBlob.contains('pending') ||
+        stateBlob.contains('draft')) {
+      return TxType.purchaseSubmitted;
+    }
+    if (stateBlob.contains('valid') ||
+        stateBlob.contains('approv') ||
+        stateBlob.contains('done') ||
+        stateBlob.contains('sale')) {
+      return TxType.purchaseValidated;
+    }
+    return null;
   }
 
   static bool _blobHasBlock(String blob) =>
@@ -99,6 +138,26 @@ class AcpecTransactionsMapper {
     return blob.contains('split') || blob.contains('partage');
   }
 
+  static bool _looksLikeQrRetirer(BusinessTransaction tx) {
+    if (tx.type == TxType.qrRetirer) return true;
+    if (!_hasQrRef(tx)) return false;
+    if (_looksLikeQrBlocked(tx)) return false;
+    final blob = _txBlob(tx);
+    return blob.contains('retirer') ||
+        blob.contains('retrait') ||
+        blob.contains('withdraw') ||
+        blob.contains('remove');
+  }
+
+  static bool _looksLikeCarnetTransfer(BusinessTransaction tx) {
+    if (tx.type == TxType.carnetTransfer) return true;
+    final blob = _txBlob(tx);
+    return blob.contains('transfert') ||
+        blob.contains('transfer') ||
+        blob.contains('transfert_carnet') ||
+        blob.contains('carnet_transfer');
+  }
+
   static bool _looksLikeStationConsumption(BusinessTransaction tx) {
     if (tx.type == TxType.stationConsumption) return true;
     final blob = _txBlob(tx);
@@ -122,6 +181,10 @@ class AcpecTransactionsMapper {
 
   static bool _looksLikePurchaseValidated(BusinessTransaction tx) {
     if (tx.type == TxType.purchaseValidated) return true;
+    if (tx.type == TxType.purchaseSubmitted ||
+        tx.type == TxType.purchaseRejected) {
+      return false;
+    }
     final hasLot =
         (tx.lotId != null && tx.lotId!.isNotEmpty) ||
         (tx.lotInternalRef != null && tx.lotInternalRef!.isNotEmpty);
@@ -129,11 +192,18 @@ class AcpecTransactionsMapper {
         (tx.qrPublicCode != null && tx.qrPublicCode!.isNotEmpty);
     final hasStation = (tx.stationId != null && tx.stationId!.isNotEmpty) ||
         (tx.stationName != null && tx.stationName!.isNotEmpty);
-    return hasLot && !hasQr && !hasStation;
+    return hasLot &&
+        !hasQr &&
+        !hasStation &&
+        _txBlob(tx).contains('valid');
   }
 
   static bool _looksLikePurchaseRejected(BusinessTransaction tx) {
     if (tx.type == TxType.purchaseRejected) return true;
+    if (tx.type == TxType.purchaseSubmitted ||
+        tx.type == TxType.purchaseValidated) {
+      return false;
+    }
     final blob = _txBlob(tx);
     final hasLot =
         (tx.lotId != null && tx.lotId!.isNotEmpty) ||
@@ -153,6 +223,10 @@ class AcpecTransactionsMapper {
 
   static bool _looksLikePurchaseSubmitted(BusinessTransaction tx) {
     if (tx.type == TxType.purchaseSubmitted) return true;
+    if (tx.type == TxType.purchaseRejected ||
+        tx.type == TxType.purchaseValidated) {
+      return false;
+    }
     final blob = _txBlob(tx);
     final hasLot =
         (tx.lotId != null && tx.lotId!.isNotEmpty) ||
@@ -178,17 +252,12 @@ class AcpecTransactionsMapper {
     final out = <BusinessTransaction>[];
     for (final lot in lots) {
       if (lot.state == PurchaseLotState.draft) continue;
-      final txType = switch (lot.state) {
-        PurchaseLotState.submitted => TxType.purchaseSubmitted,
-        PurchaseLotState.approved => TxType.purchaseValidated,
-        PurchaseLotState.rejected => TxType.purchaseRejected,
-        PurchaseLotState.draft => TxType.purchaseSubmitted,
-      };
+      final submittedDate = lot.submittedAt ?? lot.createdAt;
       out.add(
         BusinessTransaction(
-          id: 'purchase-${txType.name}-${lot.id}',
-          type: txType,
-          date: lot.createdAt,
+          id: 'purchase-submitted-${lot.id}',
+          type: TxType.purchaseSubmitted,
+          date: submittedDate,
           userId: lot.clientId.isNotEmpty ? lot.clientId : userId,
           userName: lot.clientName.isNotEmpty ? lot.clientName : userName,
           lines: [
@@ -203,7 +272,11 @@ class AcpecTransactionsMapper {
           ],
           lotId: lot.id,
           lotInternalRef: lot.internalRef,
-          note: lot.state.label,
+          note: lot.state == PurchaseLotState.approved
+              ? 'Validé après soumission'
+              : lot.state == PurchaseLotState.rejected
+                  ? 'Rejeté après soumission'
+                  : lot.state.label,
         ),
       );
     }
@@ -430,6 +503,7 @@ class AcpecTransactionsMapper {
 
     final date = _parseDate(
           row['date'] ??
+              row['state_date'] ??
               row['create_date'] ??
               row['datetime'] ??
               row['written_date'] ??
@@ -566,6 +640,11 @@ class AcpecTransactionsMapper {
       return TxType.qrBlocked;
     }
 
+    final purchaseStateType = _purchaseStateType(row);
+    if (purchaseStateType != null) {
+      return purchaseStateType;
+    }
+
     final typeRaw = row['type'] ??
         row['transaction_type'] ??
         row['kind'] ??
@@ -623,6 +702,17 @@ class AcpecTransactionsMapper {
       return TxType.qrSplit;
     }
 
+    if (combined.contains('retirer') ||
+        combined.contains('retrait') ||
+        combined.contains('withdraw') ||
+        combined.contains('remove')) {
+      return TxType.qrRetirer;
+    }
+
+    if (combined.contains('transfert') || combined.contains('transfer')) {
+      return TxType.carnetTransfer;
+    }
+
     if ((_has(row, 'purchase_id', 'lot_id') ||
             _has(row, 'purchase_name', 'lot_name')) &&
         (combined.contains('valid') ||
@@ -631,15 +721,6 @@ class AcpecTransactionsMapper {
             combined.contains('purchase') ||
             combined.contains('lot'))) {
       return TxType.purchaseValidated;
-    }
-
-    if (_has(row, 'purchase_id', 'lot_id') ||
-        _has(row, 'purchase_name', 'lot_name')) {
-      final hasQr = _hasAny(row, 'qr_id', 'qr_public_code', 'public_code');
-      final hasStation = _has(row, 'station_id', 'station_name');
-      if (!hasQr && !hasStation) {
-        return TxType.purchaseValidated;
-      }
     }
 
     if (_hasAny(row, 'qr_id', 'qr_public_code', 'public_code') ||
@@ -656,11 +737,6 @@ class AcpecTransactionsMapper {
         return TxType.stationConsumption;
       }
       return TxType.qrEmission;
-    }
-
-    if (combined.contains('valid') &&
-        (combined.contains('lot') || combined.contains('achat'))) {
-      return TxType.purchaseValidated;
     }
 
     if ((_has(row, 'purchase_id', 'lot_id') ||
@@ -762,6 +838,18 @@ class AcpecTransactionsMapper {
       return TxType.qrSplit;
     }
     if (s.contains('split') || s.contains('partage')) return TxType.qrSplit;
+    if (s.contains('retirer') ||
+        s.contains('retrait') ||
+        s.contains('withdraw') ||
+        s.contains('remove')) {
+      return TxType.qrRetirer;
+    }
+    if (s.contains('transfert') ||
+        s.contains('transfer') ||
+        s.contains('transfert_carnet') ||
+        s.contains('carnet_transfer')) {
+      return TxType.carnetTransfer;
+    }
 
     if (_blobHasBlock(s) || s == 'qr_blocked') {
       return TxType.qrBlocked;

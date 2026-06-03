@@ -19,8 +19,8 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
-import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -35,6 +35,7 @@ class SubmitPurchaseScreen extends StatefulWidget {
 class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   List<CarnetType> _offerTypes = [];
   final Map<String, int> _qty = {};
+  final Set<String> _selectedTypeIds = {};
 
   String? _proofPath;
   bool _submitting = false;
@@ -80,6 +81,14 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         _offerTypes = offers;
         for (final t in offers) {
           _qty.putIfAbsent(t.id, () => 0);
+          if ((_qty[t.id] ?? 0) > 0) {
+            _selectedTypeIds.add(t.id);
+          }
+        }
+        for (final id in List<String>.from(_selectedTypeIds)) {
+          if (!offers.any((t) => t.id == id)) {
+            _selectedTypeIds.remove(id);
+          }
         }
       });
     } catch (e) {
@@ -120,6 +129,11 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     final clamped = math.max(0, math.min(v, cap));
     setState(() {
       _qty[typeId] = clamped;
+      if (clamped > 0) {
+        _selectedTypeIds.add(typeId);
+      } else {
+        _selectedTypeIds.remove(typeId);
+      }
     });
     if (v > clamped && cap < v) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -131,6 +145,21 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         ),
       );
     }
+  }
+
+  void _selectType(String id) {
+    setState(() {
+      if (_selectedTypeIds.contains(id)) {
+        _selectedTypeIds.remove(id);
+        _qty[id] = 0;
+      } else {
+        _selectedTypeIds.add(id);
+        _qty[id] = _qty[id] ?? 0;
+        if (_qty[id] == 0) {
+          _qty[id] = 1;
+        }
+      }
+    });
   }
 
   Future<void> _pickProof() async {
@@ -257,22 +286,16 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalT = _totalTickets();
     final amt = _totalAmount();
-    final selectedOffers =
-        _offerTypes.where((t) => (_qty[t.id] ?? 0) > 0).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F5),
-      bottomNavigationBar: Material(
-        color: Colors.transparent,
-        child: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      backgroundColor: Colors.white,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: _BottomBar(
             totalAmount: amt,
-            totalTickets: totalT,
-            maxTickets: _kMaxTicketsPerPurchase,
             hasSelection: _hasSelection,
             submitting: _submitting,
             onSubmit: _submitting ? null : _submit,
@@ -280,312 +303,374 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         ),
       ),
       body: SafeArea(
-        bottom: false,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFF8FBFA),
-                Color(0xFFF4F7F5),
-                Color(0xFFEFF4F1),
-              ],
+        top: true,
+        child: Column(
+          children: [
+            AppBarHeader(
+              title: 'Nouvel achat',
+              subtitle: 'Sélectionnez les carnets et indiquez la quantité',
+              showBack: true,
+              largeTitle: true,
+              onBack: () => context.pop(),
             ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F7A5A), Color(0xFF1D4ED8)],
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F7A5A).withValues(alpha: 0.18),
-                      blurRadius: 28,
-                      offset: const Offset(0, 14),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => context.pop(),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '$selectedOffers sélectionné(s)',
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+                children: [
+                  if (_loadingOffers)
+                    const _PurchaseOffersSkeleton()
+                  else if (_offerLoadError != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Column(
+                        children: [
+                          Text(
+                            _offerLoadError!,
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: _reloadOffers,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Actualiser'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_offerTypes.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 48,
+                            color: AppColors.muted,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppEnvironment.useAcpecLiveData
+                                ? 'Aucun type de ticket détecté pour le moment.'
+                                : 'Aucun type de ticket unitaire n’est disponible pour votre société.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ink2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            AppEnvironment.useAcpecLiveData
+                                ? 'Lorsque des offres seront disponibles pour votre compte, elles s’afficheront ici.'
+                                : '',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.muted,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          TextButton.icon(
+                            onPressed: _reloadOffers,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Actualiser'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else ...[
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(top: 4),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 1,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 0,
+                            childAspectRatio: 3.8,
+                          ),
+                      itemCount: _offerTypes.length,
+                      itemBuilder: (context, i) {
+                        final t = _offerTypes[i];
+                        final q = _qty[t.id] ?? 0;
+                        final maxAllowed = _maxAllowedFor(t.id);
+                        return _CarnetCard(
+                          type: t,
+                          quantity: q,
+                          maxAllowed: maxAllowed,
+                          selected: q > 0,
+                          onMinus: () => _setQty(t.id, q - 1),
+                          onPlus: () => _setQty(t.id, q + 1),
+                          onTap: () => _selectType(t.id),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 20),
                     Text(
-                      'Nouvel achat',
-                      style: GoogleFonts.inter(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1.02,
-                        letterSpacing: -0.8,
+                      'PREUVE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.9,
+                        color: AppColors.muted.withValues(alpha: 0.9),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Composez votre commande, joignez la preuve de paiement et envoyez le tout au serveur.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _ProofPicker(path: _proofPath, onTap: _pickProof),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                  children: [
-                    if (_loadingOffers)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 12, bottom: 24),
-                        child: AppLoadingSkeleton(
-                          style: AppLoadingSkeletonStyle.purchaseOffers,
-                          itemCount: 6,
-                        ),
-                      )
-                    else if (_offerLoadError != null)
-                      _EmptyStatePanel(
-                        icon: Icons.cloud_off_outlined,
-                        title: 'Offres indisponibles',
-                        message: _offerLoadError!,
-                        buttonLabel: 'Actualiser',
-                        onTap: _reloadOffers,
-                      )
-                    else if (_offerTypes.isEmpty)
-                      _EmptyStatePanel(
-                        icon: Icons.inventory_2_outlined,
-                        title: 'Aucune offre',
-                        message: AppEnvironment.useAcpecLiveData
-                            ? 'Aucun type de carnet unitaire n’a été trouvé pour le moment.'
-                            : 'Aucun type de carnet n’est disponible hors connexion ACPEC.',
-                        buttonLabel: 'Actualiser',
-                        onTap: _reloadOffers,
-                      )
-                    else ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Choisissez les carnets à acheter',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Chaque carte présente le carnet, son montant total et le niveau de sélection.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.muted,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Column(
-                        children: [
-                          for (var index = 0; index < _offerTypes.length; index++) ...[
-                            Builder(
-                              builder: (context) {
-                                final t = _offerTypes[index];
-                                final q = _qty[t.id] ?? 0;
-                                final maxAllowed = _maxAllowedFor(t.id);
-                                return _SelectedOfferLine(
-                                  type: t,
-                                  quantity: q,
-                                  maxAllowed: maxAllowed,
-                                  onMinus: () => _setQty(t.id, q - 1),
-                                  onPlus: () => _setQty(t.id, q + 1),
-                                );
-                              },
-                            ),
-                            if (index < _offerTypes.length - 1)
-                              const SizedBox(height: 12),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Preuve de paiement',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _ProofPicker(path: _proofPath, onTap: _pickProof),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _SelectedOfferLine extends StatelessWidget {
-  const _SelectedOfferLine({
+class _PurchaseOffersSkeleton extends StatelessWidget {
+  const _PurchaseOffersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(top: 4),
+      child: Column(
+        children: [
+          _PurchaseOfferSkeletonCard(),
+          SizedBox(height: 12),
+          _PurchaseOfferSkeletonCard(),
+          SizedBox(height: 12),
+          _PurchaseOfferSkeletonCard(),
+          SizedBox(height: 12),
+          _PurchaseOfferSkeletonCard(),
+          SizedBox(height: 12),
+          _PurchaseOfferSkeletonCard(),
+        ],
+      ),
+    );
+  }
+}
+
+class _PurchaseOfferSkeletonCard extends StatelessWidget {
+  const _PurchaseOfferSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 76,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFEAECEF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 18,
+            spreadRadius: -8,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const _SkeletonLine(width: 120, height: 14),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const _SkeletonLine(width: 84, height: 11),
+                    const SizedBox(width: 18),
+                    const _SkeletonLine(width: 72, height: 10),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F7FB),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const _SkeletonLine(width: 18, height: 16),
+              const SizedBox(width: 8),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF101522),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8EBF0),
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+}
+
+class _CarnetCard extends StatelessWidget {
+  const _CarnetCard({
     required this.type,
     required this.quantity,
     required this.maxAllowed,
+    required this.selected,
     required this.onMinus,
     required this.onPlus,
+    required this.onTap,
   });
 
   final CarnetType type;
   final int quantity;
   final int maxAllowed;
+  final bool selected;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
-
-  String get _carnetLabel =>
-      'Carnet ${Formatters.numberFr(type.size)} x ${Formatters.numberFr(type.faceValue)}';
-
-  String get _amountLabel => '${Formatters.numberFr(type.totalAmount)} MRU';
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final selected = quantity > 0;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: selected ? const Color(0xFF0F7A5A) : const Color(0xFFE6EAE8),
-          width: selected ? 1.4 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: selected
-                    ? [const Color(0xFF0F7A5A), const Color(0xFF1D4ED8)]
-                    : [const Color(0xFFF3F6F5), const Color(0xFFE9EFEC)],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: const Color(0xFFEAECEF),
+              width: 1,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x08000000),
+                blurRadius: 18,
+                spreadRadius: -8,
+                offset: Offset(0, 7),
               ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              selected ? Icons.check_rounded : Icons.inventory_2_outlined,
-              size: 24,
-              color: selected ? Colors.white : const Color(0xFF4B5563),
-            ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _carnetLabel,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF111827),
-                    height: 1.1,
-                    letterSpacing: -0.2,
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Carnet ${Formatters.numberFr(type.size)} × ${Formatters.numberFr(type.faceValue)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                        height: 1.05,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text(
+                          '${Formatters.numberFr(type.totalAmount)} MRU',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF111827),
+                            height: 1.02,
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        Text(
+                          'Validité ${type.validityDays} jours',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF667085),
+                            height: 1.08,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  _amountLabel,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F7A5A),
-                    height: 1,
+              ),
+              const SizedBox(width: 14),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'QTE (carnets)',
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.35,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$quantity sur $maxAllowed max',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 8),
+                  _StepperPair(
+                    value: quantity,
+                    onMinus: onMinus,
+                    onPlus: onPlus,
+                    canDecrement: quantity > 0,
+                    canIncrement: quantity < maxAllowed,
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          _StepperPair(
-            value: quantity,
-            onMinus: onMinus,
-            onPlus: onPlus,
-            canDecrement: quantity > 0,
-            canIncrement: quantity < maxAllowed,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -594,15 +679,12 @@ class _SelectedOfferLine extends StatelessWidget {
 class _BottomBar extends StatelessWidget {
   const _BottomBar({
     required this.totalAmount,
-    required this.totalTickets,
-    required this.maxTickets,
     required this.hasSelection,
     required this.submitting,
     required this.onSubmit,
   });
+
   final int totalAmount;
-  final int totalTickets;
-  final int maxTickets;
   final bool hasSelection;
   final bool submitting;
   final VoidCallback? onSubmit;
@@ -610,80 +692,96 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disabled = onSubmit == null || !hasSelection;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 360;
-        final button = SizedBox(
-          height: 52,
-          width: narrow ? double.infinity : 150,
-          child: ElevatedButton.icon(
-            onPressed: disabled ? null : onSubmit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F7A5A),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor:
-                  const Color(0xFF0F7A5A).withValues(alpha: 0.35),
-              disabledForegroundColor: Colors.white.withValues(alpha: 0.72),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-            ),
-            icon: submitting
-                ? const AppInlineLoading(size: 20)
-                : const Icon(Icons.send_rounded, size: 18),
-            label: const Text(
-              'Envoyer',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line.withValues(alpha: 0.75)),
+        boxShadow: AppColors.softShadow,
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'TOTAL DE LA COMMANDE',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        Formatters.numberFr(totalAmount),
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'MRU',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+              ],
             ),
           ),
-        );
-
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.white, Color(0xFFF8FAF9)],
-            ),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: const Color(0xFFE5EAE7)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 52,
+            child: ElevatedButton(
+              onPressed: disabled ? null : onSubmit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF43A047),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor:
+                    const Color(0xFF43A047).withValues(alpha: 0.35),
+                disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                elevation: 0,
               ),
-            ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: narrow
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _TotalPanel(totalAmount: totalAmount, totalTickets: totalTickets),
-                    const SizedBox(height: 12),
-                    button,
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: _TotalPanel(
-                        totalAmount: totalAmount,
-                        totalTickets: totalTickets,
+              child: submitting
+                  ? const AppInlineLoading(size: 20)
+                  : const Text(
+                      'Soumettre',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    button,
-                  ],
-                ),
-        );
-      },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -705,49 +803,44 @@ class _StepperPair extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAF9),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE6EAE8)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _SqBtn(
-            icon: Icons.remove_rounded,
-            enabled: canDecrement,
-            primary: false,
-            onTap: onMinus,
-          ),
-          SizedBox(
-            width: 28,
-            child: Center(
-              child: Text(
-                '$value',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF111827),
-                ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _StepCapsule(
+          icon: Icons.remove,
+          enabled: canDecrement,
+          primary: false,
+          onTap: onMinus,
+        ),
+        const SizedBox(width: 6),
+        SizedBox(
+          width: 20,
+          child: Center(
+            child: Text(
+              '$value',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF111827),
+                height: 1,
               ),
             ),
           ),
-          _SqBtn(
-            icon: Icons.add_rounded,
-            enabled: canIncrement,
-            primary: true,
-            onTap: onPlus,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 6),
+        _StepCapsule(
+          icon: Icons.add,
+          enabled: canIncrement,
+          primary: true,
+          onTap: onPlus,
+        ),
+      ],
     );
   }
 }
 
-class _SqBtn extends StatelessWidget {
-  const _SqBtn({
+class _StepCapsule extends StatelessWidget {
+  const _StepCapsule({
     required this.icon,
     required this.enabled,
     required this.onTap,
@@ -762,31 +855,33 @@ class _SqBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(9),
         child: Container(
-          width: 38,
-          height: 38,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
             color: !enabled
-                ? const Color(0xFFF0F2F2)
+                ? Colors.white
                 : primary
-                    ? const Color(0xFF0F7A5A)
+                    ? const Color(0xFF43A047)
                     : Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(9),
             border: Border.all(
-              color: primary
-                  ? const Color(0xFF0F7A5A)
-                  : const Color(0xFFD8DEDB),
+              color: !enabled
+                  ? const Color(0xFFE3E6EA)
+                  : primary
+                    ? const Color(0xFF43A047)
+                    : const Color(0xFFD9DEE4),
             ),
           ),
           child: Icon(
             icon,
-            size: 16,
+            size: 12,
             color: !enabled
-                ? const Color(0xFFB6BCC8)
+                ? const Color(0xFFB4B8C0)
                 : primary
                     ? Colors.white
                     : const Color(0xFF344054),
@@ -799,6 +894,7 @@ class _SqBtn extends StatelessWidget {
 
 class _ProofPicker extends StatelessWidget {
   const _ProofPicker({required this.path, required this.onTap});
+
   final String? path;
   final VoidCallback onTap;
 
@@ -810,27 +906,14 @@ class _ProofPicker extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: hasFile
-                ? [const Color(0xFFEAF7EE), const Color(0xFFF6FBF7)]
-                : [Colors.white, const Color(0xFFF8FAF9)],
-          ),
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: hasFile ? const Color(0xFF0F7A5A) : const Color(0xFFE5EAE7),
-            width: hasFile ? 1.3 : 1,
+            color: hasFile ? AppColors.primary : AppColors.line,
+            width: hasFile ? 1.5 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -838,12 +921,12 @@ class _ProofPicker extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: hasFile ? Colors.white : const Color(0xFFF0F2F2),
+                color: hasFile ? Colors.white : AppColors.lineSoft,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 hasFile ? Icons.check_circle : Icons.upload_file_outlined,
-                color: hasFile ? const Color(0xFF0F7A5A) : const Color(0xFF4B5563),
+                color: hasFile ? AppColors.primary : AppColors.body,
                 size: 22,
               ),
             ),
@@ -854,8 +937,8 @@ class _ProofPicker extends StatelessWidget {
                 children: [
                   Text(
                     hasFile ? 'Preuve sélectionnée' : 'Choisir un fichier',
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFF111827),
+                    style: TextStyle(
+                      color: hasFile ? AppColors.primaryDark : AppColors.ink,
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
                     ),
@@ -866,7 +949,7 @@ class _ProofPicker extends StatelessWidget {
                         ? path!.split(RegExp(r'[/\\]')).last
                         : 'PDF ou image (virement, reçu, etc.)',
                     style: const TextStyle(
-                      color: Color(0xFF6B7280),
+                      color: AppColors.muted,
                       fontSize: 11,
                     ),
                     maxLines: 1,
@@ -878,168 +961,11 @@ class _ProofPicker extends StatelessWidget {
             const SizedBox(width: 8),
             Icon(
               hasFile ? Icons.refresh : Icons.chevron_right,
-              color: hasFile ? const Color(0xFF0F7A5A) : const Color(0xFF6B7280),
+              color: hasFile ? AppColors.primaryDark : AppColors.muted,
               size: 20,
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TotalPanel extends StatelessWidget {
-  const _TotalPanel({
-    required this.totalAmount,
-    required this.totalTickets,
-  });
-
-  final int totalAmount;
-  final int totalTickets;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAF9),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE6EAE8)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0F7A5A), Color(0xFF1D4ED8)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.receipt_long_rounded, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Résumé',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF6B7280),
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${Formatters.numberFr(totalAmount)} MRU',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF111827),
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$totalTickets ticket(s) sélectionné(s)',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyStatePanel extends StatelessWidget {
-  const _EmptyStatePanel({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.buttonLabel,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String buttonLabel;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFE5EAE7)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFEAF7EE), Color(0xFFDFF3EA)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(icon, color: const Color(0xFF0F7A5A), size: 30),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: const Color(0xFF111827),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF6B7280),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 18),
-          FilledButton(
-            onPressed: onTap,
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0F7A5A),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: Text(buttonLabel),
-          ),
-        ],
       ),
     );
   }

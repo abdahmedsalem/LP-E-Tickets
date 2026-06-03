@@ -153,11 +153,6 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/fueltoken/v1/mobile/qr/detail',
   );
 
-  static const String qrSplit = String.fromEnvironment(
-    'ODOO_RPC_FUEL_QR_SPLIT_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/mobile/qr/split',
-  );
-
   static const String qrRetirer = String.fromEnvironment(
     'ODOO_RPC_FUEL_QR_RETIRER_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/mobile/qr/retirer',

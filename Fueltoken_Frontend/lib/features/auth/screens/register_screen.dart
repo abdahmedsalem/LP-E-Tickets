@@ -1,15 +1,13 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/app_api_config.dart';
+import '../../../core/config/odoo_auth_rpc_config.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
-import '../../../data/services/otp_remote_service.dart';
+import '../../../data/services/odoo_auth_service.dart';
 import '../bloc/auth_bloc.dart';
-import '../widgets/otp_channel_picker_sheet.dart';
 import 'register_verify_otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -22,17 +20,14 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _email = TextEditingController();
   final _phoneLocal = TextEditingController();
   final _password = TextEditingController();
-  final _otpService = OtpRemoteService();
   bool _obscure = true;
   bool _sendingOtp = false;
 
   @override
   void dispose() {
     _name.dispose();
-    _email.dispose();
     _phoneLocal.dispose();
     _password.dispose();
     super.dispose();
@@ -43,58 +38,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _onCreateAccount() async {
     if (!_formKey.currentState!.validate()) return;
-    final channel = await showOtpChannelPickerSheet(context);
-    if (channel == null || !mounted) return;
-    if (!AppApiConfig.isConfigured) {
+    if (!OdooAuthRpcConfig.hasCompleteRegistration) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-            kDebugMode
-                ? 'Définissez API_BASE_URL (URL de votre service REST OTP/inscription, ex. https://api.example.com).'
-                : 'Le service d’envoi du code est indisponible. Réessayez plus tard ou contactez le support.',
+            'L’inscription Odoo ACPEC n’est pas configurée sur cet appareil.',
           ),
         ),
       );
       return;
     }
-    await _sendRegistrationOtp(channel);
+    await _sendRegistrationOtp();
   }
 
-  Future<void> _sendRegistrationOtp(OtpChannel channel) async {
+  Future<void> _sendRegistrationOtp() async {
     setState(() => _sendingOtp = true);
     try {
-      await _otpService.sendRegistrationOtp(
-        channel: channel,
-        email: _email.text.trim(),
+      final response = await OdooAuthService.instance.requestSignupOtp(
         name: _name.text.trim(),
         phoneFull: _phoneFull,
+        password: _password.text,
       );
+      final data = response['data'];
+      final challengeId = data is Map
+          ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')
+          : null;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            channel == OtpChannel.email
-                ? 'Code envoyé par e-mail.'
-                : 'Code envoyé par SMS.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Code OTP envoyé par SMS.')));
+      if (challengeId == null) {
+        throw Exception('Challenge OTP introuvable dans la réponse serveur.');
+      }
       context.push(
         '/register/verify-otp',
         extra: RegisterOtpRouteArgs(
-          email: _email.text.trim(),
           name: _name.text.trim(),
           phoneFull: _phoneFull,
           password: _password.text,
-          channel: channel,
+          challengeId: challengeId,
         ),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _sendingOtp = false);
@@ -111,9 +101,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           listener: (ctx, state) {
             if (state.status == AuthStatus.failure &&
                 state.errorMessage != null) {
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                SnackBar(content: Text(state.errorMessage!)),
-              );
+              ScaffoldMessenger.of(
+                ctx,
+              ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
             }
           },
           builder: (ctx, state) {
@@ -157,10 +147,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             controller: _name,
                             hint: 'Nom complet',
                             icon: Icons.person_outline_rounded,
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? 'Nom requis'
-                                    : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Nom requis'
+                                : null,
                           ),
                           const SizedBox(height: 14),
                           _RegisterField(
@@ -173,16 +162,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               FilteringTextInputFormatter.digitsOnly,
                             ],
                             validator: validateMrLocalPhone,
-                            prefixText: '$kMauritaniaPhonePrefix ',
-                          ),
-                          const SizedBox(height: 14),
-                          _RegisterField(
-                            controller: _email,
-                            hint: 'Adresse email',
-                            icon: Icons.mail_outline_rounded,
-                            keyboardType: TextInputType.emailAddress,
-                            autocorrect: false,
-                            validator: validateAppEmail,
                           ),
                           const SizedBox(height: 14),
                           _RegisterField(
@@ -291,9 +270,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (state.status == AuthStatus.failure &&
                               state.errorMessage != null) ...[
                             const SizedBox(height: 18),
-                            _RegisterNoticeCard(
-                              message: state.errorMessage!,
-                            ),
+                            _RegisterNoticeCard(message: state.errorMessage!),
                           ],
                         ],
                       ),
@@ -492,11 +469,9 @@ class _RegisterField extends StatelessWidget {
     required this.validator,
     this.obscure = false,
     this.keyboardType,
-    this.autocorrect = true,
     this.maxLength,
     this.inputFormatters,
     this.trailing,
-    this.prefixText,
   });
 
   final TextEditingController controller;
@@ -505,11 +480,9 @@ class _RegisterField extends StatelessWidget {
   final String? Function(String?)? validator;
   final bool obscure;
   final TextInputType? keyboardType;
-  final bool autocorrect;
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
   final Widget? trailing;
-  final String? prefixText;
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +490,7 @@ class _RegisterField extends StatelessWidget {
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
-      autocorrect: autocorrect,
+      autocorrect: true,
       maxLength: maxLength,
       inputFormatters: inputFormatters,
       validator: validator,
@@ -546,11 +519,6 @@ class _RegisterField extends StatelessWidget {
         prefixIconConstraints: const BoxConstraints(
           minWidth: 36,
           minHeight: 36,
-        ),
-        prefixText: prefixText,
-        prefixStyle: const TextStyle(
-          color: Color(0xFF1E293B),
-          fontWeight: FontWeight.w700,
         ),
         suffixIcon: trailing,
         border: OutlineInputBorder(

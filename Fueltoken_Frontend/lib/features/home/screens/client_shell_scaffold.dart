@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/qr_refresh_bus.dart';
 
 /// Coquille client — barre tabs personnalisée.
 class ClientShellScaffold extends StatelessWidget {
@@ -41,10 +42,16 @@ class ClientShellScaffold extends StatelessWidget {
   void _onTabTap(int index) {
     if (index == navigationShell.currentIndex) {
       navigationShell.goBranch(index, initialLocation: true);
+      if (index == 2) {
+        QrRefreshBus.instance.bump();
+      }
       return;
     }
     HapticFeedback.selectionClick();
     navigationShell.goBranch(index);
+    if (index == 2) {
+      QrRefreshBus.instance.bump();
+    }
   }
 
   @override

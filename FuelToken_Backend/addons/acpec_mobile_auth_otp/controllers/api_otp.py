@@ -47,6 +47,22 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             if not challenge:
                 return self._error_response('OTP_NOT_FOUND', _('Challenge OTP introuvable.'))
             user = challenge.verify(code)
+            if challenge.purpose == 'register':
+                now = fields.Datetime.now()
+                user.sudo().write({
+                    'active': True,
+                    'mobile_state': 'approved',
+                    'mobile_pin_set_at': user.mobile_pin_set_at or now,
+                })
+                account_request = request.env['acpec.mobile.auth.account.request'].sudo().search([
+                    ('user_id', '=', user.id),
+                ], order='id desc', limit=1)
+                if account_request and account_request.state == 'pending':
+                    account_request.write({
+                        'state': 'approved',
+                        'reviewed_at': now,
+                        'reviewed_by': request.env.user.id,
+                    })
             payload = self._create_mobile_session_payload(user, kwargs)
             payload['auth_method'] = 'otp'
             return self._json_response(payload)

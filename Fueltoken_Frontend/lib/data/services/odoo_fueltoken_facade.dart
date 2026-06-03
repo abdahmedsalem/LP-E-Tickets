@@ -1,3 +1,4 @@
+import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../api/acpec_fueltoken_jsonrpc_api.dart';
 
@@ -10,6 +11,18 @@ class OdooFuelRpcNotConfigured implements Exception {
   @override
   String toString() =>
       'OdooFuelRpcNotConfigured: définir $settingHint (chemin route ACPEC, ex. /api/acpec/...).';
+}
+
+/// La base Odoo est configurée sur un hôte local alors que ces actions doivent
+/// impérativement viser l'instance distante de production / staging.
+class OdooFuelRpcLocalHostConfigured implements Exception {
+  OdooFuelRpcLocalHostConfigured(this.settingHint);
+
+  final String settingHint;
+
+  @override
+  String toString() =>
+      'OdooFuelRpcLocalHostConfigured: $settingHint';
 }
 
 /// Façade des appels Odoo FuelToken et administration.
@@ -29,6 +42,15 @@ class OdooFueltokenFacade {
       throw OdooFuelRpcNotConfigured(defineHint);
     }
     return _api.callRoute(r, params: params ?? const {});
+  }
+
+  void _ensureRemoteHostForQrActions() {
+    if (OdooApiConfig.isLocalHostBase) {
+      throw OdooFuelRpcLocalHostConfigured(
+        'ODOO_JSONRPC_BASE_URL doit pointer vers le serveur Odoo distant '
+        '(ex. http://57.128.181.183:8199), pas localhost / 127.0.0.1 / 10.0.2.2.',
+      );
+    }
   }
 
   Future<dynamic> versionCheck([Map<String, dynamic>? params]) => _call(
@@ -184,29 +206,32 @@ class OdooFueltokenFacade {
     params,
   );
 
-  Future<dynamic> qrSplit(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.qrSplit,
-    'ODOO_RPC_FUEL_QR_SPLIT_PATH',
-    params,
-  );
+  Future<dynamic> qrRetirer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.qrRetirer,
+      'ODOO_RPC_FUEL_QR_RETIRER_PATH',
+      params,
+    );
+  }
 
-  Future<dynamic> qrRetirer(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.qrRetirer,
-    'ODOO_RPC_FUEL_QR_RETIRER_PATH',
-    params,
-  );
+  Future<dynamic> qrSeparer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.qrSeparer,
+      'ODOO_RPC_FUEL_QR_SEPARER_PATH',
+      params,
+    );
+  }
 
-  Future<dynamic> qrSeparer(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.qrSeparer,
-    'ODOO_RPC_FUEL_QR_SEPARER_PATH',
-    params,
-  );
-
-  Future<dynamic> carnetsTransfer(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.carnetsTransfer,
-    'ODOO_RPC_FUEL_CARNETS_TRANSFER_PATH',
-    params,
-  );
+  Future<dynamic> carnetsTransfer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.carnetsTransfer,
+      'ODOO_RPC_FUEL_CARNETS_TRANSFER_PATH',
+      params,
+    );
+  }
 
   Future<dynamic> stationQrUse(Map<String, dynamic> params) => _call(
     OdooFueltokenRpcConfig.stationQrUse,

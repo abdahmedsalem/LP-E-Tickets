@@ -1,12 +1,12 @@
 # Flux d'authentification mobile Odoo
 
-Odoo devient le backend unique. La session mobile officielle est portée par `acpec.mobile.session` et utilisée avec :
+Odoo devient le backend unique. La session mobile officielle est portÃ©e par `acpec.mobile.session` et utilisÃ©e avec :
 
 ```http
 Authorization: Bearer <access_token>
 ```
 
-Le cookie Odoo `session_id` n'est pas le mécanisme principal de l'application mobile.
+Le cookie Odoo `session_id` n'est pas le mÃ©canisme principal de l'application mobile.
 
 ## 1. Auth production : OTP
 
@@ -23,7 +23,7 @@ Payload :
 }
 ```
 
-Réponse :
+RÃ©ponse :
 
 ```json
 {
@@ -38,15 +38,15 @@ Réponse :
 }
 ```
 
-En développement, activer :
+En dÃ©veloppement, activer :
 
 ```text
 acpec_mobile_auth.otp_dev_mode = True
 ```
 
-La réponse inclura `dev_otp_code`.
+La rÃ©ponse inclura `dev_otp_code`.
 
-### Vérification OTP
+### VÃ©rification OTP
 
 Route : `/api/acpec/mobile_auth/v1/verify-otp`
 
@@ -62,7 +62,7 @@ Payload :
 }
 ```
 
-Réponse :
+RÃ©ponse :
 
 ```json
 {
@@ -78,19 +78,19 @@ Réponse :
 }
 ```
 
-## 2. Auth développement : password login
+## 2. Auth dÃ©veloppement : password login
 
 Route officielle dev : `/api/acpec/mobile_auth/v1/password-login`
 
 Alias compatible Flutter existant : `/api/acpec/mobile_auth/v1/login`
 
-Les deux routes appellent la même logique et retournent la même session mobile tokenisée. Elles sont contrôlées par :
+Les deux routes appellent la mÃªme logique et retournent la mÃªme session mobile tokenisÃ©e. Elles sont contrÃ´lÃ©es par :
 
 ```text
 acpec_mobile_auth.allow_password_login = True
 ```
 
-Par défaut, la valeur doit rester `False`.
+Par dÃ©faut, la valeur doit rester `False`.
 
 Payload :
 
@@ -114,7 +114,7 @@ Authorization: Bearer <access_token>
 
 Route : `/api/acpec/mobile_auth/v1/refresh`
 
-Le refresh token peut être passé dans le payload ou dans le header `X-ACPEC-Refresh-Token`.
+Le refresh token peut Ãªtre passÃ© dans le payload ou dans le header `X-ACPEC-Refresh-Token`.
 
 Payload :
 
@@ -134,4 +134,14 @@ Header :
 Authorization: Bearer <access_token>
 ```
 
-La session mobile est révoquée.
+La session mobile est rÃ©voquÃ©e.
+
+## 5. SMS Chinguisoft configuration
+
+OTP production sends SMS through Chinguisoft using these Odoo config keys:
+
+SMS_PROVIDER = chinguisoft
+SMS_URL = https://chinguisoft.com/api/sms/validation
+SMS_VALIDATION_KEY = ...
+SMS_TOKEN = ...
+SMS_DEFAULT_LANG = fr

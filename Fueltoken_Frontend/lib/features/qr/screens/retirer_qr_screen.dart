@@ -9,6 +9,7 @@ import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/acpec_qr_split_builder.dart';
@@ -16,7 +17,6 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/app_pill.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/icon_btn.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -87,6 +87,14 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         });
         return;
       }
+      if (qr.totalQty <= 1) {
+        setState(() {
+          _parent = qr;
+          _loading = false;
+          _error = 'Un QR contenant un seul ticket ne peut pas être retiré.';
+        });
+        return;
+      }
       _selectedQty
         ..clear()
         ..addEntries(qr.lines.map((line) => MapEntry(line.id, 0)));
@@ -138,7 +146,9 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
 
   Future<void> _submit() async {
     final parent = _parent;
-    if (parent == null || parent.state != QrState.active) return;
+    if (parent == null || parent.state != QrState.active || parent.totalQty <= 1) return;
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) throw Exception('Session requise.');
 
     final picks = <Map<String, dynamic>>[];
     for (final line in parent.lines) {
@@ -175,34 +185,47 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       if (raw is! Map) {
         throw Exception('Réponse QR invalide.');
       }
-      final newQrRaw = raw['new_qr'];
-      final sourceRaw = raw['source'];
-      if (newQrRaw is! Map || sourceRaw is! Map) {
-        throw Exception('Réponse QR incomplète.');
-      }
+      final payload = raw['data'] is Map
+          ? Map<String, dynamic>.from(raw['data'] as Map)
+          : Map<String, dynamic>.from(raw);
 
-      final user = context.read<AuthBloc>().state.user;
-      if (user == null) throw Exception('Session requise.');
-      final companyId = AppEnvironment.companyIdForUser(user);
-      final child = AcpecQrMapper.fromRpcEnvelope(
-        newQrRaw,
-        ownerId: user.id,
-        ownerName: user.name,
-        companyId: companyId,
-      );
-      AcpecFueltokenRpcCoordinator.shared.invalidate(
-        OdooFueltokenRpcConfig.qrDetail,
-        AcpecQrMapper.detailParamsForRouteId(parent.publicCode),
-      );
-      AcpecFueltokenRpcCoordinator.shared.invalidate(
-        OdooFueltokenRpcConfig.qrDetail,
-        AcpecQrMapper.detailParamsForRouteId(child.publicCode),
-      );
+      final newQrRaw = payload['new_qr'];
+      final sourceRaw = payload['source'];
+
+      if (sourceRaw is Map) {
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrDetail,
+          AcpecQrMapper.detailParamsForRouteId(parent.publicCode),
+        );
+      }
+      if (newQrRaw is Map) {
+        final companyId = AppEnvironment.companyIdForUser(user);
+        final child = AcpecQrMapper.fromRpcEnvelope(
+          newQrRaw,
+          ownerId: user.id,
+          ownerName: user.name,
+          companyId: companyId,
+        );
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrDetail,
+          AcpecQrMapper.detailParamsForRouteId(child.publicCode),
+        );
+      }
       AcpecFueltokenRpcCoordinator.shared.invalidate(
         OdooFueltokenRpcConfig.qrList,
       );
       if (!mounted) return;
-      context.pop(child.publicCode);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('QR retiré avec succès.'),
+          backgroundColor: AppColors.leaderGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      QrRefreshBus.instance.bump();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      context.go('/qr');
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -288,8 +311,11 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
             height: 52,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.ink,
+                backgroundColor: const Color(0xFF1B8F3A),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(
+                  0xFF1B8F3A,
+                ).withValues(alpha: 0.35),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -327,8 +353,6 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 children: [
-                  _HeaderCard(parent: parent),
-                  const SizedBox(height: 18),
                   const SectionLabel('Lignes à retirer'),
                   const SizedBox(height: 8),
                   for (final line in parent.lines) ...[
@@ -383,55 +407,6 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
   }
 }
 
-class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.parent});
-
-  final QrToken parent;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AppPill(label: 'Actif', tone: PillTone.green, dot: true),
-              const Spacer(),
-              Text(
-                Formatters.dateTime(parent.createdAt),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.muted,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            parent.publicCode,
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Choisissez les lignes et les quantités à déplacer vers un nouveau QR.',
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.body,
-              height: 1.35,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _RetirerLineCard extends StatelessWidget {
   const _RetirerLineCard({
     required this.line,
@@ -455,7 +430,7 @@ class _RetirerLineCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               FaceValueChip(value: line.faceValue),
               const SizedBox(width: 12),
@@ -466,41 +441,47 @@ class _RetirerLineCard extends StatelessWidget {
                     Text(
                       '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}',
                       style: GoogleFonts.inter(
-                        fontSize: 15,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Ligne QR ${line.id} · ${Formatters.dateTime(line.expirationDate)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
+                        height: 1.1,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                '${Formatters.numberFr(amount)} MRU',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF7E7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBDE5C7)),
+                ),
+                child: Text(
+                  '${Formatters.numberFr(amount)} MRU',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1B8F3A),
+                    height: 1,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Container(height: 1, color: const Color(0xFFEAECEF)),
           const SizedBox(height: 12),
           Row(
             children: [
               Text(
                 'Quantité',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.muted,
                 ),
@@ -512,14 +493,15 @@ class _RetirerLineCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               SizedBox(
-                width: 34,
+                width: 38,
                 child: Text(
                   '$qty',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
-                    fontSize: 15,
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
+                    height: 1,
                   ),
                 ),
               ),

@@ -30,7 +30,6 @@ class AcpecFuelQr(models.Model):
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
     face_qty_total = fields.Integer(string='Faces', compute='_compute_totals', store=True)
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
-    split_idempotency_key = fields.Char(string='Cle idempotence split', index=True, copy=False)
 
     _public_code_unique = models.Constraint(
         'UNIQUE(public_code)',
@@ -40,11 +39,6 @@ class AcpecFuelQr(models.Model):
         'UNIQUE(wallet_id, idempotency_key)',
         'Cette operation QR existe deja pour ce compte.',
     )
-    _split_idempotency_unique = models.Constraint(
-        'UNIQUE(split_idempotency_key)',
-        'Cette operation de split a deja ete enregistree.',
-    )
-
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -199,7 +193,7 @@ class AcpecFuelQr(models.Model):
             self.action_refresh_expiration_state()
             self.invalidate_recordset()
             if self.state == 'blocked':
-                raise UserError(_('QR bloqué : split requis.'))
+                raise UserError(_('QR bloqué : séparation requise.'))
             if self.state == 'expired':
                 raise UserError(_('Le QR est expiré.'))
             # Process consumption
@@ -222,117 +216,6 @@ class AcpecFuelQr(models.Model):
                 wallet=self.wallet_id, qr=self, station=station,
                 lines=tx_lines, idempotency_key=idempotency_key
             )
-
-    def action_split(self, children, idempotency_key=False):
-        self.ensure_one()
-        if idempotency_key and self.split_idempotency_key == idempotency_key and self.child_ids:
-            return self.child_ids
-        with self.env.cr.savepoint():
-            self._lock_records()
-            self.invalidate_recordset(['state', 'split_idempotency_key'])
-            if idempotency_key and self.split_idempotency_key == idempotency_key and self.child_ids:
-                return self.child_ids
-            if self.state not in ('active', 'blocked'):
-                raise UserError(_('Seuls les QR actifs ou bloqués peuvent être splittés.'))
-            if self.state == 'blocked':
-                for child in children:
-                    for item in child.get('lines') or []:
-                        if not item.get('qr_line_id'):
-                            raise ValidationError(_(
-                                'Pour un QR bloque, chaque ligne de split doit reference qr_line_id.'
-                            ))
-            source_lines = self.line_ids.filtered(lambda l: l.state in ('active', 'blocked', 'expired')).sorted(
-                lambda l: (l.face_value, l.expires_at or fields.Datetime.to_datetime('9999-12-31 00:00:00'), l.id)
-            )
-            if not source_lines:
-                raise ValidationError(_('Le QR parent ne contient aucune ligne à répartir.'))
-            total_by_value = {}
-            requested_by_value = {}
-            source_by_id = {line.id: line for line in source_lines}
-            for line in source_lines:
-                total_by_value[line.face_value] = total_by_value.get(line.face_value, 0) + line.qty
-            for child in children:
-                if not child.get('lines'):
-                    raise ValidationError(_('Chaque QR enfant doit contenir au moins une ligne.'))
-                for item in child.get('lines') or []:
-                    source_line_id = int(item.get('qr_line_id') or 0)
-                    if source_line_id:
-                        source_line = source_by_id.get(source_line_id)
-                        if not source_line:
-                            raise ValidationError(_('La ligne QR source ne fait pas partie du QR parent.'))
-                        value = source_line.face_value
-                    else:
-                        value = float(item.get('face_value'))
-                    qty = int(item.get('qty') or 0)
-                    if qty <= 0:
-                        raise ValidationError(_('Chaque ligne de split doit avoir une quantité positive.'))
-                    requested_by_value[value] = requested_by_value.get(value, 0) + qty
-            if total_by_value != requested_by_value:
-                raise ValidationError(_('Le split doit répartir exactement toutes les faces du QR parent par valeur de face.'))
-            children_qrs = self.env['acpec.fuel.qr']
-            pool = []
-            for line in source_lines:
-                pool.append({'line': line, 'remaining': line.qty})
-            tx_lines = []
-            for child_index, child in enumerate(children, start=1):
-                qr_child = self.sudo().create({
-                    'wallet_id': self.wallet_id.id,
-                    'parent_id': self.id,
-                })
-                for item in child.get('lines') or []:
-                    source_line_id = int(item.get('qr_line_id') or 0)
-                    value = False
-                    if source_line_id:
-                        source_line = source_by_id[source_line_id]
-                        value = source_line.face_value
-                    else:
-                        value = float(item.get('face_value'))
-                    remaining = int(item.get('qty') or 0)
-                    for bucket in pool:
-                        src = bucket['line']
-                        if remaining <= 0:
-                            break
-                        if source_line_id and src.id != source_line_id:
-                            continue
-                        if not source_line_id and src.face_value != value:
-                            continue
-                        if bucket['remaining'] <= 0:
-                            continue
-                        qty = min(remaining, bucket['remaining'])
-                        child_state = 'expired' if src.state == 'expired' else 'active'
-                        if src.state == 'blocked':
-                            src.face_line_id.write({
-                                'qty_qr_blocked': src.face_line_id.qty_qr_blocked - qty,
-                                'qty_qr_active': src.face_line_id.qty_qr_active + qty,
-                            })
-                        qr_line = self.env['acpec.fuel.qr.line'].sudo().create({
-                            'qr_id': qr_child.id,
-                            'source_qr_line_id': src.id,
-                            'face_line_id': src.face_line_id.id,
-                            'purchase_id': src.purchase_id.id,
-                            'purchase_line_id': src.purchase_line_id.id,
-                            'face_value': src.face_value,
-                            'qty': qty,
-                            'state': child_state,
-                            'expires_at': src.expires_at,
-                        })
-                        tx_lines.append(qr_line._transaction_line_vals())
-                        bucket['remaining'] -= qty
-                        remaining -= qty
-                    if remaining:
-                        raise ValidationError(_('Quantité insuffisante dans le QR parent pour la face %s.') % value)
-                qr_child._set_state_from_lines()
-                children_qrs |= qr_child
-            for bucket in pool:
-                if bucket['remaining']:
-                    raise ValidationError(_('Le split n’a pas réparti toutes les faces du QR parent.'))
-            for line in self.line_ids:
-                line.write({'state': 'split'})
-            self.write({'state': 'split'})
-            if idempotency_key:
-                self.sudo().write({'split_idempotency_key': idempotency_key})
-            self.env['acpec.fuel.transaction'].log('split_qr', self.company_id, wallet=self.wallet_id, parent_qr=self, lines=tx_lines, idempotency_key=idempotency_key)
-            return children_qrs
 
     def action_retirer_to_child(self, lines, idempotency_key=False):
         self.ensure_one()
@@ -533,7 +416,7 @@ class AcpecFuelQr(models.Model):
             states = set(qr.line_ids.mapped('state'))
             if states == {'expired'}:
                 qr.state = 'expired'
-            elif 'expired' in states and 'active' in states:
+            elif 'expired' in states and (states - {'expired'}):
                 qr.state = 'blocked'
                 for line in qr.line_ids.filtered(lambda l: l.state == 'active'):
                     line.write({'state': 'blocked'})
@@ -541,6 +424,10 @@ class AcpecFuelQr(models.Model):
                         'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
                     })
+            elif 'blocked' in states and 'active' in states:
+                qr.state = 'blocked'
+            elif 'blocked' in states:
+                qr.state = 'blocked'
             else:
                 qr.state = 'active'
 

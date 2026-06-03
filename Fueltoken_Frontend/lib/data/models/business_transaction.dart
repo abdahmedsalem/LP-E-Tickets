@@ -6,6 +6,8 @@ enum TxType {
   purchaseRejected,
   qrEmission,
   qrSplit,
+  qrRetirer,
+  carnetTransfer,
   qrBlocked,
   stationConsumption,
   expiration,
@@ -27,6 +29,10 @@ extension TxTypeX on TxType {
         return 'qr_emission';
       case TxType.qrSplit:
         return 'qr_split';
+      case TxType.qrRetirer:
+        return 'qr_retirer';
+      case TxType.carnetTransfer:
+        return 'carnet_transfer';
       case TxType.qrBlocked:
         return 'qr_blocked';
       case TxType.stationConsumption:
@@ -50,6 +56,10 @@ extension TxTypeX on TxType {
         return 'Émission QR';
       case TxType.qrSplit:
         return 'Split QR';
+      case TxType.qrRetirer:
+        return 'Retrait QR';
+      case TxType.carnetTransfer:
+        return 'Transfert de carnets';
       case TxType.qrBlocked:
         return 'QR bloqué';
       case TxType.stationConsumption:

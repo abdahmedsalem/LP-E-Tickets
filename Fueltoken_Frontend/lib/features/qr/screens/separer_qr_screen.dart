@@ -9,6 +9,7 @@ import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -112,6 +113,8 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
   Future<void> _submit() async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) throw Exception('Session requise.');
 
     setState(() => _submitting = true);
     try {
@@ -122,34 +125,47 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       if (raw is! Map) {
         throw Exception('Réponse QR invalide.');
       }
-      final newQrRaw = raw['new_qr'];
-      final sourceRaw = raw['source'];
-      if (newQrRaw is! Map || sourceRaw is! Map) {
-        throw Exception('Réponse QR incomplète.');
-      }
+      final payload = raw['data'] is Map
+          ? Map<String, dynamic>.from(raw['data'] as Map)
+          : Map<String, dynamic>.from(raw);
 
-      final user = context.read<AuthBloc>().state.user;
-      if (user == null) throw Exception('Session requise.');
-      final companyId = AppEnvironment.companyIdForUser(user);
-      final child = AcpecQrMapper.fromRpcEnvelope(
-        newQrRaw,
-        ownerId: user.id,
-        ownerName: user.name,
-        companyId: companyId,
-      );
-      AcpecFueltokenRpcCoordinator.shared.invalidate(
-        OdooFueltokenRpcConfig.qrDetail,
-        AcpecQrMapper.detailParamsForRouteId(parent.publicCode),
-      );
-      AcpecFueltokenRpcCoordinator.shared.invalidate(
-        OdooFueltokenRpcConfig.qrDetail,
-        AcpecQrMapper.detailParamsForRouteId(child.publicCode),
-      );
+      final newQrRaw = payload['new_qr'];
+      final sourceRaw = payload['source'];
+
+      if (sourceRaw is Map) {
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrDetail,
+          AcpecQrMapper.detailParamsForRouteId(parent.publicCode),
+        );
+      }
+      if (newQrRaw is Map) {
+        final companyId = AppEnvironment.companyIdForUser(user);
+        final child = AcpecQrMapper.fromRpcEnvelope(
+          newQrRaw,
+          ownerId: user.id,
+          ownerName: user.name,
+          companyId: companyId,
+        );
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrDetail,
+          AcpecQrMapper.detailParamsForRouteId(child.publicCode),
+        );
+      }
       AcpecFueltokenRpcCoordinator.shared.invalidate(
         OdooFueltokenRpcConfig.qrList,
       );
       if (!mounted) return;
-      context.pop(child.publicCode);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('QR séparé avec succès.'),
+          backgroundColor: AppColors.leaderGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      QrRefreshBus.instance.bump();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      context.go('/qr');
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -245,8 +261,11 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
             height: 52,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.ink,
+                backgroundColor: const Color(0xFFF59E0B),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(
+                  0xFFF59E0B,
+                ).withValues(alpha: 0.35),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),

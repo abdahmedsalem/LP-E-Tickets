@@ -1,4 +1,3 @@
-﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,11 +13,11 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/face_value_chip.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// carnets disponibles — vue par face et par carnet.
+/// carnets disponibles â€” vue par face et par carnet.
 class FacesDetailScreen extends StatefulWidget {
   const FacesDetailScreen({super.key});
 
@@ -32,6 +31,11 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   List<FaceLine> _liveLines = [];
   Map<String, int> _carnetSizeById = {};
   Map<String, int> _carnetSizeByCode = {};
+  Map<String, int> _carnetSizeByName = {};
+  Map<int, int> _carnetSizeByFaceValue = {};
+  Map<String, String> _carnetNameById = {};
+  Map<String, String> _carnetNameByCode = {};
+  Map<int, String> _carnetNameByFaceValue = {};
 
   @override
   void initState() {
@@ -54,17 +58,36 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       if (!mounted) return;
       final byId = <String, int>{};
       final byCode = <String, int>{};
+      final byName = <String, int>{};
+      final byFaceValue = <int, int>{};
+      final nameById = <String, String>{};
+      final nameByCode = <String, String>{};
+      final nameByFaceValue = <int, String>{};
       for (final type in result.types) {
         if (type.id.trim().isNotEmpty) {
           byId[type.id.trim()] = type.size;
+          nameById[type.id.trim()] = type.name;
         }
         if (type.code.trim().isNotEmpty) {
           byCode[type.code.trim().toUpperCase()] = type.size;
+          nameByCode[type.code.trim().toUpperCase()] = type.name;
+        }
+        if (type.name.trim().isNotEmpty) {
+          byName[type.name.trim().toLowerCase()] = type.size;
+        }
+        if (type.faceValue > 0 && !byFaceValue.containsKey(type.faceValue)) {
+          byFaceValue[type.faceValue] = type.size;
+          nameByFaceValue[type.faceValue] = type.name;
         }
       }
       setState(() {
         _carnetSizeById = byId;
         _carnetSizeByCode = byCode;
+        _carnetSizeByName = byName;
+        _carnetSizeByFaceValue = byFaceValue;
+        _carnetNameById = nameById;
+        _carnetNameByCode = nameByCode;
+        _carnetNameByFaceValue = nameByFaceValue;
       });
     } catch (_) {
       // Fallback to local inference in the UI.
@@ -91,7 +114,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       setState(() {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
+            ? 'Session expirÃ©e. Reconnectez-vous.'
             : e.message;
       });
     } catch (e) {
@@ -104,31 +127,78 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   }
 
   int _carnetSizeFor(FaceLine line) {
+    if (line.carnetFaceCount > 0) return line.carnetFaceCount;
     final byId = _carnetSizeById[line.carnetTypeId.trim()];
     if (byId != null && byId > 0) return byId;
     final byCode = _carnetSizeByCode[line.carnetTypeCode.trim().toUpperCase()];
     if (byCode != null && byCode > 0) return byCode;
+    final byName = _carnetSizeByName[line.carnetTypeName.trim().toLowerCase()];
+    if (byName != null && byName > 0) return byName;
+    final byFaceValue = _carnetSizeByFaceValue[line.faceValue];
+    if (byFaceValue != null && byFaceValue > 0) return byFaceValue;
+
+    final nameMatch = RegExp(r'\d+').firstMatch(line.carnetTypeName);
+    if (nameMatch != null) {
+      final parsed = int.tryParse(nameMatch.group(0)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+
     final raw = line.carnetTypeCode.trim();
     final match = RegExp(r'\d+').firstMatch(raw);
     if (match != null) {
       final parsed = int.tryParse(match.group(0)!);
       if (parsed != null && parsed > 0) return parsed;
     }
-    return line.faceValue;
+    return 0;
+  }
+
+  String _carnetTypeLabelFor(FaceLine line) {
+    final carnetSize = _carnetSizeFor(line);
+    if (carnetSize > 0) {
+      return Formatters.carnetTypeLabel(carnetSize, line.faceValue);
+    }
+
+    final byId = _carnetNameById[line.carnetTypeId.trim()];
+    if (byId != null && byId.trim().isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(byId);
+    }
+
+    final byCode = _carnetNameByCode[line.carnetTypeCode.trim().toUpperCase()];
+    if (byCode != null && byCode.trim().isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(byCode);
+    }
+
+    final byFaceValue = _carnetNameByFaceValue[line.faceValue];
+    if (byFaceValue != null && byFaceValue.trim().isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(byFaceValue);
+    }
+
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) return Formatters.normalizeCarnetTypeLabel(rawName);
+
+    final rawCode = line.carnetTypeCode.trim();
+    if (rawCode.isNotEmpty) return rawCode;
+
+    return 'Carnet';
   }
 
   Future<void> _openCarnetDetail(FaceLine line) async {
-    final carnetSize = _carnetSizeFor(line);
     final scheme = Theme.of(context).colorScheme;
-    final displayQty = _displayQty(line);
+    final totalQty = line.initialQty;
+    final availableQty = line.availableQty;
+    final activeQty = line.qrActiveQty;
+    final blockedQty = line.qrBlockedQty;
+    final consumedQty = line.consumedQty;
+    final expiredQty = line.expiredQty;
+    final displayQty = line.isExpired ? expiredQty : availableQty;
     final stateLabel = line.isExpired
         ? 'Expiré'
-        : line.availableQty > 0
+        : availableQty > 0
         ? 'Disponible'
         : 'Indisponible';
     final stateColor = line.isExpired
         ? AppColors.danger
-        : line.availableQty > 0
+        : availableQty > 0
         ? AppColors.success
         : AppColors.warning;
 
@@ -176,78 +246,107 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FaceValueChip(value: line.faceValue, size: 58),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                AppCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _carnetTypeLabelFor(line),
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                                height: 1.05,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Text(
+                                  'Expire le',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.muted,
+                                    height: 1,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    Formatters.dateTimeDash(
+                                      line.expirationDate,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.ink,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           Text(
-                            'Carnet ${Formatters.numberFr(carnetSize)}',
+                            Formatters.numberFr(displayQty),
                             style: GoogleFonts.inter(
-                              fontSize: 19,
+                              fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: AppColors.ink,
-                              height: 1.05,
+                              height: 1,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
-                            'Expire le ${DateFormat('dd-MM-yyyy HH:mm', 'fr_FR').format(line.expirationDate)}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.muted,
-                              height: 1.2,
+                            line.isExpired ? 'Expiré' : 'Disponibles',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.muted.withValues(alpha: 0.95),
+                              height: 1,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          Formatters.numberFr(displayQty),
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDark,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          line.isExpired ? 'Expiré' : 'Disponibles',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.muted.withValues(alpha: 0.95),
-                            height: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _CarnetDetailSummaryCard(
-                  totalLabel: line.isExpired
-                      ? 'Carnets expirés'
-                      : 'carnets disponibles',
-                  totalValue: Formatters.numberFr(displayQty),
+                  totalLabel: 'Quantité totale',
+                  totalValue: Formatters.numberFr(totalQty),
                   amountLabel: 'Expire le',
-                  amountValue: DateFormat('dd-MM-yyyy HH:mm', 'fr_FR')
-                      .format(line.expirationDate),
+                  amountValue: DateFormat(
+                    'dd-MM-yyyy HH:mm',
+                    'fr_FR',
+                  ).format(line.expirationDate),
                   stateLabel: stateLabel,
                   stateColor: stateColor,
                 ),
                 const SizedBox(height: 14),
-                _CarnetDetailStatsGrid(line: line),
+                _CarnetDetailStatsGrid(
+                  availableQty: availableQty,
+                  activeQty: activeQty,
+                  blockedQty: blockedQty,
+                  consumedQty: consumedQty,
+                  expiredQty: expiredQty,
+                ),
               ],
             ),
           ),
@@ -338,7 +437,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                         icon: Icons.layers_outlined,
                         title: "Aucun carnet disponible",
                         message:
-                            "Le serveur n’a renvoyé aucune ligne avec des quantités de carnets disponibles.",
+                            "Le serveur nâ€™a renvoyÃ© aucune ligne avec des quantitÃ©s de carnets disponibles.",
                       ),
                     ]
                   : [
@@ -347,7 +446,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: _CarnetLineCard(
                             line: line,
-                            carnetSize: _carnetSizeFor(line),
+                            carnetTypeLabel: _carnetTypeLabelFor(line),
                             onTap: () => _openCarnetDetail(line),
                           ),
                         ),
@@ -526,9 +625,19 @@ class _CarnetDetailSummaryCard extends StatelessWidget {
 }
 
 class _CarnetDetailStatsGrid extends StatelessWidget {
-  const _CarnetDetailStatsGrid({required this.line});
+  const _CarnetDetailStatsGrid({
+    required this.availableQty,
+    required this.activeQty,
+    required this.blockedQty,
+    required this.consumedQty,
+    required this.expiredQty,
+  });
 
-  final FaceLine line;
+  final int availableQty;
+  final int activeQty;
+  final int blockedQty;
+  final int consumedQty;
+  final int expiredQty;
 
   @override
   Widget build(BuildContext context) {
@@ -537,20 +646,24 @@ class _CarnetDetailStatsGrid extends StatelessWidget {
       runSpacing: 10,
       children: [
         _CarnetDetailMetric(
-          label: 'Initial',
-          value: Formatters.numberFr(line.initialQty),
-        ),
-        _CarnetDetailMetric(
           label: 'Disponibles',
-          value: Formatters.numberFr(line.availableQty),
+          value: Formatters.numberFr(availableQty),
         ),
         _CarnetDetailMetric(
           label: 'Actifs QR',
-          value: Formatters.numberFr(line.qrActiveQty),
+          value: Formatters.numberFr(activeQty),
         ),
         _CarnetDetailMetric(
           label: 'Bloqués QR',
-          value: Formatters.numberFr(line.qrBlockedQty),
+          value: Formatters.numberFr(blockedQty),
+        ),
+        _CarnetDetailMetric(
+          label: 'Consommés',
+          value: Formatters.numberFr(consumedQty),
+        ),
+        _CarnetDetailMetric(
+          label: 'Expirés',
+          value: Formatters.numberFr(expiredQty),
         ),
       ],
     );
@@ -599,116 +712,90 @@ class _CarnetDetailMetric extends StatelessWidget {
   }
 }
 
-int _displayQty(FaceLine line) {
-  if (line.isExpired) return line.expiredQty > 0 ? line.expiredQty : 0;
-  return math.min(line.availableQty, 15);
-}
-
 class _CarnetLineCard extends StatelessWidget {
   const _CarnetLineCard({
     required this.line,
-    required this.carnetSize,
+    required this.carnetTypeLabel,
     required this.onTap,
   });
 
   final FaceLine line;
-  final int carnetSize;
+  final String carnetTypeLabel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = line.isExpired ? AppColors.danger : AppColors.success;
+    final availableColor = line.isExpired
+        ? AppColors.danger
+        : AppColors.leaderGreen;
+    final availableLabel = line.isExpired ? 'Expiré' : 'Disponibles';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        padding: const EdgeInsets.all(14),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              FaceValueChip(value: line.faceValue, size: 60),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Carnet ${Formatters.numberFr(carnetSize)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        height: 1.05,
-                      ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    carnetTypeLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      height: 1.08,
                     ),
-                    const SizedBox(height: 4),
-                    const SizedBox.shrink(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: SizedBox(
-                  width: 116,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Center(
-                        child: Text(
-                          'Expire le',
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,
-                            height: 1.1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        DateFormat('dd-MM-yyyy', 'fr_FR').format(
-                          line.expirationDate,
-                        ),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primaryDark,
-                          height: 1,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 110),
+                      child: Text(
+                        '${Formatters.numberFr(line.availableQty)} tickets ${availableLabel.toLowerCase()}',
+                        textAlign: TextAlign.right,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: line.isExpired
+                              ? availableColor
+                              : AppColors.muted.withValues(alpha: 0.95),
+                          height: 1.08,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+                height: 1,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
-
-
-

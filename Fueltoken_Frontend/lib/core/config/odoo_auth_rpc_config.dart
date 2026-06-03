@@ -42,6 +42,16 @@ class OdooAuthRpcConfig {
     defaultValue: '/api/acpec/mobile_auth/v1/signup',
   );
 
+  static const String _requestOtpPath = String.fromEnvironment(
+    'ODOO_RPC_REQUEST_OTP_PATH',
+    defaultValue: '/api/acpec/mobile_auth/v1/request-otp',
+  );
+
+  static const String _verifyOtpPath = String.fromEnvironment(
+    'ODOO_RPC_VERIFY_OTP_PATH',
+    defaultValue: '/api/acpec/mobile_auth/v1/verify-otp',
+  );
+
   /// Si l’ancienne variable vaut un chemin (`/…`), elle est utilisée telle quelle.
   static const String _legacyLogin = String.fromEnvironment(
     'ODOO_RPC_LOGIN_METHOD',
@@ -135,4 +145,14 @@ class OdooAuthRpcConfig {
   static bool get hasSessionMe => sessionRoute.isNotEmpty;
 
   static bool get hasCompleteRegistration => signupRoute.isNotEmpty;
+
+  static String get requestOtpRoute {
+    if (!useAcpecAuth) return '';
+    return _requestOtpPath.trim();
+  }
+
+  static String get verifyOtpRoute {
+    if (!useAcpecAuth) return '';
+    return _verifyOtpPath.trim();
+  }
 }

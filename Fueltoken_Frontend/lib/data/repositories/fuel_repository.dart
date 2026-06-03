@@ -70,9 +70,7 @@ class FuelRepository {
 
   /// Supprime un type s’il n’apparaît dans aucun lot (soumis ou validé).
   void deleteCarnetType(String id) {
-    final used = _lots.any(
-      (l) => l.lines.any((ln) => ln.carnetTypeId == id),
-    );
+    final used = _lots.any((l) => l.lines.any((ln) => ln.carnetTypeId == id));
     if (used) {
       throw Exception(
         'Ce type est utilisé dans un lot d’achat et ne peut pas être supprimé.',
@@ -99,12 +97,10 @@ class FuelRepository {
       if (clientId != null && l.clientId != clientId) return false;
       if (state != null && l.state != state) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  PurchaseLot? lotById(String id) =>
-      _lots.firstWhereOrNull((l) => l.id == id);
+  PurchaseLot? lotById(String id) => _lots.firstWhereOrNull((l) => l.id == id);
 
   PurchaseLot submitPurchase({
     required String clientId,
@@ -128,14 +124,16 @@ class FuelRepository {
       if (r.carnetCount <= 0) {
         throw Exception('Quantité invalide pour ${ct.code}.');
       }
-      lines.add(PurchaseLine(
-        id: 'pl-${_uuid.v4().substring(0, 6)}',
-        carnetTypeId: ct.id,
-        carnetTypeCode: ct.code,
-        carnetCount: r.carnetCount,
-        carnetSize: ct.size,
-        faceValue: ct.faceValue,
-      ));
+      lines.add(
+        PurchaseLine(
+          id: 'pl-${_uuid.v4().substring(0, 6)}',
+          carnetTypeId: ct.id,
+          carnetTypeCode: ct.code,
+          carnetCount: r.carnetCount,
+          carnetSize: ct.size,
+          faceValue: ct.faceValue,
+        ),
+      );
     }
     final year = DateTime.now().year;
     final seq = (_lots.length + 1).toString().padLeft(5, '0');
@@ -158,7 +156,11 @@ class FuelRepository {
   }
 
   /// Admin-only validation. Generates aggregated face lines on approval.
-  PurchaseLot validateLot(String lotId, {required String validatorId, required String validatorName}) {
+  PurchaseLot validateLot(
+    String lotId, {
+    required String validatorId,
+    required String validatorName,
+  }) {
     final idx = _lots.indexWhere((l) => l.id == lotId);
     if (idx < 0) throw Exception('Lot introuvable.');
     final lot = _lots[idx];
@@ -173,29 +175,36 @@ class FuelRepository {
     );
     _lots[idx] = updated;
     _generateFaceLines(updated);
-    _transactions.add(BusinessTransaction(
-      id: _uuid.v4(),
-      type: TxType.purchaseValidated,
-      date: DateTime.now(),
-      lotId: updated.id,
-      lotInternalRef: updated.internalRef,
-      userId: validatorId,
-      userName: validatorName,
-      lines: [
-        for (final l in updated.lines)
-          TransactionLine(
-            id: _uuid.v4(),
-            faceValue: l.faceValue,
-            qty: l.faceCount,
-            amount: l.lineAmount,
-            lotId: updated.id,
-          ),
-      ],
-    ));
+    _transactions.add(
+      BusinessTransaction(
+        id: _uuid.v4(),
+        type: TxType.purchaseValidated,
+        date: DateTime.now(),
+        lotId: updated.id,
+        lotInternalRef: updated.internalRef,
+        userId: validatorId,
+        userName: validatorName,
+        lines: [
+          for (final l in updated.lines)
+            TransactionLine(
+              id: _uuid.v4(),
+              faceValue: l.faceValue,
+              qty: l.faceCount,
+              amount: l.lineAmount,
+              lotId: updated.id,
+            ),
+        ],
+      ),
+    );
     return updated;
   }
 
-  PurchaseLot rejectLot(String lotId, String reason, {required String validatorId, required String validatorName}) {
+  PurchaseLot rejectLot(
+    String lotId,
+    String reason, {
+    required String validatorId,
+    required String validatorName,
+  }) {
     final idx = _lots.indexWhere((l) => l.id == lotId);
     if (idx < 0) throw Exception('Lot introuvable.');
     final updated = _lots[idx].copyWith(
@@ -214,23 +223,27 @@ class FuelRepository {
     for (final line in lot.lines) {
       final ct = carnetTypeById(line.carnetTypeId);
       final days = ct?.validityDays ?? 365;
-      _faceLines.add(FaceLine(
-        id: 'fl-${_uuid.v4().substring(0, 6)}',
-        lotId: lot.id,
-        lotInternalRef: lot.internalRef,
-        purchaseLineId: line.id,
-        carnetTypeId: line.carnetTypeId,
-        carnetTypeCode: line.carnetTypeCode,
-        faceValue: line.faceValue,
-        initialQty: line.faceCount,
-        availableQty: line.faceCount,
-        qrActiveQty: 0,
-        qrBlockedQty: 0,
-        consumedQty: 0,
-        expiredQty: 0,
-        expirationDate: validatedAt.add(Duration(days: days)),
-        ownerId: lot.clientId,
-      ));
+      _faceLines.add(
+        FaceLine(
+          id: 'fl-${_uuid.v4().substring(0, 6)}',
+          lotId: lot.id,
+          lotInternalRef: lot.internalRef,
+          purchaseLineId: line.id,
+          carnetTypeId: line.carnetTypeId,
+          carnetTypeCode: line.carnetTypeCode,
+          carnetTypeName: line.carnetTypeCode,
+          carnetFaceCount: line.faceCount,
+          faceValue: line.faceValue,
+          initialQty: line.faceCount,
+          availableQty: line.faceCount,
+          qrActiveQty: 0,
+          qrBlockedQty: 0,
+          consumedQty: 0,
+          expiredQty: 0,
+          expirationDate: validatedAt.add(Duration(days: days)),
+          ownerId: lot.clientId,
+        ),
+      );
     }
   }
 
@@ -280,8 +293,12 @@ class FuelRepository {
       final qty = entry.value;
       if (qty <= 0) continue;
       final available = _faceLines
-          .where((f) =>
-              f.ownerId == ownerId && f.faceValue == faceValue && !f.isExpired)
+          .where(
+            (f) =>
+                f.ownerId == ownerId &&
+                f.faceValue == faceValue &&
+                !f.isExpired,
+          )
           .fold<int>(0, (s, f) => s + f.availableQty);
       if (available < qty) {
         throw Exception('Quantité disponible insuffisante.');
@@ -295,14 +312,19 @@ class FuelRepository {
       var remaining = entry.value;
       if (remaining <= 0) continue;
 
-      final candidates = _faceLines
-          .where((f) =>
-              f.ownerId == ownerId &&
-              f.faceValue == entry.key &&
-              !f.isExpired &&
-              f.availableQty > 0)
-          .toList()
-        ..sort((a, b) => a.expirationDate.compareTo(b.expirationDate)); // FIFO
+      final candidates =
+          _faceLines
+              .where(
+                (f) =>
+                    f.ownerId == ownerId &&
+                    f.faceValue == entry.key &&
+                    !f.isExpired &&
+                    f.availableQty > 0,
+              )
+              .toList()
+            ..sort(
+              (a, b) => a.expirationDate.compareTo(b.expirationDate),
+            ); // FIFO
 
       for (final faceLine in candidates) {
         if (remaining == 0) break;
@@ -315,16 +337,18 @@ class FuelRepository {
           availableQty: faceLine.availableQty - take,
           qrActiveQty: faceLine.qrActiveQty + take,
         );
-        qrLines.add(QrLine(
-          id: 'ql-${_uuid.v4().substring(0, 6)}',
-          qrId: qrId,
-          lotId: faceLine.lotId,
-          lotInternalRef: faceLine.lotInternalRef,
-          faceLineId: faceLine.id,
-          faceValue: faceLine.faceValue,
-          qty: take,
-          expirationDate: faceLine.expirationDate,
-        ));
+        qrLines.add(
+          QrLine(
+            id: 'ql-${_uuid.v4().substring(0, 6)}',
+            qrId: qrId,
+            lotId: faceLine.lotId,
+            lotInternalRef: faceLine.lotInternalRef,
+            faceLineId: faceLine.id,
+            faceValue: faceLine.faceValue,
+            qty: take,
+            expirationDate: faceLine.expirationDate,
+          ),
+        );
         remaining -= take;
       }
     }
@@ -332,37 +356,45 @@ class FuelRepository {
     final qr = QrToken(
       id: qrId,
       publicCode: _publicCode(),
-      internalRef: 'QR/${DateTime.now().year}/${(_qrTokens.length + 1).toString().padLeft(5, '0')}',
+      internalRef:
+          'QR/${DateTime.now().year}/${(_qrTokens.length + 1).toString().padLeft(5, '0')}',
       ownerId: ownerId,
       ownerName: ownerName,
       companyId: companyId,
       state: QrState.active,
       lines: qrLines,
       createdAt: DateTime.now(),
+      expiresAt: qrLines.isNotEmpty
+          ? qrLines
+                .map((l) => l.expirationDate)
+                .reduce((a, b) => a.isBefore(b) ? a : b)
+          : null,
     );
     _qrTokens.add(qr);
 
-    _transactions.add(BusinessTransaction(
-      id: _uuid.v4(),
-      type: TxType.qrEmission,
-      date: DateTime.now(),
-      qrId: qr.id,
-      qrPublicCode: qr.publicCode,
-      userId: ownerId,
-      userName: ownerName,
-      lines: [
-        for (final l in qrLines)
-          TransactionLine(
-            id: _uuid.v4(),
-            faceValue: l.faceValue,
-            qty: l.qty,
-            amount: l.amount,
-            lotId: l.lotId,
-            faceLineId: l.faceLineId,
-            qrId: qr.id,
-          ),
-      ],
-    ));
+    _transactions.add(
+      BusinessTransaction(
+        id: _uuid.v4(),
+        type: TxType.qrEmission,
+        date: DateTime.now(),
+        qrId: qr.id,
+        qrPublicCode: qr.publicCode,
+        userId: ownerId,
+        userName: ownerName,
+        lines: [
+          for (final l in qrLines)
+            TransactionLine(
+              id: _uuid.v4(),
+              faceValue: l.faceValue,
+              qty: l.qty,
+              amount: l.amount,
+              lotId: l.lotId,
+              faceLineId: l.faceLineId,
+              qrId: qr.id,
+            ),
+        ],
+      ),
+    );
 
     return qr;
   }
@@ -374,8 +406,7 @@ class FuelRepository {
       if (ownerId != null && q.ownerId != ownerId) return false;
       if (state != null && q.state != state) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   QrToken? qrById(String id) => _qrTokens.firstWhereOrNull((q) => q.id == id);
@@ -433,65 +464,78 @@ class FuelRepository {
       final childLines = <QrLine>[];
       for (final pick in group) {
         final src = parent.lines.firstWhere((l) => l.id == pick.qrLineId);
-        childLines.add(QrLine(
-          id: 'ql-${_uuid.v4().substring(0, 6)}',
-          qrId: childId,
-          lotId: src.lotId,
-          lotInternalRef: src.lotInternalRef,
-          faceLineId: src.faceLineId,
-          faceValue: src.faceValue,
-          qty: pick.qty,
-          expirationDate: src.expirationDate,
-        ));
+        childLines.add(
+          QrLine(
+            id: 'ql-${_uuid.v4().substring(0, 6)}',
+            qrId: childId,
+            lotId: src.lotId,
+            lotInternalRef: src.lotInternalRef,
+            faceLineId: src.faceLineId,
+            faceValue: src.faceValue,
+            qty: pick.qty,
+            expirationDate: src.expirationDate,
+          ),
+        );
       }
       final allExpired = childLines.every((l) => l.isExpired);
-      final hasMix = childLines.any((l) => l.isExpired) &&
+      final hasMix =
+          childLines.any((l) => l.isExpired) &&
           childLines.any((l) => !l.isExpired);
       final state = allExpired
           ? QrState.expired
           : hasMix
-              ? QrState.blocked
-              : QrState.active;
-      children.add(QrToken(
-        id: childId,
-        publicCode: _publicCode(),
-        internalRef: 'QR/${DateTime.now().year}/${(_qrTokens.length + 1 + children.length).toString().padLeft(5, '0')}',
-        ownerId: parent.ownerId,
-        ownerName: parent.ownerName,
-        companyId: parent.companyId,
-        state: state,
-        parentQrId: parent.id,
-        lines: childLines,
-        createdAt: DateTime.now(),
-      ));
+          ? QrState.blocked
+          : QrState.active;
+      children.add(
+        QrToken(
+          id: childId,
+          publicCode: _publicCode(),
+          internalRef:
+              'QR/${DateTime.now().year}/${(_qrTokens.length + 1 + children.length).toString().padLeft(5, '0')}',
+          ownerId: parent.ownerId,
+          ownerName: parent.ownerName,
+          companyId: parent.companyId,
+          state: state,
+          parentQrId: parent.id,
+          lines: childLines,
+          createdAt: DateTime.now(),
+          expiresAt: childLines.isNotEmpty
+              ? childLines
+                    .map((l) => l.expirationDate)
+                    .reduce((a, b) => a.isBefore(b) ? a : b)
+              : null,
+        ),
+      );
     }
 
     _qrTokens[parentIdx] = parent.copyWith(state: QrState.split);
     _qrTokens.addAll(children);
 
-    _transactions.add(BusinessTransaction(
-      id: _uuid.v4(),
-      type: TxType.qrSplit,
-      date: DateTime.now(),
-      qrId: parent.id,
-      qrPublicCode: parent.publicCode,
-      userId: userId,
-      userName: userName,
-      lines: [
-        for (final c in children)
-          for (final l in c.lines)
-            TransactionLine(
-              id: _uuid.v4(),
-              faceValue: l.faceValue,
-              qty: l.qty,
-              amount: l.amount,
-              lotId: l.lotId,
-              faceLineId: l.faceLineId,
-              qrId: c.id,
-            ),
-      ],
-      note: '${children.length} QR enfants',
-    ));
+    _transactions.add(
+      BusinessTransaction(
+        id: _uuid.v4(),
+        type: TxType.qrSplit,
+        date: DateTime.now(),
+        qrId: parent.id,
+        qrPublicCode: parent.publicCode,
+        userId: userId,
+        userName: userName,
+        lines: [
+          for (final c in children)
+            for (final l in c.lines)
+              TransactionLine(
+                id: _uuid.v4(),
+                faceValue: l.faceValue,
+                qty: l.qty,
+                amount: l.amount,
+                lotId: l.lotId,
+                faceLineId: l.faceLineId,
+                qrId: c.id,
+              ),
+        ],
+        note: '${children.length} QR enfants',
+      ),
+    );
 
     return children;
   }
@@ -522,12 +566,12 @@ class FuelRepository {
       throw Exception('QR expiré.');
     }
     if (qr.state == QrState.blocked) {
-      throw Exception('QR bloqué : split requis.');
+      throw Exception('QR bloqué : séparation requise.');
     }
     if (qr.lines.any((l) => l.isExpired)) {
       // doctrine: mixed lines → block, do not consume.
       _qrTokens[idx] = qr.copyWith(state: QrState.blocked);
-      throw Exception('QR bloqué : split requis.');
+      throw Exception('QR bloqué : séparation requise.');
     }
 
     final station = stationById(stationId);
@@ -551,29 +595,31 @@ class FuelRepository {
       );
     }
 
-    _transactions.add(BusinessTransaction(
-      id: _uuid.v4(),
-      type: TxType.stationConsumption,
-      date: DateTime.now(),
-      qrId: qr.id,
-      qrPublicCode: qr.publicCode,
-      stationId: stationId,
-      stationName: station?.name,
-      userId: userId,
-      userName: userName,
-      lines: [
-        for (final l in qr.lines)
-          TransactionLine(
-            id: _uuid.v4(),
-            faceValue: l.faceValue,
-            qty: l.qty,
-            amount: l.amount,
-            lotId: l.lotId,
-            faceLineId: l.faceLineId,
-            qrId: qr.id,
-          ),
-      ],
-    ));
+    _transactions.add(
+      BusinessTransaction(
+        id: _uuid.v4(),
+        type: TxType.stationConsumption,
+        date: DateTime.now(),
+        qrId: qr.id,
+        qrPublicCode: qr.publicCode,
+        stationId: stationId,
+        stationName: station?.name,
+        userId: userId,
+        userName: userName,
+        lines: [
+          for (final l in qr.lines)
+            TransactionLine(
+              id: _uuid.v4(),
+              faceValue: l.faceValue,
+              qty: l.qty,
+              amount: l.amount,
+              lotId: l.lotId,
+              faceLineId: l.faceLineId,
+              qrId: qr.id,
+            ),
+        ],
+      ),
+    );
 
     return consumed;
   }
@@ -592,8 +638,7 @@ class FuelRepository {
       if (lotId != null && t.lotId != lotId) return false;
       if (type != null && t.type != type) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    }).toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
   // ────────────────────────────── helpers
@@ -606,5 +651,4 @@ class FuelRepository {
     }
     return buf.toString();
   }
-
 }

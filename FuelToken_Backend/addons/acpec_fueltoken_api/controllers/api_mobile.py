@@ -7,6 +7,13 @@ from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuth
 
 class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
 
+    def _carnet_type_label(self, carnet):
+        face_count = int(carnet.face_count or 0)
+        face_value = int(carnet.face_value or 0)
+        if face_count > 0 and face_value > 0:
+            return 'Carnet %s × %s' % (face_count, face_value)
+        return carnet.name or carnet.code or 'Carnet'
+
     def _mobile_wallet(self):
         user = self._require_mobile_auth()
         self._require_fuel_group(user, 'client')
@@ -204,7 +211,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             items.append({
                 'carnet_type_id': carnet.id,
                 'carnet_type_code': carnet.code,
-                'carnet_type_name': carnet.name,
+                'carnet_type_name': self._carnet_type_label(carnet),
                 'face_value': face_value,
                 'qty_available': qty_available,
                 'amount_available': qty_available * face_value,
@@ -229,7 +236,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 items.append({
                     'id': rec.id,
                     'code': rec.code,
-                    'name': rec.name,
+                    'name': self._carnet_type_label(rec),
                     'face_count': rec.face_count,
                     'face_value': rec.face_value,
                     'carnet_amount': rec.carnet_amount,
@@ -486,18 +493,35 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
     def faces(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
+            transferable_only = self._get_bool_param(kwargs.get('transferable_only'), default=False)
             lines = request.env['acpec.fuel.face.line'].sudo().search([
                 ('wallet_id', '=', wallet.id),
                 ('qty_available', '>', 0),
             ], order='expires_at, id')
             items = []
             for line in lines:
+                if transferable_only and not line.is_transferable_carnet_line():
+                    continue
+                carnet = line.carnet_type_id
                 items.append({
                     'id': line.id,
                     'purchase': line.purchase_id.name,
-                    'carnet_type': line.carnet_type_id.code,
+                    'purchase_id': line.purchase_id.id,
+                    'purchase_line_id': line.purchase_line_id.id,
+                    'carnet_type': carnet.code,
+                    'carnet_type_id': carnet.id,
+                    'carnet_type_code': carnet.code,
+                    'carnet_type_name': self._carnet_type_label(carnet),
+                    'face_count': carnet.face_count,
                     'face_value': line.face_value,
+                    'qty_initial': line.qty_initial,
                     'qty_available': line.qty_available,
+                    'qty_qr_active': line.qty_qr_active,
+                    'qty_qr_blocked': line.qty_qr_blocked,
+                    'qty_consumed': line.qty_consumed,
+                    'qty_expired': line.qty_expired,
+                    'is_transferable': line.is_transferable_carnet_line(),
+                    'transferable_carnets': line.transferable_carnet_count(),
                     'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
                 })
             return self._json_response({'items': items})
@@ -555,22 +579,6 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             data = self._qr_payload(qr)
             data['technical_lines'] = self._qr_technical_lines_payload(qr)
             return self._json_response(data)
-        except Exception as exc:
-            return self._handle_exception_response(exc)
-
-    @http.route('/api/acpec/fueltoken/v1/mobile/qr/split', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
-    def split_qr(self, **kwargs):
-        try:
-            self._require_keys(kwargs, ['public_code', 'children'])
-            wallet = self._mobile_wallet()
-            qr = request.env['acpec.fuel.qr'].sudo().search([
-                ('public_code', '=', kwargs.get('public_code')),
-                ('wallet_id', '=', wallet.id),
-            ], limit=1)
-            if not qr:
-                raise ValidationError(_('QR introuvable.'))
-            children = qr.action_split(kwargs.get('children') or [], idempotency_key=kwargs.get('idempotency_key'))
-            return self._json_response({'parent': self._qr_payload(qr), 'children': [self._qr_payload(child) for child in children]})
         except Exception as exc:
             return self._handle_exception_response(exc)
 

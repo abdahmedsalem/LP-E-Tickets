@@ -48,6 +48,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             secret_code = self._get_clean_str(kwargs, 'secret_code')
             company_id = self._get_optional_int(kwargs, 'company_id', False)
             note = kwargs.get('note')
+            email = self._get_clean_str(kwargs, 'email')
 
             if not name:
                 return self._error_response('NAME_REQUIRED', _('Name is required.'))
@@ -100,7 +101,10 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                 }
                 if identifier_vals['phone']:
                     user_vals['mobile_phone'] = identifier_vals['phone']
-                if identifier_vals['email']:
+                if email:
+                    partner_vals['email'] = email
+                    user_vals['email'] = email
+                elif identifier_vals['email']:
                     user_vals['email'] = identifier_vals['email']
 
                 user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
@@ -110,7 +114,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                     'signup_identifier': identifier_vals['signup_identifier'],
                     'signup_identifier_type': identifier_vals['signup_identifier_type'],
                     'phone': identifier_vals['phone'] or False,
-                    'email': identifier_vals['email'] or False,
+                    'email': email or identifier_vals['email'] or False,
                     'login': identifier_vals['login'],
                     'company_id': company.id,
                     'partner_id': partner.id,
@@ -118,7 +122,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                     'note': note or False,
                 })
 
-            return self._json_response({
+            data = {
                 'account_request_id': record.id,
                 'name': name,
                 'state': record.state,
@@ -126,7 +130,24 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                 'signup_identifier_type': record.signup_identifier_type,
                 'company_id': company.id,
                 'company_name': company.name,
-            })
+            }
+
+            if identifier_vals['signup_identifier_type'] == 'phone':
+                challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                    identifier_vals['phone'],
+                    purpose='register',
+                )
+                data.update({
+                    'otp_challenge_id': challenge.id,
+                    'otp_challenge_ref': challenge.name,
+                    'otp_expires_at': fields.Datetime.to_string(challenge.expires_at) if challenge.expires_at else False,
+                    'otp_delivery': 'configured_provider',
+                })
+                if self._get_config_bool('acpec_mobile_auth.otp_dev_mode', default=False):
+                    data['otp_dev_code'] = code
+                    data['otp_delivery'] = 'dev_response'
+
+            return self._json_response(data)
         except Exception as exc:
             _logger.exception("Signup API Error")
             return self._handle_exception_response(exc)

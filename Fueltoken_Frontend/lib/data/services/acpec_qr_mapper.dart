@@ -63,7 +63,20 @@ class AcpecQrMapper {
       'dd-MM-yyyy',
     ]) {
       try {
-        return DateFormat(pattern).parseStrict(s);
+        final parsed = DateFormat(pattern).parseStrict(s);
+        if (pattern.contains('HH')) {
+          return DateTime.utc(
+            parsed.year,
+            parsed.month,
+            parsed.day,
+            parsed.hour,
+            parsed.minute,
+            parsed.second,
+            parsed.millisecond,
+            parsed.microsecond,
+          );
+        }
+        return DateTime.utc(parsed.year, parsed.month, parsed.day);
       } catch (_) {}
     }
     final asInt = int.tryParse(s);
@@ -143,7 +156,16 @@ class AcpecQrMapper {
       }
       if (fv <= 0) continue;
       final exp =
-          _date(row['expiration_date'] ?? row['expiry_date']) ?? defaultExpiry;
+          _date(
+            row['expiration_date'] ??
+                row['expiry_date'] ??
+                row['expires_at'] ??
+                row['expiresAt'] ??
+                row['expires_on'] ??
+                row['expiration'] ??
+                row['expired_at'],
+          ) ??
+          defaultExpiry;
       final lineId =
           row['qr_line_id'] ?? row['id'] ?? row['line_id'] ?? row['qr_lineId'];
       out.add(
@@ -202,8 +224,20 @@ class AcpecQrMapper {
           row['status']?.toString(),
     );
     final created =
-        _date(row['create_date'] ?? row['created_at'] ?? row['created']) ??
+        _date(
+          row['date'] ??
+              row['generated_at'] ??
+              row['created_at'] ??
+              row['issued_at'] ??
+              row['create_date'] ??
+              row['created'] ??
+              row['emitted_at'] ??
+              row['issuedOn'],
+        ) ??
         _fallbackDate;
+    final expiresAt = _date(
+      row['expires_at'] ?? row['expiresAt'] ?? row['expiration_at'],
+    );
     var lines = _lines(
       row['lines'] ??
           row['lignes'] ??
@@ -268,7 +302,8 @@ class AcpecQrMapper {
           row['parent_id']?.toString() ?? row['parent_qr_id']?.toString(),
       lines: lines,
       createdAt: created,
-      consumedAt: _date(row['consumed_at'] ?? row['used_at']) ?? _fallbackDate,
+      expiresAt: expiresAt,
+      consumedAt: _date(row['consumed_at'] ?? row['used_at']),
       consumedByStationId: row['station_id']?.toString(),
       consumedByStationName: row['station_name']?.toString(),
       consumedByUserId: row['consumed_by_user_id']?.toString(),
@@ -335,6 +370,15 @@ class AcpecQrMapper {
         : Map<String, dynamic>.from(envelope);
 
     void adoptList(String target, List<String> keys) {
+      if (includeTechnicalLines && target == 'lines') {
+        for (final source in [envelope, root]) {
+          final technical = source['technical_lines'];
+          if (technical is List && technical.isNotEmpty) {
+            merged[target] = technical;
+            return;
+          }
+        }
+      }
       if (merged[target] is List && (merged[target] as List).isNotEmpty) {
         return;
       }
@@ -360,14 +404,20 @@ class AcpecQrMapper {
       'public_code',
       'state',
       'status',
-      'create_date',
+      'date',
+      'generated_at',
       'created_at',
+      'issued_at',
+      'emitted_at',
+      'create_date',
+      'write_date',
       'consumed_at',
       'used_at',
       'station_name',
       'station_id',
       'parent_id',
       'parent_qr_id',
+      'expires_at',
       'name',
       'display_name',
     ]) {

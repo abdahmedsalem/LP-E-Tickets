@@ -12,6 +12,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../transfer_carnets_logic.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/face_value_chip.dart';
@@ -33,6 +34,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
 
   Map<String, int> _carnetSizeById = <String, int>{};
   Map<String, int> _carnetSizeByCode = <String, int>{};
+  Map<String, int> _carnetSizeByName = <String, int>{};
   List<FaceLine> _faces = [];
   bool _loading = false;
   bool _submitting = false;
@@ -53,10 +55,20 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   }
 
   int _carnetSizeFor(FaceLine line) {
+    if (line.carnetFaceCount > 0) return line.carnetFaceCount;
     final byId = _carnetSizeById[line.carnetTypeId.trim()];
     if (byId != null && byId > 0) return byId;
     final byCode = _carnetSizeByCode[line.carnetTypeCode.trim().toUpperCase()];
     if (byCode != null && byCode > 0) return byCode;
+    final byName = _carnetSizeByName[line.carnetTypeName.trim().toLowerCase()];
+    if (byName != null && byName > 0) return byName;
+
+    final nameMatch = RegExp(r'\d+').firstMatch(line.carnetTypeName);
+    if (nameMatch != null) {
+      final parsed = int.tryParse(nameMatch.group(0)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+
     final match = RegExp(r'\d+').firstMatch(line.carnetTypeCode);
     if (match != null) {
       final parsed = int.tryParse(match.group(0)!);
@@ -69,8 +81,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     final lines = <FaceLine>[];
     for (final line in _faces) {
       final size = _carnetSizeFor(line);
-      if (size <= 0 || line.isExpired) continue;
-      if (line.availableQty ~/ size <= 0) continue;
+      if (!isTransferableCarnetLine(line, size)) continue;
       lines.add(line);
     }
     lines.sort((a, b) {
@@ -81,67 +92,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       return a.expirationDate.compareTo(b.expirationDate);
     });
     return lines;
-  }
-
-  Future<void> _loadData() async {
-    if (!AppEnvironment.useAcpecLiveData) {
-      setState(() {
-        _loading = false;
-        _error = 'Connexion serveur ACPEC requise pour transférer des carnets.';
-      });
-      return;
-    }
-
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) return;
-
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final companyId = AppEnvironment.companyIdForUser(user);
-      final facesRaw = await OdooFueltokenFacade().faces(
-        const <String, dynamic>{},
-      );
-      final catalogResult = await AcpecCarnetCatalogService.instance
-          .loadAdminCatalog(companyId: companyId);
-
-      final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
-      final byId = <String, int>{};
-      final byCode = <String, int>{};
-      for (final type in catalogResult.types) {
-        if (type.id.trim().isNotEmpty) {
-          byId[type.id.trim()] = type.size;
-        }
-        if (type.code.trim().isNotEmpty) {
-          byCode[type.code.trim().toUpperCase()] = type.size;
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _faces = faces;
-        _carnetSizeById = byId;
-        _carnetSizeByCode = byCode;
-        _loading = false;
-      });
-    } on OdooJsonRpcException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    }
   }
 
   int _selectedCarnetsFor(FaceLine line) => _selectedQtyByLineId[line.id] ?? 0;
@@ -166,10 +116,76 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
 
   void _changeQty(FaceLine line, int delta) {
     final size = _carnetSizeFor(line);
-    final maxCarnets = line.availableQty ~/ size;
+    final maxCarnets = transferableCarnetCount(line, size);
     final current = _selectedCarnetsFor(line);
     final next = (current + delta).clamp(0, maxCarnets).toInt();
     setState(() => _selectedQtyByLineId[line.id] = next);
+  }
+
+  Future<void> _loadData() async {
+    if (!AppEnvironment.useAcpecLiveData) {
+      setState(() {
+        _loading = false;
+        _error = 'Connexion serveur ACPEC requise pour transférer des carnets.';
+      });
+      return;
+    }
+
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) return;
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final companyId = AppEnvironment.companyIdForUser(user);
+      final facesRaw = await OdooFueltokenFacade().faces(
+        const <String, dynamic>{'transferable_only': true},
+      );
+      final catalogResult = await AcpecCarnetCatalogService.instance
+          .loadAdminCatalog(companyId: companyId);
+
+      final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
+      final byId = <String, int>{};
+      final byCode = <String, int>{};
+      final byName = <String, int>{};
+      for (final type in catalogResult.types) {
+        if (type.id.trim().isNotEmpty) {
+          byId[type.id.trim()] = type.size;
+        }
+        if (type.code.trim().isNotEmpty) {
+          byCode[type.code.trim().toUpperCase()] = type.size;
+        }
+        if (type.name.trim().isNotEmpty) {
+          byName[type.name.trim().toLowerCase()] = type.size;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _faces = faces;
+        _carnetSizeById = byId;
+        _carnetSizeByCode = byCode;
+        _carnetSizeByName = byName;
+        _loading = false;
+      });
+    } on OdooJsonRpcException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.isOdooSessionExpired
+            ? 'Session expirée. Reconnectez-vous.'
+            : e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -185,7 +201,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
 
     final lines = <Map<String, dynamic>>[];
     for (final line in _transferableFaces) {
-      final qty = _selectedCarnetsFor(line);
+      final qty = _selectedQtyByLineId[line.id] ?? 0;
       if (qty <= 0) continue;
       final faceLineId = int.tryParse(line.id);
       if (faceLineId == null) {

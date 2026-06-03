@@ -11,7 +11,7 @@ import '../services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
 /// Authentification ACPEC Odoo (session JSON-RPC).
 class OdooAuthService {
   OdooAuthService._({AcpecFueltokenJsonRpcApi? api})
-      : _api = api ?? AcpecFueltokenJsonRpcApi();
+    : _api = api ?? AcpecFueltokenJsonRpcApi();
 
   static final OdooAuthService instance = OdooAuthService._();
 
@@ -29,7 +29,6 @@ class OdooAuthService {
       );
     }
     try {
-      // Même normalisation que la saisie « téléphone » / email côté app (alignement console web Odoo).
       await OdooSessionStore.clear();
       final idForRpc = normalizePhoneIdentifierForLookup(identifier);
       final secret = password.trim();
@@ -39,7 +38,6 @@ class OdooAuthService {
           '${idForRpc.contains('@') ? 'email' : 'téléphone'} · longueurs id=${idForRpc.length} secret=${secret.length}',
         );
       }
-      // Corps JSON-RPC : identifier + secret_code (aligné saisie app / serveur).
       final result = await _api.callRoute(
         route,
         params: <String, dynamic>{
@@ -76,8 +74,7 @@ class OdooAuthService {
     }
     final sid = await OdooSessionStore.readSessionId();
     final bearer = await OdooSessionStore.readAccessToken();
-    if ((sid == null || sid.isEmpty) &&
-        (bearer == null || bearer.isEmpty)) {
+    if ((sid == null || sid.isEmpty) && (bearer == null || bearer.isEmpty)) {
       throw Exception('Session absente.');
     }
     try {
@@ -88,14 +85,12 @@ class OdooAuthService {
     }
   }
 
-  /// Inscription ACPEC après vérification OTP (REST) — **sans** ouvrir de session Odoo.
-  /// L’admin doit approuver la demande ; le client attend puis se connecte via [login].
-  Future<void> submitSignupAfterOtp({
-    required String email,
+  /// Demande d'inscription Odoo ACPEC qui déclenche un OTP SMS pour un numéro.
+  Future<Map<String, dynamic>> requestSignupOtp({
+    required String name,
     required String phoneFull,
     required String password,
-    required String fullName,
-    required String otpCode,
+    String note = '',
   }) async {
     final route = OdooAuthRpcConfig.signupRoute;
     if (route.isEmpty) {
@@ -110,23 +105,133 @@ class OdooAuthService {
       final result = await _api.callRoute(
         route,
         params: {
-          'name': fullName.trim(),
-          'signup_identifier': email.trim(),
+          'name': name.trim(),
+          'signup_identifier': local,
           'secret_code': password,
           if (OdooAuthRpcConfig.signupDefaultCompanyId > 0)
             'company_id': OdooAuthRpcConfig.signupDefaultCompanyId,
-          'phone': phoneFull.trim(),
-          'email': email.trim(),
-          'note':
-              'otp_verified phone_local=$local type=${AppApiConfig.otpUserType} '
-              'otp_len=${otpCode.trim().length}',
+          'phone': local,
+          'note': [
+            if (note.trim().isNotEmpty) note.trim(),
+            'otp_channel=sms',
+            'phone_local=$local',
+            'type=${AppApiConfig.otpUserType}',
+          ].join(' '),
         },
       );
       _ensureAcpecEnvelopeSuccess(result);
+      return Map<String, dynamic>.from(result as Map);
     } on OdooJsonRpcException catch (e) {
       throw Exception(e.message);
-    } finally {
-      await OdooSessionStore.clear();
+    }
+  }
+
+  Future<Map<String, dynamic>> verifySignupOtp({
+    required String identifier,
+    required String code,
+    int? challengeId,
+  }) async {
+    final route = OdooAuthRpcConfig.verifyOtpRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Vérification OTP ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL '
+        '(et route verify par défaut `/api/acpec/mobile_auth/v1/verify-otp`).',
+      );
+    }
+    final result = await _api.callRoute(
+      route,
+      params: {
+        if (challengeId != null && challengeId > 0) 'challenge_id': challengeId,
+        'identifier': identifier.trim(),
+        'code': code.trim(),
+        'device_uid': 'mobile-registration',
+        'device_name': 'FuelToken mobile',
+        'platform': 'web',
+        'app_version': 'dev',
+      },
+    );
+    _ensureAcpecEnvelopeSuccess(result);
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> requestSignupOtpResend({
+    required String identifier,
+  }) async {
+    final route = OdooAuthRpcConfig.requestOtpRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'OTP ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL '
+        '(et route request-otp par défaut `/api/acpec/mobile_auth/v1/request-otp`).',
+      );
+    }
+    final result = await _api.callRoute(
+      route,
+      params: {'identifier': identifier.trim(), 'purpose': 'register'},
+    );
+    _ensureAcpecEnvelopeSuccess(result);
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  /// Demande d’inscription ACPEC (`/api/acpec/mobile_auth/v1/signup`), sans session.
+  Future<String> submitSignupRequest({
+    required String name,
+    required String signupIdentifier,
+    required String secretCode,
+    required int companyId,
+    String note = '',
+  }) async {
+    final result = await submitSignupRequestDetailed(
+      name: name,
+      signupIdentifier: signupIdentifier,
+      secretCode: secretCode,
+      companyId: companyId,
+      note: note,
+    );
+    final top = Map<String, dynamic>.from(result);
+    final data = top['data'];
+    if (data is Map) {
+      final dm = Map<String, dynamic>.from(data);
+      final msg = dm['message']?.toString();
+      if (msg != null && msg.isNotEmpty && msg != 'true' && msg != 'false') {
+        return msg;
+      }
+      final otpDelivery = dm['otp_delivery']?.toString();
+      if (otpDelivery == 'configured_provider' ||
+          otpDelivery == 'dev_response') {
+        return 'Un code OTP a été envoyé.';
+      }
+    }
+    return 'Votre demande a été envoyée. Vous serez notifié après validation.';
+  }
+
+  Future<Map<String, dynamic>> submitSignupRequestDetailed({
+    required String name,
+    required String signupIdentifier,
+    required String secretCode,
+    required int companyId,
+    String note = '',
+  }) async {
+    final route = OdooAuthRpcConfig.signupRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Inscription ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL.',
+      );
+    }
+    try {
+      final result = await _api.callRoute(
+        route,
+        params: {
+          'name': name.trim(),
+          'signup_identifier': signupIdentifier.trim(),
+          'secret_code': secretCode,
+          'company_id': companyId,
+          if (note.trim().isNotEmpty) 'note': note.trim(),
+        },
+      );
+      _ensureAcpecEnvelopeSuccess(result);
+      return Map<String, dynamic>.from(result as Map);
+    } on OdooJsonRpcException catch (e) {
+      throw Exception(e.message);
     }
   }
 
@@ -157,43 +262,6 @@ class OdooAuthService {
       // On efface quand même la session locale.
     } finally {
       await OdooSessionStore.clear();
-    }
-  }
-
-  /// Demande d’inscription ACPEC (`/api/acpec/mobile_auth/v1/signup`), sans session.
-  Future<String> submitSignupRequest({
-    required String name,
-    required String signupIdentifier,
-    required String secretCode,
-    required int companyId,
-    String note = '',
-  }) async {
-    final route = OdooAuthRpcConfig.signupRoute;
-    if (route.isEmpty) {
-      throw StateError(
-        'Inscription ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL.',
-      );
-    }
-    try {
-      final result = await _api.callRoute(
-        route,
-        params: {
-          'name': name.trim(),
-          'signup_identifier': signupIdentifier.trim(),
-          'secret_code': secretCode,
-          'company_id': companyId,
-          if (note.trim().isNotEmpty) 'note': note.trim(),
-        },
-      );
-      _ensureAcpecEnvelopeSuccess(result);
-      final top = Map<String, dynamic>.from(result as Map);
-      final msg = top['message']?.toString();
-      if (msg != null && msg.isNotEmpty && msg != 'true' && msg != 'false') {
-        return msg;
-      }
-      return 'Votre demande a été envoyée. Vous serez notifié après validation.';
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
     }
   }
 
@@ -238,14 +306,14 @@ class OdooAuthService {
       codeNum = num.tryParse(codeRaw.trim());
     }
     if (codeNum != null && codeNum != 0) {
-      final explicitOk = m['ok'] == true ||
+      final explicitOk =
+          m['ok'] == true ||
           m['success'] == true ||
           m['ok'] == 1 ||
           m['success'] == 1;
       if (explicitOk) {
         return false;
       }
-      // Plusieurs APIs renvoient `code: 200` sans `ok: true` — ne pas traiter comme échec.
       if (codeNum >= 200 && codeNum < 300) {
         return false;
       }
@@ -253,7 +321,9 @@ class OdooAuthService {
     }
     if (codeRaw is String) {
       final c = codeRaw.toLowerCase();
-      if (c.contains('error') || c.contains('denied') || c.contains('invalid')) {
+      if (c.contains('error') ||
+          c.contains('denied') ||
+          c.contains('invalid')) {
         return true;
       }
     }
@@ -286,7 +356,10 @@ class OdooAuthService {
         return;
       }
       if (v is Map) {
-        final nested = _acpecErrorMessage(Map<String, dynamic>.from(v), depth + 1);
+        final nested = _acpecErrorMessage(
+          Map<String, dynamic>.from(v),
+          depth + 1,
+        );
         if (nested.isNotEmpty && !nested.startsWith('Erreur API ACPEC')) {
           buf.add(nested);
         }

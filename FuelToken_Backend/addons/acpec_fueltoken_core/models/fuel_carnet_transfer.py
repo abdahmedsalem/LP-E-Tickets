@@ -162,6 +162,22 @@ class AcpecFuelCarnetTransfer(models.Model):
                         "La ligne de faces '%s' est expirée et ne peut pas être transférée."
                     ) % src_face_line.carnet_type_id.code)
 
+                if (
+                    src_face_line.qty_available != src_face_line.qty_initial
+                    or src_face_line.qty_qr_active
+                    or src_face_line.qty_qr_blocked
+                    or src_face_line.qty_consumed
+                    or src_face_line.qty_expired
+                ):
+                    raise ValidationError(_(
+                        "Le transfert de '%s' n'est autorisé que pour un carnet intact "
+                        "(%d disponibles sur %d initiaux)."
+                    ) % (
+                        src_face_line.carnet_type_id.code,
+                        src_face_line.qty_available,
+                        src_face_line.qty_initial,
+                    ))
+
                 # 3. Vérifier disponibilité (qty_available garantit que les faces ne sont pas en QR actif/bloqué)
                 if src_face_line.qty_available < qty_to_transfer:
                     raise ValidationError(_(

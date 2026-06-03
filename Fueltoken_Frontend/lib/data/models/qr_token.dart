@@ -76,10 +76,12 @@ class QrToken extends Equatable {
   final String? parentQrId;
   final List<QrLine> lines;
   final DateTime createdAt;
+  final DateTime? expiresAt;
   final DateTime? consumedAt;
   final String? consumedByStationId;
   final String? consumedByStationName;
   final String? consumedByUserId;
+
   /// Identifiant de transaction renvoyé après une consommation station réussie.
   final String? stationConsumeTransactionId;
 
@@ -94,6 +96,7 @@ class QrToken extends Equatable {
     this.parentQrId,
     required this.lines,
     required this.createdAt,
+    this.expiresAt,
     this.consumedAt,
     this.consumedByStationId,
     this.consumedByStationName,
@@ -103,6 +106,7 @@ class QrToken extends Equatable {
 
   int get totalQty => lines.fold(0, (s, l) => s + l.qty);
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
+  DateTime get generatedAt => createdAt;
 
   /// Vrai si au moins une ligne a un lot exploitable à afficher (pas uniquement des tirets).
   bool get hasAuditableLotOrigins {
@@ -131,6 +135,7 @@ class QrToken extends Equatable {
 
   QrToken copyWith({
     QrState? state,
+    DateTime? expiresAt,
     DateTime? consumedAt,
     String? consumedByStationId,
     String? consumedByStationName,
@@ -148,9 +153,11 @@ class QrToken extends Equatable {
       parentQrId: parentQrId,
       lines: lines,
       createdAt: createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
       consumedAt: consumedAt ?? this.consumedAt,
       consumedByStationId: consumedByStationId ?? this.consumedByStationId,
-      consumedByStationName: consumedByStationName ?? this.consumedByStationName,
+      consumedByStationName:
+          consumedByStationName ?? this.consumedByStationName,
       consumedByUserId: consumedByUserId ?? this.consumedByUserId,
       stationConsumeTransactionId:
           stationConsumeTransactionId ?? this.stationConsumeTransactionId,
@@ -158,6 +165,12 @@ class QrToken extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, publicCode, state, lines, stationConsumeTransactionId];
+  List<Object?> get props => [
+    id,
+    publicCode,
+    state,
+    lines,
+    stationConsumeTransactionId,
+    expiresAt,
+  ];
 }

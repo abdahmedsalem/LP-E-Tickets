@@ -116,6 +116,9 @@ class PurchaseLot extends Equatable {
   final PurchaseLotState state;
   final String? validatorId;
   final String? validatorName;
+  final DateTime? submittedAt;
+  final DateTime? approvedAt;
+  final DateTime? rejectedAt;
   final DateTime? validationDate;
   final String? rejectionReason;
   final DateTime createdAt;
@@ -135,6 +138,9 @@ class PurchaseLot extends Equatable {
     required this.state,
     this.validatorId,
     this.validatorName,
+    this.submittedAt,
+    this.approvedAt,
+    this.rejectedAt,
     this.validationDate,
     this.rejectionReason,
     required this.createdAt,
@@ -149,6 +155,9 @@ class PurchaseLot extends Equatable {
     PurchaseLotState? state,
     String? validatorId,
     String? validatorName,
+    DateTime? submittedAt,
+    DateTime? approvedAt,
+    DateTime? rejectedAt,
     DateTime? validationDate,
     String? rejectionReason,
     String? paymentProofPath,
@@ -169,6 +178,9 @@ class PurchaseLot extends Equatable {
       state: state ?? this.state,
       validatorId: validatorId ?? this.validatorId,
       validatorName: validatorName ?? this.validatorName,
+      submittedAt: submittedAt ?? this.submittedAt,
+      approvedAt: approvedAt ?? this.approvedAt,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
       validationDate: validationDate ?? this.validationDate,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       createdAt: createdAt,

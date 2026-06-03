@@ -10,6 +10,8 @@ class FaceLine extends Equatable {
   final String purchaseLineId;
   final String carnetTypeId;
   final String carnetTypeCode;
+  final String carnetTypeName;
+  final int carnetFaceCount;
   final int faceValue;
   final int initialQty;
   final int availableQty;
@@ -27,6 +29,8 @@ class FaceLine extends Equatable {
     required this.purchaseLineId,
     required this.carnetTypeId,
     required this.carnetTypeCode,
+    this.carnetTypeName = '',
+    this.carnetFaceCount = 0,
     required this.faceValue,
     required this.initialQty,
     required this.availableQty,
@@ -60,6 +64,8 @@ class FaceLine extends Equatable {
       purchaseLineId: purchaseLineId,
       carnetTypeId: carnetTypeId,
       carnetTypeCode: carnetTypeCode,
+      carnetTypeName: carnetTypeName,
+      carnetFaceCount: carnetFaceCount,
       faceValue: faceValue,
       initialQty: initialQty,
       availableQty: availableQty ?? this.availableQty,
@@ -77,6 +83,7 @@ class FaceLine extends Equatable {
     id,
     lotId,
     faceValue,
+    carnetFaceCount,
     initialQty,
     availableQty,
     qrActiveQty,

@@ -992,6 +992,9 @@ class AcpecPurchasesMapper {
     final state = _parseState(
       (row['state'] ?? row['status'])?.toString() ?? '',
     );
+    final submittedAt = _parseDate(row['submitted_at'] ?? row['submittedAt']);
+    final approvedAt = _parseDate(row['approved_at'] ?? row['approvedAt']);
+    final rejectedAt = _parseDate(row['rejected_at'] ?? row['rejectedAt']);
 
     final proofs = _proofsFromRow(row);
     final paymentRef = row['payment_reference']?.toString().trim();
@@ -1029,6 +1032,9 @@ class AcpecPurchasesMapper {
       state: state,
       validatorId: row['validator_id']?.toString(),
       validatorName: row['validator_name']?.toString(),
+      submittedAt: submittedAt,
+      approvedAt: approvedAt,
+      rejectedAt: rejectedAt,
       validationDate: _parseDate(row['validation_date'] ?? row['validated_at']),
       rejectionReason: rejectionReasonFromMap(row),
       createdAt: createdAt,

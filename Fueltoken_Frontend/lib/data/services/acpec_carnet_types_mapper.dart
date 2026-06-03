@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../core/utils/formatters.dart';
 import '../models/carnet_type.dart';
 
 /// Parse la réponse JSON-RPC des routes types de carnets (mobile ou admin).
@@ -142,7 +143,13 @@ class AcpecCarnetTypesMapper {
     if (cid.isEmpty) cid = companyId;
 
     if (name.isEmpty) {
-      name = 'Ticket $size × $faceValue';
+      name = Formatters.carnetTypeLabel(size, faceValue);
+    } else {
+      name = Formatters.normalizeCarnetTypeLabel(
+        name,
+        fallbackSize: size,
+        fallbackFaceValue: faceValue,
+      );
     }
 
     return CarnetType(

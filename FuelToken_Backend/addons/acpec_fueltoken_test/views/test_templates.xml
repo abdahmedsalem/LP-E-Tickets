@@ -112,7 +112,7 @@
                                                 <li>Wallet courant.</li>
                                                 <li>Création d’un lot d’achat avec un <code>carnet_type_id</code> réel.</li>
                                                 <li>Validation du lot dans le backend pour générer les faces.</li>
-                                                <li>Liste des faces, émission QR, détail QR et split si nécessaire.</li>
+                                                <li>Liste des faces, émission QR, détail QR et séparation si nécessaire.</li>
                                                 <li>Connexion avec un utilisateur station, puis station/profile, station/qr/check et consommation QR.</li>
                                             </ol>
                                         </div>

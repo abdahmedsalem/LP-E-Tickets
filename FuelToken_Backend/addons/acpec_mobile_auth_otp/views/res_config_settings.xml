@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_acpec_mobile_auth_otp_res_config_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.form.acpec.mobile.auth.otp</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='user_default_rights']" position="before">
+                <block title="SMS OTP" id="acpec_sms_otp_settings">
+                    <setting string="Chinguisoft SMS" help="Configure the SMS gateway used for OTP validation.">
+                        <group>
+                            <field name="sms_provider"/>
+                            <field name="sms_url"/>
+                            <field name="sms_validation_key"/>
+                            <field name="sms_token" password="True"/>
+                            <field name="sms_default_lang"/>
+                        </group>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

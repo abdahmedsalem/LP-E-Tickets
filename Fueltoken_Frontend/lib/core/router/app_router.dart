@@ -33,7 +33,6 @@ import '../../features/qr/screens/qr_detail_screen.dart';
 import '../../features/qr/screens/qr_list_screen.dart';
 import '../../features/qr/screens/retirer_qr_screen.dart';
 import '../../features/qr/screens/separer_qr_screen.dart';
-import '../../features/qr/screens/split_qr_screen.dart';
 import '../../features/qr/screens/transfer_carnets_screen.dart';
 import '../../features/station/screens/scan_screen.dart';
 import '../../features/station/screens/station_home_screen.dart';
@@ -276,10 +275,6 @@ class AppRouter {
         GoRoute(
           path: '/qr/:id/separer',
           builder: (_, st) => SeparerQrScreen(qrId: st.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/qr/:id/split',
-          builder: (_, st) => SplitQrScreen(qrId: st.pathParameters['id']!),
         ),
         GoRoute(path: '/station', redirect: (_, _) => '/station/home'),
         GoRoute(

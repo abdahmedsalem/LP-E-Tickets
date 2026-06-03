@@ -87,7 +87,19 @@ class AcpecFacesMapper {
     ]) {
       try {
         parsed = DateFormat(pattern).parseStrict(s);
-        return parsed;
+        if (pattern.contains('HH')) {
+          return DateTime.utc(
+            parsed.year,
+            parsed.month,
+            parsed.day,
+            parsed.hour,
+            parsed.minute,
+            parsed.second,
+            parsed.millisecond,
+            parsed.microsecond,
+          );
+        }
+        return DateTime.utc(parsed.year, parsed.month, parsed.day);
       } catch (_) {}
     }
     final asInt = int.tryParse(s);
@@ -145,6 +157,11 @@ class AcpecFacesMapper {
         row['qty_consumed'] ?? row['consumed_qty'] ?? 0,
       );
       final expi = _parseAmount(row['qty_expired'] ?? row['expired_qty'] ?? 0);
+      final faceCount = _parseAmount(
+        row['face_count'] ??
+            row['carnet_face_count'] ??
+            row['carnet_type_face_count'],
+      );
 
       final effectiveInitial = initial > 0 ? initial : avail;
       final sumParts = avail + qrA + qrB + cons + expi;
@@ -165,7 +182,12 @@ class AcpecFacesMapper {
             row['expiration_date'] ??
                 row['expiry_date'] ??
                 row['date_expiration'] ??
-                row['valid_until'],
+                row['valid_until'] ??
+                row['expires_at'] ??
+                row['expiresAt'] ??
+                row['expires_on'] ??
+                row['expiration'] ??
+                row['expired_at'],
           ) ??
           DateTime.now().add(const Duration(days: 3650));
 
@@ -188,6 +210,17 @@ class AcpecFacesMapper {
               row['code']?.toString() ??
               row['product_code']?.toString() ??
               '',
+          carnetTypeName:
+              row['carnet_type_name']?.toString().trim().isNotEmpty == true
+              ? row['carnet_type_name'].toString().trim()
+              : (row['name']?.toString().trim().isNotEmpty == true
+                    ? row['name'].toString().trim()
+                    : (row['display_name']?.toString().trim().isNotEmpty == true
+                          ? row['display_name'].toString().trim()
+                          : (row['label']?.toString().trim().isNotEmpty == true
+                                ? row['label'].toString().trim()
+                                : ''))),
+          carnetFaceCount: faceCount,
           faceValue: fv,
           initialQty: initialQty,
           availableQty: avail,

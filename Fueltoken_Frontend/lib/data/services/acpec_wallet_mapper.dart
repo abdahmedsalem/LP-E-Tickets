@@ -94,10 +94,7 @@ class AcpecWalletMapper {
   }
 
   /// Lignes synthétiques pour l’aperçu tickets quand l’API ne renvoie pas `lines`.
-  static List<FaceLine> _faceLinesFromBreakdown(
-    dynamic raw,
-    String ownerId,
-  ) {
+  static List<FaceLine> _faceLinesFromBreakdown(dynamic raw, String ownerId) {
     final lines = <FaceLine>[];
     if (raw is! List) return lines;
     for (var i = 0; i < raw.length; i++) {
@@ -115,7 +112,8 @@ class AcpecWalletMapper {
             row['qty_available'],
       );
       if (fv <= 0 || qty <= 0) continue;
-      final code = row['carnet_type_code']?.toString() ??
+      final code =
+          row['carnet_type_code']?.toString() ??
           row['code']?.toString() ??
           row['type']?.toString() ??
           '';
@@ -127,6 +125,12 @@ class AcpecWalletMapper {
           purchaseLineId: row['line_id']?.toString() ?? 'acpec-pl-$i',
           carnetTypeId: row['carnet_type_id']?.toString() ?? code,
           carnetTypeCode: code,
+          carnetTypeName: row['carnet_type_name']?.toString() ?? '',
+          carnetFaceCount: _parseAmount(
+            row['face_count'] ??
+                row['carnet_face_count'] ??
+                row['carnet_type_face_count'],
+          ),
           faceValue: fv,
           initialQty: qty,
           availableQty: qty,
@@ -148,9 +152,11 @@ class AcpecWalletMapper {
     Map<int, int> byFaceValue,
     List<FaceLine> faceLines,
     WalletBreakdownExtras? extras,
-  }) fromRpcResult(dynamic result, {required String ownerId}) {
+  })
+  fromRpcResult(dynamic result, {required String ownerId}) {
     final m = _unwrap(result);
-    final rawTotal = m['wallet'] ??
+    final rawTotal =
+        m['wallet'] ??
         m['total_available_value'] ??
         m['total_available'] ??
         m['available_value'] ??
@@ -171,24 +177,32 @@ class AcpecWalletMapper {
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
       final fv = _parseAmount(row['face_value']);
-      final qty = _parseAmount(row['qty_available'] ?? row['available_qty'] ?? row['qty']);
+      final qty = _parseAmount(
+        row['qty_available'] ?? row['available_qty'] ?? row['qty'],
+      );
       if (fv <= 0) continue;
       byFaceValue[fv] = (byFaceValue[fv] ?? 0) + qty;
 
-      final ref = row['purchase_ref']?.toString() ??
-          row['lot_ref']?.toString() ??
-          '—';
+      final ref =
+          row['purchase_ref']?.toString() ?? row['lot_ref']?.toString() ?? '—';
       faceLines.add(
         FaceLine(
           id: row['id']?.toString() ?? 'acpec-fl-$i',
-          lotId: row['purchase_id']?.toString() ??
-              row['lot_id']?.toString() ??
-              '',
+          lotId:
+              row['purchase_id']?.toString() ?? row['lot_id']?.toString() ?? '',
           lotInternalRef: ref,
           purchaseLineId: row['line_id']?.toString() ?? 'acpec-pl-$i',
           carnetTypeId: row['carnet_type_id']?.toString() ?? '',
           carnetTypeCode:
-              row['carnet_type_code']?.toString() ?? row['code']?.toString() ?? '',
+              row['carnet_type_code']?.toString() ??
+              row['code']?.toString() ??
+              '',
+          carnetTypeName: row['carnet_type_name']?.toString() ?? '',
+          carnetFaceCount: _parseAmount(
+            row['face_count'] ??
+                row['carnet_face_count'] ??
+                row['carnet_type_face_count'],
+          ),
           faceValue: fv,
           initialQty: qty,
           availableQty: qty,

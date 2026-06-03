@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/notifications/purchase_validation_notification_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/purchase_lot.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
@@ -65,6 +66,11 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
           _lots = lots;
           _loading = false;
         });
+        try {
+          await PurchaseValidationNotificationService.instance.syncForUser(
+            user,
+          );
+        } catch (_) {}
       } on OdooJsonRpcException catch (e) {
         if (!mounted) return;
         setState(() {
@@ -100,10 +106,12 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
       MediaQuery.sizeOf(context).height - 200,
     );
     final totalLots = _lots.length;
-    final approvedLots =
-        _lots.where((lot) => lot.state == PurchaseLotState.approved).length;
-    final rejectedLots =
-        _lots.where((lot) => lot.state == PurchaseLotState.rejected).length;
+    final approvedLots = _lots
+        .where((lot) => lot.state == PurchaseLotState.approved)
+        .length;
+    final rejectedLots = _lots
+        .where((lot) => lot.state == PurchaseLotState.rejected)
+        .length;
     final totalAmount = _lots.fold<int>(0, (sum, lot) => sum + lot.totalAmount);
 
     return Scaffold(
@@ -124,220 +132,214 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFF8FBFA),
-                Color(0xFFF2F5F3),
-                Color(0xFFF4F7F5),
-              ],
+              colors: [Color(0xFFF8FBFA), Color(0xFFF2F5F3), Color(0xFFF4F7F5)],
             ),
           ),
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF0F7A5A), Color(0xFF1A9A6B)],
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0F7A5A), Color(0xFF1A9A6B)],
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F7A5A).withValues(alpha: 0.22),
+                      blurRadius: 30,
+                      offset: const Offset(0, 16),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0F7A5A).withValues(alpha: 0.22),
-                    blurRadius: 30,
-                    offset: const Offset(0, 16),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => context.pop(),
-                        child: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => context.pop(),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.16),
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '$totalLots achats',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Mes achats',
-                    style: GoogleFonts.inter(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      height: 1.05,
-                      letterSpacing: -0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Chaque carte résume le carnet, le montant total et la date de validation.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SummaryPill(
-                          label: 'Validés',
-                          value: '$approvedLots',
-                          color: const Color(0xFFDCFCE7),
-                          foreground: const Color(0xFF0F7A5A),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _SummaryPill(
-                          label: 'Rejetés',
-                          value: '$rejectedLots',
-                          color: const Color(0xFFFFE4E6),
-                          foreground: const Color(0xFFB91C1C),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _SummaryPill(
-                          label: 'Montant',
-                          value: Formatters.money(totalAmount),
-                          color: Colors.white.withValues(alpha: 0.14),
-                          foreground: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: _loading
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                      children: const [
-                        SizedBox(height: 18),
-                        AppLoadingSkeleton(
-                          style: AppLoadingSkeletonStyle.qrCards,
-                          itemCount: 4,
-                        ),
-                      ],
-                    )
-                  : _error != null
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(20),
-                          children: [
-                            SizedBox(
-                              height: minEmptyHeight,
-                              child: _EmptyPanel(
-                                icon: Icons.cloud_off_outlined,
-                                title: 'Connexion requise',
-                                message: _error!,
-                                actionLabel: 'Réessayer',
-                                onAction: _refresh,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.16),
                               ),
                             ),
-                          ],
-                        )
-                      : RefreshIndicator(
-                          color: scheme.primary,
-                          onRefresh: _refresh,
-                          child: _lots.isEmpty
-                              ? ListView(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    20,
-                                    20,
-                                    20,
-                                    96,
-                                  ),
-                                  children: [
-                                    SizedBox(
-                                      height: minEmptyHeight,
-                                      child: _EmptyPanel(
-                                        icon: Icons.receipt_long_outlined,
-                                        title: 'Aucun achat',
-                                        message:
-                                            'Créez un nouvel achat pour faire apparaître ici le carnet, le montant et sa validation.',
-                                        actionLabel: 'Nouvel achat',
-                                        onAction: () async {
-                                          await context.push('/purchases/new');
-                                          await _refresh();
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : ListView.separated(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    4,
-                                    16,
-                                    96,
-                                  ),
-                                  itemCount: _lots.length,
-                                  separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 14),
-                                  itemBuilder: (ctx, i) {
-                                    final lot = _lots[i];
-                                    return _PurchaseTile(
-                                      lot: lot,
-                                      onTap: () => context
-                                          .push('/purchases/${lot.id}')
-                                          .then((_) => _refresh()),
-                                    );
-                                  },
-                                ),
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-            ),
-          ],
-        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '$totalLots achats',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Mes achats',
+                      style: GoogleFonts.inter(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.05,
+                        letterSpacing: -0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Chaque carte résume le carnet, le montant total et la date de validation.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SummaryPill(
+                            label: 'Validés',
+                            value: '$approvedLots',
+                            color: const Color(0xFFDCFCE7),
+                            foreground: const Color(0xFF0F7A5A),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _SummaryPill(
+                            label: 'Rejetés',
+                            value: '$rejectedLots',
+                            color: const Color(0xFFFFE4E6),
+                            foreground: const Color(0xFFB91C1C),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _SummaryPill(
+                            label: 'Montant',
+                            value: Formatters.money(totalAmount),
+                            color: Colors.white.withValues(alpha: 0.14),
+                            foreground: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: _loading
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                        children: const [
+                          SizedBox(height: 18),
+                          AppLoadingSkeleton(
+                            style: AppLoadingSkeletonStyle.qrCards,
+                            itemCount: 4,
+                          ),
+                        ],
+                      )
+                    : _error != null
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          SizedBox(
+                            height: minEmptyHeight,
+                            child: _EmptyPanel(
+                              icon: Icons.cloud_off_outlined,
+                              title: 'Connexion requise',
+                              message: _error!,
+                              actionLabel: 'Réessayer',
+                              onAction: _refresh,
+                            ),
+                          ),
+                        ],
+                      )
+                    : RefreshIndicator(
+                        color: scheme.primary,
+                        onRefresh: _refresh,
+                        child: _lots.isEmpty
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  20,
+                                  20,
+                                  96,
+                                ),
+                                children: [
+                                  SizedBox(
+                                    height: minEmptyHeight,
+                                    child: _EmptyPanel(
+                                      icon: Icons.receipt_long_outlined,
+                                      title: 'Aucun achat',
+                                      message:
+                                          'Créez un nouvel achat pour faire apparaître ici le carnet, le montant et sa validation.',
+                                      actionLabel: 'Nouvel achat',
+                                      onAction: () async {
+                                        await context.push('/purchases/new');
+                                        await _refresh();
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  4,
+                                  16,
+                                  96,
+                                ),
+                                itemCount: _lots.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 14),
+                                itemBuilder: (ctx, i) {
+                                  final lot = _lots[i];
+                                  return _PurchaseTile(
+                                    lot: lot,
+                                    onTap: () => context
+                                        .push('/purchases/${lot.id}')
+                                        .then((_) => _refresh()),
+                                  );
+                                },
+                              ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -746,10 +748,7 @@ class _EmptyPanel extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF0F7A5A),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),

@@ -43,9 +43,7 @@ class AcpecFueltokenRpcCoordinator {
   static bool isRouteCacheable(String route) {
     final r = route.toLowerCase();
     if (r.contains('/login') || r.contains('/logout')) return false;
-    if (r.contains('/qr/use') ||
-        r.contains('/qr/issue') ||
-        r.contains('/qr/split')) {
+    if (r.contains('/qr/use') || r.contains('/qr/issue')) {
       return false;
     }
     if (r.contains('/purchases/create')) return false;

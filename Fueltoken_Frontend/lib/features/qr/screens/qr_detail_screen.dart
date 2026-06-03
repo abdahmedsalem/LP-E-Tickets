@@ -194,7 +194,10 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
     final user = context.read<AuthBloc>().state.user!;
     final isOwner = user.id == qr.ownerId;
     final canRetirer =
-        isOwner && qr.state == QrState.active && qr.lines.isNotEmpty;
+        isOwner &&
+        qr.state == QrState.active &&
+        qr.lines.isNotEmpty &&
+        qr.totalQty > 1;
     final canSeparer = isOwner && qr.state == QrState.blocked;
     final pill = _statePill(qr.state);
     final scheme = Theme.of(context).colorScheme;
@@ -212,8 +215,11 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                   height: 52,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.ink,
+                      backgroundColor: const Color(0xFF1B8F3A),
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(
+                        0xFF1B8F3A,
+                      ).withValues(alpha: 0.35),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -223,12 +229,13 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                       ),
                     ),
                     onPressed: () async {
+                      final router = GoRouter.of(context);
                       final nextCode = canRetirer
-                          ? await context.push<String>('/qr/$qrSeg/retirer')
-                          : await context.push<String>('/qr/$qrSeg/separer');
+                          ? await router.push<String>('/qr/$qrSeg/retirer')
+                          : await router.push<String>('/qr/$qrSeg/separer');
                       if (!context.mounted) return;
                       if (nextCode != null && nextCode.isNotEmpty) {
-                        context.go('/qr/${Uri.encodeComponent(nextCode)}');
+                        router.go('/qr/${Uri.encodeComponent(nextCode)}');
                       } else {
                         await _refresh();
                       }
@@ -304,7 +311,7 @@ class _HeroQrCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Émis le ${Formatters.dateTime(qr.createdAt)}',
+                'Généré le ${Formatters.dateTime(qr.generatedAt)}',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -410,6 +417,24 @@ class _HeroQrCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              qr.state == QrState.consumed && qr.consumedAt != null
+                  ? 'Consommé le ${Formatters.dateTime(qr.consumedAt!)}'
+                  : qr.state == QrState.expired && qr.expiresAt != null
+                  ? 'Expiré le ${Formatters.dateTime(qr.expiresAt!)}'
+                  : qr.expiresAt != null
+                  ? 'Expire le ${Formatters.dateTime(qr.expiresAt!)}'
+                  : 'Date de génération: ${Formatters.dateTime(qr.generatedAt)}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.muted,
+              ),
             ),
           ),
         ],

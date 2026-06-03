@@ -65,6 +65,30 @@ class OdooApiConfig {
     return s.replaceAll(RegExp(r'/+$'), '');
   }
 
+  /// `true` si la base pointe vers un hôte local de développement.
+  ///
+  /// Les appels métiers mobiles doivent viser l'instance distante configurée
+  /// dans `ODOO_JSONRPC_BASE_URL`, pas `localhost` / `127.0.0.1`.
+  static bool get isLocalHostBase {
+    final raw = baseUrlTrimmed.trim();
+    if (raw.isEmpty) return false;
+    try {
+      final withScheme = raw.contains('://') ? raw : 'http://$raw';
+      final uri = Uri.parse(withScheme);
+      final host = uri.host.toLowerCase();
+      return host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '10.0.2.2' ||
+          host == '::1';
+    } catch (_) {
+      final lower = raw.toLowerCase();
+      return lower.contains('localhost') ||
+          lower.contains('127.0.0.1') ||
+          lower.contains('10.0.2.2') ||
+          lower.contains('::1');
+    }
+  }
+
   /// Réduit `http://https://host` ou `http://http://host` à un seul préfixe
   /// `scheme://` (boucle jusqu’à 8 niveaux au cas où le collage soit répété).
   static String collapseDuplicateUrlSchemePrefixes(String raw) {

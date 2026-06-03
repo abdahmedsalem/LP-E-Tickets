@@ -1,4 +1,5 @@
 import hashlib
+import os
 import secrets
 
 from dateutil.relativedelta import relativedelta
@@ -50,7 +51,14 @@ class AcpecMobileAuthOtp(models.Model):
 
     @api.model
     def _hash_otp(self, code, salt):
-        return hashlib.sha256(('%s:%s' % (salt, code or '')).encode('utf-8')).hexdigest()
+        return hashlib.scrypt(
+            (code or '').encode('utf-8'),
+            salt=(salt or '').encode('utf-8'),
+            n=2 ** 14,
+            r=8,
+            p=1,
+            dklen=32,
+        ).hex()
 
     @api.model
     def _new_code(self):
@@ -73,18 +81,26 @@ class AcpecMobileAuthOtp(models.Model):
             return 5
 
     @api.model
+    def _request_cooldown_seconds(self):
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'acpec_mobile_auth.otp_request_cooldown_seconds'
+        )
+        try:
+            return max(0, int(value or 60))
+        except Exception:
+            return 60
+
+    @api.model
     def _find_user(self, identifier):
         identifier = (identifier or '').strip()
         if not identifier:
             raise ValidationError(_('Identifiant requis.'))
         domain = ['|', '|', ('login', '=', identifier), ('mobile_phone', '=', identifier), ('email', '=', identifier)]
-        user = self.env['res.users'].sudo().search(domain, limit=1)
+        user = self.env['res.users'].sudo().with_context(active_test=False).search(domain, limit=1)
         if not user:
             raise AccessError(_('Compte mobile introuvable.'))
-        if not user.active:
-            raise AccessError(_('Compte mobile inactif.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
-            raise AccessError(_('Compte mobile rejeté.'))
+            raise AccessError(_('Compte mobile rejetÃƒÂ©.'))
         return user
 
     @api.model
@@ -98,9 +114,31 @@ class AcpecMobileAuthOtp(models.Model):
             is_station = user.has_group('acpec_fueltoken_base.group_fuel_station')
         except Exception:
             is_station = False
-        if not is_station and getattr(user, 'mobile_state', False) not in (False, 'approved'):
-            raise AccessError(_('Compte mobile non approuvé.'))
+        mobile_state = getattr(user, 'mobile_state', False)
+        if purpose == 'register':
+            if not user.active and mobile_state not in (False, 'pending'):
+                raise AccessError(_('Compte mobile inactif.'))
+            if mobile_state == 'rejected':
+                raise AccessError(_('Compte mobile rejetÃƒÂ©.'))
+        else:
+            if not user.active:
+                raise AccessError(_('Compte mobile inactif.'))
+            if not is_station and mobile_state not in (False, 'approved'):
+                raise AccessError(_('Compte mobile non approuvÃƒÂ©.'))
         now = fields.Datetime.now()
+        cooldown_seconds = self._request_cooldown_seconds()
+        if cooldown_seconds > 0:
+            cutoff = now - relativedelta(seconds=cooldown_seconds)
+            recent = self.sudo().search([
+                ('identifier', '=', identifier),
+                ('purpose', '=', purpose),
+                ('state', '=', 'pending'),
+                ('create_date', '>=', fields.Datetime.to_string(cutoff)),
+            ], limit=1)
+            if recent:
+                raise ValidationError(
+                    _('Veuillez patienter %ds avant de redemander un OTP.') % cooldown_seconds
+                )
         self.sudo().search([
             ('user_id', '=', user.id),
             ('purpose', '=', purpose),
@@ -120,25 +158,68 @@ class AcpecMobileAuthOtp(models.Model):
             'max_attempts': self._max_attempts(),
             'state': 'pending',
         })
-        # Provider hook.  In production, an SMS/WhatsApp/email provider module can override this method.
         challenge._send_otp_code(code)
         return challenge, code
 
+    def _sms_recipient_phone(self):
+        self.ensure_one()
+        return self.mobile or self.user_id.mobile_phone or self.identifier
+
+    def _sms_lang(self):
+        self.ensure_one()
+        candidate = self.user_id.lang or self.env.context.get('lang') or 'fr'
+        candidate = (candidate or 'fr').strip().lower()
+        return 'ar' if candidate.startswith('ar') else 'fr'
+
+    def _sms_gateway_configured(self):
+        params = self.env['ir.config_parameter'].sudo()
+        provider = (
+            params.get_param('SMS_PROVIDER')
+            or os.getenv('SMS_PROVIDER')
+            or 'chinguisoft'
+        ).strip().lower()
+        validation_key = (
+            params.get_param('SMS_VALIDATION_KEY')
+            or os.getenv('SMS_VALIDATION_KEY')
+            or os.getenv('CHINGUI_SOFT_VALIDATION_KEY')
+            or os.getenv('CHINGUISOFT_VALIDATION_KEY')
+            or ''
+        ).strip()
+        token = (
+            params.get_param('SMS_TOKEN')
+            or os.getenv('SMS_TOKEN')
+            or os.getenv('CHINGUI_SOFT_TOKEN')
+            or os.getenv('CHINGUISOFT_TOKEN')
+            or ''
+        ).strip()
+        return provider == 'chinguisoft' and bool(validation_key) and bool(token)
+
+    def _otp_dev_mode(self):
+        return bool(self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_dev_mode'))
+
     def _send_otp_code(self, code):
         self.ensure_one()
-        self.message_post(body=_('OTP généré pour %s.') % (self.identifier,))
+        phone = self._sms_recipient_phone()
+        if not self._sms_gateway_configured():
+            if self._otp_dev_mode():
+                self.message_post(body=_('OTP pret pour %s (mode dev sans SMS).') % (phone or self.identifier,))
+                return True
+            raise ValidationError(_('La configuration SMS Chinguisoft est incomplete.'))
+        sms_gateway = self.env['acpec.sms.gateway'].sudo()
+        sms_gateway.send_validation_sms(phone, code=code, lang=self._sms_lang())
+        self.message_post(body=_('OTP envoye par SMS pour %s.') % (phone or self.identifier,))
         return True
 
     def verify(self, code):
         self.ensure_one()
         now = fields.Datetime.now()
         if self.state != 'pending':
-            raise ValidationError(_('Ce challenge OTP n’est plus actif.'))
+            raise ValidationError(_('Ce challenge OTP nâ€™est plus actif.'))
         if self.blocked_until and self.blocked_until > now:
-            raise AccessError(_('Ce challenge OTP est temporairement bloqué.'))
+            raise AccessError(_('Ce challenge OTP est temporairement bloquÃ©.'))
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})
-            raise ValidationError(_('Le code OTP a expiré.'))
+            raise ValidationError(_('Le code OTP a expirÃ©.'))
         code = (code or '').strip()
         if not code or not code.isdigit() or len(code) != 6:
             raise ValidationError(_('Le code OTP doit contenir exactement 6 chiffres.'))
@@ -157,3 +238,4 @@ class AcpecMobileAuthOtp(models.Model):
             'verified_at': now,
         })
         return self.user_id
+

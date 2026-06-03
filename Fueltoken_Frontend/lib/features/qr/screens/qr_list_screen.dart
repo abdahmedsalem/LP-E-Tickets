@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,8 +33,8 @@ class _QrListScreenState extends State<QrListScreen> {
   static const _filters = <(String, QrState?)>[
     ('Tous', null),
     ('Actifs', QrState.active),
-    ('BloquÃ©s', QrState.blocked),
-    ('ConsommÃ©', QrState.consumed),
+    ('Bloqués', QrState.blocked),
+    ('Consommé', QrState.consumed),
   ];
 
   @override
@@ -76,7 +76,7 @@ class _QrListScreenState extends State<QrListScreen> {
       setState(() {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
-            ? 'Session expirÃ©e. Reconnectez-vous.'
+            ? 'Session expirée. Reconnectez-vous.'
             : e.message;
         _liveQrs = [];
       });
@@ -156,7 +156,7 @@ class _QrListScreenState extends State<QrListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Filtre par Ã©tat',
+                    'Filtre par état',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -201,7 +201,7 @@ class _QrListScreenState extends State<QrListScreen> {
                               title: 'Aucun QR',
                               message: _liveError != null
                                   ? _liveError!
-                                  : 'Aucun QR ne correspond Ã  ce filtre.',
+                                  : 'Aucun QR ne correspond à ce filtre.',
                               action: AppEnvironment.useAcpecLiveData
                                   ? FilledButton.tonalIcon(
                                       onPressed: _refreshLive,
@@ -316,13 +316,13 @@ class _QRCard extends StatelessWidget {
       case QrState.active:
         return 'Actif le';
       case QrState.blocked:
-        return 'BloquÃ© le';
+        return 'Bloqué le';
       case QrState.split:
-        return 'SplittÃ©e le';
+        return 'Splittée le';
       case QrState.consumed:
-        return 'ConsommÃ©e le';
+        return 'Consommée le';
       case QrState.expired:
-        return 'ExpirÃ©e le';
+        return 'Expirée le';
     }
   }
 

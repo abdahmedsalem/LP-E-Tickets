@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show exit, Platform, ProcessSignal;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -16,6 +17,7 @@ import 'core/bootstrap/production_config_gate.dart'
     show ProductionConfigGateApp, ProductionConfigGateReason;
 import 'core/config/app_environment.dart';
 import 'core/debug/acpec_network_startup_log.dart';
+import 'core/notifications/purchase_validation_notification_service.dart';
 import 'core/router/app_router.dart';
 import 'core/settings/app_preferences.dart';
 import 'core/theme/app_colors.dart';
@@ -51,28 +53,34 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _clearPersistedAuthOnDesktopInterrupt();
   if (AppEnvironment.blockReleaseWithoutApi) {
-    runApp(const ProductionConfigGateApp(
-      reason: ProductionConfigGateReason.missingApi,
-    ));
+    runApp(
+      const ProductionConfigGateApp(
+        reason: ProductionConfigGateReason.missingApi,
+      ),
+    );
     return;
   }
   if (AppEnvironment.blockReleaseInsecureApi) {
-    runApp(const ProductionConfigGateApp(
-      reason: ProductionConfigGateReason.insecureApi,
-    ));
+    runApp(
+      const ProductionConfigGateApp(
+        reason: ProductionConfigGateReason.insecureApi,
+      ),
+    );
     return;
   }
   debugPrintAcpecNetworkSummary();
   await initializeDateFormatting('en');
   await initializeDateFormatting('fr_FR');
   await initializeDateFormatting('ar');
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: AppColors.background,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-    systemNavigationBarColor: AppColors.surface,
-    systemNavigationBarIconBrightness: Brightness.dark,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: AppColors.background,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: AppColors.surface,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   runApp(const FuelTokenApp());
 }
 
@@ -83,15 +91,18 @@ class FuelTokenApp extends StatefulWidget {
   FuelTokenAppState createState() => FuelTokenAppState();
 }
 
-class FuelTokenAppState extends State<FuelTokenApp> {
+class FuelTokenAppState extends State<FuelTokenApp>
+    with WidgetsBindingObserver {
   late final AuthBloc _authBloc;
   late final GoRouter _router;
   String _localeCode = AppPreferences.defaultLocaleCode;
   ThemeMode _themeMode = ThemeMode.light;
+  Timer? _notificationPollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _authBloc = AuthBloc();
     AuthSessionHost.instance.attach(
       () => _authBloc.add(const AuthSessionExpiredRequested()),
@@ -103,7 +114,27 @@ class FuelTokenAppState extends State<FuelTokenApp> {
 
   Future<void> _bootstrap() async {
     await reloadPreferences();
+    await NotificationsStore.instance.load();
     NotificationsStore.instance.initCounts();
+    await PurchaseValidationNotificationService.instance.initialize();
+    _startNotificationPolling();
+    unawaited(_syncPurchaseNotifications());
+  }
+
+  void _startNotificationPolling() {
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => unawaited(_syncPurchaseNotifications()),
+    );
+  }
+
+  Future<void> _syncPurchaseNotifications() async {
+    final user = _authBloc.state.user;
+    if (user == null || !AppEnvironment.useAcpecLiveData) return;
+    try {
+      await PurchaseValidationNotificationService.instance.syncForUser(user);
+    } catch (_) {}
   }
 
   Future<void> reloadPreferences() async {
@@ -114,19 +145,32 @@ class FuelTokenAppState extends State<FuelTokenApp> {
       _localeCode = locale;
       _themeMode = dark ? ThemeMode.dark : ThemeMode.light;
     });
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: dark ? const Color(0xFF0F172A) : AppColors.background,
-      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-      statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor:
-          dark ? const Color(0xFF1E293B) : AppColors.surface,
-      systemNavigationBarIconBrightness:
-          dark ? Brightness.light : Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: dark ? const Color(0xFF0F172A) : AppColors.background,
+        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: dark
+            ? const Color(0xFF1E293B)
+            : AppColors.surface,
+        systemNavigationBarIconBrightness: dark
+            ? Brightness.light
+            : Brightness.dark,
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncPurchaseNotifications());
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notificationPollTimer?.cancel();
     AuthSessionHost.instance.detach();
     _authBloc.close();
     super.dispose();
@@ -143,10 +187,7 @@ class FuelTokenAppState extends State<FuelTokenApp> {
         darkTheme: AppTheme.dark(),
         themeMode: _themeMode,
         locale: AppPreferences.localeFromCode(_localeCode),
-        supportedLocales: const [
-          Locale('fr'),
-          Locale('ar'),
-        ],
+        supportedLocales: const [Locale('fr'), Locale('ar')],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,

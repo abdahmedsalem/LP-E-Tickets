@@ -12,11 +12,18 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
         self._require_fuel_group(user, 'manager')
         return user
 
+    def _carnet_type_label(self, rec):
+        face_count = int(rec.face_count or 0)
+        face_value = int(rec.face_value or 0)
+        if face_count > 0 and face_value > 0:
+            return 'Carnet %s × %s' % (face_count, face_value)
+        return rec.name or rec.code or 'Carnet'
+
     def _carnet_payload(self, rec):
         return {
             'id': rec.id,
             'code': rec.code,
-            'name': rec.name,
+            'name': self._carnet_type_label(rec),
             'face_count': rec.face_count,
             'face_value': rec.face_value,
             'carnet_amount': rec.carnet_amount,
@@ -51,7 +58,7 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
                 'id': line.id,
                 'carnet_type_id': line.carnet_type_id.id,
                 'carnet_type_code': line.carnet_type_id.code,
-                'carnet_type_name': line.carnet_type_id.name,
+                'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
                 'carnet_qty': line.carnet_qty,
                 'face_count': line.face_count,
                 'face_value': line.face_value,

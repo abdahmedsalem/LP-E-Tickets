@@ -128,7 +128,7 @@ API_CATALOG_FUELTOKEN = [
         'method': 'POST',
         'payload': {'state': 'active'},
         'requires_token': True,
-        'note': 'Le champ state est optionnel : active, blocked, split, consumed, expired.',
+        'note': 'Le champ state est optionnel : active, blocked, consumed, expired.',
     },
     {
         'group': 'FuelToken Mobile',
@@ -163,22 +163,6 @@ API_CATALOG_FUELTOKEN = [
         },
         'requires_token': True,
         'note': 'Separe automatiquement les lignes non expirees d un QR bloque/partiellement expire vers un nouveau QR actif.',
-    },
-    {
-        'group': 'FuelToken Mobile',
-        'label': 'Splitter un QR',
-        'route': '/api/acpec/fueltoken/v1/mobile/qr/split',
-        'method': 'POST',
-        'payload': {
-            'public_code': 'QR-REMPLACER-PAR-CODE-REEL',
-            'children': [
-                {'lines': [{'face_value': 500, 'qty': 1}]},
-                {'lines': [{'face_value': 500, 'qty': 1}]},
-            ],
-            'idempotency_key': 'TEST-QR-SPLIT-001',
-        },
-        'requires_token': True,
-        'note': 'Le split redistribue exactement les faces entières du QR parent.',
     },
     {
         'group': 'FuelToken Station',

@@ -48,6 +48,29 @@ class AcpecFuelFaceLine(models.Model):
             if rec.qty_initial != rec.qty_available + rec.qty_qr_active + rec.qty_qr_blocked + rec.qty_consumed + rec.qty_expired:
                 raise ValidationError(_('Invariant de conservation des faces non respecte.'))
 
+    def is_transferable_carnet_line(self):
+        """Return True when the face line can be transferred as intact carnet blocks."""
+        self.ensure_one()
+        face_count = self.carnet_type_id.face_count or 0
+        if face_count <= 0:
+            return False
+        if self.expires_at and self.expires_at <= fields.Datetime.now():
+            return False
+        if self.qty_initial <= 0 or self.qty_available <= 0:
+            return False
+        if self.qty_available != self.qty_initial:
+            return False
+        if self.qty_qr_active or self.qty_qr_blocked or self.qty_consumed or self.qty_expired:
+            return False
+        return self.qty_available >= face_count and self.qty_available % face_count == 0
+
+    def transferable_carnet_count(self):
+        self.ensure_one()
+        if not self.is_transferable_carnet_line():
+            return 0
+        face_count = self.carnet_type_id.face_count or 0
+        return self.qty_available // face_count
+
     def _lock_records(self):
         if not self.ids:
             return
