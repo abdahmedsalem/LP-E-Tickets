@@ -5,9 +5,10 @@ enum TxType {
   purchaseValidated,
   purchaseRejected,
   qrEmission,
-  qrSplit,
+  qrSeparer,
   qrRetirer,
   carnetTransfer,
+  carnetReceived,
   qrBlocked,
   stationConsumption,
   expiration,
@@ -16,7 +17,6 @@ enum TxType {
 }
 
 extension TxTypeX on TxType {
-  /// Libellé technique (filtre uniquement côté client — l'API 5.6 n'accepte pas ce paramètre).
   String? get apiFilterValue {
     switch (this) {
       case TxType.purchaseSubmitted:
@@ -27,12 +27,14 @@ extension TxTypeX on TxType {
         return 'purchase_rejected';
       case TxType.qrEmission:
         return 'qr_emission';
-      case TxType.qrSplit:
-        return 'qr_split';
+      case TxType.qrSeparer:
+        return 'separer_qr';
       case TxType.qrRetirer:
         return 'qr_retirer';
       case TxType.carnetTransfer:
         return 'carnet_transfer';
+      case TxType.carnetReceived:
+        return 'carnet_received';
       case TxType.qrBlocked:
         return 'qr_blocked';
       case TxType.stationConsumption:
@@ -47,19 +49,21 @@ extension TxTypeX on TxType {
   String get label {
     switch (this) {
       case TxType.purchaseSubmitted:
-        return 'Achats en attente';
+        return 'Achat en attente';
       case TxType.purchaseValidated:
-        return 'Achats validé';
+        return 'Achat validé';
       case TxType.purchaseRejected:
-        return 'Achats rejeté';
+        return 'Achat rejeté';
       case TxType.qrEmission:
         return 'Émission QR';
-      case TxType.qrSplit:
-        return 'Split QR';
+      case TxType.qrSeparer:
+        return 'Séparation QR';
       case TxType.qrRetirer:
         return 'Retrait QR';
       case TxType.carnetTransfer:
         return 'Transfert de carnets';
+      case TxType.carnetReceived:
+        return 'Réception de carnets';
       case TxType.qrBlocked:
         return 'QR bloqué';
       case TxType.stationConsumption:
@@ -70,6 +74,9 @@ extension TxTypeX on TxType {
         return 'Opération';
     }
   }
+
+  bool get isTransfer =>
+      this == TxType.carnetTransfer || this == TxType.carnetReceived;
 }
 
 class TransactionLine extends Equatable {
@@ -111,6 +118,9 @@ class BusinessTransaction extends Equatable {
   final List<TransactionLine> lines;
   final String? note;
 
+  /// Pour les transferts : nom de l'autre partie (destinataire si sortant, expéditeur si entrant).
+  final String? transferParty;
+
   const BusinessTransaction({
     required this.id,
     required this.type,
@@ -125,9 +135,21 @@ class BusinessTransaction extends Equatable {
     this.stationId,
     this.stationName,
     this.note,
+    this.transferParty,
   });
 
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
+
+  /// Libellé contextuel enrichi (avec partie pour les transferts).
+  String get displayTitle {
+    if (type == TxType.carnetTransfer && transferParty != null) {
+      return 'Transfert vers $transferParty';
+    }
+    if (type == TxType.carnetReceived && transferParty != null) {
+      return 'Reçu de $transferParty';
+    }
+    return type.label;
+  }
 
   @override
   List<Object?> get props => [id, type, date];

@@ -12,7 +12,6 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
-import '../../auth/screens/signup_pending_screen.dart';
 
 /// Étape 2 : demande dinscription client côté Odoo ACPEC.
 class AcpecSignupStep2Screen extends StatefulWidget {
@@ -108,13 +107,7 @@ class _AcpecSignupStep2ScreenState extends State<AcpecSignupStep2Screen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      context.go(
-        '/signup/pending',
-        extra: SignupPendingRouteArgs(
-          identifier: _email.text.trim(),
-          password: _password.text,
-        ),
-      );
+      context.go('/login');
     } on OdooJsonRpcException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -175,7 +168,7 @@ class _AcpecSignupStep2ScreenState extends State<AcpecSignupStep2Screen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
               children: [
                 Text(
-                  'Renseignez vos informations. Un administrateur validera votre demande.',
+                  'Renseignez vos informations. Votre compte sera active apres verification OTP.',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     height: 1.45,
@@ -337,7 +330,7 @@ class _AcpecSignupStep2ScreenState extends State<AcpecSignupStep2Screen> {
                           child: _submitting
                               ? AppInlineLoading(size: 22)
                               : Text(
-                                  'Envoyer la demande',
+                                  'Creer le compte',
                                   style: GoogleFonts.inter(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15,

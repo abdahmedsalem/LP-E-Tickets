@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +9,8 @@ import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/purchases_refresh_bus.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/acpec_admin_report_summary.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
@@ -24,15 +26,27 @@ class AdminHomeScreen extends StatefulWidget {
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   AcpecAdminReportSummary? _summary;
-  bool _loading = false;
   String? _error;
+  late final VoidCallback _refreshBusListener;
 
   @override
   void initState() {
     super.initState();
+    _refreshBusListener = () {
+      if (mounted && AppEnvironment.useAcpecLiveData) _loadSummary();
+    };
+    WalletRefreshBus.instance.revision.addListener(_refreshBusListener);
+    PurchasesRefreshBus.instance.revision.addListener(_refreshBusListener);
     if (AppEnvironment.useAcpecLiveData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadSummary());
     }
+  }
+
+  @override
+  void dispose() {
+    WalletRefreshBus.instance.revision.removeListener(_refreshBusListener);
+    PurchasesRefreshBus.instance.revision.removeListener(_refreshBusListener);
+    super.dispose();
   }
 
   String _briefError(Object e) {
@@ -45,7 +59,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Future<void> _loadSummary() async {
     if (!AppEnvironment.useAcpecLiveData) return;
     setState(() {
-      _loading = true;
       _error = null;
     });
     try {
@@ -56,13 +69,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       if (!mounted) return;
       setState(() {
         _summary = summary;
-        _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = _briefError(e);
-        _loading = false;
       });
     }
   }
@@ -238,17 +249,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         scheme: scheme,
                         shadow: shadow,
                         onTap: () => context.go('/admin/lots'),
-                      ),
-                    ),
-                    SizedBox(
-                      width: tileWidth,
-                      child: _ActionCard(
-                        icon: Icons.people_outline_rounded,
-                        title: 'Gestion compte',
-                        accent: const Color(0xFF33A853),
-                        scheme: scheme,
-                        shadow: shadow,
-                        onTap: () => context.go('/admin/accounts'),
                       ),
                     ),
                     SizedBox(
@@ -454,7 +454,9 @@ class _ActionCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
+                  border: Border.all(
+                    color: AppColors.line.withValues(alpha: 0.9),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.055),
@@ -493,7 +495,10 @@ class _ActionCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: math.min(14.5, math.max(12.5, cardWidth * 0.13)),
+                          fontSize: math.min(
+                            14.5,
+                            math.max(12.5, cardWidth * 0.13),
+                          ),
                           fontWeight: FontWeight.w800,
                           height: 1.08,
                           color: AppColors.ink,

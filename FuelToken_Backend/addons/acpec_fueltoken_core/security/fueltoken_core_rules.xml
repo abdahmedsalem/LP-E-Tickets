@@ -22,6 +22,10 @@
         <field name="model_id" ref="model_acpec_fuel_carnet_transfer"/>
         <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_user'))]"/>
         <field name="domain_force">['|', ('source_partner_id', '=', user.partner_id.id), ('dest_partner_id', '=', user.partner_id.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
     </record>
     <record id="rule_fuel_carnet_transfer_manager_company" model="ir.rule">
         <field name="name">Transferts société</field>

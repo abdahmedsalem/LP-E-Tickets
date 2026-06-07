@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _handlingAuthMessage = false;
   bool _biometricUnlockStarted = false;
+  bool _biometricAvailable = false;
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   @override
@@ -33,8 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
     _identifier.addListener(_onFieldChanged);
     _password.addListener(_onFieldChanged);
     _hydrateIdentifier();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _tryUnlockWithBiometrics());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _tryUnlockWithBiometrics(),
+    );
   }
 
   Future<void> _hydrateIdentifier() async {
@@ -86,7 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _tryUnlockWithBiometrics() async {
     if (_biometricUnlockStarted) return;
     final enabled = await LoginSessionCache.biometricPreferred();
-    if (!enabled || !mounted) return;
+    if (!mounted) return;
+    if (!enabled) return;
     final id = await LoginSessionCache.lastIdentifier();
     final pw = await LoginSessionCache.lastPassword();
     if (id == null || pw == null || id.isEmpty || pw.isEmpty) return;
@@ -97,6 +100,11 @@ class _LoginScreenState extends State<LoginScreen> {
         s.status == AuthStatus.authenticating) {
       return;
     }
+
+    // Vérifier si la biométrie est disponible sur cet appareil
+    final canCheck = await _localAuth.canCheckBiometrics;
+    if (!canCheck || !mounted) return;
+    if (mounted) setState(() => _biometricAvailable = true);
 
     _biometricUnlockStarted = true;
     try {
@@ -137,9 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.white,
@@ -206,9 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 4),
-                            const _LoginBrandBlock(),
-                            const SizedBox(height: 44),
+                            const SizedBox(height: 16),
                             const _LoginWelcomeCopy(),
                             const SizedBox(height: 34),
                             const _LoginSectionTitle(title: 'Connexion'),
@@ -222,19 +226,26 @@ class _LoginScreenState extends State<LoginScreen> {
                               autocorrect: false,
                               validator: _validateIdentifier,
                               borderColor: const Color(0xFFC7CEDA),
-                              counterLabel: _identifier.text.trim().isEmpty
-                                  ? '0/8'
-                                  : '${_identifier.text.trim().length}/8',
+                              // Masquer le compteur si l'identifiant est un email
+                              counterLabel: _identifier.text.contains('@')
+                                  ? ''
+                                  : _identifier.text.trim().isEmpty
+                                  ? '8 chiffres'
+                                  : '${_identifier.text.trim().replaceAll(RegExp(r'\D'), '').length}/8',
                             ),
                             const SizedBox(height: 18),
                             _LoginTextField(
                               controller: _password,
                               hint: 'Mot de passe',
                               obscure: _obscure,
-                              validator: validateAppPassword,
+                              validator: validateSixDigitNumericPassword,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(6),
+                              ],
                               borderColor: const Color(0xFFC7CEDA),
-                              counterLabel:
-                                  '${_password.text.trim().length}/4',
+                              counterLabel: '${_password.text.trim().length}/6',
                               trailing: IconButton(
                                 splashRadius: 20,
                                 iconSize: 20,
@@ -244,9 +255,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
                                 ),
-                                onPressed: () => setState(
-                                  () => _obscure = !_obscure,
-                                ),
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -312,8 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ? const SizedBox(
                                               width: 24,
                                               height: 24,
-                                              child:
-                                                  CircularProgressIndicator(
+                                              child: CircularProgressIndicator(
                                                 strokeWidth: 2.4,
                                                 color: Colors.white,
                                               ),
@@ -398,9 +407,36 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
+                            // Bouton biométrie relancable si disponible et non en cours
+                            if (_biometricAvailable && !_biometricUnlockStarted && !loading) ...[
+                              const SizedBox(height: 16),
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() => _biometricUnlockStarted = false);
+                                    _tryUnlockWithBiometrics();
+                                  },
+                                  icon: const Icon(
+                                    Icons.fingerprint,
+                                    size: 20,
+                                    color: Color(0xFF203A73),
+                                  ),
+                                  label: const Text(
+                                    'Déverrouiller avec empreinte',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      color: Color(0xFF203A73),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             if (state.loginInfoMessage != null) ...[
                               const SizedBox(height: 18),
-                              _SessionNoticeCard(message: state.loginInfoMessage!),
+                              _SessionNoticeCard(
+                                message: state.loginInfoMessage!,
+                              ),
                             ],
                           ],
                         ),
@@ -455,84 +491,6 @@ class _SessionNoticeCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _LoginBrandBlock extends StatelessWidget {
-  const _LoginBrandBlock();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/logo_fueltoken.png',
-              width: 86,
-              height: 86,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                _FuelTokenWordmark(),
-                SizedBox(height: 0),
-                Text(
-                  'SMART FUEL WALLET',
-                  style: TextStyle(
-                    fontSize: 10.0,
-                    letterSpacing: 4.6,
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _FuelTokenWordmark extends StatelessWidget {
-  const _FuelTokenWordmark();
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: const TextSpan(
-        children: [
-          TextSpan(
-            text: 'Fuel',
-            style: TextStyle(
-              color: Color(0xFF203A73),
-              fontSize: 34,
-              height: 1.0,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-            ),
-          ),
-          TextSpan(
-            text: 'Token',
-            style: TextStyle(
-              color: Color(0xFF2EA043),
-              fontSize: 34,
-              height: 1.0,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -605,6 +563,7 @@ class _LoginTextField extends StatelessWidget {
     this.keyboardType,
     this.textCapitalization = TextCapitalization.none,
     this.autocorrect = true,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -617,6 +576,7 @@ class _LoginTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextCapitalization textCapitalization;
   final bool autocorrect;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -627,6 +587,7 @@ class _LoginTextField extends StatelessWidget {
           controller: controller,
           obscureText: obscure,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           textCapitalization: textCapitalization,
           autocorrect: autocorrect,
           validator: validator,
@@ -663,11 +624,17 @@ class _LoginTextField extends StatelessWidget {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.2),
+              borderSide: const BorderSide(
+                color: Color(0xFFDC2626),
+                width: 1.2,
+              ),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.6),
+              borderSide: const BorderSide(
+                color: Color(0xFFDC2626),
+                width: 1.6,
+              ),
             ),
           ),
         ),

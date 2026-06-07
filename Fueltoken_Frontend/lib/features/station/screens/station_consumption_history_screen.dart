@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/business_transaction.dart';
 import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -36,6 +37,7 @@ class _StationConsumptionHistoryScreenState
   List<BusinessTransaction> _items = [];
   bool _loading = true;
   String? _error;
+  late final VoidCallback _walletBusListener;
 
   late DateTime _draftFrom;
   late DateTime _draftTo;
@@ -55,6 +57,11 @@ class _StationConsumptionHistoryScreenState
     _draftTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _activeFrom = _draftFrom;
     _activeTo = _draftTo;
+    // Recharger l'historique quand un scan est effectué (WalletRefreshBus)
+    _walletBusListener = () {
+      if (mounted && AppEnvironment.useAcpecLiveData) _load();
+    };
+    WalletRefreshBus.instance.revision.addListener(_walletBusListener);
     if (AppEnvironment.useAcpecLiveData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     } else {
@@ -64,6 +71,7 @@ class _StationConsumptionHistoryScreenState
 
   @override
   void dispose() {
+    WalletRefreshBus.instance.revision.removeListener(_walletBusListener);
     _skeletonCtrl.dispose();
     super.dispose();
   }

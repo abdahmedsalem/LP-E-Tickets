@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
 
-enum QrState { active, blocked, split, consumed, expired }
+// États réels du backend : active, blocked, consumed, expired.
+// `split` n'existe pas côté serveur — retirer_qr et separer_qr produisent
+// des enfants actifs, le parent devient blocked ou expired selon les cas.
+enum QrState { active, blocked, consumed, expired }
 
 extension QrStateX on QrState {
   String get label {
@@ -9,8 +12,6 @@ extension QrStateX on QrState {
         return 'Actif';
       case QrState.blocked:
         return 'Bloqué';
-      case QrState.split:
-        return 'Splitté';
       case QrState.consumed:
         return 'Consommé';
       case QrState.expired:
@@ -25,8 +26,6 @@ extension QrStateX on QrState {
         return 'active';
       case QrState.blocked:
         return 'blocked';
-      case QrState.split:
-        return 'split';
       case QrState.consumed:
         return 'consumed';
       case QrState.expired:
@@ -42,6 +41,10 @@ class QrLine extends Equatable {
   final String lotId;
   final String lotInternalRef;
   final String faceLineId;
+  final String carnetTypeId;
+  final String carnetTypeCode;
+  final String carnetTypeName;
+  final int carnetSize;
   final int faceValue;
   final int qty;
   final DateTime expirationDate;
@@ -52,6 +55,10 @@ class QrLine extends Equatable {
     required this.lotId,
     required this.lotInternalRef,
     required this.faceLineId,
+    this.carnetTypeId = '',
+    this.carnetTypeCode = '',
+    this.carnetTypeName = '',
+    this.carnetSize = 0,
     required this.faceValue,
     required this.qty,
     required this.expirationDate,
@@ -61,7 +68,18 @@ class QrLine extends Equatable {
   bool get isExpired => DateTime.now().isAfter(expirationDate);
 
   @override
-  List<Object?> get props => [id, lotId, faceValue, qty, expirationDate];
+  List<Object?> get props => [
+    id,
+    lotId,
+    faceLineId,
+    carnetTypeId,
+    carnetTypeCode,
+    carnetTypeName,
+    carnetSize,
+    faceValue,
+    qty,
+    expirationDate,
+  ];
 }
 
 /// acpec.fuel.qr — public-scannable envelope of face lines.

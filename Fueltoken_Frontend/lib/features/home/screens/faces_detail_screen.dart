@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
@@ -17,7 +17,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// carnets disponibles â€” vue par face et par carnet.
+/// Carnets disponibles — vue par face et par carnet.
 class FacesDetailScreen extends StatefulWidget {
   const FacesDetailScreen({super.key});
 
@@ -29,6 +29,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   bool _liveLoading = false;
   String? _liveError;
   List<FaceLine> _liveLines = [];
+  _CarnetQuickFilter _quickFilter = _CarnetQuickFilter.all;
   Map<String, int> _carnetSizeById = {};
   Map<String, int> _carnetSizeByCode = {};
   Map<String, int> _carnetSizeByName = {};
@@ -37,15 +38,27 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   Map<String, String> _carnetNameByCode = {};
   Map<int, String> _carnetNameByFaceValue = {};
 
+  late final VoidCallback _facesBusListener;
+
   @override
   void initState() {
     super.initState();
+    _facesBusListener = () {
+      if (mounted && AppEnvironment.useAcpecLiveData) _loadLiveFaces();
+    };
+    FacesRefreshBus.instance.revision.addListener(_facesBusListener);
     if (AppEnvironment.useAcpecLiveData) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadLiveFaces();
         _loadCarnetSizes();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    FacesRefreshBus.instance.revision.removeListener(_facesBusListener);
+    super.dispose();
   }
 
   Future<void> _loadCarnetSizes() async {
@@ -126,6 +139,22 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     }
   }
 
+  bool _matchesQuickFilter(FaceLine line) {
+    switch (_quickFilter) {
+      case _CarnetQuickFilter.all:
+        return true;
+      case _CarnetQuickFilter.active:
+        return !line.isExpired;
+      case _CarnetQuickFilter.expired:
+        return line.isExpired;
+    }
+  }
+
+  void _setQuickFilter(_CarnetQuickFilter next) {
+    if (_quickFilter == next) return;
+    setState(() => _quickFilter = next);
+  }
+
   int _carnetSizeFor(FaceLine line) {
     if (line.carnetFaceCount > 0) return line.carnetFaceCount;
     final byId = _carnetSizeById[line.carnetTypeId.trim()];
@@ -184,6 +213,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 
   Future<void> _openCarnetDetail(FaceLine line) async {
     final scheme = Theme.of(context).colorScheme;
+    final bottom = MediaQuery.paddingOf(context).bottom;
     final totalQty = line.initialQty;
     final availableQty = line.availableQty;
     final activeQty = line.qrActiveQty;
@@ -201,155 +231,109 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         : availableQty > 0
         ? AppColors.success
         : AppColors.warning;
+    final facts = <_CarnetDetailFact>[
+      _CarnetDetailFact(
+        label: 'Etat',
+        value: stateLabel,
+        icon: Icons.verified_outlined,
+        color: stateColor,
+      ),
+      _CarnetDetailFact(
+        label: 'Expire le',
+        value: Formatters.dateTime(line.expirationDate),
+        icon: Icons.event_outlined,
+        color: const Color(0xFF2563EB),
+      ),
+      _CarnetDetailFact(
+        label: 'Valeur faciale',
+        value: '${Formatters.numberFr(line.faceValue)} MRU',
+        icon: Icons.payments_outlined,
+        color: AppColors.primaryDeep,
+      ),
+      _CarnetDetailFact(
+        label: 'Tickets totaux',
+        value: Formatters.numberFr(totalQty),
+        icon: Icons.confirmation_number_outlined,
+        color: const Color(0xFF1B8F3A),
+      ),
+    ];
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      enableDrag: false,
-      isDismissible: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        final bottomPadding = MediaQuery.paddingOf(context).bottom + 16;
-        return FractionallySizedBox(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 0.86,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(22),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, -4),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.54,
+          minChildSize: 0.36,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(22),
                 ),
-              ],
-            ),
-            child: ListView(
-              padding: EdgeInsets.only(
-                top: 10,
-                left: 16,
-                right: 16,
-                bottom: bottomPadding,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
                     height: 4,
                     decoration: BoxDecoration(
                       color: scheme.outline.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                AppCard(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _carnetTypeLabelFor(line),
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.ink,
-                                height: 1.05,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Text(
-                                  'Expire le',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.muted,
-                                    height: 1,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    Formatters.dateTimeDash(
-                                      line.expirationDate,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.ink,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
+                      children: [
+                        _CarnetDetailOverviewCard(
+                          title: _carnetTypeLabelFor(line),
+                          expirationDate: line.expirationDate,
+                          displayQty: displayQty,
+                          stateLabel: stateLabel,
+                          stateColor: stateColor,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Text(
-                            Formatters.numberFr(displayQty),
-                            style: GoogleFonts.inter(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.ink,
-                              height: 1,
-                            ),
+                        const SizedBox(height: 14),
+                        _CarnetDetailFactsGrid(facts: facts),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Repartition des tickets',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                            color: scheme.onSurfaceVariant,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            line.isExpired ? 'Expiré' : 'Disponibles',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.muted.withValues(alpha: 0.95),
-                              height: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(height: 12),
+                        _CarnetDetailStatsGrid(
+                          availableQty: availableQty,
+                          activeQty: activeQty,
+                          blockedQty: blockedQty,
+                          consumedQty: consumedQty,
+                          expiredQty: expiredQty,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _CarnetDetailSummaryCard(
-                  totalLabel: 'Quantité totale',
-                  totalValue: Formatters.numberFr(totalQty),
-                  amountLabel: 'Expire le',
-                  amountValue: DateFormat(
-                    'dd-MM-yyyy HH:mm',
-                    'fr_FR',
-                  ).format(line.expirationDate),
-                  stateLabel: stateLabel,
-                  stateColor: stateColor,
-                ),
-                const SizedBox(height: 14),
-                _CarnetDetailStatsGrid(
-                  availableQty: availableQty,
-                  activeQty: activeQty,
-                  blockedQty: blockedQty,
-                  consumedQty: consumedQty,
-                  expiredQty: expiredQty,
-                ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -364,9 +348,9 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         body: SafeArea(
           child: ListView(
             physics: AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 88),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              _HistoryTitleBar(title: 'Mes carnets', showBack: false),
+              const _LeftAlignedHeader(title: 'Mes carnets'),
               SizedBox(height: 20),
               AppLoadingSkeleton(
                 style: AppLoadingSkeletonStyle.ticketGroups,
@@ -384,7 +368,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              _HistoryTitleBar(title: 'Mes carnets', showBack: false),
+              const _LeftAlignedHeader(title: 'Mes carnets'),
               const SizedBox(height: 28),
               const Expanded(child: ApiRequiredView()),
             ],
@@ -393,7 +377,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       );
     }
 
-    final allLines = _liveLines;
+    final allLines = _liveLines.where(_matchesQuickFilter).toList();
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -404,9 +388,17 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
           onRefresh: _loadLiveFaces,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 88),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              _HistoryTitleBar(title: 'Mes carnets', showBack: false),
+              const _LeftAlignedHeader(title: 'Mes carnets'),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: _CarnetFilterChips(
+                  selected: _quickFilter,
+                  onSelected: _setQuickFilter,
+                ),
+              ),
               const SizedBox(height: 20),
               ...(_liveLoading && allLines.isEmpty
                   ? [
@@ -435,20 +427,17 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                   ? [
                       EmptyState(
                         icon: Icons.layers_outlined,
-                        title: "Aucun carnet disponible",
+                        title: "Aucun carnet",
                         message:
-                            "Le serveur nâ€™a renvoyÃ© aucune ligne avec des quantitÃ©s de carnets disponibles.",
+                            "Vous n'avez encore aucun carnet disponible.",
                       ),
                     ]
                   : [
                       for (final line in allLines)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: _CarnetLineCard(
-                            line: line,
-                            carnetTypeLabel: _carnetTypeLabelFor(line),
-                            onTap: () => _openCarnetDetail(line),
-                          ),
+                        _CarnetLineCard(
+                          line: line,
+                          carnetTypeLabel: _carnetTypeLabelFor(line),
+                          onTap: () => _openCarnetDetail(line),
                         ),
                     ]),
             ],
@@ -459,169 +448,289 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   }
 }
 
-class _HistoryTitleBar extends StatelessWidget {
-  const _HistoryTitleBar({required this.title, this.showBack = false});
+enum _CarnetQuickFilter { all, active, expired }
+
+class _LeftAlignedHeader extends StatelessWidget {
+  const _LeftAlignedHeader({required this.title});
 
   final String title;
-  final bool showBack;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
-      child: Row(
-        children: [
-          if (showBack) ...[
-            _HeaderButton(icon: Icons.chevron_left_rounded, onTap: () {}),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-                letterSpacing: -0.2,
-                color: AppColors.ink,
-              ),
-            ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            height: 1.2,
+            letterSpacing: -0.2,
+            color: AppColors.ink,
           ),
-          if (showBack) const SizedBox(width: 40),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderButton extends StatelessWidget {
-  const _HeaderButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.line.withValues(alpha: 0.95)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Icon(icon, size: 22, color: AppColors.ink),
         ),
       ),
     );
   }
 }
 
-class _CarnetDetailSummaryCard extends StatelessWidget {
-  const _CarnetDetailSummaryCard({
-    required this.totalLabel,
-    required this.totalValue,
-    required this.amountLabel,
-    required this.amountValue,
+class _CarnetFilterChips extends StatelessWidget {
+  const _CarnetFilterChips({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final _CarnetQuickFilter selected;
+  final ValueChanged<_CarnetQuickFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (_CarnetQuickFilter.all, 'Tous'),
+      (_CarnetQuickFilter.active, 'Actifs'),
+      (_CarnetQuickFilter.expired, 'Expirés'),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            _CarnetFilterChip(
+              label: items[i].$2,
+              selected: selected == items[i].$1,
+              onTap: () => onSelected(items[i].$1),
+            ),
+            if (i != items.length - 1) const SizedBox(width: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CarnetFilterChip extends StatelessWidget {
+  const _CarnetFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final bg = selected ? scheme.primary : scheme.surfaceContainerHighest;
+    final fg = selected ? scheme.onPrimary : scheme.onSurface;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: fg,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CarnetDetailOverviewCard extends StatelessWidget {
+  const _CarnetDetailOverviewCard({
+    required this.title,
+    required this.expirationDate,
+    required this.displayQty,
     required this.stateLabel,
     required this.stateColor,
   });
 
-  final String totalLabel;
-  final String totalValue;
-  final String amountLabel;
-  final String amountValue;
+  final String title;
+  final DateTime expirationDate;
+  final int displayQty;
   final String stateLabel;
   final Color stateColor;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.lineSoft),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.primaryTint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.layers_outlined, color: AppColors.primaryDeep),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  totalLabel,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                    height: 1.1,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  totalValue,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  amountLabel,
-                  style: const TextStyle(
-                    fontSize: 11.5,
+                  'Expire le ${Formatters.dateTime(expirationDate)}',
+                  style: TextStyle(
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  amountValue,
-                  style: GoogleFonts.inter(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryDark,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: stateColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              stateLabel,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: stateColor,
-              ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 90,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  stateLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: stateColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${Formatters.numberFr(displayQty)} tickets',
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: stateColor,
+                    height: 1,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _CarnetDetailFactsGrid extends StatelessWidget {
+  const _CarnetDetailFactsGrid({required this.facts});
+
+  final List<_CarnetDetailFact> facts;
+
+  @override
+  Widget build(BuildContext context) {
+    if (facts.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [for (final fact in facts) _CarnetDetailFactCard(fact: fact)],
+    );
+  }
+}
+
+class _CarnetDetailFactCard extends StatelessWidget {
+  const _CarnetDetailFactCard({required this.fact});
+
+  final _CarnetDetailFact fact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: (MediaQuery.sizeOf(context).width - 42) / 2,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(fact.icon, size: 16, color: fact.color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  fact.label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            fact.value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CarnetDetailFact {
+  const _CarnetDetailFact({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
 }
 
 class _CarnetDetailStatsGrid extends StatelessWidget {
@@ -761,11 +870,11 @@ class _CarnetLineCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 110),
+                      constraints: const BoxConstraints(maxWidth: 140),
                       child: Text(
                         '${Formatters.numberFr(line.availableQty)} tickets ${availableLabel.toLowerCase()}',
                         textAlign: TextAlign.right,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13.5,

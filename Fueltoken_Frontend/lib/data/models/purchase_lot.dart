@@ -26,6 +26,7 @@ class PurchaseLine extends Equatable {
   final String id;
   final String carnetTypeId;
   final String carnetTypeCode;
+  final String carnetTypeName;
   final int carnetCount;
   final int carnetSize;
   final int faceValue;
@@ -34,6 +35,7 @@ class PurchaseLine extends Equatable {
     required this.id,
     required this.carnetTypeId,
     required this.carnetTypeCode,
+    required this.carnetTypeName,
     required this.carnetCount,
     required this.carnetSize,
     required this.faceValue,
@@ -43,7 +45,15 @@ class PurchaseLine extends Equatable {
   int get lineAmount => faceCount * faceValue;
 
   @override
-  List<Object?> get props => [id, carnetTypeId, carnetCount, carnetSize, faceValue];
+  List<Object?> get props => [
+    id,
+    carnetTypeId,
+    carnetTypeCode,
+    carnetTypeName,
+    carnetCount,
+    carnetSize,
+    faceValue,
+  ];
 }
 
 /// Preuve ou pièce jointe liée à un achat (détail Odoo).

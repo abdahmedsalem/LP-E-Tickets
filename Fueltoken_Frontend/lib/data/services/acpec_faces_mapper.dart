@@ -78,7 +78,27 @@ class AcpecFacesMapper {
     final s = v.toString().trim();
     if (s.isEmpty) return null;
     var parsed = DateTime.tryParse(s);
-    if (parsed != null) return parsed;
+    if (parsed != null) {
+      // Odoo returns naive UTC strings (no 'Z' / timezone offset).
+      // If the string has no timezone indicator, treat it as UTC.
+      final hasTimezone =
+          s.endsWith('Z') ||
+          s.contains('+') ||
+          (s.length > 10 && s.substring(10).contains('-'));
+      if (!hasTimezone) {
+        return DateTime.utc(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+          parsed.microsecond,
+        );
+      }
+      return parsed;
+    }
     for (final pattern in [
       'yyyy-MM-dd HH:mm:ss',
       'yyyy-MM-dd HH:mm:ss.SSS',

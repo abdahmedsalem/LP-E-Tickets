@@ -8,8 +8,11 @@ import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/client_history_refresh_bus.dart';
+import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -18,10 +21,11 @@ import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_pill.dart';
 import '../../../shared/widgets/face_value_chip.dart';
-import '../../../shared/widgets/icon_btn.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
+import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../shared/widgets/app_message.dart';
 
 class SeparerQrScreen extends StatefulWidget {
   const SeparerQrScreen({super.key, required this.qrId});
@@ -113,6 +117,55 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
   Future<void> _submit() async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
+    final confirmed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => QrActionConfirmationScreen(
+          args: QrActionConfirmationArgs(
+            title: 'Confirmer la séparation',
+            subtitle: 'Séparation du QR bloqué',
+            confirmLabel: 'Séparer le QR',
+            hero: _SeparerConfirmationHero(
+              qrCode: parent.publicCode,
+              validCount: parent.lines
+                  .where((l) => !l.isExpired)
+                  .fold<int>(0, (s, l) => s + l.qty),
+              expiredCount: parent.lines
+                  .where((l) => l.isExpired)
+                  .fold<int>(0, (s, l) => s + l.qty),
+            ),
+            details: _SeparerConfirmationLinesSection(lines: parent.lines),
+            summaryRows: [
+              QrActionSummaryRow(
+                label: 'Lignes',
+                value: '${parent.lines.length}',
+              ),
+              QrActionSummaryRow(
+                label: 'Tickets valides',
+                value:
+                    '${parent.lines.where((l) => !l.isExpired).fold<int>(0, (s, l) => s + l.qty)}',
+              ),
+              QrActionSummaryRow(
+                label: 'Tickets expirés',
+                value:
+                    '${parent.lines.where((l) => l.isExpired).fold<int>(0, (s, l) => s + l.qty)}',
+              ),
+            ],
+            disclaimer:
+                'La séparation créera un nouveau QR pour les lignes non expirées.',
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      await _performSubmit();
+    }
+  }
+
+  Future<void> _performSubmit() async {
+    final parent = _parent;
+    if (parent == null || parent.state != QrState.blocked) return;
     final user = context.read<AuthBloc>().state.user;
     if (user == null) throw Exception('Session requise.');
 
@@ -155,33 +208,25 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         OdooFueltokenRpcConfig.qrList,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('QR séparé avec succès.'),
-          backgroundColor: AppColors.leaderGreen,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppMessage.success(context, 'QR séparé avec succès.');
       QrRefreshBus.instance.bump();
+      WalletRefreshBus.instance.bump();
+      FacesRefreshBus.instance.bump();
+      ClientHistoryRefreshBus.instance.bump();
       await Future<void>.delayed(const Duration(milliseconds: 250));
       if (!mounted) return;
       context.go('/qr');
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.isOdooSessionExpired
-                ? 'Session expirée. Reconnectez-vous.'
-                : e.message,
-          ),
-        ),
+      AppMessage.error(
+        context,
+        e.isOdooSessionExpired
+            ? 'Session expirée. Reconnectez-vous.'
+            : e.message,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -195,7 +240,11 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              AppBarHeader(title: 'Séparer le QR', onBack: () => context.pop()),
+              AppBarHeader(
+                title: 'Séparer le QR',
+                onBack: () => context.pop(),
+                plainBackButton: true,
+              ),
               const Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -293,10 +342,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
             AppBarHeader(
               title: 'Séparer le QR',
               onBack: () => context.pop(),
-              action: IconBtn(
-                icon: Icons.refresh_rounded,
-                onPressed: _loadParent,
-              ),
+              plainBackButton: true,
             ),
             Expanded(
               child: ListView(
@@ -388,6 +434,163 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SeparerConfirmationHero extends StatelessWidget {
+  const _SeparerConfirmationHero({
+    required this.qrCode,
+    required this.validCount,
+    required this.expiredCount,
+  });
+
+  final String qrCode;
+  final int validCount;
+  final int expiredCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.call_split_rounded,
+            color: Color(0xFFB45309),
+            size: 26,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'QR à séparer',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                qrCode,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '$validCount ticket${validCount > 1 ? 's' : ''} valides · '
+                '$expiredCount ticket${expiredCount > 1 ? 's' : ''} expirés',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.body,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SeparerConfirmationLinesSection extends StatelessWidget {
+  const _SeparerConfirmationLinesSection({required this.lines});
+
+  final List<QrLine> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lignes du QR',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 14),
+          for (var i = 0; i < lines.length; i++) ...[
+            _SeparerConfirmationLineRow(line: lines[i]),
+            if (i < lines.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFE5E7EB),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SeparerConfirmationLineRow extends StatelessWidget {
+  const _SeparerConfirmationLineRow({required this.line});
+
+  final QrLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    final isExpired = line.isExpired;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${isExpired ? 'Expirée' : 'Active'} · ${Formatters.dateTime(line.expirationDate)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          Formatters.money(line.amount),
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: isExpired ? AppColors.muted : AppColors.ink,
+          ),
+        ),
+      ],
     );
   }
 }

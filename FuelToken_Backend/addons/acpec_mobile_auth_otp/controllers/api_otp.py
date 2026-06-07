@@ -13,6 +13,33 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             self._require_keys(kwargs, ['identifier'])
             identifier = self._get_clean_str(kwargs, 'identifier')
             purpose = self._get_clean_str(kwargs, 'purpose') or 'login'
+
+            if purpose == 'register':
+                identifier_vals = self._parse_signup_identifier(identifier)
+                if identifier_vals['signup_identifier_type'] != 'phone':
+                    raise ValidationError(_('Registration OTP currently supports phone numbers only.'))
+
+                existing_user = request.env['res.users'].sudo().with_context(active_test=False).search([
+                    '|',
+                    ('login', '=', identifier_vals['login']),
+                    ('mobile_phone', '=', identifier_vals['phone']),
+                ], limit=1)
+                if existing_user:
+                    return self._error_response(
+                        'ACCOUNT_EXISTS',
+                        _('A mobile account already exists for this identifier.')
+                    )
+
+                existing_request = request.env['acpec.mobile.auth.account.request'].sudo().search([
+                    ('signup_identifier', '=', identifier_vals['signup_identifier']),
+                    ('state', '=', 'pending'),
+                ], limit=1)
+                if existing_request:
+                    return self._error_response(
+                        'ACCOUNT_REQUEST_EXISTS',
+                        _('A pending account request already exists for this identifier.')
+                    )
+
             challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(identifier, purpose=purpose)
             data = {
                 'challenge_id': challenge.id,
@@ -25,6 +52,12 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             if self._get_config_bool('acpec_mobile_auth.otp_dev_mode', default=False):
                 data['dev_otp_code'] = code
                 data['delivery'] = 'dev_response'
+            data['otp_challenge_id'] = data['challenge_id']
+            data['otp_challenge_ref'] = data['challenge_ref']
+            data['otp_expires_at'] = data['expires_at']
+            data['otp_delivery'] = data['delivery']
+            if 'dev_otp_code' in data:
+                data['otp_dev_code'] = data['dev_otp_code']
             return self._json_response(data)
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -48,21 +81,46 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 return self._error_response('OTP_NOT_FOUND', _('Challenge OTP introuvable.'))
             user = challenge.verify(code)
             if challenge.purpose == 'register':
+                name = self._get_clean_str(kwargs, 'name')
+                secret_code = self._get_clean_str(kwargs, 'secret_code')
+                email = self._get_clean_str(kwargs, 'email')
+                note = self._get_clean_str(kwargs, 'note')
+                company_id = self._get_optional_int(kwargs, 'company_id', False)
+                if not name:
+                    return self._error_response('NAME_REQUIRED', _('Name is required.'))
+                if not secret_code:
+                    return self._error_response('SECRET_CODE_REQUIRED', _('Secret code is required.'))
+
+                company = self._get_company(company_id)
+                identifier_vals = self._parse_signup_identifier(challenge.identifier or identifier)
+
+                if not user:
+                    with request.env.cr.savepoint():
+                        _, user, _ = self._create_mobile_signup_account(
+                            name=name,
+                            signup_identifier=identifier_vals['signup_identifier'],
+                            secret_code=secret_code,
+                            company=company,
+                            email=email,
+                            note=note,
+                        )
+                        challenge.sudo().write({'user_id': user.id})
+
                 now = fields.Datetime.now()
                 user.sudo().write({
                     'active': True,
-                    'mobile_state': 'approved',
+                    'mobile_state': 'pending',
                     'mobile_pin_set_at': user.mobile_pin_set_at or now,
                 })
-                account_request = request.env['acpec.mobile.auth.account.request'].sudo().search([
-                    ('user_id', '=', user.id),
-                ], order='id desc', limit=1)
-                if account_request and account_request.state == 'pending':
-                    account_request.write({
-                        'state': 'approved',
-                        'reviewed_at': now,
-                        'reviewed_by': request.env.user.id,
-                    })
+
+                payload = self._create_mobile_session_payload(user, kwargs)
+                payload['auth_method'] = 'otp'
+                payload['pending_approval'] = True
+                payload['pending_message'] = _(
+                    'Votre compte est en attente de validation. '
+                    'Vous serez notifié dès qu\'un administrateur aura approuvé votre demande.'
+                )
+                return self._json_response(payload)
             payload = self._create_mobile_session_payload(user, kwargs)
             payload['auth_method'] = 'otp'
             return self._json_response(payload)

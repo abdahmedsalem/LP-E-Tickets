@@ -11,7 +11,6 @@ class AcpecFuelTransaction(models.Model):
     transaction_type = fields.Selection([
         ('achat_carnets', 'Achat de carnets'),
         ('emission_qr', 'Émission QR'),
-        ('split_qr', 'Split QR'),
         ('retirer_qr', 'Retrait partiel QR'),
         ('separer_qr', 'Separation QR expire/non expire'),
         ('blocage_qr', 'Blocage QR'),

@@ -8,12 +8,10 @@ import 'odoo_jsonrpc_client.dart';
 class AcpecWalletMapper {
   AcpecWalletMapper._();
 
-  static void _failIfEnvelopeAuth(Map<String, dynamic> m) {
-    final bad = m['ok'] == false || m['ok'] == 0 || m['ok'] == 'false';
-    if (!bad) return;
+  static bool _isAuthFailure(Map<String, dynamic> m) {
     final code = m['code']?.toString().toLowerCase() ?? '';
     final msg = m['message']?.toString().toLowerCase() ?? '';
-    if (code.contains('auth_required') ||
+    return code.contains('auth_required') ||
         msg.contains('auth_required') ||
         code.contains('unauthorized') ||
         msg.contains('unauthorized') ||
@@ -21,7 +19,14 @@ class AcpecWalletMapper {
         msg.contains('session expired') ||
         msg.contains('authenticate') ||
         msg.contains('non autoris') ||
-        msg.contains('not authenticated')) {
+        msg.contains('not authenticated') ||
+        code == '401';
+  }
+
+  static void _failIfEnvelopeAuth(Map<String, dynamic> m) {
+    final bad = m['ok'] == false || m['ok'] == 0 || m['ok'] == 'false';
+    if (!bad) return;
+    if (_isAuthFailure(m)) {
       throw OdooJsonRpcException(
         m['message']?.toString() ?? 'AUTH_REQUIRED',
         code: 401,
@@ -34,6 +39,12 @@ class AcpecWalletMapper {
     var m = Map<String, dynamic>.from(result);
     _failIfEnvelopeAuth(m);
     if (m['ok'] == false || m['ok'] == 0) {
+      if (_isAuthFailure(m)) {
+        throw OdooJsonRpcException(
+          m['message']?.toString() ?? 'AUTH_REQUIRED',
+          code: 401,
+        );
+      }
       throw Exception(m['message']?.toString() ?? 'wallet ACPEC indisponible.');
     }
     final data = m['data'];
@@ -42,6 +53,12 @@ class AcpecWalletMapper {
       _failIfEnvelopeAuth(m);
     }
     if (m['ok'] == false || m['ok'] == 0) {
+      if (_isAuthFailure(m)) {
+        throw OdooJsonRpcException(
+          m['message']?.toString() ?? 'AUTH_REQUIRED',
+          code: 401,
+        );
+      }
       throw Exception(m['message']?.toString() ?? 'wallet ACPEC indisponible.');
     }
     return m;

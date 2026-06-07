@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/notifications/purchase_validation_notification_service.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../data/models/purchase_lot.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -29,10 +30,22 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
   bool _loading = false;
   String? _error;
 
+  late final VoidCallback _purchasesBusListener;
+
   @override
   void initState() {
     super.initState();
+    _purchasesBusListener = () {
+      if (mounted) _refresh();
+    };
+    PurchasesRefreshBus.instance.revision.addListener(_purchasesBusListener);
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    PurchasesRefreshBus.instance.revision.removeListener(_purchasesBusListener);
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -115,7 +128,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
     final totalAmount = _lots.fold<int>(0, (sum, lot) => sum + lot.totalAmount);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F5),
+      backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/purchases/new');

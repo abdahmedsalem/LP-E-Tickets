@@ -21,8 +21,7 @@ class OdooFuelRpcLocalHostConfigured implements Exception {
   final String settingHint;
 
   @override
-  String toString() =>
-      'OdooFuelRpcLocalHostConfigured: $settingHint';
+  String toString() => 'OdooFuelRpcLocalHostConfigured: $settingHint';
 }
 
 /// Façade des appels Odoo FuelToken et administration.
@@ -233,6 +232,15 @@ class OdooFueltokenFacade {
     );
   }
 
+  Future<dynamic> carnetsTransferRecipient(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.carnetsTransferRecipient,
+      'ODOO_RPC_FUEL_CARNETS_TRANSFER_RECIPIENT_PATH',
+      params,
+    );
+  }
+
   Future<dynamic> stationQrUse(Map<String, dynamic> params) => _call(
     OdooFueltokenRpcConfig.stationQrUse,
     'ODOO_RPC_FUEL_STATION_QR_USE_PATH',
@@ -255,27 +263,5 @@ class OdooFueltokenFacade {
     OdooFueltokenRpcConfig.stationQrCheck,
     'ODOO_RPC_FUEL_STATION_QR_CHECK_PATH',
     params,
-  );
-
-  Future<dynamic> adminAccountRequests([Map<String, dynamic>? params]) => _call(
-    OdooFueltokenRpcConfig.adminAccountRequests,
-    'ODOO_ACPEC_ADMIN_ACCOUNT_REQUESTS_PATH',
-    params,
-  );
-
-  Future<dynamic> adminApproveAccountRequest(
-    int requestId, [
-    Map<String, dynamic>? params,
-  ]) => _api.callRoute(
-    OdooFueltokenRpcConfig.adminAccountApproveRoute(requestId),
-    params: params ?? const {},
-  );
-
-  Future<dynamic> adminRejectAccountRequest(
-    int requestId,
-    Map<String, dynamic> params,
-  ) => _api.callRoute(
-    OdooFueltokenRpcConfig.adminAccountRejectRoute(requestId),
-    params: params,
   );
 }

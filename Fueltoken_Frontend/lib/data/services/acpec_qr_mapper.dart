@@ -101,7 +101,8 @@ class AcpecQrMapper {
     }
     if (s.contains('expir')) return QrState.expired;
     if (s.contains('bloqu') || s.contains('block')) return QrState.blocked;
-    if (s.contains('split') || s.contains('partag')) return QrState.split;
+    // 'split'/'splitted' n'existe pas côté backend — un QR retirÃ© ou séparé
+    // devient active (enfant) ou blocked/expired (parent).
 
     switch (s) {
       case 'active':
@@ -117,9 +118,6 @@ class AcpecQrMapper {
         return QrState.consumed;
       case 'expired':
         return QrState.expired;
-      case 'split':
-      case 'splitted':
-        return QrState.split;
       default:
         return QrState.active;
     }
@@ -182,6 +180,22 @@ class AcpecQrMapper {
               row['face_line_id']?.toString() ??
               row['acpec_line_id']?.toString() ??
               'fl-$i',
+          carnetTypeId: row['carnet_type_id']?.toString() ?? '',
+          carnetTypeCode:
+              row['carnet_type_code']?.toString() ??
+              row['carnet_type']?.toString() ??
+              '',
+          carnetTypeName:
+              row['carnet_type_name']?.toString() ??
+              row['carnet_name']?.toString() ??
+              '',
+          carnetSize: _int(
+            row['face_count'] ??
+                row['carnet_size'] ??
+                row['faces_per_carnet'] ??
+                0,
+            0,
+          ),
           faceValue: fv,
           qty: qty,
           expirationDate: exp,
@@ -227,6 +241,7 @@ class AcpecQrMapper {
         _date(
           row['date'] ??
               row['generated_at'] ??
+              row['write_date'] ??
               row['created_at'] ??
               row['issued_at'] ??
               row['create_date'] ??
@@ -406,6 +421,7 @@ class AcpecQrMapper {
       'status',
       'date',
       'generated_at',
+      'write_date',
       'created_at',
       'issued_at',
       'emitted_at',
@@ -553,10 +569,7 @@ class AcpecQrMapper {
     final qrStateRaw = _pickQrStateRaw(m) ?? 'consumed';
     var state = _state(qrStateRaw);
 
-    if (envelopeOk &&
-        state != QrState.blocked &&
-        state != QrState.expired &&
-        state != QrState.split) {
+    if (envelopeOk && state != QrState.blocked && state != QrState.expired) {
       state = QrState.consumed;
     }
 

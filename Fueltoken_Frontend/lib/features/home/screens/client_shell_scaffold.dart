@@ -3,7 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/client_history_refresh_bus.dart';
+import '../../../core/utils/faces_refresh_bus.dart';
+import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 
 /// Coquille client — barre tabs personnalisée.
 class ClientShellScaffold extends StatelessWidget {
@@ -40,17 +44,30 @@ class ClientShellScaffold extends StatelessWidget {
   ];
 
   void _onTabTap(int index) {
-    if (index == navigationShell.currentIndex) {
+    final isSameTab = index == navigationShell.currentIndex;
+    if (isSameTab) {
       navigationShell.goBranch(index, initialLocation: true);
-      if (index == 2) {
-        QrRefreshBus.instance.bump();
-      }
-      return;
+    } else {
+      HapticFeedback.selectionClick();
+      navigationShell.goBranch(index);
     }
-    HapticFeedback.selectionClick();
-    navigationShell.goBranch(index);
-    if (index == 2) {
-      QrRefreshBus.instance.bump();
+    // Bumper les buses selon l'onglet activé pour forcer le rechargement
+    switch (index) {
+      case 0: // Accueil / Wallet
+        WalletRefreshBus.instance.bump();
+        break;
+      case 1: // Carnets / Faces
+        FacesRefreshBus.instance.bump();
+        break;
+      case 2: // QR
+        QrRefreshBus.instance.bump();
+        break;
+      case 3: // Historique
+        ClientHistoryRefreshBus.instance.bump();
+        break;
+      case 4: // Profil / Achats
+        PurchasesRefreshBus.instance.bump();
+        break;
     }
   }
 

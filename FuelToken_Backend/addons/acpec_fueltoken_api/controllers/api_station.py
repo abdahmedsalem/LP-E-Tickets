@@ -70,7 +70,10 @@ class AcpecFuelTokenStationApi(AcpecMobileAuthApiCommon):
             qr = request.env['acpec.fuel.qr'].sudo().search([('public_code', '=', kwargs.get('public_code'))], limit=1)
             if not qr:
                 raise ValidationError(_('QR introuvable.'))
-            qr.action_refresh_expiration_state()
+            with request.env.cr.savepoint():
+                qr._lock_records()
+                qr.invalidate_recordset()
+                qr.action_refresh_expiration_state()
             return self._json_response(self._qr_check_payload(qr, station))
         except Exception as exc:
             return self._handle_exception_response(exc)

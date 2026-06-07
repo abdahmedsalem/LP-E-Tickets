@@ -22,6 +22,11 @@ import 'core/router/app_router.dart';
 import 'core/settings/app_preferences.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/client_history_refresh_bus.dart';
+import 'core/utils/faces_refresh_bus.dart';
+import 'core/utils/purchases_refresh_bus.dart';
+import 'core/utils/qr_refresh_bus.dart';
+import 'core/utils/wallet_refresh_bus.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/settings/data/notifications_store.dart';
 
@@ -98,6 +103,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
   String _localeCode = AppPreferences.defaultLocaleCode;
   ThemeMode _themeMode = ThemeMode.light;
   Timer? _notificationPollTimer;
+  StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
@@ -107,6 +113,21 @@ class FuelTokenAppState extends State<FuelTokenApp>
     AuthSessionHost.instance.attach(
       () => _authBloc.add(const AuthSessionExpiredRequested()),
     );
+    _authSubscription = _authBloc.stream.listen((state) {
+      if (state.status == AuthStatus.authenticated && state.user != null) {
+        // Charger le store pour CET utilisateur (isole les notifications par compte)
+        unawaited(
+          NotificationsStore.instance
+              .loadForUser(state.user!.id)
+              .then((_) => _purgeReceivedClientNotifications())
+              .then((_) => _syncUserNotifications()),
+        );
+      } else if (state.status == AuthStatus.unauthenticated) {
+        // Déconnexion : purger la mémoire pour ne pas exposer les données
+        // de l'ancien utilisateur au prochain login
+        unawaited(NotificationsStore.instance.clearAndReset());
+      }
+    });
     _authBloc.add(const AuthHydrateRequested());
     _router = AppRouter.build(_authBloc);
     _bootstrap();
@@ -118,23 +139,29 @@ class FuelTokenAppState extends State<FuelTokenApp>
     NotificationsStore.instance.initCounts();
     await PurchaseValidationNotificationService.instance.initialize();
     _startNotificationPolling();
-    unawaited(_syncPurchaseNotifications());
+    unawaited(_syncUserNotifications());
   }
 
   void _startNotificationPolling() {
     _notificationPollTimer?.cancel();
     _notificationPollTimer = Timer.periodic(
-      const Duration(minutes: 5),
-      (_) => unawaited(_syncPurchaseNotifications()),
+      const Duration(seconds: 15),
+      (_) => unawaited(_syncUserNotifications()),
     );
   }
 
-  Future<void> _syncPurchaseNotifications() async {
+  Future<void> _syncUserNotifications() async {
     final user = _authBloc.state.user;
     if (user == null || !AppEnvironment.useAcpecLiveData) return;
     try {
       await PurchaseValidationNotificationService.instance.syncForUser(user);
     } catch (_) {}
+  }
+
+  Future<void> _purgeReceivedClientNotifications() async {
+    await NotificationsStore.instance.purgeCurrentUserItemsOnce(
+      'remove_received_client_notifications_v1',
+    );
   }
 
   Future<void> reloadPreferences() async {
@@ -163,7 +190,14 @@ class FuelTokenAppState extends State<FuelTokenApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_syncPurchaseNotifications());
+      // Bumper tous les buses au retour en premier plan pour forcer
+      // le rechargement de toutes les données potentiellement périmées.
+      WalletRefreshBus.instance.bump();
+      QrRefreshBus.instance.bump();
+      FacesRefreshBus.instance.bump();
+      ClientHistoryRefreshBus.instance.bump();
+      PurchasesRefreshBus.instance.bump();
+      unawaited(_syncUserNotifications());
     }
   }
 
@@ -171,6 +205,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _notificationPollTimer?.cancel();
+    _authSubscription?.cancel();
     AuthSessionHost.instance.detach();
     _authBloc.close();
     super.dispose();

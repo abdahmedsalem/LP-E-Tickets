@@ -33,13 +33,6 @@ class StatusBadge extends StatelessWidget {
           foreground: AppColors.warning,
           icon: Icons.block,
         );
-      case QrState.split:
-        return StatusBadge(
-          label: state.label,
-          background: AppColors.infoSurface,
-          foreground: AppColors.info,
-          icon: Icons.call_split,
-        );
       case QrState.consumed:
         return StatusBadge(
           label: state.label,

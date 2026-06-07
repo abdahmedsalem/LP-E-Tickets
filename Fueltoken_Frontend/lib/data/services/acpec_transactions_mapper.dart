@@ -44,12 +44,14 @@ class AcpecTransactionsMapper {
         return _looksLikeQrBlocked(tx);
       case TxType.qrEmission:
         return _looksLikeQrEmission(tx);
-      case TxType.qrSplit:
+      case TxType.qrSeparer:
         return _looksLikeQrSplit(tx);
       case TxType.qrRetirer:
         return _looksLikeQrRetirer(tx);
       case TxType.carnetTransfer:
         return _looksLikeCarnetTransfer(tx);
+      case TxType.carnetReceived:
+        return tx.type == TxType.carnetReceived;
       case TxType.stationConsumption:
         return _looksLikeStationConsumption(tx);
       case TxType.expiration:
@@ -110,7 +112,10 @@ class AcpecTransactionsMapper {
   }
 
   static bool _blobHasBlock(String blob) =>
-      blob.contains('block') || blob.contains('bloqu');
+      blob.contains('block') ||
+      blob.contains('bloqu') ||
+      blob.contains('blocage') ||
+      blob.contains('blocag');
 
   static bool _looksLikeQrBlocked(BusinessTransaction tx) {
     if (tx.type == TxType.qrBlocked) return true;
@@ -131,11 +136,15 @@ class AcpecTransactionsMapper {
   }
 
   static bool _looksLikeQrSplit(BusinessTransaction tx) {
-    if (tx.type == TxType.qrSplit) return true;
+    if (tx.type == TxType.qrSeparer) return true;
     if (!_hasQrRef(tx)) return false;
     if (_looksLikeQrBlocked(tx)) return false;
     final blob = _txBlob(tx);
-    return blob.contains('split') || blob.contains('partage');
+    return blob.contains('split') ||
+        blob.contains('partage') ||
+        blob.contains('separer') ||
+        blob.contains('séparer') ||
+        blob.contains('separer_qr');
   }
 
   static bool _looksLikeQrRetirer(BusinessTransaction tx) {
@@ -151,6 +160,7 @@ class AcpecTransactionsMapper {
 
   static bool _looksLikeCarnetTransfer(BusinessTransaction tx) {
     if (tx.type == TxType.carnetTransfer) return true;
+    if (tx.type == TxType.carnetReceived) return true;
     final blob = _txBlob(tx);
     return blob.contains('transfert') ||
         blob.contains('transfer') ||
@@ -499,7 +509,21 @@ class AcpecTransactionsMapper {
     final id = idRaw.toString();
     if (id.isEmpty) return null;
 
-    final type = _resolveTxType(row);
+    var type = _resolveTxType(row);
+
+    // Affiner la direction du transfert depuis le champ backend
+    if (type == TxType.carnetTransfer) {
+      final direction = row['transfer_direction']?.toString() ?? '';
+      if (direction == 'incoming') {
+        type = TxType.carnetReceived;
+      } else if (direction.isEmpty) {
+        // Fallback : lire la note si le backend ne renvoie pas encore le champ
+        final note = row['note']?.toString().toLowerCase() ?? '';
+        if (note.contains('entrant') || note.contains('reçu de') || note.contains('recu de')) {
+          type = TxType.carnetReceived;
+        }
+      }
+    }
 
     final date = _parseDate(
           row['date'] ??
@@ -531,6 +555,25 @@ class AcpecTransactionsMapper {
 
     if (lines.isEmpty) return null;
 
+    // Extraire l'autre partie pour les transferts de carnets
+    String? transferParty;
+    if (type == TxType.carnetTransfer || type == TxType.carnetReceived) {
+      final fromField = row['transfer_other_party']?.toString().trim() ?? '';
+      if (fromField.isNotEmpty && fromField != 'false') {
+        transferParty = fromField;
+      } else {
+        // Fallback : extraire de la note "Transfert sortant vers X." / "Transfert entrant de X."
+        final note = row['note']?.toString() ?? '';
+        final outMatch = RegExp(r'vers\s+(.+?)\.?\s*$', caseSensitive: false).firstMatch(note);
+        final inMatch = RegExp(r'de\s+(.+?)\.?\s*$', caseSensitive: false).firstMatch(note);
+        if (type == TxType.carnetTransfer && outMatch != null) {
+          transferParty = outMatch.group(1)?.trim();
+        } else if (type == TxType.carnetReceived && inMatch != null) {
+          transferParty = inMatch.group(1)?.trim();
+        }
+      }
+    }
+
     return BusinessTransaction(
       id: id,
       type: type,
@@ -558,6 +601,7 @@ class AcpecTransactionsMapper {
       stationId: _stringField(row, 'station_id'),
       stationName: _stringField(row, 'station_name'),
       note: _noteForRow(row),
+      transferParty: transferParty,
     );
   }
 
@@ -698,8 +742,10 @@ class AcpecTransactionsMapper {
       return TxType.qrBlocked;
     }
 
-    if (combined.contains('split') || combined.contains('partage')) {
-      return TxType.qrSplit;
+    if (combined.contains('separer') ||
+        combined.contains('séparer') ||
+        combined.contains('separer_qr')) {
+      return TxType.qrSeparer;
     }
 
     if (combined.contains('retirer') ||
@@ -710,6 +756,7 @@ class AcpecTransactionsMapper {
     }
 
     if (combined.contains('transfert') || combined.contains('transfer')) {
+      // La direction est résolue après via transfer_direction
       return TxType.carnetTransfer;
     }
 
@@ -835,9 +882,9 @@ class AcpecTransactionsMapper {
     }
     if ((s.contains('split') || s.contains('partage')) &&
         (s.contains('qr') || s.contains('code'))) {
-      return TxType.qrSplit;
+      return TxType.qrSeparer;
     }
-    if (s.contains('split') || s.contains('partage')) return TxType.qrSplit;
+    if (s.contains('separer') || s.contains('séparer') || s == 'separer_qr') return TxType.qrSeparer;
     if (s.contains('retirer') ||
         s.contains('retrait') ||
         s.contains('withdraw') ||
@@ -851,7 +898,7 @@ class AcpecTransactionsMapper {
       return TxType.carnetTransfer;
     }
 
-    if (_blobHasBlock(s) || s == 'qr_blocked') {
+    if (_blobHasBlock(s) || s == 'qr_blocked' || s == 'blocage_qr') {
       return TxType.qrBlocked;
     }
 
@@ -1373,6 +1420,5 @@ class AcpecTransactionsMapper {
     return null;
   }
 }
-
 
 

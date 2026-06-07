@@ -1,37 +1,29 @@
-# Scripts — FuelToken
+# FuelToken Scripts
 
-## Lancer l’application (recommandé)
+## Start the app
 
-| Fichier | Plateforme |
+| File | Platform |
 | --- | --- |
-| **`run.sh`** | macOS / Linux / Git Bash |
-| **`run.cmd`** | **Windows (CMD)** — recommandé |
-| **`run.ps1`** | Windows (PowerShell) |
-| **`setup_env.cmd`** | Windows — crée `scripts\env\flutter.mobile.env` si absent |
+| `run.sh` | macOS / Linux / Git Bash |
+| `run.cmd` | Windows CMD |
+| `run.ps1` | Windows PowerShell |
+| `run_web.cmd` | Windows, publish the web app on the local Wi-Fi |
+| `setup_env.cmd` | Windows, create `scripts\env\flutter.mobile.env` if missing |
 
-### Première fois
+### First time
 
-1. `flutter pub get`
-2. Les fichiers **`scripts/env/flutter.mobile.env`** et **`flutter.mobile.example.env`** sont dans le dépôt (URL Odoo équipe déjà renseignée).
-3. Vérifier `scripts\env\flutter.mobile.env` (explorateur ou `dir scripts\env`).
-4. Depuis la racine :
-   - **Windows (CMD)** : `scripts\run.cmd`
-   - Windows (PowerShell) : `.\scripts\run.ps1`
-   - macOS/Linux : `./scripts/run.sh`
+1. Run `flutter pub get`.
+2. Check `scripts/env/flutter.mobile.env`.
+3. Start the app from the project root:
+   - Windows CMD: `scripts\run.cmd`
+   - Windows PowerShell: `.\scripts\run.ps1`
+   - macOS/Linux: `./scripts/run.sh`
 
-Si `scripts\env` est vide : `git pull` puis `scripts\setup_env.cmd`.
+If `scripts/env` is empty, run `git pull` and then `scripts\setup_env.cmd`.
 
-Surcharge personnelle (optionnel) : `scripts/env/flutter.mobile.local.env` (non versionné). Voir [`env/README.md`](env/README.md).
+### Build release
 
-Les arguments supplémentaires sont transmis à Flutter, par exemple :
-
-```bash
-./scripts/run.sh -d chrome
-```
-
-### Build release (APK / AAB / iOS)
-
-Après avoir rempli **`scripts/env/flutter.mobile.env`** (au minimum `ODOO_JSONRPC_BASE_URL`), le script injecte les mêmes `--dart-define` qu’en `flutter run` — **sans** lancer Gradle si l’URL est vide (le script s’arrête avant `flutter build`).
+Examples:
 
 ```bash
 ./scripts/run.sh build apk --release
@@ -39,8 +31,27 @@ Après avoir rempli **`scripts/env/flutter.mobile.env`** (au minimum `ODOO_JSONR
 ./scripts/run.sh build ipa --release
 ```
 
-Windows (PowerShell) : `.\scripts\run.ps1 build apk --release`
+Windows PowerShell:
 
-### Variables utiles
+```powershell
+.\scripts\run.ps1 build apk --release
+```
 
-Voir `scripts/env/flutter.mobile.example.env` : `ODOO_JSONRPC_BASE_URL`, `ODOO_USE_ACPEC_AUTH`, `ODOO_FUEL_ENABLED`, `API_BASE_URL` (optionnel, OTP REST externe), etc.
+### Web on local Wi-Fi
+
+To share the app with devices on the same Wi-Fi:
+
+1. Install Node.js if it is not already installed.
+2. From the project root, run:
+
+```powershell
+scripts\run_web.cmd
+```
+
+The script:
+- builds the Flutter web app
+- starts a local server on port `8091`
+- prints a shareable URL like `http://PC_IP:8091`
+- proxies `/api/acpec/*` to the Odoo server configured in `scripts/env/flutter.mobile.env`
+
+Share the printed LAN URL with the other devices on the same Wi-Fi.

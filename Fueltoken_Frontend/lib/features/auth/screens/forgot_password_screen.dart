@@ -7,6 +7,7 @@ import '../../../core/validation/contact_validators.dart';
 import '../../../data/services/otp_remote_service.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import 'forgot_otp_flow_screens.dart';
+import '../../../shared/widgets/app_message.dart';
 
 /// Récupération : envoi OTP → saisie code → nouveau mot de passe.
 class ForgotPasswordScreen extends StatefulWidget {
@@ -42,9 +43,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final identifier = _usePhone ? _phoneFull : _email.text.trim();
       await _otp.sendForgotOtp(channel: channel, identifier: identifier);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Code envoyé.')),
-      );
+      AppMessage.info(context, 'Code envoyé.');
       context.push(
         '/forgot-password/verify-otp',
         extra: ForgotOtpRouteArgs(
@@ -54,9 +53,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        AppMessage.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _busy = false);

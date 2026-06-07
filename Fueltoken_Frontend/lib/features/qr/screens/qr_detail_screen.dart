@@ -16,8 +16,6 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_pill.dart';
-import '../../../shared/widgets/face_value_chip.dart';
-import '../../../shared/widgets/icon_btn.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -109,8 +107,6 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         return (label: 'Consommé', tone: PillTone.gray);
       case QrState.expired:
         return (label: 'Expiré', tone: PillTone.red);
-      case QrState.split:
-        return (label: 'Splitté', tone: PillTone.blue);
     }
   }
 
@@ -122,7 +118,11 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              AppBarHeader(title: 'Détail du QR', onBack: () => context.pop()),
+              AppBarHeader(
+                title: 'Détail du QR',
+                onBack: () => context.pop(),
+                plainBackButton: true,
+              ),
               const Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -146,10 +146,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
               AppBarHeader(
                 title: 'Détail du QR',
                 onBack: () => context.pop(),
-                action: IconBtn(
-                  icon: Icons.refresh_rounded,
-                  onPressed: _refresh,
-                ),
+                plainBackButton: true,
               ),
               Expanded(
                 child: ListView(
@@ -207,45 +204,75 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: canRetirer || canSeparer
+      bottomNavigationBar: isOwner
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: SizedBox(
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B8F3A),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(
-                        0xFF1B8F3A,
-                      ).withValues(alpha: 0.35),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!canRetirer && !canSeparer)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          qr.state == QrState.active
+                              ? 'Un QR contenant un seul ticket ne peut pas être retiré.'
+                              : qr.state == QrState.blocked
+                              ? 'Séparation disponible pour les QR bloqués.'
+                              : 'Aucune action disponible pour ce QR (${qr.state.label}).',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B8F3A),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(
+                            0xFF1B8F3A,
+                          ).withValues(alpha: 0.35),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        icon: Icon(
+                          canRetirer ? Icons.call_split : Icons.unfold_more,
+                          size: 18,
+                        ),
+                        label: Text(canRetirer ? 'Retirer' : 'Séparer'),
+                        onPressed: canRetirer || canSeparer
+                            ? () async {
+                                final router = GoRouter.of(context);
+                                final nextCode = canRetirer
+                                    ? await router.push<String>(
+                                        '/qr/$qrSeg/retirer',
+                                      )
+                                    : await router.push<String>(
+                                        '/qr/$qrSeg/separer',
+                                      );
+                                if (!context.mounted) return;
+                                if (nextCode != null && nextCode.isNotEmpty) {
+                                  router.go(
+                                    '/qr/${Uri.encodeComponent(nextCode)}',
+                                  );
+                                } else {
+                                  await _refresh();
+                                }
+                              }
+                            : null,
                       ),
                     ),
-                    onPressed: () async {
-                      final router = GoRouter.of(context);
-                      final nextCode = canRetirer
-                          ? await router.push<String>('/qr/$qrSeg/retirer')
-                          : await router.push<String>('/qr/$qrSeg/separer');
-                      if (!context.mounted) return;
-                      if (nextCode != null && nextCode.isNotEmpty) {
-                        router.go('/qr/${Uri.encodeComponent(nextCode)}');
-                      } else {
-                        await _refresh();
-                      }
-                    },
-                    icon: Icon(
-                      canRetirer ? Icons.call_split : Icons.unfold_more,
-                      size: 18,
-                    ),
-                    label: Text(canRetirer ? 'Retirer' : 'Séparer'),
-                  ),
+                  ],
                 ),
               ),
             )
@@ -256,7 +283,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
             AppBarHeader(
               title: 'Détail du QR',
               onBack: () => context.pop(),
-              action: IconBtn(icon: Icons.refresh_rounded, onPressed: _refresh),
+              plainBackButton: true,
             ),
             Expanded(
               child: RefreshIndicator(
@@ -266,14 +293,12 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   children: [
-                    // ── Hero QR card ──
+                    // Hero QR card
                     _HeroQrCard(qr: qr, pill: pill),
                     const SizedBox(height: 22),
-
                     const SectionLabel('Composition'),
                     const SizedBox(height: 8),
                     _CompositionCard(qr: qr),
-
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -286,9 +311,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────
 // Hero QR card
-// ──────────────────────────────────────────────────────────────────────────
 
 class _HeroQrCard extends StatelessWidget {
   const _HeroQrCard({required this.qr, required this.pill});
@@ -299,10 +322,10 @@ class _HeroQrCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = qr.state == QrState.active;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.line),
         boxShadow: AppColors.softShadow,
       ),
@@ -313,7 +336,7 @@ class _HeroQrCard extends StatelessWidget {
               Text(
                 'Généré le ${Formatters.dateTime(qr.generatedAt)}',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.muted,
                 ),
@@ -327,16 +350,16 @@ class _HeroQrCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           // QR with corner brackets
           Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.line),
                 ),
                 child: ColorFiltered(
@@ -349,7 +372,7 @@ class _HeroQrCard extends StatelessWidget {
                   child: QrImageView(
                     data: qr.publicCode,
                     version: QrVersions.auto,
-                    size: 220,
+                    size: 172,
                     backgroundColor: Colors.white,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
@@ -387,13 +410,13 @@ class _HeroQrCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: AppColors.primaryTint,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.primarySoft),
             ),
             child: Row(
@@ -402,7 +425,7 @@ class _HeroQrCard extends StatelessWidget {
                 const Text(
                   'Montant',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primaryDark,
                   ),
@@ -410,7 +433,7 @@ class _HeroQrCard extends StatelessWidget {
                 Text(
                   '${Formatters.numberFr(qr.totalAmount)} MRU',
                   style: GoogleFonts.inter(
-                    fontSize: 16,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primaryDeep,
                     letterSpacing: -0.2,
@@ -419,7 +442,7 @@ class _HeroQrCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -431,7 +454,7 @@ class _HeroQrCard extends StatelessWidget {
                   ? 'Expire le ${Formatters.dateTime(qr.expiresAt!)}'
                   : 'Date de génération: ${Formatters.dateTime(qr.generatedAt)}',
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: AppColors.muted,
               ),
@@ -466,47 +489,121 @@ class _HeroQrCard extends StatelessWidget {
   ];
 }
 
-// ──────────────────────────────────────────────────────────────────────────
 // Composition
-// ──────────────────────────────────────────────────────────────────────────
 
 class _CompositionCard extends StatelessWidget {
   const _CompositionCard({required this.qr});
   final QrToken qr;
 
+  int _carnetSizeFor(QrLine line) {
+    if (line.carnetSize > 0) return line.carnetSize;
+
+    final nameMatch = RegExp(r'\d+').firstMatch(line.carnetTypeName);
+    if (nameMatch != null) {
+      final parsed = int.tryParse(nameMatch.group(0)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+
+    final codeMatch = RegExp(r'\d+').firstMatch(line.carnetTypeCode);
+    if (codeMatch != null) {
+      final parsed = int.tryParse(codeMatch.group(0)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+
+    return 0;
+  }
+
+  String _carnetLabel(QrLine line) {
+    final carnetSize = _carnetSizeFor(line);
+    if (carnetSize > 0 && line.faceValue > 0) {
+      return Formatters.carnetTypeLabel(carnetSize, line.faceValue);
+    }
+
+    final name = line.carnetTypeName.trim();
+    if (name.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        name,
+        fallbackSize: carnetSize,
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+
+    final code = line.carnetTypeCode.trim();
+    if (code.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        code,
+        fallbackSize: carnetSize,
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+
+    return 'Carnet';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final entries = qr.aggregatedByFaceValue.entries.toList()
-      ..sort((a, b) => b.key.compareTo(a.key));
+    final lines = qr.lines.toList()
+      ..sort((a, b) {
+        final byDate = a.expirationDate.compareTo(b.expirationDate);
+        if (byDate != 0) return byDate;
+        if (a.faceValue != b.faceValue) {
+          return b.faceValue.compareTo(a.faceValue);
+        }
+        return a.id.compareTo(b.id);
+      });
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
-          for (var i = 0; i < entries.length; i++) ...[
+          for (var i = 0; i < lines.length; i++) ...[
             if (i > 0) const Divider(height: 1, color: AppColors.lineSoft),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FaceValueChip(value: entries[i].key),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      '${entries[i].value} ticket${entries[i].value > 1 ? 's' : ''}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.body,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _carnetLabel(lines[i]),
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    Formatters.money(entries[i].key * entries[i].value),
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        Formatters.money(lines[i].amount),
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        ' ticket disponible  •  '
+                        'Expire le ${Formatters.dateTimeDash(lines[i].expirationDate)}',
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.body,
+                          height: 1.15,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

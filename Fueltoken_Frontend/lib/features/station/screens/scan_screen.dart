@@ -11,6 +11,7 @@ import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
@@ -22,7 +23,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
 import '../../../shared/widgets/mini_qr.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-const _scanBackground = Color(0xFFF7F7F4);
+const _scanBackground = Colors.white;
 const _scanInk = Color(0xFF1F2430);
 const _scanMuted = Color(0xFF6B7280);
 const _scanBorder = Color(0xFFE2E6DD);
@@ -185,6 +186,7 @@ class _ScanScreenState extends State<ScanScreen> {
         ),
       );
       WalletRefreshBus.instance.bump();
+      ClientHistoryRefreshBus.instance.bump();
       _consumedThisSession.add(trimmed.toLowerCase());
       if (mounted) {
         await _showSuccess(qr);

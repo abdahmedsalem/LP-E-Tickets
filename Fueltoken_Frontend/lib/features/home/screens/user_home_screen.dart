@@ -12,7 +12,6 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../wallet/bloc/wallet_cubit.dart';
-import '../../qr/screens/transfer_carnets_screen.dart';
 
 class UserHomeScreen extends StatelessWidget {
   const UserHomeScreen({super.key});
@@ -232,43 +231,35 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                           children: [
                             Expanded(
                               child: AspectRatio(
-                                aspectRatio: 0.78,
+                                aspectRatio: 0.82,
                                 child: _QuickActionCard(
-                                  title: 'Acheter carnet',
+                                  title: 'Acheter un carnet',
                                   icon: Icons.add_shopping_cart_outlined,
                                   onTap: () => context.push('/purchases/new'),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: AspectRatio(
-                                aspectRatio: 0.78,
+                                aspectRatio: 0.82,
                                 child: _QuickActionCard(
-                                  title: 'Générer un QR code multi tickets',
+                                  title: 'Générer un QR',
                                   icon: Icons.qr_code_scanner_rounded,
+                                  highlighted: true,
                                   onTap: () => context.push('/qr/emit'),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: AspectRatio(
-                                aspectRatio: 0.78,
+                                aspectRatio: 0.82,
                                 child: _QuickActionCard(
-                                  title: 'Transfer carnets',
+                                  title: 'Transférer des carnets',
                                   icon: Icons.account_tree_outlined,
-                                  onTap: () {
-                                    Navigator.of(
-                                      context,
-                                      rootNavigator: true,
-                                    ).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) =>
-                                            const TransferCarnetsScreen(),
-                                      ),
-                                    );
-                                  },
+                                  onTap: () =>
+                                      context.push('/transfer-carnets'),
                                 ),
                               ),
                             ),
@@ -322,57 +313,69 @@ class _QuickActionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.onTap,
+    this.highlighted = false,
   });
 
   final String title;
   final IconData icon;
   final VoidCallback onTap;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
-        final circleDiameter = math.min(54.0, math.max(46.0, cardWidth * 0.42));
-        final iconSize = circleDiameter * 0.42;
+        final circleDiameter = math.min(58.0, math.max(52.0, cardWidth * 0.46));
+        final iconSize = circleDiameter * 0.44;
 
         return Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           elevation: 0,
           shadowColor: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             child: Ink(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: AppColors.line.withValues(alpha: 0.9),
+                  color: highlighted
+                      ? AppColors.leaderGreen.withValues(alpha: 0.32)
+                      : const Color(0xFFE9ECEF),
+                  width: highlighted ? 1.3 : 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.055),
-                    blurRadius: 18,
-                    offset: const Offset(0, 7),
-                    spreadRadius: -8,
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                    spreadRadius: -10,
                   ),
+                  if (highlighted)
+                    BoxShadow(
+                      color: AppColors.leaderGreen.withValues(alpha: 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                      spreadRadius: -10,
+                    ),
                 ],
               ),
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: math.max(10.0, cardWidth * 0.07),
-                  vertical: math.max(12.0, cardWidth * 0.085),
+                  horizontal: math.max(10.0, cardWidth * 0.08),
+                  vertical: math.max(12.0, cardWidth * 0.11),
                 ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Container(
                       width: circleDiameter,
                       height: circleDiameter,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFF3F4F6),
+                        color: Color(0xFFF5F5F5),
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
@@ -382,20 +385,20 @@ class _QuickActionCard extends StatelessWidget {
                         size: iconSize,
                       ),
                     ),
-                    SizedBox(height: math.max(10.0, cardWidth * 0.08)),
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: math.min(
-                          13.0,
-                          math.max(11.5, cardWidth * 0.115),
+                    SizedBox(height: math.max(14.0, cardWidth * 0.11)),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: math.min(
+                          12.0,
+                          math.max(10.8, cardWidth * 0.102),
                         ),
-                        fontWeight: FontWeight.w800,
-                        height: 1.04,
-                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        height: 1.14,
+                        color: const Color(0xFF111111),
                       ),
                     ),
                   ],

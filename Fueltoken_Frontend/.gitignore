@@ -61,6 +61,8 @@ _tawssil_probe/
 *.secret
 # Surcharges personnelles uniquement (la config équipe est versionnée)
 scripts/env/flutter.mobile.local.env
+# Fichier env mobile (contient IP/URL serveur — ne pas versionner)
+scripts/env/flutter.mobile.env
 **/credentials.json
 **/service-account*.json
 

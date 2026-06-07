@@ -14,6 +14,9 @@ class AppUser extends Equatable {
   final UserRole role;
   final String? companyId;
   final String? stationId;
+
+  /// Nom de la station ou de la société affecté à cet utilisateur station.
+  final String? stationName;
   final DateTime createdAt;
 
   const AppUser({
@@ -24,6 +27,7 @@ class AppUser extends Equatable {
     required this.role,
     this.companyId,
     this.stationId,
+    this.stationName,
     required this.createdAt,
   });
 
@@ -79,6 +83,8 @@ class AppUser extends Equatable {
       final s = sidRaw.toString().trim();
       stationId = s.isEmpty ? null : s;
     }
+    final snRaw = u['station_name'] ?? u['company_name'] ?? u['partner_name'];
+    final stationName = snRaw?.toString().trim();
 
     return AppUser(
       id: id,
@@ -90,6 +96,9 @@ class AppUser extends Equatable {
           ? companyCode
           : AppBrandConfig.effectiveDefaultCompanyId,
       stationId: role == UserRole.station ? stationId : null,
+      stationName: role == UserRole.station
+          ? (stationName?.isNotEmpty == true ? stationName : null)
+          : null,
       createdAt: created,
     );
   }
@@ -120,9 +129,7 @@ class AppUser extends Equatable {
     if (u.containsKey('id_utilisateur') ||
         (u.containsKey('first_name') && u.containsKey('email'))) {
       final base = AppUser.fromOtpApiUserJson(u);
-      return base.copyWith(
-        role: _higherPrivilegeRole(base.role, resolvedRole),
-      );
+      return base.copyWith(role: _higherPrivilegeRole(base.role, resolvedRole));
     }
 
     final idRaw = u['id'] ?? u['user_id'] ?? u['uid'];
@@ -133,7 +140,8 @@ class AppUser extends Equatable {
 
     final fn = u['first_name']?.toString() ?? '';
     final ln = u['last_name']?.toString() ?? '';
-    var name = (u['name'] ?? u['full_name'] ?? u['display_name'])?.toString() ?? '';
+    var name =
+        (u['name'] ?? u['full_name'] ?? u['display_name'])?.toString() ?? '';
     if (name.isEmpty) {
       name = ('$fn $ln').trim();
     }
@@ -142,7 +150,10 @@ class AppUser extends Equatable {
     }
 
     final telRaw =
-        u['phone']?.toString() ?? u['mobile']?.toString() ?? u['telephone']?.toString() ?? '';
+        u['phone']?.toString() ??
+        u['mobile']?.toString() ??
+        u['telephone']?.toString() ??
+        '';
     final telDigits = telRaw.replaceAll(RegExp(r'\D'), '');
     String phone = '';
     if (telDigits.length == 8) {
@@ -157,7 +168,8 @@ class AppUser extends Equatable {
       created = DateTime.tryParse(dj) ?? created;
     }
 
-    var companyCode = u['company_code']?.toString().trim() ??
+    var companyCode =
+        u['company_code']?.toString().trim() ??
         u['company_id']?.toString().trim() ??
         '';
     if (companyCode == 'leader') {
@@ -169,6 +181,8 @@ class AppUser extends Equatable {
       final s = sidRaw.toString().trim();
       stationId = s.isEmpty ? null : s;
     }
+    final snRaw2 = u['station_name'] ?? u['company_name'] ?? u['partner_name'];
+    final stationName2 = snRaw2?.toString().trim();
 
     return AppUser(
       id: id,
@@ -180,6 +194,9 @@ class AppUser extends Equatable {
           ? companyCode
           : AppBrandConfig.effectiveDefaultCompanyId,
       stationId: resolvedRole == UserRole.station ? stationId : null,
+      stationName: resolvedRole == UserRole.station
+          ? (stationName2?.isNotEmpty == true ? stationName2 : null)
+          : null,
       createdAt: created,
     );
   }
@@ -190,6 +207,7 @@ class AppUser extends Equatable {
     UserRole? role,
     String? stationId,
     String? companyId,
+    String? stationName,
   }) {
     return AppUser(
       id: id,
@@ -199,20 +217,29 @@ class AppUser extends Equatable {
       role: role ?? this.role,
       companyId: companyId ?? this.companyId,
       stationId: stationId ?? this.stationId,
+      stationName: stationName ?? this.stationName,
       createdAt: createdAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, email, name, phone, role, companyId, stationId];
+  List<Object?> get props => [
+    id,
+    email,
+    name,
+    phone,
+    role,
+    companyId,
+    stationId,
+  ];
 
   /// Garde le rôle le plus élevé (ex. profil « client » + drapeaux ACPEC admin).
   static UserRole _higherPrivilegeRole(UserRole a, UserRole b) {
     int rank(UserRole x) => switch (x) {
-          UserRole.admin => 2,
-          UserRole.station => 1,
-          UserRole.user => 0,
-        };
+      UserRole.admin => 2,
+      UserRole.station => 1,
+      UserRole.user => 0,
+    };
     return rank(a) >= rank(b) ? a : b;
   }
 }

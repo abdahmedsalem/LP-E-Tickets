@@ -100,7 +100,7 @@ class AcpecMobileAuthOtp(models.Model):
         if not user:
             raise AccessError(_('Compte mobile introuvable.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
-            raise AccessError(_('Compte mobile rejetÃƒÂ©.'))
+            raise AccessError(_('Compte mobile rejeté.'))
         return user
 
     @api.model
@@ -108,23 +108,36 @@ class AcpecMobileAuthOtp(models.Model):
         purpose = purpose or 'login'
         if purpose not in ('login', 'register', 'reset'):
             raise ValidationError(_('Objet OTP invalide.'))
-        user = self._find_user(identifier)
+        user = False
+        mobile_state = False
         is_station = False
-        try:
-            is_station = user.has_group('acpec_fueltoken_base.group_fuel_station')
-        except Exception:
-            is_station = False
-        mobile_state = getattr(user, 'mobile_state', False)
         if purpose == 'register':
-            if not user.active and mobile_state not in (False, 'pending'):
-                raise AccessError(_('Compte mobile inactif.'))
-            if mobile_state == 'rejected':
-                raise AccessError(_('Compte mobile rejetÃƒÂ©.'))
+            identifier = (identifier or '').strip()
+            if not identifier:
+                raise ValidationError(_('Identifiant requis.'))
+            if '@' in identifier:
+                raise ValidationError(_('Registration OTP currently supports phone numbers only.'))
+            user_domain = ['|', ('login', '=', identifier), ('mobile_phone', '=', identifier)]
+            user = self.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
+            if user:
+                raise AccessError(_('Compte mobile déjà existant.'))
+            pending_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
+                ('signup_identifier', '=', identifier),
+                ('state', '=', 'pending'),
+            ], limit=1)
+            if pending_request:
+                raise AccessError(_('Une demande de compte en attente existe déjà pour cet identifiant.'))
         else:
+            user = self._find_user(identifier)
+            try:
+                is_station = user.has_group('acpec_fueltoken_base.group_fuel_station')
+            except Exception:
+                is_station = False
+            mobile_state = getattr(user, 'mobile_state', False)
             if not user.active:
                 raise AccessError(_('Compte mobile inactif.'))
             if not is_station and mobile_state not in (False, 'approved'):
-                raise AccessError(_('Compte mobile non approuvÃƒÂ©.'))
+                raise AccessError(_('Compte mobile non approuvé.'))
         now = fields.Datetime.now()
         cooldown_seconds = self._request_cooldown_seconds()
         if cooldown_seconds > 0:
@@ -140,7 +153,7 @@ class AcpecMobileAuthOtp(models.Model):
                     _('Veuillez patienter %ds avant de redemander un OTP.') % cooldown_seconds
                 )
         self.sudo().search([
-            ('user_id', '=', user.id),
+            ('identifier', '=', identifier),
             ('purpose', '=', purpose),
             ('state', '=', 'pending'),
         ]).write({'state': 'cancelled'})
@@ -148,9 +161,9 @@ class AcpecMobileAuthOtp(models.Model):
         salt = secrets.token_urlsafe(16)
         challenge = self.sudo().create({
             'identifier': identifier,
-            'mobile': user.mobile_phone or False,
+            'mobile': user.mobile_phone or identifier,
             'email': user.email or False,
-            'user_id': user.id,
+            'user_id': user.id if user else False,
             'purpose': purpose,
             'salt': salt,
             'otp_hash': self._hash_otp(code, salt),
@@ -214,12 +227,12 @@ class AcpecMobileAuthOtp(models.Model):
         self.ensure_one()
         now = fields.Datetime.now()
         if self.state != 'pending':
-            raise ValidationError(_('Ce challenge OTP nâ€™est plus actif.'))
+            raise ValidationError(_("Ce challenge OTP n'est plus actif."))
         if self.blocked_until and self.blocked_until > now:
-            raise AccessError(_('Ce challenge OTP est temporairement bloquÃ©.'))
+            raise AccessError(_('Ce challenge OTP est temporairement bloqué.'))
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})
-            raise ValidationError(_('Le code OTP a expirÃ©.'))
+            raise ValidationError(_('Le code OTP a expiré.'))
         code = (code or '').strip()
         if not code or not code.isdigit() or len(code) != 6:
             raise ValidationError(_('Le code OTP doit contenir exactement 6 chiffres.'))
@@ -238,4 +251,3 @@ class AcpecMobileAuthOtp(models.Model):
             'verified_at': now,
         })
         return self.user_id
-

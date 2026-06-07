@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import '../../core/auth/odoo_session_store.dart';
-import '../../core/config/app_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/validation/contact_validators.dart';
 import '../api/acpec_fueltoken_jsonrpc_api.dart';
@@ -30,7 +29,7 @@ class OdooAuthService {
     }
     try {
       await OdooSessionStore.clear();
-      final idForRpc = normalizePhoneIdentifierForLookup(identifier);
+      final idForRpc = _normalizeIdentifierForMobileAuthLogin(identifier);
       final secret = password.trim();
       if (kDebugMode) {
         debugPrint(
@@ -65,6 +64,14 @@ class OdooAuthService {
     }
   }
 
+  String _normalizeIdentifierForMobileAuthLogin(String raw) {
+    final t = raw.trim();
+    if (t.contains('@')) return t.toLowerCase();
+    final local = localMrDigitsFromFull(t);
+    if (kMrLocalPhoneDigits.hasMatch(local)) return local;
+    return t.replaceAll(' ', '');
+  }
+
   Future<AppUser> sessionMe() async {
     final route = OdooAuthRpcConfig.sessionRoute;
     if (route.isEmpty) {
@@ -87,16 +94,13 @@ class OdooAuthService {
 
   /// Demande d'inscription Odoo ACPEC qui déclenche un OTP SMS pour un numéro.
   Future<Map<String, dynamic>> requestSignupOtp({
-    required String name,
     required String phoneFull,
-    required String password,
-    String note = '',
   }) async {
-    final route = OdooAuthRpcConfig.signupRoute;
+    final route = OdooAuthRpcConfig.requestOtpRoute;
     if (route.isEmpty) {
       throw StateError(
-        'Inscription ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL '
-        '(et route signup par défaut `/api/acpec/mobile_auth/v1/signup`).',
+        'OTP d’inscription ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL '
+        '(et route request-otp par défaut `/api/acpec/mobile_auth/v1/request-otp`).',
       );
     }
     await OdooSessionStore.clear();
@@ -104,23 +108,26 @@ class OdooAuthService {
       final local = localMrDigitsFromFull(phoneFull);
       final result = await _api.callRoute(
         route,
-        params: {
-          'name': name.trim(),
-          'signup_identifier': local,
-          'secret_code': password,
-          if (OdooAuthRpcConfig.signupDefaultCompanyId > 0)
-            'company_id': OdooAuthRpcConfig.signupDefaultCompanyId,
-          'phone': local,
-          'note': [
-            if (note.trim().isNotEmpty) note.trim(),
-            'otp_channel=sms',
-            'phone_local=$local',
-            'type=${AppApiConfig.otpUserType}',
-          ].join(' '),
-        },
+        params: {'identifier': local, 'purpose': 'register'},
       );
       _ensureAcpecEnvelopeSuccess(result);
-      return Map<String, dynamic>.from(result as Map);
+      final top = Map<String, dynamic>.from(result as Map);
+      final data = top['data'];
+      if (data is Map) {
+        final dm = Map<String, dynamic>.from(data);
+        final normalized = <String, dynamic>{
+          ...dm,
+          'otp_challenge_id': dm['otp_challenge_id'] ?? dm['challenge_id'],
+          'otp_challenge_ref': dm['otp_challenge_ref'] ?? dm['challenge_ref'],
+          'otp_expires_at': dm['otp_expires_at'] ?? dm['expires_at'],
+          'otp_delivery': dm['otp_delivery'] ?? dm['delivery'],
+        };
+        if (dm.containsKey('dev_otp_code')) {
+          normalized['otp_dev_code'] = dm['otp_dev_code'];
+        }
+        top['data'] = normalized;
+      }
+      return top;
     } on OdooJsonRpcException catch (e) {
       throw Exception(e.message);
     }
@@ -129,7 +136,11 @@ class OdooAuthService {
   Future<Map<String, dynamic>> verifySignupOtp({
     required String identifier,
     required String code,
+    required String name,
+    required String password,
     int? challengeId,
+    int? companyId,
+    String note = '',
   }) async {
     final route = OdooAuthRpcConfig.verifyOtpRoute;
     if (route.isEmpty) {
@@ -144,6 +155,11 @@ class OdooAuthService {
         if (challengeId != null && challengeId > 0) 'challenge_id': challengeId,
         'identifier': identifier.trim(),
         'code': code.trim(),
+        'name': name.trim(),
+        'secret_code': password,
+        if ((companyId ?? OdooAuthRpcConfig.signupDefaultCompanyId) > 0)
+          'company_id': companyId ?? OdooAuthRpcConfig.signupDefaultCompanyId,
+        if (note.trim().isNotEmpty) 'note': note.trim(),
         'device_uid': 'mobile-registration',
         'device_name': 'FuelToken mobile',
         'platform': 'web',
@@ -201,7 +217,7 @@ class OdooAuthService {
         return 'Un code OTP a été envoyé.';
       }
     }
-    return 'Votre demande a été envoyée. Vous serez notifié après validation.';
+    return 'Compte cree. Verifiez le code OTP pour activer votre acces.';
   }
 
   Future<Map<String, dynamic>> submitSignupRequestDetailed({

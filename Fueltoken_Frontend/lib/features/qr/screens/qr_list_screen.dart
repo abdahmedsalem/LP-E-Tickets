@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
@@ -33,16 +34,28 @@ class _QrListScreenState extends State<QrListScreen> {
   static const _filters = <(String, QrState?)>[
     ('Tous', null),
     ('Actifs', QrState.active),
-    ('Bloqués', QrState.blocked),
-    ('Consommé', QrState.consumed),
+    ('BloquÃ©s', QrState.blocked),
+    ('ConsommÃ©s', QrState.consumed),
   ];
+
+  late final VoidCallback _qrBusListener;
 
   @override
   void initState() {
     super.initState();
+    _qrBusListener = () {
+      if (mounted && AppEnvironment.useAcpecLiveData) _refreshLive();
+    };
+    QrRefreshBus.instance.revision.addListener(_qrBusListener);
     if (AppEnvironment.useAcpecLiveData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLive());
     }
+  }
+
+  @override
+  void dispose() {
+    QrRefreshBus.instance.revision.removeListener(_qrBusListener);
+    super.dispose();
   }
 
   Map<String, dynamic> _listRpcParams() {
@@ -76,7 +89,7 @@ class _QrListScreenState extends State<QrListScreen> {
       setState(() {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
+            ? 'Session expirÃ©e. Reconnectez-vous.'
             : e.message;
         _liveQrs = [];
       });
@@ -112,7 +125,7 @@ class _QrListScreenState extends State<QrListScreen> {
         body: SafeArea(
           child: ListView(
             physics: AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(26, 24, 26, 100),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
             children: [
               AppLoadingSkeleton(
                 style: AppLoadingSkeletonStyle.qrCards,
@@ -131,7 +144,7 @@ class _QrListScreenState extends State<QrListScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _HistoryTitleBar(title: 'Mes QR', showBack: false),
-              const SizedBox(height: 28),
+              const SizedBox(height: 4),
               const Expanded(child: ApiRequiredView()),
             ],
           ),
@@ -149,22 +162,12 @@ class _QrListScreenState extends State<QrListScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _HistoryTitleBar(title: 'Mes QR', showBack: false),
-            const SizedBox(height: 28),
+            const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 26),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Filtre par état',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   _QrFilterRow(
                     selected: _filterState,
                     totalCount: qrs.length,
@@ -181,7 +184,7 @@ class _QrListScreenState extends State<QrListScreen> {
                 child: _liveLoading && qrs.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(26, 28, 26, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                         children: const [
                           AppLoadingSkeleton(
                             style: AppLoadingSkeletonStyle.qrCards,
@@ -192,7 +195,7 @@ class _QrListScreenState extends State<QrListScreen> {
                     : qrs.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(26, 24, 26, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                         children: [
                           SizedBox(
                             height: MediaQuery.sizeOf(context).height * 0.22,
@@ -201,7 +204,7 @@ class _QrListScreenState extends State<QrListScreen> {
                               title: 'Aucun QR',
                               message: _liveError != null
                                   ? _liveError!
-                                  : 'Aucun QR ne correspond à ce filtre.',
+                                  : 'Aucun QR ne correspond Ã  ce filtre.',
                               action: AppEnvironment.useAcpecLiveData
                                   ? FilledButton.tonalIcon(
                                       onPressed: _refreshLive,
@@ -215,7 +218,7 @@ class _QrListScreenState extends State<QrListScreen> {
                       )
                     : ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(26, 4, 26, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                         itemCount: qrs.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (ctx, i) => _QRCard(qr: qrs[i]),
@@ -238,7 +241,7 @@ class _HistoryTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
           if (showBack) ...[
@@ -314,15 +317,13 @@ class _QRCard extends StatelessWidget {
   String get _dateStateLabel {
     switch (_displayState) {
       case QrState.active:
-        return 'Actif le';
+        return 'GÃ©nÃ©rÃ© le';
       case QrState.blocked:
-        return 'Bloqué le';
-      case QrState.split:
-        return 'Splittée le';
+        return 'BloquÃ© le';
       case QrState.consumed:
-        return 'Consommée le';
+        return 'ConsommÃ© le';
       case QrState.expired:
-        return 'Expirée le';
+        return 'ExpirÃ© le';
     }
   }
 
@@ -332,8 +333,6 @@ class _QRCard extends StatelessWidget {
         return AppColors.leaderGreen;
       case QrState.blocked:
         return AppColors.warning;
-      case QrState.split:
-        return AppColors.accentViolet;
       case QrState.consumed:
         return AppColors.muted;
       case QrState.expired:
@@ -341,14 +340,32 @@ class _QRCard extends StatelessWidget {
     }
   }
 
+  DateTime? get _displayDate {
+    final created = qr.createdAt;
+    if (created.millisecondsSinceEpoch > 0) return created;
+    if (qr.expiresAt != null) return qr.expiresAt;
+    DateTime? fallback;
+    for (final line in qr.lines) {
+      if (fallback == null || line.expirationDate.isBefore(fallback)) {
+        fallback = line.expirationDate;
+      }
+    }
+    return fallback;
+  }
+
   String get _dateLabel =>
-      '$_dateStateLabel ${DateFormat('dd-MM-yyyy HH:mm').format(qr.createdAt)}';
+      '$_dateStateLabel ${DateFormat('dd-MM-yyyy HH:mm').format(_displayDate ?? DateTime.now())}';
 
   String get _amountLabel => Formatters.numberFr(qr.totalAmount);
+
+  bool get _hasQuantity => qr.totalQty > 0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final borderColor = _hasQuantity
+        ? AppColors.leaderGreen.withValues(alpha: 0.38)
+        : scheme.outline.withValues(alpha: 0.12);
     return Material(
       color: Colors.white,
       elevation: 0,
@@ -365,10 +382,15 @@ class _QRCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+            border: Border.all(
+              color: borderColor,
+              width: _hasQuantity ? 1.3 : 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.035),
+                color: _hasQuantity
+                    ? AppColors.leaderGreen.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.035),
                 blurRadius: 18,
                 offset: const Offset(0, 7),
               ),
@@ -385,10 +407,9 @@ class _QRCard extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _QrStateBadge(state: _displayState, label: _stateLabel),
-                        const SizedBox(height: 7),
                         Text(
                           _dateLabel,
                           maxLines: 1,
@@ -479,13 +500,6 @@ class _QrStateBadge extends StatelessWidget {
           fg: AppColors.danger,
           icon: AppColors.danger,
           glyph: Icons.hourglass_bottom_rounded,
-        );
-      case QrState.split:
-        return (
-          bg: AppColors.accentVioletSoft,
-          fg: AppColors.accentViolet,
-          icon: AppColors.accentViolet,
-          glyph: Icons.call_split_rounded,
         );
     }
   }

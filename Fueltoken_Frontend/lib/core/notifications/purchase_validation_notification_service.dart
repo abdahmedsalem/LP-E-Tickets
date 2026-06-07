@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -22,12 +22,13 @@ class PurchaseValidationNotificationService {
   static const _channelId = 'purchase_validation';
   static const _channelName = 'Validation de commandes';
   static const _channelDescription =
-      'Notifications pour les commandes de carnets validées';
+      'Notifications pour les commandes de carnets validÃ©es ou rejetÃ©es';
   static const _prefsPrefix = 'ft_purchase_validation_notified_';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  final Set<String> _syncingUserIds = <String>{};
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -72,39 +73,46 @@ class PurchaseValidationNotificationService {
   Future<void> syncForUser(AppUser user) async {
     if (!AppEnvironment.useAcpecLiveData) return;
     if (user.role != UserRole.user) return;
+    if (!_syncingUserIds.add(user.id)) return;
 
-    await initialize();
+    try {
+      await initialize();
+      // Garantir que le store est scopÃ© Ã  cet utilisateur avant d'Ã©crire
+      await NotificationsStore.instance.loadForUser(user.id);
 
-    final raw = await OdooFueltokenFacade().purchasesList(
-      const <String, dynamic>{},
-    );
-    final lots = AcpecPurchasesMapper.fromRpcResult(
-      raw,
-      clientId: user.id,
-      clientName: user.name,
-      companyId: AppEnvironment.companyIdForUser(user),
-    );
-    final approvedLots = lots
-        .where((lot) => lot.state == PurchaseLotState.approved)
-        .toList();
-    if (approvedLots.isEmpty) return;
+      final raw = await OdooFueltokenFacade().purchasesList(
+        const <String, dynamic>{'state': 'terminal'},
+      );
+      final lots = AcpecPurchasesMapper.fromRpcResult(
+        raw,
+        clientId: user.id,
+        clientName: user.name,
+        companyId: AppEnvironment.companyIdForUser(user),
+      );
+      final terminalLots = lots.where(
+        (lot) =>
+            lot.state == PurchaseLotState.approved ||
+            lot.state == PurchaseLotState.rejected,
+      );
+      if (terminalLots.isEmpty) return;
 
-    final notifiedIds = await _loadNotifiedIds(user.id);
-    for (final lot in approvedLots) {
-      if (notifiedIds.contains(lot.id)) continue;
-      notifiedIds.add(lot.id);
-      await _emitValidatedNotification(lot);
+      final notifiedIds = await _loadNotifiedIds(user.id);
+      for (final lot in terminalLots) {
+        if (notifiedIds.contains(lot.id)) {
+          await _refreshStoredNotificationIfNeeded(lot);
+          continue;
+        }
+        notifiedIds.add(lot.id);
+        await _emitStatusNotification(lot);
+      }
+      await _saveNotifiedIds(user.id, notifiedIds);
+    } finally {
+      _syncingUserIds.remove(user.id);
     }
-    await _saveNotifiedIds(user.id, notifiedIds);
   }
 
-  Future<void> _emitValidatedNotification(PurchaseLot lot) async {
-    final title = 'Commande de carnets validée';
-    final body =
-        'Votre commande ${lot.internalRef} a été validée. '
-        '${Formatters.numberFr(lot.totalFaces)} tickets sont maintenant disponibles.';
-    final payload = '/purchases/${Uri.encodeComponent(lot.id)}';
-    final notificationId = _notificationIdFor(lot);
+  Future<void> _emitStatusNotification(PurchaseLot lot) async {
+    final item = _buildStoredNotification(lot);
 
     const androidDetails = AndroidNotificationDetails(
       _channelId,
@@ -126,23 +134,107 @@ class PurchaseValidationNotificationService {
     );
 
     await _plugin.show(
-      id: notificationId,
-      title: title,
-      body: body,
+      id: _notificationIdFor(lot),
+      title: item.title,
+      body: item.body,
       notificationDetails: details,
-      payload: payload,
     );
 
-    await NotificationsStore.instance.add(
-      NotificationItem(
-        id: 'purchase-${lot.id}',
-        title: title,
-        body: body,
-        timeLabel: 'Maintenant',
-        actionLabel: 'Voir l\'achat',
-        actionRoute: payload,
-      ),
+    await NotificationsStore.instance.add(item);
+  }
+
+  Future<void> _refreshStoredNotificationIfNeeded(PurchaseLot lot) async {
+    final existing = NotificationsStore.instance.items.where(
+      (item) => item.id == 'purchase-${lot.id}',
     );
+    final NotificationItem? current = existing.isEmpty ? null : existing.first;
+    if (current == null) return;
+    if (_hasCompletePurchaseLines(current)) return;
+
+    await NotificationsStore.instance.add(
+      _buildStoredNotification(lot, read: current.read),
+    );
+  }
+
+  bool _hasCompletePurchaseLines(NotificationItem item) {
+    if (item.purchaseLines.isEmpty) return false;
+    for (final line in item.purchaseLines) {
+      if (line.label.trim().isEmpty) return false;
+      if (line.amountLabel.trim().isEmpty) return false;
+      if (line.carnetCount <= 0) return false;
+    }
+    return true;
+  }
+
+  NotificationItem _buildStoredNotification(
+    PurchaseLot lot, {
+    bool read = false,
+  }) {
+    final effectiveDate = lot.state == PurchaseLotState.rejected
+        ? (lot.rejectedAt ?? lot.validationDate ?? DateTime.now())
+        : (lot.approvedAt ?? lot.validationDate ?? DateTime.now());
+    final amountLabel = Formatters.money(lot.totalAmount);
+    final dateLabel = Formatters.dateTime(effectiveDate);
+    final lines = lot.lines
+        .map(
+          (line) => NotificationPurchaseLineItem(
+            label: _lineLabel(line),
+            quantityLabel:
+                '${Formatters.numberFr(line.carnetCount)} carnet${line.carnetCount > 1 ? 's' : ''}',
+            amountLabel: Formatters.money(line.lineAmount),
+            faceValue: line.faceValue,
+            carnetSize: line.carnetSize,
+            carnetCount: line.carnetCount,
+          ),
+        )
+        .toList(growable: false);
+    final isRejected = lot.state == PurchaseLotState.rejected;
+    final title = isRejected
+        ? 'Commande de carnets rejetÃ©e'
+        : 'Commande de carnets validÃ©e';
+    final rejectionReason = isRejected ? lot.rejectionReason : null;
+    final body = isRejected
+        ? _rejectedBody(amountLabel, dateLabel, rejectionReason)
+        : '$amountLabel â€¢ ValidÃ©e le $dateLabel';
+
+    return NotificationItem(
+      id: 'purchase-${lot.id}',
+      title: title,
+      body: body,
+      timeLabel: dateLabel,
+      purchaseStatus: isRejected ? 'rejected' : 'approved',
+      amountLabel: amountLabel,
+      validationDateLabel: dateLabel,
+      rejectionReason: rejectionReason,
+      purchaseLines: lines,
+      read: read,
+    );
+  }
+
+  String _rejectedBody(
+    String amountLabel,
+    String dateLabel,
+    String? rejectionReason,
+  ) {
+    final reason = rejectionReason == null || rejectionReason.trim().isEmpty
+        ? null
+        : rejectionReason.trim();
+    if (reason == null) {
+      return '$amountLabel â€¢ RejetÃ©e le $dateLabel';
+    }
+    return '$amountLabel â€¢ RejetÃ©e le $dateLabel â€¢ Motif: $reason';
+  }
+
+  String _lineLabel(PurchaseLine line) {
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: line.carnetSize,
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+    return Formatters.carnetTypeLabel(line.carnetSize, line.faceValue);
   }
 
   int _notificationIdFor(PurchaseLot lot) {

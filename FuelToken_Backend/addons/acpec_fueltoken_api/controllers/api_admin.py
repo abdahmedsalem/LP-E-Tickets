@@ -168,9 +168,12 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
         try:
             user = self._admin_user()
             state = kwargs.get('state') or 'submitted'
-            domain = [('state', '=', state)] if state != 'all' else []
+            domain = [('company_id', 'in', user.company_ids.ids)]
+            if state != 'all':
+                domain.append(('state', '=', state))
+            total = request.env['acpec.fuel.purchase'].sudo().search_count(domain)
             records = request.env['acpec.fuel.purchase'].sudo().search(domain, order='id desc', limit=100)
-            return self._json_response({'items': [self._purchase_payload(purchase) for purchase in records], 'count': len(records)})
+            return self._json_response({'items': [self._purchase_payload(purchase) for purchase in records], 'count': total})
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -207,8 +210,6 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
-            if kwargs.get('rejection_reason'):
-                purchase.write({'rejection_reason': kwargs.get('rejection_reason')})
             purchase.with_user(user).action_reject()
             if kwargs.get('rejection_reason'):
                 purchase.sudo().write({'rejection_reason': kwargs.get('rejection_reason')})
@@ -220,7 +221,7 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
     def stations_list(self, **kwargs):
         try:
             user = self._admin_user()
-            domain = []
+            domain = [('company_id', 'in', user.company_ids.ids)]
             if kwargs.get('active') not in (None, False, ''):
                 domain.append(('active', '=', self._get_bool_param(kwargs.get('active'))))
             records = request.env['acpec.fuel.station'].sudo().search(domain, order='name')

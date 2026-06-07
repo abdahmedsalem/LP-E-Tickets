@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models/user_role.dart';
-import '../../features/admin/screens/admin_accounts_branch_screen.dart';
-import '../../data/models/account_request_item.dart';
 import '../../features/admin/screens/admin_carnets_screen.dart';
 import '../../features/admin/screens/admin_home_screen.dart';
 import '../../features/admin/screens/admin_lots_screen.dart';
@@ -20,7 +18,6 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
-import '../../features/auth/screens/signup_pending_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/client_shell_scaffold.dart';
@@ -44,7 +41,6 @@ import '../../features/settings/screens/notifications_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/station/screens/station_shell_scaffold.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
-import '../../features/admin/screens/admin_account_request_detail_screen.dart';
 
 class AppRouter {
   static GoRouter build(AuthBloc authBloc) {
@@ -59,7 +55,6 @@ class AppRouter {
           '/login',
           '/register',
           '/register/verify-otp',
-          '/signup/pending',
           '/splash',
           '/forgot-password',
           '/forgot-password/verify-otp',
@@ -164,8 +159,7 @@ class AppRouter {
         GoRoute(
           path: '/signup/pending',
           builder: (ctx, st) {
-            final x = st.extra;
-            if (x is! SignupPendingRouteArgs) {
+            if (st.extra == Object()) {
               return const Scaffold(
                 body: Center(
                   child: Text(
@@ -174,7 +168,9 @@ class AppRouter {
                 ),
               );
             }
-            return SignupPendingScreen(args: x);
+            return const Scaffold(
+              body: Center(child: Text('Compte active. Connectez-vous.')),
+            );
           },
         ),
 
@@ -358,16 +354,6 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/admin/accounts',
-                  pageBuilder: (context, state) => const NoTransitionPage<void>(
-                    child: AdminAccountsBranchScreen(),
-                  ),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
                   path: '/admin/more',
                   pageBuilder: (context, state) =>
                       const NoTransitionPage<void>(child: AdminMoreScreen()),
@@ -393,8 +379,7 @@ class AppRouter {
         GoRoute(
           path: '/admin/accounts/:id',
           builder: (_, st) {
-            final extra = st.extra;
-            if (extra is! AccountRequestItem) {
+            if (st.extra == Object()) {
               return Scaffold(
                 appBar: AppBar(title: const Text('Demande de compte')),
                 body: const Center(
@@ -404,7 +389,11 @@ class AppRouter {
                 ),
               );
             }
-            return AdminAccountRequestDetailScreen(item: extra);
+            return const Scaffold(
+              body: Center(
+                child: Text('Validation admin des comptes supprimee.'),
+              ),
+            );
           },
         ),
         GoRoute(

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math' as math;
 
@@ -13,18 +13,24 @@ import 'package:uuid/uuid.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
+import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import 'purchase_confirmation_screen.dart';
+import '../../../shared/widgets/app_message.dart';
 
 const int _kMaxTicketsPerPurchase = 500;
+const _submitPurchaseHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
+const _submitPurchaseHeaderGap = 4.0;
+const _submitPurchaseHeaderTitleSize = 24.0;
 
 class SubmitPurchaseScreen extends StatefulWidget {
   const SubmitPurchaseScreen({super.key});
@@ -41,6 +47,14 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
+
+  // Résultat temporaire après confirmation, pour afficher le dialog de succès.
+  ({
+    AcpecPurchaseCreateResult result,
+    String payRef,
+    List<PurchaseConfirmationLine> lines,
+  })?
+  _lastSubmitResult;
 
   @override
   void initState() {
@@ -136,13 +150,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       }
     });
     if (v > clamped && cap < v) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Plafond : $_kMaxTicketsPerPurchase tickets au total '
-            '(${_otherTickets(typeId)} déjà sur d’autres tickets).',
-          ),
-        ),
+      AppMessage.warning(
+        context,
+        'Plafond : $_kMaxTicketsPerPurchase tickets au total (${_otherTickets(typeId)} déjà sur d\'autres tickets).',
       );
     }
   }
@@ -174,113 +184,136 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Impossible de charger l’image. Réessayez.'),
-          ),
-        );
+        AppMessage.error(context, "Impossible de charger l'image. Réessayez.");
       }
     }
   }
 
   Future<void> _submit() async {
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) return;
-    if (_totalTickets() > _kMaxTicketsPerPurchase) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Maximum $_kMaxTicketsPerPurchase tickets par achat.'),
-        ),
-      );
-      return;
-    }
-    if (!_hasSelection) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Indiquez au moins un ticket.')),
-      );
-      return;
-    }
-    if (_proofPath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La preuve de paiement est obligatoire.')),
-      );
-      return;
-    }
+    if (_submitting) return;
     setState(() => _submitting = true);
     try {
-      if (AppEnvironment.useAcpecLiveData) {
-        if (kIsWeb) {
-          throw Exception(
-            'L’envoi de lot ACPEC avec preuve nécessite l’application mobile.',
-          );
-        }
-        final proofPath = _proofPath!;
-        final proofBytes = await File(proofPath).readAsBytes();
-        final rpcLines = <Map<String, dynamic>>[];
-        for (final t in _offerTypes) {
-          final q = _qty[t.id] ?? 0;
-          if (q <= 0) continue;
-          final idOdoo = int.tryParse(t.id);
-          if (idOdoo == null) {
-            throw Exception(
-              'Type Â« ${t.code} Â» : identifiant serveur inconnu. '
-              'Rafraîchissez la liste des offres.',
-            );
-          }
-          final cq = acpecOdooCarnetQtyFromTicketSelection(t, q);
-          if (cq <= 0) continue;
-          rpcLines.add({'carnet_type_id': idOdoo, 'carnet_qty': cq});
-        }
-        if (rpcLines.isEmpty) {
-          throw Exception('Aucune ligne valide à envoyer.');
-        }
-        final slash = proofPath.lastIndexOf('/');
-        final back = proofPath.lastIndexOf('\\');
-        final cut = math.max(slash, back);
-        final fileName = cut >= 0 ? proofPath.substring(cut + 1) : proofPath;
-        final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
-        final idem = const Uuid().v4();
-        final raw = await OdooFueltokenFacade().purchasesCreate({
-          'lines': rpcLines,
-          'proof_filename': fileName,
-          'proof_data': base64Encode(proofBytes),
-          'payment_reference': payRef,
-          'idempotency_key': idem,
-        });
-        if (!mounted) return;
-        final parsed = AcpecPurchasesMapper.parseCreateResult(raw);
-        await showPurchaseSubmitSuccessDialog(
+      final user = context.read<AuthBloc>().state.user;
+      if (user == null) return;
+      if (_totalTickets() > _kMaxTicketsPerPurchase) {
+        AppMessage.warning(
           context,
-          result: parsed,
-          clientPaymentReference: payRef,
+          'Maximum $_kMaxTicketsPerPurchase tickets par achat.',
         );
-        ClientHistoryRefreshBus.instance.bump();
-        if (mounted) context.pop();
-      } else {
-        throw Exception(
-          'Connexion serveur ACPEC requise pour soumettre un achat.',
-        );
+        return;
       }
-    } on OdooJsonRpcException catch (err) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              err.toString().replaceFirst('OdooJsonRpcException', 'Odoo'),
+      if (!_hasSelection) {
+        AppMessage.warning(context, 'Indiquez au moins un ticket.');
+        return;
+      }
+      if (_proofPath == null) {
+        AppMessage.error(context, 'La preuve de paiement est obligatoire.');
+        return;
+      }
+
+      // Construire les lignes de confirmation
+      final confirmLines = <PurchaseConfirmationLine>[];
+      for (final t in _offerTypes) {
+        final q = _qty[t.id] ?? 0;
+        if (q <= 0) continue;
+        confirmLines.add(PurchaseConfirmationLine(carnetType: t, qty: q));
+      }
+      if (confirmLines.isEmpty) return;
+
+      final proofPath = _proofPath!;
+      final navigator = Navigator.of(context);
+      final proofBytes = await File(proofPath).readAsBytes();
+      _lastSubmitResult = null;
+
+      // Naviguer vers l'écran de confirmation
+      final confirmed = await navigator.push<bool>(
+        MaterialPageRoute(
+          builder: (_) => PurchaseConfirmationScreen(
+            args: PurchaseConfirmationArgs(
+              lines: confirmLines,
+              proofPath: proofPath,
+              onConfirm: () async {
+                // Appel API réel: les erreurs remontent au confirmation screen
+                if (!AppEnvironment.useAcpecLiveData) {
+                  throw Exception(
+                    'Connexion serveur ACPEC requise pour soumettre un achat.',
+                  );
+                }
+                if (kIsWeb) {
+                  throw Exception(
+                    "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
+                  );
+                }
+                final rpcLines = <Map<String, dynamic>>[];
+                for (final line in confirmLines) {
+                  final t = line.carnetType;
+                  final q = line.qty;
+                  if (q <= 0) continue;
+                  final idOdoo = int.tryParse(line.carnetType.id);
+                  if (idOdoo == null) {
+                    throw Exception(
+                      'Type « ${t.code} » : identifiant serveur inconnu. '
+                      'Rafraîchissez la liste des offres.',
+                    );
+                  }
+                  final cq = acpecOdooCarnetQtyFromTicketSelection(
+                    line.carnetType,
+                    line.qty,
+                  );
+                  if (cq <= 0) continue;
+                  rpcLines.add({'carnet_type_id': idOdoo, 'carnet_qty': cq});
+                }
+                if (rpcLines.isEmpty) {
+                  throw Exception('Aucune ligne valide à envoyer.');
+                }
+                final slash = proofPath.lastIndexOf('/');
+                final back = proofPath.lastIndexOf('\\');
+                final cut = math.max(slash, back);
+                final fileName = cut >= 0
+                    ? proofPath.substring(cut + 1)
+                    : proofPath;
+                final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
+                final idem = const Uuid().v4();
+                final raw = await OdooFueltokenFacade().purchasesCreate({
+                  'lines': rpcLines,
+                  'proof_filename': fileName,
+                  'proof_data': base64Encode(proofBytes),
+                  'payment_reference': payRef,
+                  'idempotency_key': idem,
+                });
+                final parsed = AcpecPurchasesMapper.parseCreateResult(raw);
+                // Stocker le résultat pour l'afficher après retour
+                _lastSubmitResult = (
+                  result: parsed,
+                  payRef: payRef,
+                  lines: confirmLines,
+                );
+              },
             ),
           ),
+        ),
+      );
+
+      if (!mounted) return;
+      if (confirmed == true && _lastSubmitResult != null) {
+        final res = _lastSubmitResult!;
+        _lastSubmitResult = null;
+        ClientHistoryRefreshBus.instance.bump();
+        PurchasesRefreshBus.instance.bump();
+        final confirmedAt = DateTime.now();
+        await showPurchaseSubmitSuccessDialog(
+          context,
+          result: res.result,
+          confirmedAt: confirmedAt,
+          lines: res.lines,
+          onHome: () => context.go('/home'),
         );
-      }
-    } catch (err) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(err.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
+        return;
       }
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
   }
 
@@ -311,6 +344,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               subtitle: 'Sélectionnez les carnets et indiquez la quantité',
               showBack: true,
               largeTitle: true,
+              largeTitlePadding: _submitPurchaseHeaderPadding,
+              largeTitleGap: _submitPurchaseHeaderGap,
+              largeTitleFontSize: _submitPurchaseHeaderTitleSize,
               onBack: () => context.pop(),
             ),
             Expanded(
@@ -355,7 +391,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           Text(
                             AppEnvironment.useAcpecLiveData
                                 ? 'Aucun type de ticket détecté pour le moment.'
-                                : 'Aucun type de ticket unitaire n’est disponible pour votre société.',
+                                : "Aucun type de ticket unitaire n'est disponible pour votre société.",
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 15,
@@ -366,7 +402,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           const SizedBox(height: 8),
                           Text(
                             AppEnvironment.useAcpecLiveData
-                                ? 'Lorsque des offres seront disponibles pour votre compte, elles s’afficheront ici.'
+                                ? "Lorsque des offres seront disponibles pour votre compte, elles s'afficheront ici."
                                 : '',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
@@ -394,7 +430,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                             crossAxisCount: 1,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 0,
-                            childAspectRatio: 3.8,
+                            mainAxisExtent: 110,
                           ),
                       itemCount: _offerTypes.length,
                       itemBuilder: (context, i) {
@@ -420,6 +456,15 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.9,
                         color: AppColors.muted.withValues(alpha: 0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Preuve de paiement obligatoire.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -465,8 +510,8 @@ class _PurchaseOfferSkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 76,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      height: 110,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(17),
@@ -480,51 +525,61 @@ class _PurchaseOfferSkeletonCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const _SkeletonLine(width: 120, height: 14),
-                const SizedBox(height: 8),
-                Row(
+          const Align(
+            alignment: Alignment.topRight,
+            child: _SkeletonLine(width: 72, height: 12),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(right: 112),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SkeletonLine(width: 84, height: 11),
-                    const SizedBox(width: 18),
-                    const _SkeletonLine(width: 72, height: 10),
+                    _SkeletonLine(width: 132, height: 14),
+                    SizedBox(height: 20),
+                    _SkeletonLine(width: 104, height: 11),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FB),
-                  borderRadius: BorderRadius.circular(13),
-                ),
               ),
-              const SizedBox(width: 8),
-              const _SkeletonLine(width: 18, height: 16),
-              const SizedBox(width: 8),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF101522),
-                  borderRadius: BorderRadius.circular(13),
-                ),
+              const SizedBox(height: 5),
+              Container(height: 1, color: const Color(0xFFEAECEF)),
+              const SizedBox(height: 1),
+              Row(
+                children: [
+                  const _SkeletonLine(width: 56, height: 11),
+                  const Spacer(),
+                  _SkeletonButton(),
+                  const SizedBox(width: 4),
+                  const _SkeletonLine(width: 30, height: 13),
+                  const SizedBox(width: 4),
+                  _SkeletonButton(dark: true),
+                ],
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SkeletonButton extends StatelessWidget {
+  const _SkeletonButton({this.dark = false});
+
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF101522) : const Color(0xFFF5F7FB),
+        borderRadius: BorderRadius.circular(13),
       ),
     );
   }
@@ -570,6 +625,8 @@ class _CarnetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSelected = quantity > 0;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -577,94 +634,106 @@ class _CarnetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(17),
             border: Border.all(
-              color: const Color(0xFFEAECEF),
+              color: isSelected
+                  ? AppColors.leaderGreen.withValues(alpha: 0.85)
+                  : const Color(0xFFEAECEF),
               width: 1,
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 18,
-                spreadRadius: -8,
-                offset: Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Carnet ${Formatters.numberFr(type.size)} × ${Formatters.numberFr(type.faceValue)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
-                        height: 1.05,
-                      ),
+            boxShadow: isSelected
+                ? const []
+                : const [
+                    BoxShadow(
+                      color: Color(0x08000000),
+                      blurRadius: 18,
+                      spreadRadius: -8,
+                      offset: Offset(0, 7),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
+                  ],
+          ),
+          child: Stack(
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: Text(
+                  '${Formatters.numberFr(type.totalAmount)} MRU',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.inter(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    height: 1.08,
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 112),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${Formatters.numberFr(type.totalAmount)} MRU',
+                          'Carnet ${Formatters.numberFr(type.size)} × ${Formatters.numberFr(type.faceValue)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
-                            height: 1.02,
-                          ),
-                        ),
-                        const SizedBox(width: 18),
-                        Text(
-                          'Validité ${type.validityDays} jours',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF667085),
+                          style: GoogleFonts.inter(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
                             height: 1.08,
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Validité ${type.validityDays} jours',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF667085),
+                                  height: 1.08,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'QTE (carnets)',
-                    style: TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.35,
-                    ),
                   ),
-                  const SizedBox(height: 8),
-                  _StepperPair(
-                    value: quantity,
-                    onMinus: onMinus,
-                    onPlus: onPlus,
-                    canDecrement: quantity > 0,
-                    canIncrement: quantity < maxAllowed,
+                  const SizedBox(height: 5),
+                  Container(height: 1, color: const Color(0xFFEAECEF)),
+                  const SizedBox(height: 1),
+                  Row(
+                    children: [
+                      Text(
+                        'Quantité',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const Spacer(),
+                      _StepperPair(
+                        value: quantity,
+                        onMinus: onMinus,
+                        onPlus: onPlus,
+                        canDecrement: quantity > 0,
+                        canIncrement: quantity < maxAllowed,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -760,8 +829,9 @@ class _BottomBar extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF43A047),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    const Color(0xFF43A047).withValues(alpha: 0.35),
+                disabledBackgroundColor: const Color(
+                  0xFF43A047,
+                ).withValues(alpha: 0.35),
                 disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -809,30 +879,29 @@ class _StepperPair extends StatelessWidget {
         _StepCapsule(
           icon: Icons.remove,
           enabled: canDecrement,
-          primary: false,
           onTap: onMinus,
+          isPositive: false,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
         SizedBox(
-          width: 20,
-          child: Center(
-            child: Text(
-              '$value',
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF111827),
-                height: 1,
-              ),
+          width: 30,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+              height: 1,
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
         _StepCapsule(
           icon: Icons.add,
           enabled: canIncrement,
-          primary: true,
           onTap: onPlus,
+          isPositive: true,
         ),
       ],
     );
@@ -844,50 +913,32 @@ class _StepCapsule extends StatelessWidget {
     required this.icon,
     required this.enabled,
     required this.onTap,
-    required this.primary,
+    required this.isPositive,
   });
 
   final IconData icon;
   final bool enabled;
   final VoidCallback onTap;
-  final bool primary;
+  final bool isPositive;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(9),
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: !enabled
-                ? Colors.white
-                : primary
-                    ? const Color(0xFF43A047)
-                    : Colors.white,
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(
-              color: !enabled
-                  ? const Color(0xFFE3E6EA)
-                  : primary
-                    ? const Color(0xFF43A047)
-                    : const Color(0xFFD9DEE4),
-            ),
-          ),
-          child: Icon(
-            icon,
-            size: 12,
-            color: !enabled
-                ? const Color(0xFFB4B8C0)
-                : primary
-                    ? Colors.white
-                    : const Color(0xFF344054),
-          ),
-        ),
+    return IconButton.filledTonal(
+      onPressed: enabled ? onTap : null,
+      icon: Icon(icon, size: 18),
+      style: IconButton.styleFrom(
+        backgroundColor: enabled
+            ? (isPositive ? const Color(0xFF43A047) : const Color(0xFFF2F4F7))
+            : const Color(0xFFF3F4F6),
+        foregroundColor: enabled
+            ? (isPositive ? Colors.white : const Color(0xFF344054))
+            : const Color(0xFFB8BEC7),
+        disabledBackgroundColor: const Color(0xFFF3F4F6),
+        disabledForegroundColor: const Color(0xFFB8BEC7),
       ),
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
     );
   }
 }

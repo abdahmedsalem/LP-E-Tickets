@@ -21,7 +21,7 @@ class StationShellScaffold extends StatelessWidget {
     final selected = navigationShell.currentIndex;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F4),
+      backgroundColor: Colors.white,
       extendBody: false,
       body: navigationShell,
       bottomNavigationBar: SafeArea(

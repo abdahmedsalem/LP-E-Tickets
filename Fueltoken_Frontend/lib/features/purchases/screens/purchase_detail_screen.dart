@@ -9,6 +9,9 @@ import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_api_config.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
+import '../../../core/utils/client_history_refresh_bus.dart';
+import '../../../core/utils/faces_refresh_bus.dart';
+import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
@@ -27,6 +30,7 @@ import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../shared/widgets/app_message.dart';
 
 class PurchaseDetailScreen extends StatefulWidget {
   final String lotId;
@@ -277,13 +281,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       final purchaseId = _purchaseIdForRpc();
       if (purchaseId == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Impossible deffectuer cette action pour cette commande.',
-              ),
-            ),
-          );
+          AppMessage.error(context, 'Impossible d\'effectuer cette action pour cette commande.');
         }
         return;
       }
@@ -324,37 +322,24 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           ),
         );
         WalletRefreshBus.instance.bump();
+        FacesRefreshBus.instance.bump();
+        ClientHistoryRefreshBus.instance.bump();
+        PurchasesRefreshBus.instance.bump();
         await _refresh();
         if (!mounted) return;
         if (widget.adminMode) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Achat validé. Les tickets sont disponibles pour le client.',
-              ),
-            ),
-          );
+          AppMessage.success(context, 'Achat validé. Les tickets sont disponibles pour le client.');
           context.pop(true);
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Lot validé. Les tickets sont disponibles pour le client.',
-            ),
-          ),
-        );
+        AppMessage.success(context, 'Lot validé. Les tickets sont disponibles pour le client.');
       } on OdooJsonRpcException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(_briefPurchaseActionError(e))));
+          AppMessage.error(context, _briefPurchaseActionError(e));
         }
       } catch (err) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(_briefPurchaseActionError(err))),
-          );
+          AppMessage.error(context, _briefPurchaseActionError(err));
         }
       } finally {
         if (mounted) setState(() => _approving = false);
@@ -363,11 +348,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connexion serveur ACPEC requise pour valider ce lot.'),
-        ),
-      );
+      AppMessage.error(context, 'Connexion serveur ACPEC requise pour valider ce lot.');
     }
   }
 
@@ -377,11 +358,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     final trimmed = _rejectReasonController.text.trim();
     if (trimmed.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Indiquez un motif de rejet avant de confirmer.'),
-        ),
-      );
+      AppMessage.warning(context, 'Indiquez un motif de rejet avant de confirmer.');
       return;
     }
 
@@ -390,13 +367,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       final purchaseId = _purchaseIdForRpc();
       if (purchaseId == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Impossible deffectuer cette action pour cette commande.',
-              ),
-            ),
-          );
+          AppMessage.error(context, 'Impossible d\'effectuer cette action pour cette commande.');
         }
         return;
       }
@@ -434,36 +405,24 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           ),
         );
         WalletRefreshBus.instance.bump();
+        ClientHistoryRefreshBus.instance.bump();
+        PurchasesRefreshBus.instance.bump();
         await _refresh();
         if (!mounted) return;
         _cancelRejectFlow();
         if (widget.adminMode) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Achat rejeté. Le motif a été enregistré pour le client.',
-              ),
-            ),
-          );
+          AppMessage.success(context, 'Achat rejeté. Le motif a été enregistré pour le client.');
           context.pop(true);
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lot rejeté. Le motif a été enregistré.'),
-          ),
-        );
+        AppMessage.success(context, 'Lot rejeté. Le motif a été enregistré.');
       } on OdooJsonRpcException catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(_briefPurchaseActionError(e))));
+          AppMessage.error(context, _briefPurchaseActionError(e));
         }
       } catch (err) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(_briefPurchaseActionError(err))),
-          );
+          AppMessage.error(context, _briefPurchaseActionError(err));
         }
       } finally {
         if (mounted) setState(() => _rejecting = false);
@@ -472,11 +431,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connexion serveur ACPEC requise pour rejeter ce lot.'),
-        ),
-      );
+      AppMessage.error(context, 'Connexion serveur ACPEC requise pour rejeter ce lot.');
     }
   }
 
@@ -623,7 +578,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       onRefresh: _refresh,
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                         children: [
                           _PurchaseHeroCard(
                             lot: _lot!,
@@ -684,10 +639,10 @@ class _PurchaseHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.lineSoft),
         boxShadow: AppColors.softShadow,
       ),
@@ -698,19 +653,19 @@ class _PurchaseHeroCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF7EE),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primaryTint,
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
                   Icons.receipt_long_rounded,
-                  color: Color(0xFF2E7D32),
-                  size: 22,
+                  color: AppColors.leaderGreen,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -729,10 +684,10 @@ class _PurchaseHeroCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
-                        fontSize: 17,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
-                        height: 1.05,
+                        height: 1.08,
                         letterSpacing: -0.2,
                       ),
                     ),
@@ -742,7 +697,7 @@ class _PurchaseHeroCard extends StatelessWidget {
               _statusPill(),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               _OverviewFact(
@@ -769,7 +724,7 @@ class _MetaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Column(
         children: [
           _InfoRow(
@@ -1158,9 +1113,7 @@ class _ProofTile extends StatelessWidget {
       final bytes = await _resolveBytes();
       if (bytes == null || bytes.isEmpty) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Téléchargement indisponible.')),
-          );
+          AppMessage.error(context, 'Téléchargement indisponible.');
         }
         return;
       }
@@ -1171,15 +1124,11 @@ class _ProofTile extends StatelessWidget {
       await file.writeAsBytes(bytes, flush: true);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Preuve téléchargée: ${file.path}')),
-        );
+        AppMessage.success(context, 'Preuve téléchargée: ${file.path}');
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Impossible de télécharger la preuve.')),
-        );
+        AppMessage.error(context, 'Impossible de télécharger la preuve.');
       }
     }
   }

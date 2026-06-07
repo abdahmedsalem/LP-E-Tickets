@@ -17,7 +17,7 @@ class StationHomeScreen extends StatelessWidget {
     }
 
     final firstName = user.name.trim().split(RegExp(r'\s+')).first;
-    const stationName = 'Station Total XYZ';
+    final stationName = user.stationName ?? user.name;
 
     return Scaffold(
       backgroundColor: Colors.white,

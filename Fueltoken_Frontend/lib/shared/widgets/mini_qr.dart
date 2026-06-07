@@ -21,8 +21,6 @@ class MiniQR extends StatelessWidget {
         return AppColors.muted;
       case QrState.expired:
         return AppColors.danger;
-      case QrState.split:
-        return AppColors.info;
     }
   }
 

@@ -32,6 +32,8 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'amount_total': qr.amount_total,
             'face_qty_total': qr.face_qty_total,
             'expires_at': fields.Datetime.to_string(qr.expires_at) if qr.expires_at else False,
+            'generated_at': fields.Datetime.to_string(qr.create_date) if qr.create_date else False,
+            'consumed_at': fields.Datetime.to_string(qr.consumed_at) if qr.consumed_at else False,
             'lines': [{'face_value': int(float(value)), 'qty': qty} for value, qty in grouped.items()],
         }
 
@@ -66,6 +68,20 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
 
     def _tx_payload(self, tx):
         purchase = tx.purchase_id
+        transfer = tx.transfer_id
+
+        # Direction du transfert de carnets : sortant (source) ou entrant (dest)
+        transfer_direction = False
+        transfer_other_party = False
+        if transfer:
+            wallet = tx.wallet_id
+            if wallet and transfer.source_wallet_id == wallet:
+                transfer_direction = 'outgoing'
+                transfer_other_party = transfer.dest_partner_id.display_name or False
+            elif wallet and transfer.dest_wallet_id == wallet:
+                transfer_direction = 'incoming'
+                transfer_other_party = transfer.source_partner_id.display_name or False
+
         return {
             'id': tx.id,
             'name': tx.name,
@@ -93,6 +109,10 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'station_id': tx.station_id.id if tx.station_id else False,
             'station_name': tx.station_id.name if tx.station_id else False,
             'note': tx.note or False,
+            # Transfert de carnets : direction et autre partie
+            'transfer_id': transfer.id if transfer else False,
+            'transfer_direction': transfer_direction,
+            'transfer_other_party': transfer_other_party,
             'lines': [{
                 'id': line.id,
                 'purchase_id': line.purchase_id.id if line.purchase_id else False,
@@ -140,14 +160,30 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 'id': line.id,
                 'purchase_id': purchase.id,
                 'purchase_line_id': line.id,
+                'carnet_type_id': line.carnet_type_id.id,
+                'carnet_type_code': line.carnet_type_id.code,
+                'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
+                'carnet_qty': line.carnet_qty,
+                'face_count': line.face_count,
                 'face_value': line.face_value,
+                'amount_total': line.amount_total,
+                # compatibilité historique
                 'qty': line.generated_face_qty,
                 'amount': line.amount_total,
             } for line in purchase.line_ids],
         }
 
     def _history_sort_key(self, item):
-        return item.get('created_at') or item.get('submitted_at') or item.get('approved_at') or ''
+        """Retourne une clé de tri ISO pour un élément d'historique.
+
+        Odoo peut retourner False au lieu de None pour les champs datetime vides ;
+        on normalise en chaîne vide pour éviter une erreur de comparaison.
+        """
+        for key in ('created_at', 'submitted_at', 'approved_at', 'rejected_at', 'date'):
+            val = item.get(key)
+            if val and isinstance(val, str) and val.strip():
+                return val.strip()
+        return ''
 
     def _wallet_breakdown_by_face_value(self, wallet):
         groups = request.env['acpec.fuel.face.line'].sudo().read_group(
@@ -329,16 +365,34 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 ('partner_id', '=', wallet.partner_id.id),
                 ('company_id', '=', wallet.company_id.id),
             ], order='id desc', limit=50)
-            return self._json_response({'items': [{
-                'id': p.id,
-                'name': p.name,
-                'public_code': p.public_code,
-                'state': p.state,
-                'amount_total': p.amount_total,
-                'face_qty_total': p.face_qty_total,
-                'submitted_at': fields.Datetime.to_string(p.submitted_at) if p.submitted_at else False,
-                'approved_at': fields.Datetime.to_string(p.approved_at) if p.approved_at else False,
-            } for p in items]})
+            result = []
+            for p in items:
+                lines = []
+                for line in p.line_ids:
+                    lines.append({
+                        'id': line.id,
+                        'carnet_type_id': line.carnet_type_id.id,
+                        'carnet_type_code': line.carnet_type_id.code,
+                        'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
+                        'face_count': line.face_count,
+                        'face_value': line.face_value,
+                        'carnet_qty': line.carnet_qty,
+                        'amount_total': line.amount_total,
+                    })
+                result.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'public_code': p.public_code,
+                    'state': p.state,
+                    'amount_total': p.amount_total,
+                    'face_qty_total': p.face_qty_total,
+                    'submitted_at': fields.Datetime.to_string(p.submitted_at) if p.submitted_at else False,
+                    'approved_at': fields.Datetime.to_string(p.approved_at) if p.approved_at else False,
+                    'rejected_at': fields.Datetime.to_string(p.rejected_at) if p.rejected_at else False,
+                    'rejection_reason': p.rejection_reason or False,
+                    'lines': lines,
+                })
+            return self._json_response({'items': result})
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -372,7 +426,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                     'id': line.id,
                     'carnet_type_id': line.carnet_type_id.id,
                     'carnet_type_code': line.carnet_type_id.code,
-                    'carnet_type_name': line.carnet_type_id.name,
+                    'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
                     'carnet_qty': line.carnet_qty,
                     'face_count': line.face_count,
                     'face_value': line.face_value,
@@ -416,13 +470,9 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 domain.append(('create_date', '>=', fields.Datetime.to_string(date_from)))
             if date_to:
                 domain.append(('create_date', '<=', fields.Datetime.to_string(date_to)))
-            records = tx_model.search(domain, order='create_date desc, id desc')
-            items = [self._tx_payload(tx) for tx in records]
-            existing_purchase_ids = {
-                tx.purchase_id.id
-                for tx in records
-                if tx.purchase_id
-            }
+
+            # Achats soumis en attente (pas encore de transaction liée) — toujours peu nombreux,
+            # on les charge une seule fois pour construire l'historique unifié.
             submitted_domain = [
                 ('partner_id', '=', wallet.partner_id.id),
                 ('company_id', '=', wallet.company_id.id),
@@ -432,19 +482,39 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 submitted_domain,
                 order='submitted_at desc, id desc',
             )
+            submitted_items = []
+            existing_purchase_ids = set()
             for purchase in submitted_purchases:
-                if purchase.id in existing_purchase_ids:
-                    continue
                 payload = self._purchase_submission_payload(purchase, wallet)
                 created_at = self._parse_datetime_param(payload.get('created_at'), 'created_at') if payload.get('created_at') else False
                 if date_from and created_at and created_at < date_from:
                     continue
                 if date_to and created_at and created_at > date_to:
                     continue
-                items.append(payload)
-            items.sort(key=self._history_sort_key, reverse=True)
-            total_count = len(items)
-            page_items = items[offset:offset + limit]
+                submitted_items.append(payload)
+                existing_purchase_ids.add(purchase.id)
+
+            # Compte total DB pour les transactions (sans charger tous les enregistrements)
+            tx_count = tx_model.search_count(domain)
+            total_count = tx_count + len(submitted_items)
+
+            # Pagination DB sur les transactions ; on décale l'offset en tenant compte
+            # des achats soumis qui apparaissent toujours en tête (offset=0).
+            submitted_count = len(submitted_items)
+            if offset < submitted_count:
+                # La page contient des achats soumis + potentiellement des transactions
+                head_items = submitted_items[offset:offset + limit]
+                tx_needed = limit - len(head_items)
+                if tx_needed > 0:
+                    tx_records = tx_model.search(domain, order='create_date desc, id desc', limit=tx_needed, offset=0)
+                    tx_items = [self._tx_payload(tx) for tx in tx_records if tx.purchase_id.id not in existing_purchase_ids or not tx.purchase_id]
+                    head_items += tx_items
+                page_items = head_items
+            else:
+                tx_offset = offset - submitted_count
+                tx_records = tx_model.search(domain, order='create_date desc, id desc', limit=limit, offset=tx_offset)
+                page_items = [self._tx_payload(tx) for tx in tx_records]
+
             return self._json_response({
                 'items': page_items,
                 'count': total_count,
@@ -654,6 +724,85 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
             } for line in transfer.line_ids],
         }
+
+    @http.route(
+        '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
+        type='jsonrpc', auth='public', methods=['POST'], csrf=False,
+    )
+    def transfer_recipient_lookup(self, **kwargs):
+        """Vérifie et retourne le client destinataire d'un transfert."""
+        try:
+            self._require_keys(kwargs, ['recipient_phone'])
+            source_user = self._require_mobile_auth()
+            self._require_fuel_group(source_user, 'client')
+            wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                source_user.partner_id, source_user.company_id,
+            )
+            recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
+            if not recipient_phone:
+                raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
+            recipient_user = request.env['res.users'].sudo().search([
+                ('login', '=', recipient_phone),
+                ('active', '=', True),
+                ('company_ids', 'in', [wallet.company_id.id]),
+            ], limit=1)
+            if not recipient_user:
+                raise ValidationError(
+                    _("Aucun compte trouvé pour le numéro '%s'.") % recipient_phone
+                )
+            if recipient_user.id == source_user.id:
+                raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
+            if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
+                raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
+            return self._json_response({
+                'recipient_phone': recipient_phone,
+                'recipient_name': recipient_user.partner_id.display_name or recipient_user.name,
+                'recipient_partner_id': recipient_user.partner_id.id,
+            })
+        except Exception as exc:
+            return self._handle_exception_response(exc)
+
+    @http.route(
+        '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
+        type='jsonrpc', auth='public', methods=['POST'], csrf=False,
+    )
+    def transfer_carnets_recipient(self, **kwargs):
+        """Résout un numéro de téléphone en nom de destinataire avant transfert.
+
+        Corps JSON : { recipient_phone: str }
+        Réponse    : { recipient_name: str, recipient_phone: str }
+        """
+        try:
+            self._require_keys(kwargs, ['recipient_phone'])
+            source_user = self._require_mobile_auth()
+            self._require_fuel_group(source_user, 'client')
+            wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                source_user.partner_id, source_user.company_id,
+            )
+            recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
+            if not recipient_phone:
+                raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
+
+            recipient_user = request.env['res.users'].sudo().search([
+                ('login', '=', recipient_phone),
+                ('active', '=', True),
+                ('company_ids', 'in', [wallet.company_id.id]),
+            ], limit=1)
+            if not recipient_user:
+                raise ValidationError(
+                    _("Aucun compte FuelToken trouvé pour le numéro '%s'.") % recipient_phone
+                )
+            if recipient_user.id == source_user.id:
+                raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
+            if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
+                raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
+
+            return self._json_response({
+                'recipient_name': recipient_user.partner_id.display_name or recipient_phone,
+                'recipient_phone': recipient_phone,
+            })
+        except Exception as exc:
+            return self._handle_exception_response(exc)
 
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/carnets/transfer',

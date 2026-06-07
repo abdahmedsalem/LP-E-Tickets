@@ -52,7 +52,7 @@ class AppColors {
   static const Color line = Color(0xFFE2E8F0);
   static const Color lineSoft = Color(0xFFF1F5F9);
   /// Fond principal — teinte verte discrète (parcours client & coquilles).
-  static const Color background = Color(0xFFF2FAF6);
+  static const Color background = Color(0xFFFFFFFF);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceAlt = lineSoft;
 

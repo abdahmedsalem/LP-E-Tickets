@@ -9,6 +9,7 @@ import '../../../core/validation/password_validators.dart';
 import '../../../data/services/odoo_auth_service.dart';
 import '../bloc/auth_bloc.dart';
 import 'register_verify_otp_screen.dart';
+import '../../../shared/widgets/app_message.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,11 +27,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _sendingOtp = false;
 
   @override
+  void initState() {
+    super.initState();
+    _phoneLocal.addListener(_onFieldChanged);
+    _password.addListener(_onFieldChanged);
+  }
+
+  @override
   void dispose() {
+    _phoneLocal.removeListener(_onFieldChanged);
+    _password.removeListener(_onFieldChanged);
     _name.dispose();
     _phoneLocal.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   String get _phoneFull =>
@@ -38,14 +52,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _onCreateAccount() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!OdooAuthRpcConfig.hasCompleteRegistration) {
+    if (OdooAuthRpcConfig.requestOtpRoute.isEmpty ||
+        OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'L’inscription Odoo ACPEC n’est pas configurée sur cet appareil.',
-          ),
-        ),
+      AppMessage.error(
+        context,
+        "L'inscription Odoo ACPEC n'est pas configurée sur cet appareil.",
       );
       return;
     }
@@ -55,19 +67,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _sendRegistrationOtp() async {
     setState(() => _sendingOtp = true);
     try {
-      final response = await OdooAuthService.instance.requestSignupOtp(
-        name: _name.text.trim(),
-        phoneFull: _phoneFull,
-        password: _password.text,
-      );
+      final response = await OdooAuthService.instance
+          .submitSignupRequestDetailed(
+            name: _name.text.trim(),
+            signupIdentifier: _phoneFull,
+            secretCode: _password.text,
+            companyId: OdooAuthRpcConfig.signupDefaultCompanyId,
+          );
       final data = response['data'];
       final challengeId = data is Map
           ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')
           : null;
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Code OTP envoyé par SMS.')));
+      AppMessage.info(context, 'Code OTP envoyé par SMS.');
       if (challengeId == null) {
         throw Exception('Challenge OTP introuvable dans la réponse serveur.');
       }
@@ -82,9 +94,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        AppMessage.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _sendingOtp = false);
@@ -101,9 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           listener: (ctx, state) {
             if (state.status == AuthStatus.failure &&
                 state.errorMessage != null) {
-              ScaffoldMessenger.of(
-                ctx,
-              ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+              AppMessage.error(ctx, state.errorMessage!);
             }
           },
           builder: (ctx, state) {
@@ -136,9 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          const _RegisterBrandBlock(),
-                          const SizedBox(height: 44),
+                          const SizedBox(height: 16),
                           const _RegisterWelcomeCopy(),
                           const SizedBox(height: 34),
                           const _RegisterSectionTitle(title: 'Inscription'),
@@ -146,7 +152,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _RegisterField(
                             controller: _name,
                             hint: 'Nom complet',
-                            icon: Icons.person_outline_rounded,
                             validator: (v) => (v == null || v.trim().isEmpty)
                                 ? 'Nom requis'
                                 : null,
@@ -155,19 +160,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _RegisterField(
                             controller: _phoneLocal,
                             hint: 'Téléphone',
-                            icon: Icons.phone_android_outlined,
                             keyboardType: TextInputType.number,
                             maxLength: 8,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
                             validator: validateMrLocalPhone,
+                            counterLabel:
+                                '${_phoneLocal.text.trim().replaceAll(RegExp(r'\D'), '').length}/8',
                           ),
                           const SizedBox(height: 14),
                           _RegisterField(
                             controller: _password,
                             hint: 'Mot de passe',
-                            icon: Icons.lock_outline_rounded,
                             obscure: _obscure,
                             keyboardType: TextInputType.number,
                             maxLength: 6,
@@ -175,6 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               FilteringTextInputFormatter.digitsOnly,
                             ],
                             validator: validateSixDigitNumericPassword,
+                            counterLabel: '${_password.text.trim().length}/6',
                             trailing: IconButton(
                               splashRadius: 20,
                               iconSize: 20,
@@ -188,7 +194,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   setState(() => _obscure = !_obscure),
                             ),
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           SizedBox(
                             height: 56,
                             child: DecoratedBox(
@@ -281,84 +287,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _RegisterBrandBlock extends StatelessWidget {
-  const _RegisterBrandBlock();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/logo_fueltoken.png',
-              width: 86,
-              height: 86,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                _RegisterWordmark(),
-                SizedBox(height: 0),
-                Text(
-                  'SMART FUEL WALLET',
-                  style: TextStyle(
-                    fontSize: 10.0,
-                    letterSpacing: 4.6,
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _RegisterWordmark extends StatelessWidget {
-  const _RegisterWordmark();
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: 'Fuel',
-            style: TextStyle(
-              color: Color(0xFF203A73),
-              fontSize: 34,
-              height: 1.0,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-            ),
-          ),
-          TextSpan(
-            text: 'Token',
-            style: TextStyle(
-              color: Color(0xFF2EA043),
-              fontSize: 34,
-              height: 1.0,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -465,84 +393,107 @@ class _RegisterField extends StatelessWidget {
   const _RegisterField({
     required this.controller,
     required this.hint,
-    required this.icon,
     required this.validator,
     this.obscure = false,
     this.keyboardType,
     this.maxLength,
     this.inputFormatters,
     this.trailing,
+    this.counterLabel = '',
   });
 
   final TextEditingController controller;
   final String hint;
-  final IconData icon;
   final String? Function(String?)? validator;
   final bool obscure;
   final TextInputType? keyboardType;
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
   final Widget? trailing;
+  final String counterLabel;
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      autocorrect: true,
-      maxLength: maxLength,
-      inputFormatters: inputFormatters,
-      validator: validator,
-      style: const TextStyle(
-        fontSize: 15.5,
-        color: Color(0xFF1E293B),
-        fontWeight: FontWeight.w500,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(
-          color: Color(0xFF9CA3AF),
-          fontSize: 15.5,
-          fontWeight: FontWeight.w400,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextFormField(
+          controller: controller,
+          obscureText: obscure,
+          keyboardType: keyboardType,
+          autocorrect: false,
+          enableSuggestions: false,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
+          validator: validator,
+          style: const TextStyle(
+            fontSize: 15.5,
+            color: Color(0xFF1E293B),
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              color: Color(0xFF9CA3AF),
+              fontSize: 15.5,
+              fontWeight: FontWeight.w400,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 18,
+            ),
+            suffixIcon: trailing,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFC7CEDA),
+                width: 1.1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFC7CEDA),
+                width: 1.1,
+              ),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+              borderSide: BorderSide(color: Color(0xFF203A73), width: 1.6),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFDC2626),
+                width: 1.2,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFDC2626),
+                width: 1.6,
+              ),
+            ),
+            counterText: '',
+          ),
         ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 18,
+        const SizedBox(height: 3),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            counterLabel,
+            style: const TextStyle(
+              fontSize: 12.5,
+              height: 1.1,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w400,
+            ),
+          ),
         ),
-        prefixIcon: Padding(
-          padding: const EdgeInsets.only(left: 12, right: 6),
-          child: Icon(icon, size: 20, color: const Color(0xFF7A8798)),
-        ),
-        prefixIconConstraints: const BoxConstraints(
-          minWidth: 36,
-          minHeight: 36,
-        ),
-        suffixIcon: trailing,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFC7CEDA), width: 1.1),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFC7CEDA), width: 1.1),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(14)),
-          borderSide: BorderSide(color: Color(0xFF203A73), width: 1.6),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.6),
-        ),
-        counterText: '',
-      ),
+      ],
     );
   }
 }

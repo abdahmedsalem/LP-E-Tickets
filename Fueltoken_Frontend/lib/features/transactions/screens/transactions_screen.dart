@@ -138,7 +138,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         return true;
       case _HistoryQuickFilter.activeBlocked:
         return t.type == TxType.qrEmission ||
-            t.type == TxType.qrSplit ||
+            t.type == TxType.qrSeparer ||
             t.type == TxType.qrRetirer ||
             t.type == TxType.qrBlocked;
       case _HistoryQuickFilter.purchases:
@@ -1103,7 +1103,8 @@ class _TxCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amountColor = _historyAmountColor(tx.type);
-    final title = _historyTxTitle(tx.type);
+    // Utilise displayTitle pour les transferts (inclut le nom de la partie)
+    final title = tx.displayTitle;
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm').format(tx.date);
     final signed = tx.totalAmount < 0;
@@ -1175,23 +1176,25 @@ class _TxCard extends StatelessWidget {
 String _historyTxTitle(TxType type) {
   switch (type) {
     case TxType.purchaseSubmitted:
-      return 'Achats soumis';
+      return 'Achat en attente';
     case TxType.purchaseValidated:
-      return 'Achats validés';
+      return 'Achat validé';
     case TxType.purchaseRejected:
-      return 'Achats rejetés';
+      return 'Achat rejeté';
     case TxType.qrEmission:
-      return 'Em\u00e9ission QR';
-    case TxType.qrSplit:
-      return 'Split de QR';
+      return '\u00c9mission QR';
+    case TxType.qrSeparer:
+      return 'Séparation QR';
     case TxType.qrRetirer:
       return 'Retrait de tickets';
     case TxType.carnetTransfer:
       return 'Transfert de carnets';
+    case TxType.carnetReceived:
+      return 'Réception de carnets';
     case TxType.qrBlocked:
       return 'QR bloqu\u00e9';
     case TxType.stationConsumption:
-      return 'Consommation QR';
+      return 'Consommation station';
     case TxType.expiration:
       return 'Expiration de tickets';
     case TxType.walletLedger:
@@ -1203,9 +1206,9 @@ String _compactDate(DateTime date) {
   return DateFormat('dd-MM-yyyy').format(date);
 }
 
-String _popupDetailTitle(TxType type) {
-  if (type == TxType.walletLedger) return 'Mouvement';
-  return type.label;
+String _popupDetailTitle(BusinessTransaction tx) {
+  if (tx.type == TxType.walletLedger) return 'Mouvement';
+  return tx.displayTitle;
 }
 
 Color _historyAmountColor(TxType type) {
@@ -1219,12 +1222,14 @@ Color _historyAmountColor(TxType type) {
     case TxType.stationConsumption:
       return const Color(0xFFD97706);
     case TxType.qrEmission:
-    case TxType.qrSplit:
+    case TxType.qrSeparer:
       return const Color(0xFFD97706);
     case TxType.qrRetirer:
       return AppColors.warning;
     case TxType.carnetTransfer:
       return AppColors.primary;
+    case TxType.carnetReceived:
+      return AppColors.leaderGreen;
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return AppColors.ink;
@@ -1431,7 +1436,7 @@ class _TransactionOverviewCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _popupDetailTitle(tx.type),
+                  _popupDetailTitle(tx),
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -1647,7 +1652,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
             color: gray,
           ),
       ];
-    case TxType.qrSplit:
+    case TxType.qrSeparer:
       return [
         _TransactionFact(
           label: 'Tickets',
@@ -1712,6 +1717,35 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
         _TransactionFact(
           label: 'Client',
           value: client,
+          icon: Icons.person_outline_rounded,
+          color: gray,
+        ),
+      ];
+    case TxType.carnetReceived:
+      return [
+        _TransactionFact(
+          label: 'Reference',
+          value: lotRef ?? 'â€”',
+          icon: Icons.swap_horiz_rounded,
+          color: blue,
+        ),
+        _TransactionFact(
+          label: 'Tickets',
+          value: '$totalQty',
+          icon: Icons.inventory_2_outlined,
+          color: violet,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+        _TransactionFact(
+          label: 'Expediteur',
+          value: tx.transferParty?.trim().isNotEmpty == true
+              ? tx.transferParty!.trim()
+              : client,
           icon: Icons.person_outline_rounded,
           color: gray,
         ),

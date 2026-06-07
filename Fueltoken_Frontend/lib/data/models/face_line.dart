@@ -42,7 +42,7 @@ class FaceLine extends Equatable {
     required this.ownerId,
   });
 
-  bool get isExpired => DateTime.now().isAfter(expirationDate);
+  bool get isExpired => DateTime.now().toUtc().isAfter(expirationDate);
   int get availableValue => availableQty * faceValue;
   int get expiredValue => expiredQty * faceValue;
 

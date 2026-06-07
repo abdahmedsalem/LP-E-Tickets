@@ -1059,6 +1059,9 @@ class AcpecPurchasesMapper {
               ? m['carnet_type_name'].toString()
               : null) ??
           'T$ctId';
+      final name = m['carnet_type_name']?.toString().trim() ??
+          m['name']?.toString().trim() ??
+          '';
       final carnetQty = _int(m['carnet_qty'] ?? m['qty'] ?? m['quantity'], 0);
       final size = _int(m['carnet_size'] ?? m['size'] ?? m['face_count'], 1)
           .clamp(1, 9999);
@@ -1072,6 +1075,7 @@ class AcpecPurchasesMapper {
           id: 'pl-$lineId',
           carnetTypeId: ctId,
           carnetTypeCode: code,
+          carnetTypeName: name,
           carnetCount: carnetQty > 0 ? carnetQty : 1,
           carnetSize: size,
           faceValue: fv > 0 ? fv : 1,
@@ -1096,6 +1100,7 @@ class AcpecPurchasesMapper {
           id: 'pl-syn-${row['id']}',
           carnetTypeId: '0',
           carnetTypeCode: '—',
+          carnetTypeName: '',
           carnetCount: faceQty,
           carnetSize: 1,
           faceValue: unit,
@@ -1108,6 +1113,7 @@ class AcpecPurchasesMapper {
         id: 'pl-syn-${row['id']}',
         carnetTypeId: '0',
         carnetTypeCode: '—',
+        carnetTypeName: '',
         carnetCount: 1,
         carnetSize: 1,
         faceValue: amt,

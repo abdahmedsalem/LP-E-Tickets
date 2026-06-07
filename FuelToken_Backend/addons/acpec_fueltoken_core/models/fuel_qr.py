@@ -1,5 +1,9 @@
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class AcpecFuelQr(models.Model):
@@ -67,6 +71,12 @@ class AcpecFuelQr(models.Model):
             if existing:
                 return existing
         with self.env.cr.savepoint():
+            # Verrou pessimiste sur le wallet pour éviter la double émission
+            self.env.cr.execute(
+                "SELECT id FROM acpec_fuel_wallet WHERE id = %s FOR UPDATE",
+                (wallet.id,),
+            )
+            wallet.invalidate_recordset()
             qr = self.sudo().create({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False})
             allocations = self.env['acpec.fuel.face.line'].sudo().reserve_available(wallet, requests)
             tx_lines = []
@@ -426,6 +436,13 @@ class AcpecFuelQr(models.Model):
                     })
             elif 'blocked' in states and 'active' in states:
                 qr.state = 'blocked'
+                # Ne traiter QUE les lignes active pour éviter le double-comptage des blocked
+                for line in qr.line_ids.filtered(lambda l: l.state == 'active'):
+                    line.write({'state': 'blocked'})
+                    line.face_line_id.write({
+                        'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
+                        'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
+                    })
             elif 'blocked' in states:
                 qr.state = 'blocked'
             else:
@@ -447,7 +464,15 @@ class AcpecFuelQr(models.Model):
                 'qty': qty,
             }], note=_('Expiration de faces disponibles.'))
         qrs = self.sudo().search([('state', 'in', ['active', 'blocked'])])
-        qrs.action_refresh_expiration_state()
+        for qr in qrs:
+            try:
+                with self.env.cr.savepoint():
+                    qr._lock_records()
+                    qr.invalidate_recordset()
+                    qr.action_refresh_expiration_state()
+            except Exception:
+                _logger.exception("Expiration QR %s failed", qr.id)
+                continue
 
 
 class AcpecFuelQrLine(models.Model):

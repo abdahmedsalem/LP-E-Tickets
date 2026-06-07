@@ -177,6 +177,75 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'email': False,
         }
 
+    def _create_mobile_signup_account(self, *, name, signup_identifier, secret_code, company, email=False, note=False):
+        identifier_vals = self._parse_signup_identifier(signup_identifier)
+        self._validate_secret_code(secret_code)
+
+        req_model = request.env['acpec.mobile.auth.account.request'].sudo()
+        user_model = request.env['res.users'].sudo().with_context(active_test=False)
+
+        user_domain = [('login', '=', identifier_vals['login'])]
+        if identifier_vals['signup_identifier_type'] == 'phone':
+            user_domain = ['|', ('login', '=', identifier_vals['login']), ('mobile_phone', '=', identifier_vals['phone'])]
+        else:
+            user_domain = ['|', ('login', '=', identifier_vals['login']), ('email', '=', identifier_vals['email'])]
+
+        existing_user = user_model.search(user_domain, limit=1)
+        if existing_user:
+            raise ValidationError(_('A mobile account already exists for this identifier.'))
+
+        existing_request = req_model.search([
+            ('signup_identifier', '=', identifier_vals['signup_identifier']),
+            ('state', '=', 'pending'),
+        ], limit=1)
+        if existing_request:
+            raise ValidationError(_('A pending account request already exists for this identifier.'))
+
+        partner_vals = {
+            'name': name,
+            'company_id': company.id,
+        }
+        if identifier_vals['phone']:
+            partner_vals['phone'] = '+222' + identifier_vals['phone']
+        email_value = (email or identifier_vals['email'] or '').strip()
+        if email_value:
+            partner_vals['email'] = email_value
+
+        partner = request.env['res.partner'].sudo().create(partner_vals)
+
+        now = fields.Datetime.now()
+        user_vals = {
+            'name': name,
+            'login': identifier_vals['login'],
+            'partner_id': partner.id,
+            'company_id': company.id,
+            'company_ids': [(6, 0, [company.id])],
+            'active': True,
+            'mobile_state': 'pending',
+            'mobile_pin_set_at': now,
+            'password': secret_code,
+        }
+        if identifier_vals['phone']:
+            user_vals['mobile_phone'] = identifier_vals['phone']
+        if email_value:
+            user_vals['email'] = email_value
+
+        user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
+
+        record = req_model.create({
+            'name_display': name,
+            'signup_identifier': identifier_vals['signup_identifier'],
+            'signup_identifier_type': identifier_vals['signup_identifier_type'],
+            'phone': identifier_vals['phone'] or False,
+            'email': email_value or False,
+            'login': identifier_vals['login'],
+            'company_id': company.id,
+            'partner_id': partner.id,
+            'user_id': user.id,
+            'note': note or False,
+        })
+        return record, user, identifier_vals
+
     def _get_signup_companies(self):
         companies = request.env['res.company'].sudo().search([
             ('acpec_mobile_auth_enabled', '=', True)

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -17,10 +17,12 @@ import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
+import '../../../data/services/odoo_jsonrpc_client.dart'
+    show OdooJsonRpcException;
 import '../../../main.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../shared/widgets/app_message.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -220,7 +222,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     final useLiveStats = user != null && AppEnvironment.useAcpecLiveData;
-    final showStatPlaceholder = useLiveStats && _acpecStatsRefreshing && !_acpecStatsLoaded;
+    final showStatPlaceholder =
+        useLiveStats && _acpecStatsRefreshing && !_acpecStatsLoaded;
 
     String lotsText;
     String qrsText;
@@ -266,7 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         name: user.name,
                         initials: _initials(user.name),
                         verified: true,
-                        nifLabel: 'Compte vérifié · NIF · démo 21450033',
+                        nifLabel: 'Compte vérifié',
                       ),
                       const SizedBox(height: 16),
                       _StatsRow(
@@ -293,7 +296,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context,
                       icon: Icons.fingerprint_rounded,
                       title: 'Authentification biométrique',
-                      subtitle: 'Déverrouillage rapide après une connexion réussie.',
+                      subtitle:
+                          'Déverrouillage rapide après une connexion réussie.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       trailing: Switch.adaptive(
@@ -303,21 +307,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (v) async {
                           if (v) {
                             try {
-                              final deviceOk = await _localAuth.isDeviceSupported();
+                              final deviceOk = await _localAuth
+                                  .isDeviceSupported();
                               final bioOk = await _localAuth.canCheckBiometrics;
                               if (!deviceOk && !bioOk) {
                                 if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'La biométrie n’est pas disponible sur cet appareil.',
-                                    ),
-                                  ),
+                                AppMessage.warning(
+                                  context,
+                                  'La biométrie n’est pas disponible sur cet appareil.',
                                 );
                                 return;
                               }
                               final ok = await _localAuth.authenticate(
-                                localizedReason: 'Confirmez pour activer Face ID ou l’empreinte.',
+                                localizedReason:
+                                    'Confirmez pour activer Face ID ou l’empreinte.',
                                 options: const AuthenticationOptions(
                                   biometricOnly: true,
                                   stickyAuth: true,
@@ -327,9 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               if (!ok) return;
                             } on PlatformException {
                               if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Activation annulée.')),
-                              );
+                              AppMessage.info(context, 'Activation annulée.');
                               return;
                             }
                           }
@@ -342,7 +343,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context,
                       icon: Icons.dark_mode_outlined,
                       title: 'Mode sombre',
-                      subtitle: 'Interface adaptée aux environnements peu éclairés.',
+                      subtitle:
+                          'Interface adaptée aux environnements peu éclairés.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       trailing: Switch.adaptive(
@@ -357,8 +359,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.verified_user_outlined,
-                      title: 'État du service',
-                      subtitle: 'Vérification de la version et des organisations.',
+                      title: 'Connexion ACPEC',
+                      subtitle: 'Vérifier la disponibilité du service.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       onTap: () => context.push('/settings/acpec-step1'),
@@ -367,7 +369,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context,
                       icon: Icons.how_to_reg_outlined,
                       title: 'Demande de compte',
-                      subtitle: 'Envoyer une demande d’accès (étape 2) sans passer par la connexion.',
+                      subtitle:
+                          'Envoyer une demande d’accès (étape 2) sans passer par la connexion.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       onTap: () => context.push('/settings/acpec-step2'),
@@ -401,7 +404,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         );
                         if (ok == true && context.mounted) {
-                          context.read<AuthBloc>().add(const AuthLogoutRequested());
+                          context.read<AuthBloc>().add(
+                            const AuthLogoutRequested(),
+                          );
                           context.go('/login');
                         }
                       },
@@ -579,7 +584,10 @@ class _CompanyHeaderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.successSurface,
                     borderRadius: BorderRadius.circular(999),
@@ -649,9 +657,9 @@ class _StatsRow extends StatelessWidget {
         children: [
           _statCell('Lots', lotsText, labelColor, valueColor),
           _divider(labelColor),
-          _statCell('QR ?mis', qrsText, labelColor, valueColor),
+          _statCell('QR émis', qrsText, labelColor, valueColor),
           _divider(labelColor),
-          _statCell('Consomm?s', consumedText, labelColor, valueColor),
+          _statCell('Consommés', consumedText, labelColor, valueColor),
         ],
       ),
     );
@@ -666,7 +674,12 @@ class _StatsRow extends StatelessWidget {
     );
   }
 
-  Widget _statCell(String label, String value, Color labelColor, Color valueColor) {
+  Widget _statCell(
+    String label,
+    String value,
+    Color labelColor,
+    Color valueColor,
+  ) {
     return Expanded(
       child: Column(
         children: [
@@ -765,4 +778,3 @@ class _LogoutTile extends StatelessWidget {
     );
   }
 }
-

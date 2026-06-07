@@ -13,6 +13,11 @@ class AppBarHeader extends StatelessWidget {
     this.showBack = true,
     this.onBack,
     this.largeTitle = false,
+    this.largeTitlePadding,
+    this.largeTitleGap,
+    this.largeTitleFontSize,
+    this.plainBackButton = false,
+
     /// Si vrai, la flèche n’apparaît que lorsque [Navigator.canPop] (ex. racine d’onglet shell).
     this.leadingOnlyWhenNavigatorCanPop = false,
   });
@@ -23,6 +28,10 @@ class AppBarHeader extends StatelessWidget {
   final bool showBack;
   final VoidCallback? onBack;
   final bool largeTitle;
+  final EdgeInsetsGeometry? largeTitlePadding;
+  final double? largeTitleGap;
+  final double? largeTitleFontSize;
+  final bool plainBackButton;
   final bool leadingOnlyWhenNavigatorCanPop;
 
   @override
@@ -35,7 +44,7 @@ class AppBarHeader extends StatelessWidget {
 
     if (largeTitle) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 10, 24, 2),
+        padding: largeTitlePadding ?? const EdgeInsets.fromLTRB(24, 10, 24, 2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -50,13 +59,13 @@ class AppBarHeader extends StatelessWidget {
                 if (action != null) ...[action!],
               ],
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: largeTitleGap ?? 18),
             Text(
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
-                fontSize: 34,
+                fontSize: largeTitleFontSize ?? 34,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF182B4D),
                 letterSpacing: -1.2,
@@ -87,9 +96,9 @@ class AppBarHeader extends StatelessWidget {
       child: Row(
         children: [
           if (effectiveShowBack)
-            _BackButton(
-              onTap: onBack ?? () => nav?.maybePop(),
-            )
+            plainBackButton
+                ? _HeroBackButton(onTap: onBack ?? () => nav?.maybePop())
+                : _BackButton(onTap: onBack ?? () => nav?.maybePop())
           else
             const SizedBox(width: 40),
           const SizedBox(width: 12),
@@ -128,11 +137,7 @@ class AppBarHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          action ??
-              const SizedBox(
-                width: 40,
-                height: 40,
-              ),
+          action ?? const SizedBox(width: 40, height: 40),
         ],
       ),
     );
@@ -157,19 +162,13 @@ class _BackButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(
-                color: scheme.outline.withValues(alpha: 0.4),
-              ),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(14),
               boxShadow: Theme.of(context).brightness == Brightness.dark
                   ? null
                   : AppColors.softShadow,
             ),
-            child: Icon(
-              Icons.chevron_left,
-              size: 22,
-              color: scheme.onSurface,
-            ),
+            child: Icon(Icons.chevron_left, size: 22, color: scheme.onSurface),
           ),
         ),
       ),
@@ -190,11 +189,7 @@ class _HeroBackButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: const Icon(
-          Icons.arrow_back,
-          size: 30,
-          color: Color(0xFF111111),
-        ),
+        child: const Icon(Icons.arrow_back, size: 30, color: Color(0xFF111111)),
       ),
     );
   }

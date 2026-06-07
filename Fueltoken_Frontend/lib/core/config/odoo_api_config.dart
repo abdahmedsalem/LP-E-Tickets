@@ -1,4 +1,8 @@
 /// Base HTTP(S) du serveur Odoo, sans slash final. Les chemins d’API sont absolus (`/api/acpec/...`).
+library;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class OdooApiConfig {
   OdooApiConfig._();
 
@@ -32,6 +36,9 @@ class OdooApiConfig {
   /// Corrige une erreur courante de collage : deux schémas d’affilée (`http://http://`).
   static String get baseUrlTrimmed {
     var s = baseUrl.trim();
+    if (s.isEmpty && kIsWeb) {
+      s = Uri.base.origin;
+    }
     if (s.isEmpty) return '';
 
     s = s.replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '');

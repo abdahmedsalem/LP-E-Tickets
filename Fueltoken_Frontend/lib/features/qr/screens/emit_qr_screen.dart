@@ -5,9 +5,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
+import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/client_history_refresh_bus.dart';
+import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/qr_refresh_bus.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
@@ -20,7 +26,13 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../shared/widgets/app_message.dart';
+
+const _emitQrHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
+const _emitQrHeaderGap = 4.0;
+const _emitQrHeaderTitleSize = 24.0;
 
 class EmitQrScreen extends StatefulWidget {
   const EmitQrScreen({super.key});
@@ -29,7 +41,7 @@ class EmitQrScreen extends StatefulWidget {
 }
 
 class _EmitQrScreenState extends State<EmitQrScreen> {
-  final Map<int, int> _request = {};
+  final Map<String, int> _request = {};
   bool _emitting = false;
   bool _liveLoading = false;
   String? _liveError;
@@ -72,7 +84,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       setState(() {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
-            ? 'Session expirÃ©e. Reconnectez-vous.'
+            ? 'Session expirée. Reconnectez-vous.'
             : e.message;
       });
     } catch (e) {
@@ -84,7 +96,44 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     }
   }
 
-  /// Corps de requÃªte d'Ã©mission : privilÃ©gie `carnet_type_id` (FIFO) sinon `face_value`.
+  int _lineCarnetSize(FaceLine line) {
+    if (line.carnetFaceCount > 0) return line.carnetFaceCount;
+    for (final type in _offerTypes) {
+      if (type.id == line.carnetTypeId && type.size > 0) return type.size;
+      if (type.code.isNotEmpty &&
+          type.code == line.carnetTypeCode &&
+          type.size > 0) {
+        return type.size;
+      }
+      if (type.faceValue == line.faceValue && type.size > 0) return type.size;
+    }
+    return 1;
+  }
+
+  String _lineCarnetLabel(FaceLine line) {
+    final size = _lineCarnetSize(line);
+    return Formatters.carnetTypeLabel(size, line.faceValue);
+  }
+
+  List<FaceLine> _availableLinesFor(String ownerId) {
+    final lines =
+        _liveFaceLines
+            .where(
+              (f) => f.ownerId == ownerId && !f.isExpired && f.availableQty > 0,
+            )
+            .toList()
+          ..sort((a, b) {
+            if (a.faceValue != b.faceValue) {
+              return a.faceValue.compareTo(b.faceValue);
+            }
+            final sizeCmp = _lineCarnetSize(a).compareTo(_lineCarnetSize(b));
+            if (sizeCmp != 0) return sizeCmp;
+            return a.expirationDate.compareTo(b.expirationDate);
+          });
+    return lines;
+  }
+
+  /// Corps de requête d'émission : agrège les sélections ligne par ligne.
   List<Map<String, dynamic>> _acpecIssueLinePayload(String ownerId) {
     final acc = <String, int>{};
     void bump(String key, int delta) {
@@ -92,28 +141,16 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       acc[key] = (acc[key] ?? 0) + delta;
     }
 
-    for (final e in _request.entries) {
-      if (e.value <= 0) continue;
-      var rem = e.value;
-      final pool =
-          _liveFaceLines
-              .where(
-                (l) =>
-                    l.faceValue == e.key && l.availableQty > 0 && !l.isExpired,
-              )
-              .toList()
-            ..sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
-      for (final l in pool) {
-        if (rem <= 0) break;
-        final take = rem < l.availableQty ? rem : l.availableQty;
-        if (take <= 0) continue;
-        final cid = int.tryParse(l.carnetTypeId.trim());
-        if (cid != null && cid > 0) {
-          bump('c:$cid', take);
-        } else {
-          bump('f:${l.faceValue}', take);
-        }
-        rem -= take;
+    for (final line in _availableLinesFor(ownerId)) {
+      final qty = _request[line.id] ?? 0;
+      if (qty <= 0) continue;
+      final take = qty < line.availableQty ? qty : line.availableQty;
+      if (take <= 0) continue;
+      final cid = int.tryParse(line.carnetTypeId.trim());
+      if (cid != null && cid > 0) {
+        bump('c:$cid', take);
+      } else {
+        bump('f:${line.faceValue}', take);
       }
     }
 
@@ -131,27 +168,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     return out;
   }
 
-  Map<int, int> _availableByFace(String ownerId) {
-    final map = <int, int>{};
-    for (final f in _liveFaceLines) {
-      if (f.ownerId != ownerId || f.isExpired) continue;
-      map[f.faceValue] = (map[f.faceValue] ?? 0) + f.availableQty;
-    }
-    return map;
-  }
-
-  Map<int, DateTime> _expiryByFace(String ownerId) {
-    final map = <int, DateTime>{};
-    for (final f in _liveFaceLines) {
-      if (f.ownerId != ownerId || f.isExpired || f.availableQty <= 0) continue;
-      final current = map[f.faceValue];
-      if (current == null || f.expirationDate.isBefore(current)) {
-        map[f.faceValue] = f.expirationDate;
-      }
-    }
-    return map;
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthBloc>().state.user;
@@ -163,9 +179,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'GÃ©nÃ©rer un QR',
+                title: 'Générer un QR',
                 showBack: true,
                 largeTitle: true,
+                largeTitlePadding: _emitQrHeaderPadding,
+                largeTitleGap: _emitQrHeaderGap,
+                largeTitleFontSize: _emitQrHeaderTitleSize,
               ),
               Expanded(
                 child: ListView(
@@ -192,9 +211,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'GÃ©nÃ©rer un QR',
+                title: 'Générer un QR',
                 showBack: true,
                 largeTitle: true,
+                largeTitlePadding: _emitQrHeaderPadding,
+                largeTitleGap: _emitQrHeaderGap,
+                largeTitleFontSize: _emitQrHeaderTitleSize,
                 onBack: () => popOrGoClientHome(context),
               ),
               const Expanded(child: ApiRequiredView()),
@@ -211,9 +233,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'GÃ©nÃ©rer un QR',
+                title: 'Générer un QR',
                 showBack: true,
                 largeTitle: true,
+                largeTitlePadding: _emitQrHeaderPadding,
+                largeTitleGap: _emitQrHeaderGap,
+                largeTitleFontSize: _emitQrHeaderTitleSize,
               ),
               Expanded(
                 child: ListView(
@@ -240,9 +265,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'GÃ©nÃ©rer un QR',
+                title: 'Générer un QR',
                 showBack: true,
                 largeTitle: true,
+                largeTitlePadding: _emitQrHeaderPadding,
+                largeTitleGap: _emitQrHeaderGap,
+                largeTitleFontSize: _emitQrHeaderTitleSize,
               ),
               Expanded(
                 child: Center(
@@ -259,7 +287,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: _loadLiveFaces,
-                          child: const Text('RÃ©essayer'),
+                          child: const Text('Réessayer'),
                         ),
                       ],
                     ),
@@ -271,22 +299,13 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         ),
       );
     }
-    final available = _availableByFace(user.id);
-    final expiryByFace = _expiryByFace(user.id);
-    final offerTypes =
-        _offerTypes
-            .where((type) => (available[type.faceValue] ?? 0) > 0)
-            .toList()
-          ..sort((a, b) => a.faceValue.compareTo(b.faceValue));
-    final legacyEntries = available.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    final useOfferTypes = _offerTypes.isNotEmpty;
-    final hasEntries = useOfferTypes
-        ? offerTypes.isNotEmpty
-        : legacyEntries.isNotEmpty;
-
+    final availableLines = _availableLinesFor(user.id);
+    final hasEntries = availableLines.isNotEmpty;
     final totalQty = _request.values.fold(0, (s, v) => s + v);
-    final totalAmount = _request.entries.fold(0, (s, e) => s + e.key * e.value);
+    final totalAmount = availableLines.fold<int>(0, (sum, line) {
+      final qty = _request[line.id] ?? 0;
+      return sum + (line.faceValue * qty);
+    });
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -294,7 +313,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         child: _BottomBar(
           totalAmount: totalAmount,
           emitting: _emitting,
-          onEmit: totalQty == 0 || _emitting ? null : () => _emit(context),
+          onEmit: totalQty == 0 || _emitting
+              ? null
+              : () => _confirmEmit(context),
         ),
       ),
       body: SafeArea(
@@ -302,59 +323,37 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppBarHeader(
-              title: 'GÃ©nÃ©rer un QR',
+              title: 'Générer un QR',
               showBack: true,
               largeTitle: true,
+              largeTitlePadding: _emitQrHeaderPadding,
+              largeTitleGap: _emitQrHeaderGap,
+              largeTitleFontSize: _emitQrHeaderTitleSize,
             ),
             Expanded(
               child: hasEntries
                   ? ListView(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 130),
                       children: [
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 8),
                         const _SectionTitle('CARNETS DISPONIBLES'),
                         const SizedBox(height: 12),
-                        ...(useOfferTypes
-                            ? offerTypes.map((type) {
-                                final selected = _request[type.faceValue] ?? 0;
-                                return _CompositionRow(
-                                  type: type,
-                                  available: available[type.faceValue] ?? 0,
-                                  expirationDate: expiryByFace[type.faceValue],
-                                  selected: selected,
-                                  onChange: (n) => setState(() {
-                                    if (n <= 0) {
-                                      _request.remove(type.faceValue);
-                                    } else {
-                                      _request[type.faceValue] = n;
-                                    }
-                                  }),
-                                );
-                              })
-                            : legacyEntries.map((e) {
-                                final selected = _request[e.key] ?? 0;
-                                return _CompositionRow(
-                                  type: CarnetType(
-                                    id: '',
-                                    code: '',
-                                    name:
-                                        'Carnet ${Formatters.numberFr(e.key)}',
-                                    size: 1,
-                                    faceValue: e.key,
-                                    companyId: '',
-                                  ),
-                                  available: e.value,
-                                  expirationDate: expiryByFace[e.key],
-                                  selected: selected,
-                                  onChange: (n) => setState(() {
-                                    if (n <= 0) {
-                                      _request.remove(e.key);
-                                    } else {
-                                      _request[e.key] = n;
-                                    }
-                                  }),
-                                );
-                              })),
+                        ...availableLines.map((line) {
+                          final selected = _request[line.id] ?? 0;
+                          return _CompositionRow(
+                            title: _lineCarnetLabel(line),
+                            available: line.availableQty,
+                            expirationDate: line.expirationDate,
+                            selected: selected,
+                            onChange: (n) => setState(() {
+                              if (n <= 0) {
+                                _request.remove(line.id);
+                              } else {
+                                _request[line.id] = n;
+                              }
+                            }),
+                          );
+                        }),
                         const SizedBox(height: 8),
                       ],
                     )
@@ -366,54 +365,121 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     );
   }
 
-  Future<void> _emit(BuildContext context) async {
+  Future<void> _confirmEmit(BuildContext context) async {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
-    final navigator = GoRouter.of(context);
+
+    final availableLines = _availableLinesFor(user.id);
+    final selectedLines = availableLines
+        .where((line) => (_request[line.id] ?? 0) > 0)
+        .toList();
+    if (selectedLines.isEmpty) {
+      AppMessage.warning(context, 'Sélectionnez au moins un carnet.');
+      return;
+    }
+
+    final totalQty = selectedLines.fold<int>(0, (sum, line) {
+      return sum + (_request[line.id] ?? 0);
+    });
+    final totalAmount = selectedLines.fold<int>(0, (sum, line) {
+      return sum + (line.faceValue * (_request[line.id] ?? 0));
+    });
+
+    final confirmed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => QrActionConfirmationScreen(
+          args: QrActionConfirmationArgs(
+            title: 'Confirmer la génération',
+            subtitle: 'Génération d’un nouveau QR',
+            confirmLabel: 'Générer le QR',
+            hero: _EmitConfirmationHero(
+              totalQty: totalQty,
+              totalAmount: totalAmount,
+            ),
+            details: _EmitConfirmationLinesSection(
+              lines: selectedLines,
+              request: _request,
+            ),
+            summaryRows: [
+              QrActionSummaryRow(
+                label: 'Montant total',
+                value: Formatters.money(totalAmount),
+                valueColor: const Color(0xFF2E7D32),
+              ),
+            ],
+            disclaimer:
+                'La génération créera un QR à partir des carnets sélectionnés.',
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      await _performEmit();
+    }
+  }
+
+  Future<void> _performEmit() async {
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) return;
     setState(() => _emitting = true);
     try {
       if (AppEnvironment.useAcpecLiveData) {
         final linesPayload = _acpecIssueLinePayload(user.id);
         if (linesPayload.isEmpty) {
-          throw Exception(
-            'Aucune ligne Ã  Ã©mettre (stock ou sÃ©lection vide).',
-          );
+          throw Exception('Aucune ligne à émettre (stock ou sélection vide).');
         }
         final raw = await OdooFueltokenFacade().qrIssue({
           'lines': linesPayload,
           'idempotency_key': 'ft-qr-${const Uuid().v4()}',
         });
-        final qr = AcpecQrMapper.fromRpcIssueEnvelope(
+        AcpecQrMapper.fromRpcIssueEnvelope(
           raw,
           ownerId: user.id,
           ownerName: user.name,
           companyId: AppEnvironment.companyIdForUser(user),
         );
-        if (!context.mounted) return;
-        navigator.pushReplacement(
-          '/qr/${Uri.encodeComponent(qr.publicCode)}?emitted=1',
+        if (!mounted) return;
+        // Invalider le cache RPC
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrList,
+          null,
         );
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.faces,
+          null,
+        );
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.transactions,
+          null,
+        );
+        // Bumper tous les buses concernés par une émission QR
+        QrRefreshBus.instance.bump();
+        FacesRefreshBus.instance.bump();
+        WalletRefreshBus.instance.bump();
+        ClientHistoryRefreshBus.instance.bump();
+        setState(() {
+          _request.clear();
+          _emitting = false;
+        });
+        AppMessage.success(context, 'QR généré avec succès.');
+        context.go('/home');
+        return;
       } else {
-        throw Exception(
-          'Connexion serveur ACPEC requise pour gÃ©nÃ©rer un QR.',
-        );
+        throw Exception('Connexion serveur ACPEC requise pour générer un QR.');
       }
     } on OdooJsonRpcException catch (err) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            err.isOdooSessionExpired
-                ? 'Session expirÃ©e. Reconnectez-vous.'
-                : err.message,
-          ),
-        ),
+      if (!mounted) return;
+      AppMessage.error(
+        context,
+        err.isOdooSessionExpired
+            ? 'Session expirée. Reconnectez-vous.'
+            : err.message,
       );
     } catch (err) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err.toString().replaceFirst('Exception: ', ''))),
-      );
+      if (!mounted) return;
+      AppMessage.error(context, err.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _emitting = false);
     }
@@ -518,7 +584,7 @@ class _BottomBar extends StatelessWidget {
               child: emitting
                   ? const AppInlineLoading(size: 20)
                   : const Text(
-                      'GÃ©nÃ©rer',
+                      'Générer',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -537,13 +603,13 @@ class _BottomBar extends StatelessWidget {
 // --------------------------------------------------------------------------
 
 class _CompositionRow extends StatelessWidget {
-  final CarnetType type;
+  final String title;
   final int available;
   final DateTime? expirationDate;
   final int selected;
   final ValueChanged<int> onChange;
   const _CompositionRow({
-    required this.type,
+    required this.title,
     required this.available,
     required this.expirationDate,
     required this.selected,
@@ -552,10 +618,15 @@ class _CompositionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSelected = selected > 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: AppCard(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        borderColor: isSelected
+            ? AppColors.leaderGreen.withValues(alpha: 0.38)
+            : AppColors.line,
+        shadow: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -564,7 +635,7 @@ class _CompositionRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Carnet ${Formatters.numberFr(type.size)} × ${Formatters.numberFr(type.faceValue)}',
+                    title,
                     style: GoogleFonts.inter(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
@@ -592,7 +663,7 @@ class _CompositionRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               'Expire le ${expirationDate != null ? Formatters.dateTimeDash(expirationDate!) : '—'}',
               maxLines: 1,
@@ -604,9 +675,9 @@ class _CompositionRow extends StatelessWidget {
                 height: 1,
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 5),
             Container(height: 1, color: const Color(0xFFEAECEF)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 1),
             Row(
               children: [
                 Text(
@@ -649,20 +720,21 @@ class _Stepper extends StatelessWidget {
           onTap: () => onChange(value - 1),
           primary: false,
         ),
+        const SizedBox(width: 4),
         SizedBox(
-          width: 24,
-          child: Center(
-            child: Text(
-              '$value',
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF111827),
-                height: 1,
-              ),
+          width: 30,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+              height: 1,
             ),
           ),
         ),
+        const SizedBox(width: 4),
         _StepBtn(
           icon: Icons.add,
           enabled: value < max,
@@ -688,37 +760,22 @@ class _StepBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: 41,
-        height: 41,
-        decoration: BoxDecoration(
-          color: !enabled
-              ? const Color(0xFFF4F5F7)
-              : primary
-              ? const Color(0xFF101522)
-              : const Color(0xFFF4F5F7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: !enabled
-                ? const Color(0xFFE5E7EB)
-                : primary
-                ? const Color(0xFF101522)
-                : const Color(0xFFE5E7EB),
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 17,
-          color: !enabled
-              ? const Color(0xFF9CA3AF)
-              : primary
-              ? Colors.white
-              : const Color(0xFF334155),
-        ),
+    return IconButton.filledTonal(
+      onPressed: enabled ? onTap : null,
+      icon: Icon(icon, size: 18),
+      style: IconButton.styleFrom(
+        backgroundColor: enabled
+            ? (primary ? const Color(0xFF43A047) : const Color(0xFFF2F4F7))
+            : const Color(0xFFF3F4F6),
+        foregroundColor: enabled
+            ? (primary ? Colors.white : const Color(0xFF344054))
+            : const Color(0xFFB8BEC7),
+        disabledBackgroundColor: const Color(0xFFF3F4F6),
+        disabledForegroundColor: const Color(0xFFB8BEC7),
       ),
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
     );
   }
 }
@@ -738,6 +795,192 @@ class _SectionTitle extends StatelessWidget {
         color: AppColors.muted,
         letterSpacing: 0.8,
       ),
+    );
+  }
+}
+
+class _EmitConfirmationHero extends StatelessWidget {
+  const _EmitConfirmationHero({
+    required this.totalQty,
+    required this.totalAmount,
+  });
+
+  final int totalQty;
+  final int totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFF43A047).withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.qr_code_rounded,
+            color: Color(0xFF2E7D32),
+            size: 26,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Montant total QR',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                Formatters.money(totalAmount),
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF2E7D32),
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '$totalQty ticket${totalQty > 1 ? 's' : ''}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.body,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmitConfirmationLinesSection extends StatelessWidget {
+  const _EmitConfirmationLinesSection({
+    required this.lines,
+    required this.request,
+  });
+
+  final List<FaceLine> lines;
+  final Map<String, int> request;
+
+  String _labelFor(FaceLine line) {
+    return Formatters.normalizeCarnetTypeLabel(
+      line.carnetTypeName,
+      fallbackSize: line.carnetFaceCount,
+      fallbackFaceValue: line.faceValue,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Carnets à émettre',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 14),
+          for (var i = 0; i < lines.length; i++) ...[
+            _EmitConfirmationLineRow(
+              label: _labelFor(lines[i]),
+              selectedQty: request[lines[i].id] ?? 0,
+              faceValue: lines[i].faceValue,
+              expirationDate: lines[i].expirationDate,
+            ),
+            if (i < lines.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFE5E7EB),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmitConfirmationLineRow extends StatelessWidget {
+  const _EmitConfirmationLineRow({
+    required this.label,
+    required this.selectedQty,
+    required this.faceValue,
+    required this.expirationDate,
+  });
+
+  final String label;
+  final int selectedQty;
+  final int faceValue;
+  final DateTime expirationDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = selectedQty * faceValue;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Expire le ${Formatters.date(expirationDate)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '${Formatters.numberFr(selectedQty)} ticket${selectedQty > 1 ? 's' : ''}',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          Formatters.money(amount),
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -780,7 +1023,7 @@ class _EmptyAvailable extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Soumettez un achat de tickets et attendez la validation pour gÃ©nÃ©rer un QR.',
+              'Soumettez un achat de tickets et attendez la validation pour générer un QR.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: AppColors.body),
             ),

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatters.dart';
@@ -29,13 +30,24 @@ class _AdminSubmittedPurchasesScreenState
   List<PurchaseLot>? _acpecLots;
   bool _acpecLoading = false;
   String? _acpecError;
+  late final VoidCallback _purchasesBusListener;
 
   @override
   void initState() {
     super.initState();
+    _purchasesBusListener = () {
+      if (mounted && AppEnvironment.useAcpecLiveData) _loadAcpecPending();
+    };
+    PurchasesRefreshBus.instance.revision.addListener(_purchasesBusListener);
     if (AppEnvironment.useAcpecLiveData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadAcpecPending());
     }
+  }
+
+  @override
+  void dispose() {
+    PurchasesRefreshBus.instance.revision.removeListener(_purchasesBusListener);
+    super.dispose();
   }
 
   String _briefError(Object e) {
@@ -101,16 +113,7 @@ class _AdminSubmittedPurchasesScreenState
             color: scheme.onSurface,
           ),
         ),
-        actions: [
-          if (AppEnvironment.useAcpecLiveData)
-            IconButton(
-              tooltip: 'Actualiser',
-              onPressed: _acpecLoading ? null : _loadAcpecPending,
-              icon: _acpecLoading
-                  ? const AppInlineLoading(size: 22)
-                  : const Icon(Icons.refresh_rounded),
-            ),
-        ],
+        actions: const [],
       ),
       body: AppEnvironment.useAcpecLiveData
           ? _buildAcpecBody()

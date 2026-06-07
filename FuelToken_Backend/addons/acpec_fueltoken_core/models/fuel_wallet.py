@@ -78,7 +78,14 @@ class AcpecFuelWallet(models.Model):
         wallet = self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
         if wallet:
             return wallet
-        return self.sudo().create({'partner_id': partner.id, 'company_id': company.id})
+        try:
+            return self.sudo().create({'partner_id': partner.id, 'company_id': company.id})
+        except Exception:
+            # Deux requêtes simultanées peuvent avoir passé le search() avant que l'une n'insère.
+            # La contrainte unique partner_company_unique lève une IntegrityError — on la gère
+            # gracieusement en relisant le wallet désormais existant.
+            self.env.cr.rollback()
+            return self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
 
     def write(self, vals):
         if 'balance' in vals:

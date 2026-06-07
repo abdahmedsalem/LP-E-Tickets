@@ -240,7 +240,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                 transfer=self,
                 lines=src_tx_lines,
                 note=_('Transfert sortant vers %s.') % self.dest_partner_id.display_name,
-                idempotency_key='SRC-%s' % (self.idempotency_key or self.name),
+                idempotency_key='SRC-%s' % (self.idempotency_key or str(self.id)),
             )
             Tx.log(
                 'transfert_carnet', self.company_id,
@@ -248,7 +248,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                 transfer=self,
                 lines=dst_tx_lines,
                 note=_('Transfert entrant de %s.') % self.source_partner_id.display_name,
-                idempotency_key='DST-%s' % (self.idempotency_key or self.name),
+                idempotency_key='DST-%s' % (self.idempotency_key or str(self.id)),
             )
 
             self.write({
