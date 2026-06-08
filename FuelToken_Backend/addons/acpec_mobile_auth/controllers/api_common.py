@@ -177,11 +177,19 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'email': False,
         }
 
+    def _mobile_signup_group_ids(self):
+        group_ids = [request.env.ref('base.group_portal').id]
+        fuel_user_group = request.env.ref(
+            'acpec_fueltoken_base.group_fuel_user', raise_if_not_found=False
+        )
+        if fuel_user_group:
+            group_ids.append(fuel_user_group.id)
+        return group_ids
+
     def _create_mobile_signup_account(self, *, name, signup_identifier, secret_code, company, email=False, note=False):
         identifier_vals = self._parse_signup_identifier(signup_identifier)
         self._validate_secret_code(secret_code)
 
-        req_model = request.env['acpec.mobile.auth.account.request'].sudo()
         user_model = request.env['res.users'].sudo().with_context(active_test=False)
 
         user_domain = [('login', '=', identifier_vals['login'])]
@@ -193,13 +201,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
         existing_user = user_model.search(user_domain, limit=1)
         if existing_user:
             raise ValidationError(_('A mobile account already exists for this identifier.'))
-
-        existing_request = req_model.search([
-            ('signup_identifier', '=', identifier_vals['signup_identifier']),
-            ('state', '=', 'pending'),
-        ], limit=1)
-        if existing_request:
-            raise ValidationError(_('A pending account request already exists for this identifier.'))
 
         partner_vals = {
             'name': name,
@@ -221,9 +222,10 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
             'active': True,
-            'mobile_state': 'pending',
+            'mobile_state': 'approved',
             'mobile_pin_set_at': now,
             'password': secret_code,
+            'group_ids': [(6, 0, self._mobile_signup_group_ids())],
         }
         if identifier_vals['phone']:
             user_vals['mobile_phone'] = identifier_vals['phone']
@@ -232,19 +234,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
 
-        record = req_model.create({
-            'name_display': name,
-            'signup_identifier': identifier_vals['signup_identifier'],
-            'signup_identifier_type': identifier_vals['signup_identifier_type'],
-            'phone': identifier_vals['phone'] or False,
-            'email': email_value or False,
-            'login': identifier_vals['login'],
-            'company_id': company.id,
-            'partner_id': partner.id,
-            'user_id': user.id,
-            'note': note or False,
-        })
-        return record, user, identifier_vals
+        return False, user, identifier_vals
 
     def _get_signup_companies(self):
         companies = request.env['res.company'].sudo().search([

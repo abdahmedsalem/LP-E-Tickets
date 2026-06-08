@@ -121,12 +121,6 @@ class AcpecMobileAuthOtp(models.Model):
             user = self.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
             if user:
                 raise AccessError(_('Compte mobile déjà existant.'))
-            pending_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
-                ('signup_identifier', '=', identifier),
-                ('state', '=', 'pending'),
-            ], limit=1)
-            if pending_request:
-                raise AccessError(_('Une demande de compte en attente existe déjà pour cet identifiant.'))
         else:
             user = self._find_user(identifier)
             try:

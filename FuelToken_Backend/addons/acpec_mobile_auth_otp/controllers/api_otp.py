@@ -30,16 +30,6 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         _('A mobile account already exists for this identifier.')
                     )
 
-                existing_request = request.env['acpec.mobile.auth.account.request'].sudo().search([
-                    ('signup_identifier', '=', identifier_vals['signup_identifier']),
-                    ('state', '=', 'pending'),
-                ], limit=1)
-                if existing_request:
-                    return self._error_response(
-                        'ACCOUNT_REQUEST_EXISTS',
-                        _('A pending account request already exists for this identifier.')
-                    )
-
             challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(identifier, purpose=purpose)
             data = {
                 'challenge_id': challenge.id,
@@ -109,17 +99,12 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 now = fields.Datetime.now()
                 user.sudo().write({
                     'active': True,
-                    'mobile_state': 'pending',
+                    'mobile_state': 'approved',
                     'mobile_pin_set_at': user.mobile_pin_set_at or now,
                 })
 
                 payload = self._create_mobile_session_payload(user, kwargs)
                 payload['auth_method'] = 'otp'
-                payload['pending_approval'] = True
-                payload['pending_message'] = _(
-                    'Votre compte est en attente de validation. '
-                    'Vous serez notifié dès qu\'un administrateur aura approuvé votre demande.'
-                )
                 return self._json_response(payload)
             payload = self._create_mobile_session_payload(user, kwargs)
             payload['auth_method'] = 'otp'
