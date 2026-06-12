@@ -53,6 +53,7 @@ class NotificationItem {
     required this.title,
     required this.body,
     required this.timeLabel,
+    this.category,
     this.purchaseStatus,
     this.amountLabel,
     this.validationDateLabel,
@@ -67,6 +68,7 @@ class NotificationItem {
   final String title;
   final String body;
   final String timeLabel;
+  final String? category;
   final String? purchaseStatus;
   final String? amountLabel;
   final String? validationDateLabel;
@@ -82,6 +84,7 @@ class NotificationItem {
       title: json['title']?.toString() ?? '',
       body: json['body']?.toString() ?? '',
       timeLabel: json['timeLabel']?.toString() ?? '',
+      category: json['category']?.toString(),
       purchaseStatus: json['purchaseStatus']?.toString(),
       amountLabel: json['amountLabel']?.toString(),
       validationDateLabel: json['validationDateLabel']?.toString(),
@@ -108,6 +111,7 @@ class NotificationItem {
       'title': title,
       'body': body,
       'timeLabel': timeLabel,
+      'category': category,
       'purchaseStatus': purchaseStatus,
       'amountLabel': amountLabel,
       'validationDateLabel': validationDateLabel,

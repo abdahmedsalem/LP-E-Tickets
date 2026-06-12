@@ -26,13 +26,15 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
-const _emitQrHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
-const _emitQrHeaderGap = 4.0;
-const _emitQrHeaderTitleSize = 24.0;
+const _emitQrHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
+const _emitQrHeaderGap = 10.0;
+const _emitQrHeaderTitleSize = 26.0;
 
 class EmitQrScreen extends StatefulWidget {
   const EmitQrScreen({super.key});
@@ -384,6 +386,16 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     final totalAmount = selectedLines.fold<int>(0, (sum, line) {
       return sum + (line.faceValue * (_request[line.id] ?? 0));
     });
+    final successLines = selectedLines
+        .map(
+          (line) => QrGenerationSuccessLine(
+            label: _lineCarnetLabel(line),
+            qty: _request[line.id] ?? 0,
+            faceValue: line.faceValue,
+            expirationDate: line.expirationDate,
+          ),
+        )
+        .toList(growable: false);
 
     final confirmed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -392,13 +404,21 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             title: 'Confirmer la génération',
             subtitle: 'Génération d’un nouveau QR',
             confirmLabel: 'Générer le QR',
+            showHero: false,
             hero: _EmitConfirmationHero(
               totalQty: totalQty,
               totalAmount: totalAmount,
             ),
-            details: _EmitConfirmationLinesSection(
-              lines: selectedLines,
-              request: _request,
+            details: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _ConfirmationSectionHeader(title: 'Tickets à émettre'),
+                const SizedBox(height: 14),
+                _EmitConfirmationLinesSection(
+                  lines: selectedLines,
+                  request: _request,
+                ),
+              ],
             ),
             summaryRows: [
               QrActionSummaryRow(
@@ -415,12 +435,26 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     );
 
     if (confirmed == true) {
-      if (!mounted) return;
-      await _performEmit();
+      if (!context.mounted) return;
+      final authConfirmed = await showSensitiveActionPasswordDialog(
+        context,
+        title: 'Confirmer la génération',
+        description: 'Saisissez votre mot de passe pour générer le QR.',
+      );
+      if (!authConfirmed) return;
+      await _performEmit(
+        totalQty: totalQty,
+        totalAmount: totalAmount,
+        successLines: successLines,
+      );
     }
   }
 
-  Future<void> _performEmit() async {
+  Future<void> _performEmit({
+    required int totalQty,
+    required int totalAmount,
+    required List<QrGenerationSuccessLine> successLines,
+  }) async {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     setState(() => _emitting = true);
@@ -463,23 +497,27 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           _request.clear();
           _emitting = false;
         });
-        AppMessage.success(context, 'QR généré avec succès.');
-        context.go('/home');
+        await Future<void>.delayed(Duration.zero);
+        if (!mounted) return;
+        await showQrGenerationSuccessDialog(
+          context,
+          totalAmount: totalAmount,
+          confirmedAt: DateTime.now(),
+          lines: successLines,
+          onHome: () {
+            if (mounted) {
+              context.go('/home');
+            }
+          },
+        );
         return;
       } else {
         throw Exception('Connexion serveur ACPEC requise pour générer un QR.');
       }
-    } on OdooJsonRpcException catch (err) {
-      if (!mounted) return;
-      AppMessage.error(
-        context,
-        err.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : err.message,
-      );
+    } on OdooJsonRpcException {
+      return;
     } catch (err) {
-      if (!mounted) return;
-      AppMessage.error(context, err.toString().replaceFirst('Exception: ', ''));
+      return;
     } finally {
       if (mounted) setState(() => _emitting = false);
     }
@@ -534,30 +572,20 @@ class _BottomBar extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        Formatters.numberFr(totalAmount),
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'MRU',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
+                  child: _AmountInline(
+                    amount: totalAmount,
+                    valueStyle: GoogleFonts.jetBrainsMono(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      height: 1,
+                    ),
+                    unitStyle: const TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.muted,
+                      height: 1,
+                    ),
                   ),
                 ),
               ],
@@ -665,7 +693,7 @@ class _CompositionRow extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Expire le ${expirationDate != null ? Formatters.dateTimeDash(expirationDate!) : '—'}',
+              'Expire le ',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -839,12 +867,18 @@ class _EmitConfirmationHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                Formatters.money(totalAmount),
-                style: GoogleFonts.inter(
+              _AmountInline(
+                amount: totalAmount,
+                valueStyle: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: const Color(0xFF2E7D32),
+                  height: 1,
+                ),
+                unitStyle: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2E7D32),
                   height: 1,
                 ),
               ),
@@ -885,18 +919,11 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      radius: 22,
+      shadow: false,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Carnets à émettre',
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
             _EmitConfirmationLineRow(
               label: _labelFor(lines[i]),
@@ -920,6 +947,25 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
   }
 }
 
+class _ConfirmationSectionHeader extends StatelessWidget {
+  const _ConfirmationSectionHeader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 16.5,
+        fontWeight: FontWeight.w800,
+        color: AppColors.ink,
+        height: 1.1,
+      ),
+    );
+  }
+}
+
 class _EmitConfirmationLineRow extends StatelessWidget {
   const _EmitConfirmationLineRow({
     required this.label,
@@ -933,6 +979,18 @@ class _EmitConfirmationLineRow extends StatelessWidget {
   final int faceValue;
   final DateTime expirationDate;
 
+  String _title() {
+    final qtyLabel =
+        '${Formatters.numberFr(selectedQty)} ticket${selectedQty > 1 ? 's' : ''}';
+    final carnetLabel = label.trim().isNotEmpty
+        ? label.trim().replaceFirst(
+            RegExp(r'^Carnet\s+', caseSensitive: false),
+            '',
+          )
+        : 'Carnet';
+    return '$qtyLabel de carnet $carnetLabel';
+  }
+
   @override
   Widget build(BuildContext context) {
     final amount = selectedQty * faceValue;
@@ -943,7 +1001,7 @@ class _EmitConfirmationLineRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                label,
+                _title(),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -963,21 +1021,18 @@ class _EmitConfirmationLineRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          '${Formatters.numberFr(selectedQty)} ticket${selectedQty > 1 ? 's' : ''}',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          Formatters.money(amount),
-          style: GoogleFonts.inter(
+        _AmountInline(
+          amount: amount,
+          textAlign: TextAlign.right,
+          valueStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF2E7D32),
+          ),
+          unitStyle: const TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2E7D32),
           ),
         ),
       ],
@@ -1030,6 +1085,35 @@ class _EmptyAvailable extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AmountInline extends StatelessWidget {
+  const _AmountInline({
+    required this.amount,
+    required this.valueStyle,
+    required this.unitStyle,
+    this.textAlign = TextAlign.left,
+  });
+
+  final int amount;
+  final TextStyle valueStyle;
+  final TextStyle unitStyle;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
+          TextSpan(text: ' MRU', style: unitStyle),
+        ],
+      ),
+      textAlign: textAlign,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

@@ -66,6 +66,86 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
     def _tx_type_label(self, tx):
         return dict(tx._fields['transaction_type'].selection).get(tx.transaction_type, tx.transaction_type)
 
+    def _history_carnet_type(self, line):
+        face_line = line.face_line_id
+        if face_line and face_line.carnet_type_id:
+            return face_line.carnet_type_id
+        purchase_line = line.purchase_line_id
+        if purchase_line and purchase_line.carnet_type_id:
+            return purchase_line.carnet_type_id
+        return False
+
+    def _history_line_expiration(self, line, fallback=False):
+        face_line = line.face_line_id
+        if face_line and face_line.expires_at:
+            return face_line.expires_at
+
+        purchase_line = line.purchase_line_id
+        validity_days = 0
+        if purchase_line and purchase_line.carnet_type_id:
+            validity_days = int(purchase_line.carnet_type_id.validity_days or 0)
+        if validity_days > 0:
+            transaction = line.transaction_id
+            purchase = transaction.purchase_id if transaction and transaction.purchase_id else False
+            base = (
+                (purchase.approved_at if purchase else False)
+                or (purchase.submitted_at if purchase else False)
+                or (transaction.create_date if transaction else False)
+                or fields.Datetime.now()
+            )
+            return fields.Datetime.add(base, days=validity_days)
+        return fallback or False
+
+    def _history_line_payload(self, line, fallback_expiration=False):
+        carnet_type = self._history_carnet_type(line)
+        expiration = self._history_line_expiration(line, fallback_expiration)
+        face_count = 0
+        if carnet_type:
+            face_count = int(carnet_type.face_count or 0)
+        elif line.purchase_line_id:
+            face_count = int(line.purchase_line_id.face_count or 0)
+        return {
+            'id': line.id,
+            'purchase_id': line.purchase_id.id if line.purchase_id else False,
+            'purchase_line_id': line.purchase_line_id.id if line.purchase_line_id else False,
+            'face_line_id': line.face_line_id.id if line.face_line_id else False,
+            'carnet_type_id': carnet_type.id if carnet_type else False,
+            'carnet_type_code': carnet_type.code if carnet_type else False,
+            'carnet_type_name': self._carnet_type_label(carnet_type) if carnet_type else False,
+            'carnet_size': face_count,
+            'face_count': face_count,
+            'face_value': line.face_value,
+            'qty': line.qty,
+            'amount': line.amount,
+            'qr_id': line.qr_id.id if line.qr_id else False,
+            'qr_line_id': line.qr_line_id.id if line.qr_line_id else False,
+            'transfer_id': line.transfer_id.id if line.transfer_id else False,
+            'expiration_date': fields.Datetime.to_string(expiration) if expiration else False,
+        }
+
+    def _purchase_history_line_payload(self, purchase, line, fallback_expiration=False):
+        carnet_type = line.carnet_type_id
+        expiration = fallback_expiration
+        if not expiration and carnet_type and int(carnet_type.validity_days or 0) > 0:
+            base = purchase.approved_at or purchase.submitted_at or purchase.create_date or fields.Datetime.now()
+            expiration = fields.Datetime.add(base, days=int(carnet_type.validity_days or 0))
+        return {
+            'id': line.id,
+            'purchase_id': purchase.id,
+            'purchase_line_id': line.id,
+            'carnet_type_id': carnet_type.id,
+            'carnet_type_code': carnet_type.code,
+            'carnet_type_name': self._carnet_type_label(carnet_type),
+            'carnet_size': int(carnet_type.face_count or 0),
+            'face_count': int(carnet_type.face_count or 0),
+            'face_value': line.face_value,
+            'carnet_qty': line.carnet_qty,
+            'amount_total': line.amount_total,
+            'qty': line.generated_face_qty,
+            'amount': line.amount_total,
+            'expiration_date': fields.Datetime.to_string(expiration) if expiration else False,
+        }
+
     def _tx_payload(self, tx):
         purchase = tx.purchase_id
         transfer = tx.transfer_id
@@ -113,18 +193,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'transfer_id': transfer.id if transfer else False,
             'transfer_direction': transfer_direction,
             'transfer_other_party': transfer_other_party,
-            'lines': [{
-                'id': line.id,
-                'purchase_id': line.purchase_id.id if line.purchase_id else False,
-                'purchase_line_id': line.purchase_line_id.id if line.purchase_line_id else False,
-                'face_value': line.face_value,
-                'qty': line.qty,
-                'amount': line.amount,
-                'face_line_id': line.face_line_id.id if line.face_line_id else False,
-                'qr_id': line.qr_id.id if line.qr_id else False,
-                'qr_line_id': line.qr_line_id.id if line.qr_line_id else False,
-                'transfer_id': line.transfer_id.id if line.transfer_id else False,
-            } for line in tx.line_ids],
+            'lines': [self._history_line_payload(line) for line in tx.line_ids],
         }
 
     def _purchase_submission_payload(self, purchase, wallet):
@@ -156,21 +225,10 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'station_id': False,
             'station_name': False,
             'note': _('Demande d’achat en attente de validation') if purchase.state == 'submitted' else False,
-            'lines': [{
-                'id': line.id,
-                'purchase_id': purchase.id,
-                'purchase_line_id': line.id,
-                'carnet_type_id': line.carnet_type_id.id,
-                'carnet_type_code': line.carnet_type_id.code,
-                'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
-                'carnet_qty': line.carnet_qty,
-                'face_count': line.face_count,
-                'face_value': line.face_value,
-                'amount_total': line.amount_total,
-                # compatibilité historique
-                'qty': line.generated_face_qty,
-                'amount': line.amount_total,
-            } for line in purchase.line_ids],
+            'lines': [
+                self._purchase_history_line_payload(purchase, line)
+                for line in purchase.line_ids
+            ],
         }
 
     def _history_sort_key(self, item):
@@ -422,17 +480,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 })
             lines = []
             for line in purchase.line_ids:
-                lines.append({
-                    'id': line.id,
-                    'carnet_type_id': line.carnet_type_id.id,
-                    'carnet_type_code': line.carnet_type_id.code,
-                    'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
-                    'carnet_qty': line.carnet_qty,
-                    'face_count': line.face_count,
-                    'face_value': line.face_value,
-                    'generated_face_qty': line.generated_face_qty,
-                    'amount_total': line.amount_total,
-                })
+                lines.append(self._purchase_history_line_payload(purchase, line))
             return self._json_response({
                 'id': purchase.id,
                 'name': purchase.name,
@@ -540,21 +588,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             if not tx:
                 raise ValidationError(_('Transaction introuvable.'))
             data = self._tx_payload(tx)
-            data['lines'] = []
-            for line in tx.line_ids:
-                data['lines'].append({
-                    'id': line.id,
-                    'face_value': line.face_value,
-                    'qty': line.qty,
-                    'amount': line.amount,
-                    'purchase_id': line.purchase_id.id if line.purchase_id else False,
-                    'purchase_public_code': line.purchase_id.public_code if line.purchase_id else False,
-                    'purchase_line_id': line.purchase_line_id.id if line.purchase_line_id else False,
-                    'face_line_id': line.face_line_id.id if line.face_line_id else False,
-                    'qr_id': line.qr_id.id if line.qr_id else False,
-                    'qr_public_code': line.qr_id.public_code if line.qr_id else False,
-                    'qr_line_id': line.qr_line_id.id if line.qr_line_id else False,
-                })
+            data['lines'] = [self._history_line_payload(line) for line in tx.line_ids]
             return self._json_response(data)
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -741,6 +775,11 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
             if not recipient_phone:
                 raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
+            
+            # Normalisation et validation du numéro de téléphone destinataire
+            parsed = self._parse_signup_identifier(recipient_phone)
+            recipient_phone = parsed['login']
+
             recipient_user = request.env['res.users'].sudo().search([
                 ('login', '=', recipient_phone),
                 ('active', '=', True),
@@ -782,6 +821,10 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
             if not recipient_phone:
                 raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
+
+            # Normalisation et validation du numéro de téléphone destinataire
+            parsed = self._parse_signup_identifier(recipient_phone)
+            recipient_phone = parsed['login']
 
             recipient_user = request.env['res.users'].sudo().search([
                 ('login', '=', recipient_phone),
@@ -825,7 +868,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             - La face_line n'est pas expirée.
             - Le transfert porte sur des carnets complets (carnet_qty × face_count).
             - L'expiration d'origine est conservée sur le wallet destinataire.
-        """
+            """
         try:
             self._require_keys(kwargs, ['recipient_phone', 'lines'])
             source_user = self._require_mobile_auth()
@@ -838,6 +881,10 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
             if not recipient_phone:
                 raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
+
+            # Normalisation et validation du numéro de téléphone destinataire
+            parsed = self._parse_signup_identifier(recipient_phone)
+            recipient_phone = parsed['login']
 
             recipient_user = request.env['res.users'].sudo().search([
                 ('login', '=', recipient_phone),

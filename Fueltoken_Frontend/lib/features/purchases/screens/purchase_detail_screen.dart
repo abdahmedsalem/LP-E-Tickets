@@ -25,12 +25,26 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_pill.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
+
+const _purchaseDetailHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
+const _purchaseDetailHeaderGap = 4.0;
+const _purchaseDetailHeaderTitleSize = 24.0;
+
+Color _purchaseAmountColor(PurchaseLotState state) {
+  return switch (state) {
+    PurchaseLotState.submitted => const Color(0xFF2563EB),
+    PurchaseLotState.approved => const Color(0xFF2E7D32),
+    PurchaseLotState.rejected => const Color(0xFFB91C1C),
+    PurchaseLotState.draft => AppColors.muted,
+  };
+}
 
 class PurchaseDetailScreen extends StatefulWidget {
   final String lotId;
@@ -281,7 +295,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       final purchaseId = _purchaseIdForRpc();
       if (purchaseId == null) {
         if (mounted) {
-          AppMessage.error(context, 'Impossible d\'effectuer cette action pour cette commande.');
+          AppMessage.error(
+            context,
+            'Impossible d\'effectuer cette action pour cette commande.',
+          );
         }
         return;
       }
@@ -328,11 +345,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         await _refresh();
         if (!mounted) return;
         if (widget.adminMode) {
-          AppMessage.success(context, 'Achat validé. Les tickets sont disponibles pour le client.');
+          AppMessage.success(
+            context,
+            'Achat validé. Les tickets sont disponibles pour le client.',
+          );
           context.pop(true);
           return;
         }
-        AppMessage.success(context, 'Lot validé. Les tickets sont disponibles pour le client.');
+        AppMessage.success(
+          context,
+          'Lot validé. Les tickets sont disponibles pour le client.',
+        );
       } on OdooJsonRpcException catch (e) {
         if (mounted) {
           AppMessage.error(context, _briefPurchaseActionError(e));
@@ -348,7 +371,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
 
     if (mounted) {
-      AppMessage.error(context, 'Connexion serveur ACPEC requise pour valider ce lot.');
+      AppMessage.error(
+        context,
+        'Connexion serveur ACPEC requise pour valider ce lot.',
+      );
     }
   }
 
@@ -358,7 +384,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     final trimmed = _rejectReasonController.text.trim();
     if (trimmed.isEmpty) {
-      AppMessage.warning(context, 'Indiquez un motif de rejet avant de confirmer.');
+      AppMessage.warning(
+        context,
+        'Indiquez un motif de rejet avant de confirmer.',
+      );
       return;
     }
 
@@ -367,7 +396,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       final purchaseId = _purchaseIdForRpc();
       if (purchaseId == null) {
         if (mounted) {
-          AppMessage.error(context, 'Impossible d\'effectuer cette action pour cette commande.');
+          AppMessage.error(
+            context,
+            'Impossible d\'effectuer cette action pour cette commande.',
+          );
         }
         return;
       }
@@ -411,7 +443,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (!mounted) return;
         _cancelRejectFlow();
         if (widget.adminMode) {
-          AppMessage.success(context, 'Achat rejeté. Le motif a été enregistré pour le client.');
+          AppMessage.success(
+            context,
+            'Achat rejeté. Le motif a été enregistré pour le client.',
+          );
           context.pop(true);
           return;
         }
@@ -431,7 +466,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
 
     if (mounted) {
-      AppMessage.error(context, 'Connexion serveur ACPEC requise pour rejeter ce lot.');
+      AppMessage.error(
+        context,
+        'Connexion serveur ACPEC requise pour rejeter ce lot.',
+      );
     }
   }
 
@@ -516,6 +554,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             AppBarHeader(
               title: _confirmingReject ? 'Rejeter lachat' : 'Détail achat',
               onBack: _handleBack,
+              largeTitle: true,
+              largeTitlePadding: _purchaseDetailHeaderPadding,
+              largeTitleGap: _purchaseDetailHeaderGap,
+              largeTitleFontSize: _purchaseDetailHeaderTitleSize,
             ),
             Expanded(
               child: _loading
@@ -707,7 +749,15 @@ class _PurchaseHeroCard extends StatelessWidget {
               const SizedBox(width: 12),
               _OverviewFact(
                 icon: Icons.payments_outlined,
-                label: Formatters.money(lot.totalAmount),
+                labelWidget: AmountInline(
+                  amount: lot.totalAmount,
+                  valueStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.body,
+                  ),
+                  unitStyle: const TextStyle(color: AppColors.body),
+                ),
               ),
             ],
           ),
@@ -937,55 +987,51 @@ class _LinesCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 46,
-                    height: 36,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF7EE),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      Formatters.numberFr(lot.lines[i].faceValue),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF2E7D32),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          lot.lines[i].carnetTypeCode,
+                          _lineTypeLabel(lot.lines[i]),
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 14,
                             color: AppColors.ink,
+                            height: 1.18,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
-                          '${lot.lines[i].carnetCount} carnet${lot.lines[i].carnetCount > 1 ? 's' : ''} ? ${lot.lines[i].faceCount} tickets',
+                          'Expiration: ${Formatters.date(lot.expirationDate)}',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${lot.lines[i].carnetCount} carnet${lot.lines[i].carnetCount > 1 ? 's' : ''}',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            height: 1.2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Text(
-                    Formatters.money(lot.lines[i].lineAmount),
-                    style: GoogleFonts.inter(
+                  const SizedBox(width: 12),
+                  AmountInline(
+                    amount: lot.lines[i].lineAmount,
+                    valueStyle: GoogleFonts.inter(
                       fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDark,
+                      color: _purchaseAmountColor(lot.state),
                       fontSize: 14,
                     ),
+                    unitStyle: TextStyle(color: _purchaseAmountColor(lot.state)),
                   ),
                 ],
               ),
@@ -1013,13 +1059,14 @@ class _LinesCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  Formatters.money(lot.totalAmount),
-                  style: GoogleFonts.inter(
+                AmountInline(
+                  amount: lot.totalAmount,
+                  valueStyle: GoogleFonts.inter(
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF2E7D32),
+                    color: _purchaseAmountColor(lot.state),
                     fontSize: 16,
                   ),
+                  unitStyle: TextStyle(color: _purchaseAmountColor(lot.state)),
                 ),
               ],
             ),
@@ -1028,6 +1075,20 @@ class _LinesCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _lineTypeLabel(PurchaseLine line) {
+  final serverLabel = line.carnetTypeName.trim();
+  if (serverLabel.isNotEmpty) return serverLabel;
+  final fromName = Formatters.normalizeCarnetTypeLabel(
+    line.carnetTypeName,
+    fallbackSize: line.carnetSize,
+    fallbackFaceValue: line.faceValue,
+  );
+  if (fromName.trim().isNotEmpty) return fromName;
+  final code = line.carnetTypeCode.trim();
+  if (code.isNotEmpty && code != '—') return code;
+  return 'Carnet';
 }
 
 class _ProofsSection extends StatelessWidget {
@@ -1432,10 +1493,11 @@ class _ProofImagePreviewState extends State<_ProofImagePreview> {
 }
 
 class _OverviewFact extends StatelessWidget {
-  const _OverviewFact({required this.icon, required this.label});
+  const _OverviewFact({required this.icon, this.label, this.labelWidget});
 
   final IconData icon;
-  final String label;
+  final String? label;
+  final Widget? labelWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -1444,14 +1506,17 @@ class _OverviewFact extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: AppColors.muted),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.body,
+        if (labelWidget != null)
+          labelWidget!
+        else
+          Text(
+            label ?? '',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.body,
+            ),
           ),
-        ),
       ],
     );
   }

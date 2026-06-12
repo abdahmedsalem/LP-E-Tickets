@@ -319,7 +319,7 @@ class _QRCard extends StatelessWidget {
       case QrState.active:
         return 'Généré le';
       case QrState.blocked:
-        return 'Bloqué le';
+        return 'Bloqué depuis';
       case QrState.consumed:
         return 'Consommé le';
       case QrState.expired:
@@ -421,6 +421,18 @@ class _QRCard extends StatelessWidget {
                             height: 1,
                           ),
                         ),
+                        if (_displayState == QrState.blocked)
+                          Text(
+                            'Blocage lié à des tickets expirés.',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.muted,
+                              height: 1.25,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -444,7 +456,7 @@ class _QRCard extends StatelessWidget {
                             const TextSpan(
                               text: ' MRU',
                               style: TextStyle(
-                                fontSize: 8,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.muted,
                                 height: 1,

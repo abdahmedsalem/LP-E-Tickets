@@ -44,7 +44,7 @@ class AppBarHeader extends StatelessWidget {
 
     if (largeTitle) {
       return Padding(
-        padding: largeTitlePadding ?? const EdgeInsets.fromLTRB(24, 10, 24, 2),
+        padding: largeTitlePadding ?? const EdgeInsets.fromLTRB(12, 8, 12, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -59,17 +59,17 @@ class AppBarHeader extends StatelessWidget {
                 if (action != null) ...[action!],
               ],
             ),
-            SizedBox(height: largeTitleGap ?? 18),
+            SizedBox(height: largeTitleGap ?? 10),
             Text(
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
-                fontSize: largeTitleFontSize ?? 34,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF182B4D),
-                letterSpacing: -1.2,
-                height: 1.05,
+                fontSize: largeTitleFontSize ?? 26,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF111827),
+                letterSpacing: -0.6,
+                height: 1.08,
               ),
             ),
             if (subtitle != null) ...[
@@ -184,12 +184,22 @@ class _HeroBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 40,
-      height: 40,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: const Icon(Icons.arrow_back, size: 30, color: Color(0xFF111111)),
+      width: 34,
+      height: 34,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: const Center(
+            child: Icon(
+              Icons.arrow_back_rounded,
+              size: 22,
+              color: Color(0xFF374151),
+            ),
+          ),
+        ),
       ),
     );
   }

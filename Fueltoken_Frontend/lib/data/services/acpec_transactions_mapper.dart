@@ -1,4 +1,4 @@
-﻿import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 
 import '../models/purchase_lot.dart';
 import '../models/business_transaction.dart';
@@ -21,8 +21,10 @@ class AcpecTransactionsPage {
 class AcpecTransactionsMapper {
   AcpecTransactionsMapper._();
 
-  static final DateTime _fallbackDate =
-      DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  static final DateTime _fallbackDate = DateTime.fromMillisecondsSinceEpoch(
+    0,
+    isUtc: true,
+  );
 
   /// Filtre côté client (l’API 5.6 ne filtre pas par type).
   static bool matchesClientFilter(BusinessTransaction tx, TxType filter) {
@@ -177,11 +179,11 @@ class AcpecTransactionsMapper {
         blob.contains('fuel_use')) {
       return true;
     }
-    final hasStation = (tx.stationId != null && tx.stationId!.isNotEmpty) ||
+    final hasStation =
+        (tx.stationId != null && tx.stationId!.isNotEmpty) ||
         (tx.stationName != null && tx.stationName!.isNotEmpty);
     if (hasStation && _hasQrRef(tx)) return true;
-    return hasStation &&
-        (blob.contains('scan') || blob.contains('station'));
+    return hasStation && (blob.contains('scan') || blob.contains('station'));
   }
 
   static bool _looksLikeExpiration(BusinessTransaction tx) {
@@ -198,14 +200,13 @@ class AcpecTransactionsMapper {
     final hasLot =
         (tx.lotId != null && tx.lotId!.isNotEmpty) ||
         (tx.lotInternalRef != null && tx.lotInternalRef!.isNotEmpty);
-    final hasQr = (tx.qrId != null && tx.qrId!.isNotEmpty) ||
+    final hasQr =
+        (tx.qrId != null && tx.qrId!.isNotEmpty) ||
         (tx.qrPublicCode != null && tx.qrPublicCode!.isNotEmpty);
-    final hasStation = (tx.stationId != null && tx.stationId!.isNotEmpty) ||
+    final hasStation =
+        (tx.stationId != null && tx.stationId!.isNotEmpty) ||
         (tx.stationName != null && tx.stationName!.isNotEmpty);
-    return hasLot &&
-        !hasQr &&
-        !hasStation &&
-        _txBlob(tx).contains('valid');
+    return hasLot && !hasQr && !hasStation && _txBlob(tx).contains('valid');
   }
 
   static bool _looksLikePurchaseRejected(BusinessTransaction tx) {
@@ -218,9 +219,11 @@ class AcpecTransactionsMapper {
     final hasLot =
         (tx.lotId != null && tx.lotId!.isNotEmpty) ||
         (tx.lotInternalRef != null && tx.lotInternalRef!.isNotEmpty);
-    final hasQr = (tx.qrId != null && tx.qrId!.isNotEmpty) ||
+    final hasQr =
+        (tx.qrId != null && tx.qrId!.isNotEmpty) ||
         (tx.qrPublicCode != null && tx.qrPublicCode!.isNotEmpty);
-    final hasStation = (tx.stationId != null && tx.stationId!.isNotEmpty) ||
+    final hasStation =
+        (tx.stationId != null && tx.stationId!.isNotEmpty) ||
         (tx.stationName != null && tx.stationName!.isNotEmpty);
     return hasLot &&
         !hasQr &&
@@ -241,9 +244,11 @@ class AcpecTransactionsMapper {
     final hasLot =
         (tx.lotId != null && tx.lotId!.isNotEmpty) ||
         (tx.lotInternalRef != null && tx.lotInternalRef!.isNotEmpty);
-    final hasQr = (tx.qrId != null && tx.qrId!.isNotEmpty) ||
+    final hasQr =
+        (tx.qrId != null && tx.qrId!.isNotEmpty) ||
         (tx.qrPublicCode != null && tx.qrPublicCode!.isNotEmpty);
-    final hasStation = (tx.stationId != null && tx.stationId!.isNotEmpty) ||
+    final hasStation =
+        (tx.stationId != null && tx.stationId!.isNotEmpty) ||
         (tx.stationName != null && tx.stationName!.isNotEmpty);
     return hasLot &&
         !hasQr &&
@@ -274,9 +279,14 @@ class AcpecTransactionsMapper {
             for (final l in lot.lines)
               TransactionLine(
                 id: l.id,
+                carnetTypeId: l.carnetTypeId,
+                carnetTypeCode: l.carnetTypeCode,
+                carnetTypeName: l.carnetTypeName,
                 faceValue: l.faceValue,
                 qty: l.carnetCount,
                 amount: l.lineAmount,
+                carnetSize: l.carnetSize,
+                expirationDate: lot.expirationDate,
                 lotId: lot.id,
               ),
           ],
@@ -285,8 +295,8 @@ class AcpecTransactionsMapper {
           note: lot.state == PurchaseLotState.approved
               ? 'Validé après soumission'
               : lot.state == PurchaseLotState.rejected
-                  ? 'Rejeté après soumission'
-                  : lot.state.label,
+              ? 'Rejeté après soumission'
+              : lot.state.label,
         ),
       );
     }
@@ -312,9 +322,14 @@ class AcpecTransactionsMapper {
           .map(
             (l) => TransactionLine(
               id: l.id,
+              carnetTypeId: '',
+              carnetTypeCode: '',
+              carnetTypeName: '',
               faceValue: l.faceValue,
               qty: l.qty,
               amount: l.amount,
+              carnetSize: l.carnetSize,
+              expirationDate: l.expirationDate,
               lotId: l.lotId,
               faceLineId: l.faceLineId,
               qrId: qr.id,
@@ -519,13 +534,16 @@ class AcpecTransactionsMapper {
       } else if (direction.isEmpty) {
         // Fallback : lire la note si le backend ne renvoie pas encore le champ
         final note = row['note']?.toString().toLowerCase() ?? '';
-        if (note.contains('entrant') || note.contains('reçu de') || note.contains('recu de')) {
+        if (note.contains('entrant') ||
+            note.contains('reçu de') ||
+            note.contains('recu de')) {
           type = TxType.carnetReceived;
         }
       }
     }
 
-    final date = _parseDate(
+    final date =
+        _parseDate(
           row['date'] ??
               row['state_date'] ??
               row['create_date'] ??
@@ -537,19 +555,29 @@ class AcpecTransactionsMapper {
               row['move_date'],
         ) ??
         _fallbackDate;
+    final rowExpirationDate = _parseDate(
+      row['expiration_date'] ??
+          row['expiry_date'] ??
+          row['expires_at'] ??
+          row['expiresAt'] ??
+          row['expiration'] ??
+          row['expiration_at'],
+    );
 
     final uid =
         row['user_id']?.toString() ?? row['partner_id']?.toString() ?? userId;
-    final uname = row['user_name']?.toString() ??
+    final uname =
+        row['user_name']?.toString() ??
         row['partner_name']?.toString() ??
         userName;
 
     final lines = _finalizeLines(
       row,
-      _mapLines(row) ??
+      _mapLines(row, fallbackExpiration: rowExpirationDate) ??
           _syntheticLine(
             row,
             transactionId: id,
+            fallbackExpiration: rowExpirationDate,
           ),
     );
 
@@ -564,8 +592,14 @@ class AcpecTransactionsMapper {
       } else {
         // Fallback : extraire de la note "Transfert sortant vers X." / "Transfert entrant de X."
         final note = row['note']?.toString() ?? '';
-        final outMatch = RegExp(r'vers\s+(.+?)\.?\s*$', caseSensitive: false).firstMatch(note);
-        final inMatch = RegExp(r'de\s+(.+?)\.?\s*$', caseSensitive: false).firstMatch(note);
+        final outMatch = RegExp(
+          r'vers\s+(.+?)\.?\s*$',
+          caseSensitive: false,
+        ).firstMatch(note);
+        final inMatch = RegExp(
+          r'de\s+(.+?)\.?\s*$',
+          caseSensitive: false,
+        ).firstMatch(note);
         if (type == TxType.carnetTransfer && outMatch != null) {
           transferParty = outMatch.group(1)?.trim();
         } else if (type == TxType.carnetReceived && inMatch != null) {
@@ -582,7 +616,8 @@ class AcpecTransactionsMapper {
       userName: uname,
       lines: lines,
       lotId: _stringField(row, 'lot_id', 'purchase_id'),
-      lotInternalRef: _stringField(
+      lotInternalRef:
+          _stringField(
             row,
             'lot_name',
             'purchase_name',
@@ -689,7 +724,8 @@ class AcpecTransactionsMapper {
       return purchaseStateType;
     }
 
-    final typeRaw = row['type'] ??
+    final typeRaw =
+        row['type'] ??
         row['transaction_type'] ??
         row['kind'] ??
         row['move_type'] ??
@@ -853,7 +889,10 @@ class AcpecTransactionsMapper {
         '',
       );
       s = s.replaceAll(RegExp(r'\b(true|false)\b', caseSensitive: false), '');
-      s = s.replaceAll(RegExp(r'[·•]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+      s = s
+          .replaceAll(RegExp(r'[·•]+'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
       if (s.isNotEmpty &&
           !RegExp(r'^[·•\s]+$').hasMatch(s) &&
           !RegExp(r'^qr[\s_-]', caseSensitive: false).hasMatch(s)) {
@@ -884,7 +923,9 @@ class AcpecTransactionsMapper {
         (s.contains('qr') || s.contains('code'))) {
       return TxType.qrSeparer;
     }
-    if (s.contains('separer') || s.contains('séparer') || s == 'separer_qr') return TxType.qrSeparer;
+    if (s.contains('separer') || s.contains('séparer') || s == 'separer_qr') {
+      return TxType.qrSeparer;
+    }
     if (s.contains('retirer') ||
         s.contains('retrait') ||
         s.contains('withdraw') ||
@@ -931,7 +972,9 @@ class AcpecTransactionsMapper {
       return TxType.purchaseRejected;
     }
     if (s.contains('purchase') &&
-        (s.contains('submit') || s.contains('soumis') || s.contains('pending'))) {
+        (s.contains('submit') ||
+            s.contains('soumis') ||
+            s.contains('pending'))) {
       return TxType.purchaseSubmitted;
     }
     if (s == 'submitted' || s == 'purchase_submitted' || s == 'lot_submitted') {
@@ -993,9 +1036,7 @@ class AcpecTransactionsMapper {
       return TxType.walletLedger;
     }
 
-    if (s.contains('station') ||
-        s.contains('consum') ||
-        s.contains('use')) {
+    if (s.contains('station') || s.contains('consum') || s.contains('use')) {
       return TxType.stationConsumption;
     }
 
@@ -1038,7 +1079,8 @@ class AcpecTransactionsMapper {
       return true;
     }
 
-    final hasPurchase = _has(row, 'purchase_id', 'lot_id') ||
+    final hasPurchase =
+        _has(row, 'purchase_id', 'lot_id') ||
         _has(row, 'purchase_name', 'lot_name');
     final hasQr = _hasAny(row, 'qr_id', 'qr_public_code', 'public_code');
     final hasStation = _has(row, 'station_id', 'station_name');
@@ -1048,10 +1090,7 @@ class AcpecTransactionsMapper {
     return false;
   }
 
-  static bool _isPurchaseRejectedRow(
-    Map<String, dynamic> row,
-    String typeRaw,
-  ) {
+  static bool _isPurchaseRejectedRow(Map<String, dynamic> row, String typeRaw) {
     final s = typeRaw.toLowerCase().trim();
     if (s.isNotEmpty) {
       if (s.contains('reject') ||
@@ -1090,11 +1129,14 @@ class AcpecTransactionsMapper {
           _has(row, 'purchase_name', 'lot_name');
     }
 
-    final hasPurchase = _has(row, 'purchase_id', 'lot_id') ||
+    final hasPurchase =
+        _has(row, 'purchase_id', 'lot_id') ||
         _has(row, 'purchase_name', 'lot_name');
     final hasQr = _hasAny(row, 'qr_id', 'qr_public_code', 'public_code');
     final hasStation = _has(row, 'station_id', 'station_name');
-    return hasPurchase && !hasQr && !hasStation &&
+    return hasPurchase &&
+        !hasQr &&
+        !hasStation &&
         (_isPurchaseValidatedRow(row, typeRaw) == false) &&
         (ref.contains('reject') || ref.contains('rejet'));
   }
@@ -1126,11 +1168,15 @@ class AcpecTransactionsMapper {
           !_isPurchaseValidatedRow(row, typeRaw);
     }
 
-    final hasPurchase = _has(row, 'purchase_id', 'lot_id') ||
+    final hasPurchase =
+        _has(row, 'purchase_id', 'lot_id') ||
         _has(row, 'purchase_name', 'lot_name');
     final hasQr = _hasAny(row, 'qr_id', 'qr_public_code', 'public_code');
     final hasStation = _has(row, 'station_id', 'station_name');
-    return hasPurchase && !hasQr && !hasStation && !_isPurchaseValidatedRow(row, typeRaw);
+    return hasPurchase &&
+        !hasQr &&
+        !hasStation &&
+        !_isPurchaseValidatedRow(row, typeRaw);
   }
 
   static int _rowTotalAmount(Map<String, dynamic> row) {
@@ -1178,7 +1224,10 @@ class AcpecTransactionsMapper {
           0,
         );
         final qty = _int(m['qty'] ?? m['quantity'], 0);
-        final fv = _int(m['face_value'] ?? m['faceValue'] ?? m['unit_value'], 0);
+        final fv = _int(
+          m['face_value'] ?? m['faceValue'] ?? m['unit_value'],
+          0,
+        );
         if (amt <= 0 && fv > 0 && qty > 0) amt = fv * qty;
         sum += amt;
       }
@@ -1190,18 +1239,25 @@ class AcpecTransactionsMapper {
 
   static List<TransactionLine> _finalizeLines(
     Map<String, dynamic> row,
-    List<TransactionLine> lines,
-  ) {
+    List<TransactionLine> lines, {
+    DateTime? fallbackExpiration,
+  }) {
     if (lines.isEmpty) return lines;
 
     var normalized = lines.map((l) {
+      final expiration = l.expirationDate ?? fallbackExpiration;
       if (l.amount > 0) return l;
       if (l.faceValue > 0 && l.qty > 0) {
         return TransactionLine(
           id: l.id,
+          carnetTypeId: l.carnetTypeId,
+          carnetTypeCode: l.carnetTypeCode,
+          carnetTypeName: l.carnetTypeName,
           faceValue: l.faceValue,
           qty: l.qty,
           amount: l.faceValue * l.qty,
+          carnetSize: l.carnetSize,
+          expirationDate: expiration,
           lotId: l.lotId,
           faceLineId: l.faceLineId,
           qrId: l.qrId,
@@ -1220,9 +1276,13 @@ class AcpecTransactionsMapper {
       return [
         TransactionLine(
           id: l.id,
+          carnetTypeId: l.carnetTypeId,
+          carnetTypeCode: l.carnetTypeCode,
+          carnetTypeName: l.carnetTypeName,
           faceValue: l.faceValue > 0 ? l.faceValue : rowTotal,
           qty: l.qty > 0 ? l.qty : 1,
           amount: rowTotal,
+          expirationDate: l.expirationDate ?? fallbackExpiration,
           lotId: l.lotId,
           faceLineId: l.faceLineId,
           qrId: l.qrId,
@@ -1247,9 +1307,14 @@ class AcpecTransactionsMapper {
       out.add(
         TransactionLine(
           id: l.id,
+          carnetTypeId: l.carnetTypeId,
+          carnetTypeCode: l.carnetTypeCode,
+          carnetTypeName: l.carnetTypeName,
           faceValue: l.faceValue,
           qty: l.qty,
           amount: share,
+          carnetSize: l.carnetSize,
+          expirationDate: l.expirationDate ?? fallbackExpiration,
           lotId: l.lotId,
           faceLineId: l.faceLineId,
           qrId: l.qrId,
@@ -1259,8 +1324,12 @@ class AcpecTransactionsMapper {
     return out;
   }
 
-  static List<TransactionLine>? _mapLines(Map<String, dynamic> row) {
-    final raw = row['lines'] ??
+  static List<TransactionLine>? _mapLines(
+    Map<String, dynamic> row, {
+    DateTime? fallbackExpiration,
+  }) {
+    final raw =
+        row['lines'] ??
         row['transaction_lines'] ??
         row['detail_lines'] ??
         row['purchase_lines'] ??
@@ -1284,8 +1353,10 @@ class AcpecTransactionsMapper {
       var qty = _int(m['qty'] ?? m['quantity'] ?? m['product_uom_qty'], 0);
       if (qty <= 0) {
         final carnetQty = _int(m['carnet_qty'], 0);
-        final carnetSize = _int(m['carnet_size'] ?? m['size'] ?? m['face_count'], 1)
-            .clamp(1, 9999);
+        final carnetSize = _int(
+          m['carnet_size'] ?? m['size'] ?? m['face_count'],
+          1,
+        ).clamp(1, 9999);
         if (carnetQty > 0) {
           qty = carnetQty * carnetSize;
         }
@@ -1312,9 +1383,22 @@ class AcpecTransactionsMapper {
       out.add(
         TransactionLine(
           id: lid,
+          carnetTypeId: m['carnet_type_id']?.toString() ?? '',
+          carnetTypeCode: m['carnet_type_code']?.toString() ?? '',
+          carnetTypeName: m['carnet_type_name']?.toString() ?? '',
           faceValue: fv,
           qty: qty,
           amount: amt,
+          carnetSize: _int(m['carnet_size'] ?? m['size'] ?? m['face_count'], 0),
+          expirationDate:
+              _parseDate(
+                m['expiration_date'] ??
+                    m['expiry_date'] ??
+                    m['expires_at'] ??
+                    m['expiresAt'] ??
+                    m['expiration'],
+              ) ??
+              fallbackExpiration,
           lotId: m['lot_id']?.toString(),
           faceLineId: m['face_line_id']?.toString(),
           qrId: m['qr_id']?.toString(),
@@ -1328,6 +1412,7 @@ class AcpecTransactionsMapper {
   static List<TransactionLine> _syntheticLine(
     Map<String, dynamic> row, {
     required String transactionId,
+    DateTime? fallbackExpiration,
   }) {
     final amt = _rowTotalAmount(row);
     var qty = _int(
@@ -1340,9 +1425,10 @@ class AcpecTransactionsMapper {
     );
     if (qty <= 0) {
       final carnetQty = _int(row['carnet_qty'], 0);
-      final carnetSize =
-          _int(row['carnet_size'] ?? row['size'] ?? row['face_count'], 1)
-              .clamp(1, 9999);
+      final carnetSize = _int(
+        row['carnet_size'] ?? row['size'] ?? row['face_count'],
+        1,
+      ).clamp(1, 9999);
       if (carnetQty > 0) qty = carnetQty * carnetSize;
     }
     final fv = _int(
@@ -1353,19 +1439,31 @@ class AcpecTransactionsMapper {
       0,
     );
     final useQty = qty > 0 ? qty : 1;
-    final useFv = fv > 0
-        ? fv
-        : (amt > 0 ? (amt / useQty).round().abs() : 0);
-    final useAmt = amt > 0
-        ? amt
-        : (useFv > 0 ? useFv * useQty : 0);
+    final useFv = fv > 0 ? fv : (amt > 0 ? (amt / useQty).round().abs() : 0);
+    final useAmt = amt > 0 ? amt : (useFv > 0 ? useFv * useQty : 0);
 
     return [
       TransactionLine(
         id: '$transactionId-0',
+        carnetTypeId: _stringField(row, 'carnet_type_id') ?? '',
+        carnetTypeCode: _stringField(row, 'carnet_type_code') ?? '',
+        carnetTypeName: _stringField(row, 'carnet_type_name') ?? '',
         faceValue: useFv <= 0 ? 1 : useFv,
         qty: useQty,
         amount: useAmt,
+        carnetSize: _int(
+          row['carnet_size'] ?? row['size'] ?? row['face_count'],
+          0,
+        ),
+        expirationDate:
+            _parseDate(
+              row['expiration_date'] ??
+                  row['expiry_date'] ??
+                  row['expires_at'] ??
+                  row['expiresAt'] ??
+                  row['expiration'],
+            ) ??
+            fallbackExpiration,
         lotId: _stringField(row, 'lot_id', 'purchase_id'),
         qrId: _stringField(row, 'qr_id'),
       ),
@@ -1420,5 +1518,3 @@ class AcpecTransactionsMapper {
     return null;
   }
 }
-
-

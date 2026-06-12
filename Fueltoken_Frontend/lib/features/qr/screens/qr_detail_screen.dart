@@ -3,22 +3,33 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/faces_refresh_bus.dart';
+import '../../../core/utils/qr_refresh_bus.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_pill.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../shared/widgets/app_message.dart';
+
+const _detailHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
+const _detailHeaderGap = 4.0;
+const _detailHeaderTitleSize = 24.0;
 
 class QrDetailScreen extends StatefulWidget {
   final String qrId;
@@ -35,6 +46,7 @@ class QrDetailScreen extends StatefulWidget {
 class _QrDetailScreenState extends State<QrDetailScreen> {
   QrToken? _qr;
   bool _loading = false;
+  bool _separating = false;
   String? _error;
 
   @override
@@ -97,6 +109,84 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
     }
   }
 
+  Future<void> _separateBlockedQr(QrToken qr) async {
+    if (_separating) return;
+    if (!AppEnvironment.useAcpecLiveData) {
+      AppMessage.error(
+        context,
+        'Connexion serveur ACPEC requise pour séparer un QR.',
+      );
+      return;
+    }
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) return;
+    setState(() => _separating = true);
+    try {
+      final raw = await OdooFueltokenFacade().qrSeparer({
+        'public_code': qr.publicCode,
+        'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
+      });
+      if (raw is! Map) {
+        throw Exception('Réponse QR invalide.');
+      }
+      final payload = raw['data'] is Map
+          ? Map<String, dynamic>.from(raw['data'] as Map)
+          : Map<String, dynamic>.from(raw);
+      final newQrRaw = payload['new_qr'];
+      final sourceRaw = payload['source'];
+
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.qrList,
+      );
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.qrDetail,
+        AcpecQrMapper.detailParamsForRouteId(qr.publicCode),
+      );
+
+      if (sourceRaw is Map) {
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrDetail,
+          AcpecQrMapper.detailParamsForRouteId(qr.publicCode),
+        );
+      }
+
+      if (newQrRaw is Map) {
+        final userCompanyId = AppEnvironment.companyIdForUser(user);
+        final child = AcpecQrMapper.fromRpcEnvelope(
+          newQrRaw,
+          ownerId: user.id,
+          ownerName: user.name,
+          companyId: userCompanyId,
+        );
+        AcpecFueltokenRpcCoordinator.shared.invalidate(
+          OdooFueltokenRpcConfig.qrDetail,
+          AcpecQrMapper.detailParamsForRouteId(child.publicCode),
+        );
+      }
+
+      QrRefreshBus.instance.bump();
+      WalletRefreshBus.instance.bump();
+      FacesRefreshBus.instance.bump();
+      ClientHistoryRefreshBus.instance.bump();
+      if (!mounted) return;
+      AppMessage.success(context, 'QR séparé avec succès.');
+      await _refresh();
+    } on OdooJsonRpcException catch (e) {
+      if (!mounted) return;
+      AppMessage.error(
+        context,
+        e.isOdooSessionExpired
+            ? 'Session expirée. Reconnectez-vous.'
+            : e.message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _separating = false);
+    }
+  }
+
   ({String label, PillTone tone}) _statePill(QrState s) {
     switch (s) {
       case QrState.active:
@@ -121,7 +211,10 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
               AppBarHeader(
                 title: 'Détail du QR',
                 onBack: () => context.pop(),
-                plainBackButton: true,
+                largeTitle: true,
+                largeTitlePadding: _detailHeaderPadding,
+                largeTitleGap: _detailHeaderGap,
+                largeTitleFontSize: _detailHeaderTitleSize,
               ),
               const Expanded(
                 child: Padding(
@@ -146,7 +239,10 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
               AppBarHeader(
                 title: 'Détail du QR',
                 onBack: () => context.pop(),
-                plainBackButton: true,
+                largeTitle: true,
+                largeTitlePadding: _detailHeaderPadding,
+                largeTitleGap: _detailHeaderGap,
+                largeTitleFontSize: _detailHeaderTitleSize,
               ),
               Expanded(
                 child: ListView(
@@ -250,16 +346,12 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                           size: 18,
                         ),
                         label: Text(canRetirer ? 'Retirer' : 'Séparer'),
-                        onPressed: canRetirer || canSeparer
+                        onPressed: canRetirer
                             ? () async {
                                 final router = GoRouter.of(context);
-                                final nextCode = canRetirer
-                                    ? await router.push<String>(
-                                        '/qr/$qrSeg/retirer',
-                                      )
-                                    : await router.push<String>(
-                                        '/qr/$qrSeg/separer',
-                                      );
+                                final nextCode = await router.push<String>(
+                                  '/qr/$qrSeg/retirer',
+                                );
                                 if (!context.mounted) return;
                                 if (nextCode != null && nextCode.isNotEmpty) {
                                   router.go(
@@ -269,6 +361,10 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                                   await _refresh();
                                 }
                               }
+                            : canSeparer
+                            ? (_separating
+                                  ? null
+                                  : () => _separateBlockedQr(qr))
                             : null,
                       ),
                     ),
@@ -282,8 +378,16 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
           children: [
             AppBarHeader(
               title: 'Détail du QR',
+              subtitle: qr.state == QrState.active
+                  ? 'Retirez une partie des tickets pour créer un nouveau QR'
+                  : qr.state == QrState.blocked
+                  ? 'Séparez les tickets valides des tickets expirés'
+                  : null,
               onBack: () => context.pop(),
-              plainBackButton: true,
+              largeTitle: true,
+              largeTitlePadding: _detailHeaderPadding,
+              largeTitleGap: _detailHeaderGap,
+              largeTitleFontSize: _detailHeaderTitleSize,
             ),
             Expanded(
               child: RefreshIndicator(
@@ -430,36 +534,20 @@ class _HeroQrCard extends StatelessWidget {
                     color: AppColors.primaryDark,
                   ),
                 ),
-                Text(
-                  '${Formatters.numberFr(qr.totalAmount)} MRU',
-                  style: GoogleFonts.inter(
+                AmountInline(
+                  amount: qr.totalAmount,
+                  valueStyle: GoogleFonts.inter(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primaryDeep,
                     letterSpacing: -0.2,
                   ),
+                  unitStyle: const TextStyle(color: AppColors.primaryDeep),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              qr.state == QrState.consumed && qr.consumedAt != null
-                  ? 'Consommé le ${Formatters.dateTime(qr.consumedAt!)}'
-                  : qr.state == QrState.expired && qr.expiresAt != null
-                  ? 'Expiré le ${Formatters.dateTime(qr.expiresAt!)}'
-                  : qr.expiresAt != null
-                  ? 'Expire le ${Formatters.dateTime(qr.expiresAt!)}'
-                  : 'Date de génération: ${Formatters.dateTime(qr.generatedAt)}',
-              style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.muted,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -557,58 +645,86 @@ class _CompositionCard extends StatelessWidget {
         children: [
           for (var i = 0; i < lines.length; i++) ...[
             if (i > 0) const Divider(height: 1, color: AppColors.lineSoft),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _carnetLabel(lines[i]),
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        Formatters.money(lines[i].amount),
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        ' ticket disponible  •  '
-                        'Expire le ${Formatters.dateTimeDash(lines[i].expirationDate)}',
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.body,
-                          height: 1.15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            _CompositionLineRow(label: _carnetLabel(lines[i]), line: lines[i]),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CompositionLineRow extends StatelessWidget {
+  const _CompositionLineRow({required this.label, required this.line});
+
+  final String label;
+  final QrLine line;
+
+  String _title() {
+    final qtyLabel =
+        '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}';
+    final cleanLabel = label.replaceFirst(
+      RegExp(r'^\s*Carnet\s+', caseSensitive: false),
+      '',
+    );
+    return '$qtyLabel de carnet $cleanLabel';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  _title(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    height: 1.18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              AmountInline(
+                amount: line.amount,
+                textAlign: TextAlign.right,
+                valueStyle: GoogleFonts.inter(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
+                unitStyle: const TextStyle(color: AppColors.ink),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.muted,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

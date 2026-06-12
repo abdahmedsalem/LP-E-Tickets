@@ -67,13 +67,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _sendRegistrationOtp() async {
     setState(() => _sendingOtp = true);
     try {
-      final response = await OdooAuthService.instance
-          .submitSignupRequestDetailed(
-            name: _name.text.trim(),
-            signupIdentifier: _phoneFull,
-            secretCode: _password.text,
-            companyId: OdooAuthRpcConfig.signupDefaultCompanyId,
-          );
+      final response = await OdooAuthService.instance.requestSignupOtp(
+        phoneFull: _phoneFull,
+      );
       final data = response['data'];
       final challengeId = data is Map
           ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')

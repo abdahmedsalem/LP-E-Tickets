@@ -12,19 +12,13 @@ class ErrorPresenter {
       if (error.isOdooSessionExpired) {
         return 'Votre session a expiré. Veuillez vous reconnecter.';
       }
-      final msg = error.message.trim();
-      if (msg.isEmpty) return 'Une erreur est survenue. Réessayez.';
-      // Raccourcir les messages très longs (traces techniques)
-      if (msg.length > 200) return '${msg.substring(0, 200)}…';
-      return msg;
+      return _sanitize(error.message);
     }
     final raw = error.toString()
         .replaceFirst('Exception: ', '')
         .replaceFirst('OdooJsonRpcException: ', '')
         .trim();
-    if (raw.isEmpty) return 'Une erreur inattendue est survenue.';
-    if (raw.length > 200) return '${raw.substring(0, 200)}…';
-    return raw;
+    return _sanitize(raw);
   }
 
   static String network() =>
@@ -32,4 +26,33 @@ class ErrorPresenter {
 
   static String sessionExpired() =>
       'Votre session a expiré. Veuillez vous reconnecter.';
+
+  static String _sanitize(String raw) {
+    var msg = raw.trim();
+    if (msg.isEmpty) return 'Une erreur est survenue. Réessayez.';
+
+    final lower = msg.toLowerCase();
+    if (lower.contains('<html') ||
+        lower.contains('<!doctype') ||
+        lower.contains('unexpected character') && lower.contains('json') ||
+        lower.contains('formatexception') ||
+        lower.contains('html') && lower.contains('json')) {
+      return 'Le serveur a renvoyé une réponse invalide. Réessayez.';
+    }
+    if (lower.contains('socketexception') ||
+        lower.contains('connection refused') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('network is unreachable')) {
+      return network();
+    }
+
+    msg = msg
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (msg.isEmpty) return 'Une erreur est survenue. Réessayez.';
+    if (msg.length > 200) return '${msg.substring(0, 200)}…';
+    return msg;
+  }
 }

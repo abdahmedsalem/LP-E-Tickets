@@ -5,7 +5,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+
+const _transferConfirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
+const _transferConfirmationHeaderGap = 10.0;
+const _transferConfirmationHeaderTitleSize = 26.0;
 
 /// Arguments passÃ©s Ã  [TransferConfirmationScreen].
 class TransferConfirmationArgs {
@@ -64,28 +69,32 @@ class _TransferConfirmationScreenState
     extends State<TransferConfirmationScreen> {
   bool _confirming = false;
 
-  int get _grandTotalAmount =>
-      widget.args.lines.fold(0, (s, l) => s + l.totalAmount);
-
   Future<void> _onConfirm() async {
+    var completed = false;
+    bool confirmed;
+    try {
+      confirmed = await showSensitiveActionPasswordDialog(
+        context,
+        title: 'Confirmer le transfert',
+        description: 'Saisissez votre mot de passe pour valider ce transfert.',
+      );
+    } catch (e) {
+      return;
+    }
+    if (!confirmed) return;
     setState(() => _confirming = true);
     try {
       await widget.args.onConfirm();
-      if (mounted) Navigator.of(context).pop(true);
-    } on OdooJsonRpcException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        completed = true;
+        Navigator.of(context).pop(true);
       }
+    } on OdooJsonRpcException {
+      return;
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
+      return;
     } finally {
-      if (mounted) setState(() => _confirming = false);
+      if (mounted && !completed) setState(() => _confirming = false);
     }
   }
 
@@ -176,6 +185,10 @@ class _TransferConfirmationScreenState
             AppBarHeader(
               title: 'Confirmer le transfert',
               onBack: () => Navigator.of(context).pop(false),
+              largeTitle: true,
+              largeTitlePadding: _transferConfirmationHeaderPadding,
+              largeTitleGap: _transferConfirmationHeaderGap,
+              largeTitleFontSize: _transferConfirmationHeaderTitleSize,
             ),
             Expanded(
               child: ListView(
@@ -185,14 +198,15 @@ class _TransferConfirmationScreenState
                   _TransferHeroCard(
                     recipientName: args.recipientName,
                     recipientPhone: args.recipientPhone,
-                    totalAmount: _grandTotalAmount,
                   ),
                   const SizedBox(height: 20),
 
-                  // â”€â”€ Carnets transfÃ©rÃ©s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                  _SectionHeader(label: 'Carnets transfÃ©rÃ©s'),
+                  // â”€â”€ Carnets transférés â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                  _SectionHeader(label: 'Carnets transférés'),
                   const SizedBox(height: 8),
                   _TransferLinesList(lines: args.lines),
+                  const SizedBox(height: 16),
+                  _TransferSummaryAmount(lines: args.lines),
 
                   // â”€â”€ Note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   if (args.note != null && args.note!.isNotEmpty) ...[
@@ -222,11 +236,9 @@ class _TransferHeroCard extends StatelessWidget {
   const _TransferHeroCard({
     required this.recipientName,
     required this.recipientPhone,
-    required this.totalAmount,
   });
   final String recipientName;
   final String recipientPhone;
-  final int totalAmount;
 
   @override
   Widget build(BuildContext context) {
@@ -271,38 +283,6 @@ class _TransferHeroCard extends StatelessWidget {
               fontWeight: FontWeight.w500,
               color: AppColors.muted,
             ),
-          ),
-          const SizedBox(height: 16),
-          // Ligne sÃ©paratrice
-          const Divider(color: Color(0xFFCFE8D1)),
-          const SizedBox(height: 12),
-          // Montant
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Valeur totale',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    Formatters.money(totalAmount),
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFF2E7D32),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ],
       ),
@@ -392,8 +372,6 @@ class _TransferLinesList extends StatelessWidget {
               ),
             _TransferLineRow(line: lines[i]),
           ],
-          const Divider(height: 1, color: AppColors.line),
-          _TransferTotalRow(lines: lines),
         ],
       ),
     );
@@ -452,11 +430,17 @@ class _TransferLineRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            Formatters.money(line.totalAmount),
-            style: GoogleFonts.inter(
+          _AmountInline(
+            amount: line.totalAmount,
+            textAlign: TextAlign.right,
+            valueStyle: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+            unitStyle: const TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
               color: AppColors.ink,
             ),
           ),
@@ -466,19 +450,26 @@ class _TransferLineRow extends StatelessWidget {
   }
 }
 
-class _TransferTotalRow extends StatelessWidget {
-  const _TransferTotalRow({required this.lines});
+class _TransferSummaryAmount extends StatelessWidget {
+  const _TransferSummaryAmount({required this.lines});
   final List<TransferConfirmationLine> lines;
 
   @override
   Widget build(BuildContext context) {
     final totalAmount = lines.fold(0, (s, l) => s + l.totalAmount);
-    return Padding(
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+        boxShadow: AppColors.softShadow,
+      ),
       child: Row(
         children: [
           const Text(
-            'Total',
+            'Montant total',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
@@ -486,22 +477,52 @@ class _TransferTotalRow extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                Formatters.money(totalAmount),
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF2E7D32),
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ],
+          _AmountInline(
+            amount: totalAmount,
+            textAlign: TextAlign.right,
+            valueStyle: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF2E7D32),
+              letterSpacing: -0.3,
+            ),
+            unitStyle: const TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2E7D32),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AmountInline extends StatelessWidget {
+  const _AmountInline({
+    required this.amount,
+    required this.valueStyle,
+    required this.unitStyle,
+    this.textAlign = TextAlign.left,
+  });
+
+  final int amount;
+  final TextStyle valueStyle;
+  final TextStyle unitStyle;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
+          TextSpan(text: ' MRU', style: unitStyle),
+        ],
+      ),
+      textAlign: textAlign,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -540,7 +561,7 @@ class _DisclaimerText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Le transfert vers $recipientName est dÃ©finitif et ne peut pas Ãªtre annulÃ© aprÃ¨s confirmation.',
+      'Le transfert vers $recipientName est définitif et ne peut pas être annulé après confirmation.',
       textAlign: TextAlign.center,
       style: const TextStyle(
         fontSize: 12,

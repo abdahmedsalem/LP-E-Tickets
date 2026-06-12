@@ -8,6 +8,10 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/notifications/purchase_validation_notification_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../data/notifications_store.dart';
 import '../models/notification_item.dart';
@@ -21,6 +25,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _store = NotificationsStore.instance;
+  final Set<String> _expandedIds = <String>{};
 
   @override
   void initState() {
@@ -43,121 +48,125 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllRead() async => _store.markAllRead();
 
+  void _openItem(NotificationItem item) {
+    _store.markRead(item.id);
+    final route = item.actionRoute;
+    if (route != null && route.isNotEmpty) {
+      context.push(route);
+    }
+  }
+
+  void _toggleExpanded(String id) {
+    setState(() {
+      if (_expandedIds.contains(id)) {
+        _expandedIds.remove(id);
+      } else {
+        _expandedIds.add(id);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _store,
       builder: (context, _) {
+        final notifications = _store.items
+            .map(_store.displayItem)
+            .toList(growable: false);
+        final unreadItems = notifications
+            .where((item) => !item.read)
+            .toList(growable: false);
+        final readItems = notifications
+            .where((item) => item.read)
+            .toList(growable: false);
         final hasUnread = _store.unreadCount.value > 0;
+
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFF7F8FA),
           body: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: GestureDetector(
-                          onTap: () => context.pop(),
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.arrow_back,
-                              size: 24,
-                              color: Color(0xFF111111),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Notifications',
-                            style: GoogleFonts.inter(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.ink,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Validation de vos achats',
+                AppBarHeader(
+                  title: 'Notifications',
+                  subtitle: 'Validation de vos achats, QR et transferts',
+                  action: hasUnread
+                      ? TextButton(
+                          onPressed: _markAllRead,
+                          child: Text(
+                            'Tout lu',
                             style: GoogleFonts.inter(
                               fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.muted,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
                             ),
                           ),
-                        ],
-                      ),
-                      if (hasUnread)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: _markAllRead,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                'Tout lu',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
+                        )
+                      : null,
+                  leadingOnlyWhenNavigatorCanPop: true,
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: notifications.isEmpty
+                      ? const EmptyState(
+                          icon: Icons.notifications_none_rounded,
+                          title: 'Aucune notification',
+                          message:
+                              'Les achats validés, QR et transferts apparaîtront ici.',
+                        )
+                      : ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          children: [
+                            if (unreadItems.isNotEmpty) ...[
+                              SectionLabel(
+                                'Non lues',
+                                trailing: Text(
+                                  '${unreadItems.length}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // â”€â”€ Liste â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                Expanded(
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-                    children: [
-                      if (_store.items.isEmpty)
-                        _EmptyState()
-                      else
-                        ..._store.items.map((n) {
-                          final item = _store.displayItem(n);
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: item.id.startsWith('purchase-')
-                                ? _PurchaseCard(
-                                    item: item,
-                                    onTap: () {
-                                      _store.markRead(item.id);
-                                      final r = item.actionRoute;
-                                      if (r != null && r.isNotEmpty) {
-                                        context.push(r);
-                                      }
-                                    },
-                                  )
-                                : _GenericCard(
-                                    item: item,
-                                    onTap: () {
-                                      _store.markRead(item.id);
-                                      final r = item.actionRoute;
-                                      if (r != null && r.isNotEmpty) {
-                                        context.push(r);
-                                      }
-                                    },
+                              for (final item in unreadItems) ...[
+                                _NotificationCard(
+                                  item: item,
+                                  expanded: _expandedIds.contains(item.id),
+                                  onTap: () => _openItem(item),
+                                  onToggleDetails: () =>
+                                      _toggleExpanded(item.id),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            ],
+                            if (readItems.isNotEmpty) ...[
+                              SectionLabel(
+                                'Lues',
+                                trailing: Text(
+                                  '${readItems.length}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.muted,
                                   ),
-                          );
-                        }),
-                    ],
-                  ),
+                                ),
+                              ),
+                              for (final item in readItems) ...[
+                                _NotificationCard(
+                                  item: item,
+                                  expanded: _expandedIds.contains(item.id),
+                                  onTap: () => _openItem(item),
+                                  onToggleDetails: () =>
+                                      _toggleExpanded(item.id),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                            ],
+                          ],
+                        ),
                 ),
               ],
             ),
@@ -168,281 +177,193 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Purchase card â€” design identique Ã  l'image de rÃ©fÃ©rence
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-class _PurchaseCard extends StatelessWidget {
-  const _PurchaseCard({required this.item, required this.onTap});
+class _NotificationCard extends StatelessWidget {
+  const _NotificationCard({
+    required this.item,
+    required this.expanded,
+    required this.onTap,
+    required this.onToggleDetails,
+  });
 
   final NotificationItem item;
+  final bool expanded;
   final VoidCallback onTap;
-
-  static const _green = Color(0xFF2B8F3A);
-  static const _red = Color(0xFFB91C1C);
+  final VoidCallback onToggleDetails;
 
   @override
   Widget build(BuildContext context) {
+    final isQrExpiration = _isQrExpiration(item);
+    final isPurchase = item.id.startsWith('purchase-');
     final isRejected = item.purchaseStatus == 'rejected';
-    final accent = isRejected ? _red : _green;
-    final tint = isRejected ? const Color(0xFFFDECEC) : const Color(0xFFEAF8EC);
-    final statusLabel = isRejected ? 'Rejeté' : 'Validé';
-    final dateLabel = item.validationDateLabel ?? item.timeLabel;
-    final totalLabel = item.amountLabel ?? '';
-    final lines = item.purchaseLines;
-    final isUnread = !item.read;
+    final accent = isPurchase
+        ? (isRejected ? AppColors.brandRed : AppColors.leaderGreen)
+        : isQrExpiration
+            ? const Color(0xFFF59E0B)
+        : AppColors.primary;
+    final dateLabel = isQrExpiration
+        ? (_qrExpirationDateLabel(item) ?? item.timeLabel)
+        : (item.validationDateLabel ?? item.timeLabel);
+    final statusLabel = isPurchase
+        ? (isRejected ? 'Rejetée' : 'Validée')
+        : isQrExpiration
+            ? 'Expiration'
+        : (item.actionLabel ?? 'Disponible');
+    final titleLabel = isQrExpiration
+        ? 'QR expire dans 7 jours'
+        : item.title;
 
-    return GestureDetector(
+    return AppCard(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isUnread
-                ? accent.withValues(alpha: 0.3)
-                : const Color(0xFFE8EAED),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0x08000000),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // â”€â”€ En-tÃªte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Padding(
-              padding: const EdgeInsets.fromLTRB(11, 10, 11, 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Titre + date
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.title,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                            height: 1.1,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          dateLabel,
-                          style: GoogleFonts.inter(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: accent,
-                          ),
-                        ),
-                        if (isRejected &&
-                            (item.rejectionReason ?? '').trim().isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            item.rejectionReason!.trim(),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: accent,
-                              height: 1.25,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Badge statut
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: tint,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      statusLabel,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      borderColor: item.read ? AppColors.line : accent.withValues(alpha: 0.38),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titleLabel,
                       style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        height: 1.15,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dateLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
                         color: accent,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // â”€â”€ Lignes carnets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            if (lines.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(11, 0, 11, 3),
-                child: Text(
-                  'Carnets achetés',
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                  ),
-                ),
-              ),
-              // Table des lignes
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 11),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: const Color(0xFFEAECEF)),
-                ),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < lines.length; i++) ...[
-                      if (i > 0)
-                        const Divider(
-                          height: 1,
-                          color: Color(0xFFEAECEF),
-                          indent: 10,
-                          endIndent: 10,
-                        ),
-                      _LineRow(line: lines[i], accent: accent),
-                    ],
                   ],
                 ),
               ),
-            ] else
-              Padding(
-                padding: const EdgeInsets.fromLTRB(11, 0, 11, 3),
+              const SizedBox(width: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
                 child: Text(
-                  item.body,
+                  statusLabel,
                   style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    color: AppColors.muted,
-                    height: 1.28,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: accent,
                   ),
                 ),
               ),
-
-            // â”€â”€ SÃ©parateur pointillÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Padding(
-              padding: const EdgeInsets.fromLTRB(11, 8, 11, 0),
-              child: _DashedDivider(),
-            ),
-
-            // â”€â”€ Montant total â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Padding(
-              padding: const EdgeInsets.fromLTRB(11, 6, 11, 10),
-              child: Row(
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                'Détails',
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: onToggleDetails,
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        expanded ? 'Masquer' : 'Voir',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        expanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 180),
+            crossFadeState: expanded
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            firstChild: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Montant total',
+                    isQrExpiration
+                        ? _qrExpirationDetailText(item)
+                        : item.body,
                     style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
+                      fontSize: 12.2,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.body,
+                      height: 1.35,
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    totalLabel.isNotEmpty ? totalLabel : 'â€”',
-                    style: GoogleFonts.inter(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w900,
-                      color: accent,
-                      letterSpacing: -0.3,
+                  if (isQrExpiration) ...[
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      label: 'Montant',
+                      value: _qrExpirationAmountLabel(item),
+                      valueColor: AppColors.leaderGreen,
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Date d\'expiration',
+                      value: dateLabel,
+                      valueColor: accent,
+                    ),
+                  ],
+                  if (isPurchase && item.amountLabel != null) ...[
+                    const SizedBox(height: 12),
+                    _InfoRow(
+                      label: 'Montant',
+                      value: item.amountLabel!,
+                      valueColor: AppColors.leaderGreen,
+                    ),
+                  ],
+                  if (isPurchase && item.purchaseLines.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    for (final line in item.purchaseLines) ...[
+                      _PurchaseLineTile(line: line),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Ligne carnet : Carnet N Ã— V  |  QuantitÃ© : Q  |  X XXX MRU
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-class _LineRow extends StatelessWidget {
-  const _LineRow({required this.line, required this.accent});
-
-  final NotificationPurchaseLineItem line;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasMeta = line.faceValue > 0 && line.carnetSize > 0;
-
-    final label = line.label.trim().isNotEmpty
-        ? line.label.trim()
-        : (hasMeta
-              ? Formatters.carnetTypeLabel(line.carnetSize, line.faceValue)
-              : '');
-
-    final qtyText = line.quantityLabel.trim().isNotEmpty
-        ? line.quantityLabel.trim()
-        : 'Quantité : ${Formatters.numberFr(line.carnetCount)}';
-
-    final amountText = line.amountLabel.trim().isNotEmpty
-        ? line.amountLabel.trim()
-        : (hasMeta ? Formatters.money(line.totalAmount) : '');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: Row(
-        children: [
-          // Nom du carnet
-          Expanded(
-            flex: 5,
-            child: Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          // QuantitÃ©
-          Expanded(
-            flex: 4,
-            child: Text(
-              qtyText,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.muted,
-              ),
-            ),
-          ),
-          // Montant
-          Expanded(
-            flex: 4,
-            child: Text(
-              amountText,
-              textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: accent,
-              ),
-            ),
+            secondChild: const SizedBox.shrink(),
           ),
         ],
       ),
@@ -450,174 +371,138 @@ class _LineRow extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// SÃ©parateur pointillÃ©
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-class _DashedDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const dashWidth = 5.0;
-        const dashSpace = 4.0;
-        final count = (constraints.constrainWidth() / (dashWidth + dashSpace))
-            .floor();
-        return Row(
-          children: List.generate(
-            count,
-            (_) => Container(
-              width: dashWidth,
-              height: 1,
-              margin: const EdgeInsets.only(right: dashSpace),
-              color: const Color(0xFFD1D5DB),
-            ),
-          ),
-        );
-      },
-    );
-  }
+bool _isQrExpiration(NotificationItem item) {
+  final text = '${item.category ?? ''} ${item.id} ${item.title} ${item.body}'
+      .toLowerCase();
+  return text.contains('expiration') || text.contains('expire');
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Notification gÃ©nÃ©rique
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-class _GenericCard extends StatelessWidget {
-  const _GenericCard({required this.item, required this.onTap});
-
-  final NotificationItem item;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isUnread = !item.read;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isUnread ? AppColors.primarySoft : const Color(0xFFE8EAED),
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: AppColors.primaryTint,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.notifications_active_rounded,
-                color: AppColors.leaderGreen,
-                size: 17,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.body,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      height: 1.3,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isUnread)
-              Container(
-                width: 7,
-                height: 7,
-                margin: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+String _qrExpirationAmountLabel(NotificationItem item) {
+  final direct = item.amountLabel?.trim();
+  if (direct != null && direct.isNotEmpty) return direct;
+  final body = item.body;
+  final amountMatch = RegExp(
+    r'(?i)(?:montant|amount)\s*[:\-]?\s*([^\n•·]+)',
+  ).firstMatch(body);
+  final value = amountMatch?.group(1)?.trim();
+  if (value != null && value.isNotEmpty) return value;
+  return 'Montant indisponible';
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Ã‰tat vide
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+String? _qrExpirationDateLabel(NotificationItem item) {
+  final direct = item.validationDateLabel?.trim();
+  if (direct != null && direct.isNotEmpty) return direct;
+  final body = item.body;
+  final dateMatch = RegExp(
+    r'(?i)(?:date d\'expiration|expiration(?:\s*le)?)\s*[:\-]?\s*([^\n•·]+)',
+  ).firstMatch(body);
+  final value = dateMatch?.group(1)?.trim();
+  if (value != null && value.isNotEmpty) return value;
+  return null;
+}
 
-class _EmptyState extends StatelessWidget {
+String _qrExpirationDetailText(NotificationItem item) {
+  final body = item.body.trim();
+  if (body.isNotEmpty) return body;
+  return 'QR bientôt expiré.';
+}
+
+class _PurchaseLineTile extends StatelessWidget {
+  const _PurchaseLineTile({required this.line});
+
+  final NotificationPurchaseLineItem line;
+
   @override
   Widget build(BuildContext context) {
+    final carnet = line.label.trim().isEmpty ? 'Carnet' : line.label.trim();
+    final quantity = line.quantityLabel.trim().isEmpty
+        ? '${Formatters.numberFr(line.carnetCount)} carnet${line.carnetCount > 1 ? 's' : ''}'
+        : line.quantityLabel.trim();
+
     return Container(
-      margin: const EdgeInsets.only(top: 40),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8EAED)),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.line),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.primaryTint,
-              borderRadius: BorderRadius.circular(16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  carnet,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  quantity,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.2,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
             ),
-            child: const Icon(
-              Icons.notifications_none_rounded,
-              size: 30,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            line.amountLabel,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
               color: AppColors.leaderGreen,
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Aucune notification',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Les validations et rejets d\'achats apparaÃ®tront ici.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 12.5,
-              height: 1.4,
-              color: AppColors.muted,
-            ),
-          ),
         ],
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          '$label :',
+          style: GoogleFonts.inter(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.muted,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: GoogleFonts.inter(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: valueColor ?? AppColors.ink,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

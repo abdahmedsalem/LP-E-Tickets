@@ -45,7 +45,7 @@ class AcpecWalletMapper {
           code: 401,
         );
       }
-      throw Exception(m['message']?.toString() ?? 'wallet ACPEC indisponible.');
+      throw OdooJsonRpcException('Impossible de charger le portefeuille.');
     }
     final data = m['data'];
     if (data is Map) {
@@ -59,7 +59,7 @@ class AcpecWalletMapper {
           code: 401,
         );
       }
-      throw Exception(m['message']?.toString() ?? 'wallet ACPEC indisponible.');
+      throw OdooJsonRpcException('Impossible de charger le portefeuille.');
     }
     return m;
   }

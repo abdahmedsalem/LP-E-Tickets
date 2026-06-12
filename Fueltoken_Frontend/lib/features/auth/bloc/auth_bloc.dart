@@ -3,6 +3,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/debug/acpec_rpc_debug.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -153,7 +154,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       status: AuthStatus.unauthenticated,
       loginInfoMessage:
           'Pour des raisons de sécurité, votre session s’est terminée. '
-          'Reconnectez-vous pour retrouver votre espace et votre portefeuille.',
+          'Reconnectez-vous pour continuer.',
     ));
     try {
       await _repo.logout();
@@ -180,7 +181,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (err) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: err.toString().replaceFirst('Exception: ', ''),
+        errorMessage: ErrorPresenter.message(err),
       ));
     }
   }
@@ -202,7 +203,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (err) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: err.toString().replaceFirst('Exception: ', ''),
+        errorMessage: ErrorPresenter.message(err),
       ));
     }
   }
@@ -226,7 +227,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (err) {
       emit(state.copyWith(
         status: AuthStatus.failure,
-        errorMessage: err.toString().replaceFirst('Exception: ', ''),
+        errorMessage: ErrorPresenter.message(err),
       ));
     }
   }

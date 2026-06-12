@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import os
 import secrets
 
@@ -100,7 +100,7 @@ class AcpecMobileAuthOtp(models.Model):
         if not user:
             raise AccessError(_('Compte mobile introuvable.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
-            raise AccessError(_('Compte mobile rejeté.'))
+            raise AccessError(_('Compte mobile rejetÃ©.'))
         return user
 
     @api.model
@@ -120,7 +120,13 @@ class AcpecMobileAuthOtp(models.Model):
             user_domain = ['|', ('login', '=', identifier), ('mobile_phone', '=', identifier)]
             user = self.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
             if user:
-                raise AccessError(_('Compte mobile déjà existant.'))
+                raise AccessError(_('Compte mobile dÃ©jÃ  existant.'))
+            pending_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
+                ('signup_identifier', '=', identifier),
+                ('state', '=', 'pending'),
+            ], limit=1)
+            if pending_request:
+                raise AccessError(_('Une demande de compte en attente existe dÃ©jÃ  pour cet identifiant.'))
         else:
             user = self._find_user(identifier)
             try:
@@ -131,7 +137,7 @@ class AcpecMobileAuthOtp(models.Model):
             if not user.active:
                 raise AccessError(_('Compte mobile inactif.'))
             if not is_station and mobile_state not in (False, 'approved'):
-                raise AccessError(_('Compte mobile non approuvé.'))
+                raise AccessError(_('Compte mobile non approuvÃ©.'))
         now = fields.Datetime.now()
         cooldown_seconds = self._request_cooldown_seconds()
         if cooldown_seconds > 0:
@@ -223,10 +229,10 @@ class AcpecMobileAuthOtp(models.Model):
         if self.state != 'pending':
             raise ValidationError(_("Ce challenge OTP n'est plus actif."))
         if self.blocked_until and self.blocked_until > now:
-            raise AccessError(_('Ce challenge OTP est temporairement bloqué.'))
+            raise AccessError(_('Ce challenge OTP est temporairement bloquÃ©.'))
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})
-            raise ValidationError(_('Le code OTP a expiré.'))
+            raise ValidationError(_('Le code OTP a expirÃ©.'))
         code = (code or '').strip()
         if not code or not code.isdigit() or len(code) != 6:
             raise ValidationError(_('Le code OTP doit contenir exactement 6 chiffres.'))
@@ -245,3 +251,4 @@ class AcpecMobileAuthOtp(models.Model):
             'verified_at': now,
         })
         return self.user_id
+

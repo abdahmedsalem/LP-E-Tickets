@@ -21,14 +21,15 @@ import 'transfer_confirmation_screen.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../shared/widgets/app_message.dart';
 
-const _transferHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
-const _transferHeaderGap = 4.0;
-const _transferHeaderTitleSize = 24.0;
+const _transferHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
+const _transferHeaderGap = 10.0;
+const _transferHeaderTitleSize = 26.0;
 
 class TransferCarnetsScreen extends StatefulWidget {
   const TransferCarnetsScreen({super.key});
@@ -127,7 +128,10 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   int _selectedCarnetsFor(FaceLine line) => _selectedQtyByLineId[line.id] ?? 0;
 
   String _normalizeRecipientPhone(String input) {
-    final digits = input.replaceAll(RegExp(r'\D'), '');
+    var digits = input.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('222') && digits.length == 11) {
+      digits = digits.substring(3);
+    }
     return digits;
   }
 
@@ -291,10 +295,20 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       final resolvedName = await _resolveRecipientName(phone);
       if (resolvedName != null) {
         recipientName = resolvedName;
+      } else {
+        if (!mounted) return;
+        AppMessage.error(
+          context,
+          "Le client n'existe pas avec cet identifiant.",
+        );
+        return;
       }
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+      final errorMsg = e is OdooJsonRpcException
+          ? e.message
+          : e.toString().replaceFirst('Exception: ', '');
+      AppMessage.error(context, errorMsg);
       return;
     }
 
@@ -343,13 +357,19 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       setState(() => _selectedQtyByLineId.clear());
       await _loadData();
       if (!mounted) return;
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
       await showTransferSuccessDialog(
         context,
         totalAmount: totalAmount,
         confirmedAt: DateTime.now(),
         recipientName: confirmedRecipientName,
         lines: confirmLines,
-        onHome: () => context.go('/home'),
+        onHome: () {
+          if (mounted) {
+            context.go('/home');
+          }
+        },
       );
       return;
     }
@@ -462,7 +482,26 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
                 children: [
-                  if (transferable.isEmpty)
+                  if (transferable.isEmpty) ...[
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.48,
+                      child: const EmptyState(
+                        icon: Icons.send_rounded,
+                        title: 'Aucun carnet transférable',
+                        message:
+                            'Vos carnets complets disponibles pour transfert apparaîtront ici',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être transférés.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.body, height: 1.35),
+                      ),
+                    ),
+                  ] else if (transferable.isEmpty)
                     const AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,25 +514,10 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                               height: 1.35,
                             ),
                           ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être transférés.',
-                            style: TextStyle(
-                              color: AppColors.body,
-                              height: 1.35,
-                            ),
-                          ),
                         ],
                       ),
                     )
                   else ...[
-                    const AppCard(
-                      padding: EdgeInsets.all(12),
-                      child: Text(
-                        'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être transférés.',
-                        style: TextStyle(color: AppColors.body, height: 1.35),
-                      ),
-                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Telephone du destinataire',
@@ -522,6 +546,16 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    Text(
+                      'Sélectionner les carnets à transférer',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     for (var i = 0; i < transferable.length; i++) ...[
                       _TransferLineCard(
                         line: transferable[i],

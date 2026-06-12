@@ -17,7 +17,6 @@ import 'core/bootstrap/production_config_gate.dart'
     show ProductionConfigGateApp, ProductionConfigGateReason;
 import 'core/config/app_environment.dart';
 import 'core/debug/acpec_network_startup_log.dart';
-import 'core/notifications/purchase_validation_notification_service.dart';
 import 'core/router/app_router.dart';
 import 'core/settings/app_preferences.dart';
 import 'core/theme/app_colors.dart';
@@ -27,6 +26,7 @@ import 'core/utils/faces_refresh_bus.dart';
 import 'core/utils/purchases_refresh_bus.dart';
 import 'core/utils/qr_refresh_bus.dart';
 import 'core/utils/wallet_refresh_bus.dart';
+import 'data/models/user_role.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/settings/data/notifications_store.dart';
 
@@ -98,11 +98,13 @@ class FuelTokenApp extends StatefulWidget {
 
 class FuelTokenAppState extends State<FuelTokenApp>
     with WidgetsBindingObserver {
+  static const Duration _idleLogoutDelay = Duration(seconds: 30);
+
   late final AuthBloc _authBloc;
   late final GoRouter _router;
   String _localeCode = AppPreferences.defaultLocaleCode;
   ThemeMode _themeMode = ThemeMode.light;
-  Timer? _notificationPollTimer;
+  Timer? _idleLogoutTimer;
   StreamSubscription<AuthState>? _authSubscription;
 
   @override
@@ -115,14 +117,15 @@ class FuelTokenAppState extends State<FuelTokenApp>
     );
     _authSubscription = _authBloc.stream.listen((state) {
       if (state.status == AuthStatus.authenticated && state.user != null) {
-        // Charger le store pour CET utilisateur (isole les notifications par compte)
-        unawaited(
-          NotificationsStore.instance
-              .loadForUser(state.user!.id)
-              .then((_) => _purgeReceivedClientNotifications())
-              .then((_) => _syncUserNotifications()),
-        );
+        if (_shouldAutoLogout(state.user!.role)) {
+          _scheduleIdleLogout();
+        } else {
+          _cancelIdleLogout();
+        }
+        // Charger le store pour CET utilisateur.
+        unawaited(NotificationsStore.instance.loadForUser(state.user!.id));
       } else if (state.status == AuthStatus.unauthenticated) {
+        _cancelIdleLogout();
         // Déconnexion : purger la mémoire pour ne pas exposer les données
         // de l'ancien utilisateur au prochain login
         unawaited(NotificationsStore.instance.clearAndReset());
@@ -137,32 +140,31 @@ class FuelTokenAppState extends State<FuelTokenApp>
     await reloadPreferences();
     await NotificationsStore.instance.load();
     NotificationsStore.instance.initCounts();
-    await PurchaseValidationNotificationService.instance.initialize();
-    _startNotificationPolling();
-    unawaited(_syncUserNotifications());
   }
 
-  void _startNotificationPolling() {
-    _notificationPollTimer?.cancel();
-    _notificationPollTimer = Timer.periodic(
-      const Duration(seconds: 15),
-      (_) => unawaited(_syncUserNotifications()),
-    );
+  void _scheduleIdleLogout() {
+    if (!_shouldAutoLogout(_authBloc.state.user?.role)) return;
+    _idleLogoutTimer?.cancel();
+    _idleLogoutTimer = Timer(_idleLogoutDelay, _handleIdleLogout);
   }
 
-  Future<void> _syncUserNotifications() async {
-    final user = _authBloc.state.user;
-    if (user == null || !AppEnvironment.useAcpecLiveData) return;
-    try {
-      await PurchaseValidationNotificationService.instance.syncForUser(user);
-    } catch (_) {}
+  void _cancelIdleLogout() {
+    _idleLogoutTimer?.cancel();
+    _idleLogoutTimer = null;
   }
 
-  Future<void> _purgeReceivedClientNotifications() async {
-    await NotificationsStore.instance.purgeCurrentUserItemsOnce(
-      'remove_received_client_notifications_v1',
-    );
+  void _recordUserActivity() {
+    if (!_shouldAutoLogout(_authBloc.state.user?.role)) return;
+    _scheduleIdleLogout();
   }
+
+  void _handleIdleLogout() {
+    if (!mounted) return;
+    if (!_shouldAutoLogout(_authBloc.state.user?.role)) return;
+    _authBloc.add(const AuthLogoutRequested());
+  }
+
+  bool _shouldAutoLogout(UserRole? role) => role == UserRole.user;
 
   Future<void> reloadPreferences() async {
     final locale = await AppPreferences.localeCode();
@@ -190,6 +192,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _recordUserActivity();
       // Bumper tous les buses au retour en premier plan pour forcer
       // le rechargement de toutes les données potentiellement périmées.
       WalletRefreshBus.instance.bump();
@@ -197,14 +200,13 @@ class FuelTokenAppState extends State<FuelTokenApp>
       FacesRefreshBus.instance.bump();
       ClientHistoryRefreshBus.instance.bump();
       PurchasesRefreshBus.instance.bump();
-      unawaited(_syncUserNotifications());
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _notificationPollTimer?.cancel();
+    _cancelIdleLogout();
     _authSubscription?.cancel();
     AuthSessionHost.instance.detach();
     _authBloc.close();
@@ -215,20 +217,32 @@ class FuelTokenAppState extends State<FuelTokenApp>
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _authBloc,
-      child: MaterialApp.router(
-        title: 'FuelToken',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: _themeMode,
-        locale: AppPreferences.localeFromCode(_localeCode),
-        supportedLocales: const [Locale('fr'), Locale('ar')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        routerConfig: _router,
+      child: MouseRegion(
+        opaque: false,
+        onHover: (_) => _recordUserActivity(),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _recordUserActivity(),
+          onPointerMove: (_) => _recordUserActivity(),
+          onPointerSignal: (_) => _recordUserActivity(),
+          onPointerUp: (_) => _recordUserActivity(),
+          onPointerCancel: (_) => _recordUserActivity(),
+          child: MaterialApp.router(
+            title: 'FuelToken',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: _themeMode,
+            locale: AppPreferences.localeFromCode(_localeCode),
+            supportedLocales: const [Locale('fr'), Locale('ar')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            routerConfig: _router,
+          ),
+        ),
       ),
     );
   }

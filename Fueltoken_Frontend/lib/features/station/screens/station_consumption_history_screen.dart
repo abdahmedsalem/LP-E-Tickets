@@ -30,7 +30,6 @@ class _StationConsumptionHistoryScreenState
   static const int _pageSize = 100;
   static const Color _cPrimaryText = Color(0xFF111827);
   static const Color _cSecondaryText = Color(0xFF4B5563);
-  static const Color _cDivider = Color(0xFFE9ECEF);
   static const Color _cOrange = Color(0xFF16A34A);
   static const Color _cDanger = Color(0xFFDC2626);
 
@@ -57,7 +56,7 @@ class _StationConsumptionHistoryScreenState
     _draftTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _activeFrom = _draftFrom;
     _activeTo = _draftTo;
-    // Recharger l'historique quand un scan est effectué (WalletRefreshBus)
+    // Recharger l'historique quand un scan est effectuÃ© (WalletRefreshBus)
     _walletBusListener = () {
       if (mounted && AppEnvironment.useAcpecLiveData) _load();
     };
@@ -78,7 +77,7 @@ class _StationConsumptionHistoryScreenState
 
   String _briefError(Object e) {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirée. Reconnectez-vous.';
+      return 'Session expirÃ©e. Reconnectez-vous.';
     }
     return e.toString().replaceFirst('Exception: ', '').trim();
   }
@@ -189,293 +188,104 @@ class _StationConsumptionHistoryScreenState
     });
   }
 
-  Future<void> _openConsumptionDetail(BusinessTransaction tx) async {
-    final scheme = Theme.of(context).colorScheme;
-    final bottom = MediaQuery.paddingOf(context).bottom;
-    final amount = tx.totalAmount.abs();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.72,
-          minChildSize: 0.46,
-          maxChildSize: 0.94,
-          expand: false,
-          builder: (context, scrollController) {
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: scheme.outline.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF7EA),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Icon(
-                            Icons.local_gas_station_rounded,
-                            color: Color(0xFF16A34A),
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Consommation station',
-                                style: GoogleFonts.inter(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: scheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat('dd-MM-yyyy HH:mm').format(tx.date),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Fermer',
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(
-                    height: 1,
-                    color: scheme.outline.withValues(alpha: 0.2),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
-                      children: [
-                        _ConsumptionDetailSummary(
-                          amount: amount,
-                          clientName: tx.userName,
-                          stationName: tx.stationName ?? 'Station inconnue',
-                          txType: tx.type.label,
-                        ),
-                        const SizedBox(height: 14),
-                        _DetailInfoGrid(
-                          items: [
-                            ('Transaction', tx.id),
-                            ('Client ID', tx.userId),
-                            ('Station ID', tx.stationId ?? '—'),
-                            ('QR', tx.qrId ?? tx.qrPublicCode ?? '—'),
-                            ('Lot ID', tx.lotId ?? '—'),
-                            ('Réf lot', tx.lotInternalRef ?? '—'),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Détail de la consommation',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ...tx.lines.map((line) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: scheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.35),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: scheme.outline.withValues(alpha: 0.22),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  FaceValueChip(value: line.faceValue),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: scheme.onSurface,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${Formatters.numberFr(line.amount)} MRU',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: scheme.onSurface,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    const pageBg = Colors.white;
-
-    if (!AppEnvironment.useAcpecLiveData) {
-      return Scaffold(
-        backgroundColor: pageBg,
-        body: const Center(child: Text('Connexion serveur ACPEC requise.')),
-      );
-    }
-
     final items = _filteredItems;
     final shown = items;
 
     return Scaffold(
-      backgroundColor: pageBg,
+      backgroundColor: Colors.white,
       body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(26, 16, 26, 28),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _HeaderIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    onTap: () => context.go('/station/scan'),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Historique des consommations',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                        letterSpacing: -0.2,
-                        color: _cPrimaryText,
-                      ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Row(
+                  children: [
+                    _HeaderIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: () => context.go('/station/home'),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _HeaderIconButton(
-                    icon: Icons.file_download_outlined,
-                    onTap: () {},
-                  ),
-                ],
+                    const Spacer(),
+                    _HeaderIconButton(
+                      icon: Icons.filter_list_rounded,
+                      onTap: () {},
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 28),
-              const Text(
-                'Filtre de date',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF374151),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Historique des consommations',
+                  style: GoogleFonts.inter(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: _cPrimaryText,
+                    height: 1.08,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Vos dernières consommations apparaîtront ici',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: _cSecondaryText,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Flexible(
-                    flex: 43,
-                    child: _DateFilterChip(
-                      label: 'Du',
-                      value: _compactDate(_draftFrom),
-                      onTap: _pickFrom,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Flexible(
+                      flex: 43,
+                      child: _DateFilterChip(
+                        label: 'Du',
+                        value: _compactDate(_draftFrom),
+                        onTap: _pickFrom,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    flex: 43,
-                    child: _DateFilterChip(
-                      label: 'Au',
-                      value: _compactDate(_draftTo),
-                      onTap: _pickTo,
+                    const SizedBox(width: 12),
+                    Flexible(
+                      flex: 43,
+                      child: _DateFilterChip(
+                        label: 'Au',
+                        value: _compactDate(_draftTo),
+                        onTap: _pickTo,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Material(
-                    color: _cOrange,
-                    borderRadius: BorderRadius.circular(14),
-                    child: InkWell(
-                      onTap: _applyFilter,
+                    const SizedBox(width: 12),
+                    Material(
+                      color: _cOrange,
                       borderRadius: BorderRadius.circular(14),
-                      child: const SizedBox(
-                        width: 44,
-                        height: 46,
-                        child: Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 24,
-                          color: Colors.white,
+                      child: InkWell(
+                        onTap: _applyFilter,
+                        borderRadius: BorderRadius.circular(14),
+                        child: const SizedBox(
+                          width: 44,
+                          height: 46,
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 24,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
               if (_loading && _items.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -486,21 +296,16 @@ class _StationConsumptionHistoryScreenState
               else if (shown.isEmpty)
                 _EmptyHistoryCard(scheme: scheme)
               else
-                Column(
-                  children: [
-                    for (var i = 0; i < shown.length; i++) ...[
-                      _StationHistoryRow(
-                        transaction: shown[i],
-                        onTap: () => _openConsumptionDetail(shown[i]),
-                      ),
-                      if (i != shown.length - 1)
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: _cDivider,
-                        ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < shown.length; i++) ...[
+                        _StationHistoryRow(transaction: shown[i]),
+                        if (i != shown.length - 1) const SizedBox(height: 10),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               if (items.isNotEmpty) ...[
                 const SizedBox(height: 18),
@@ -620,87 +425,226 @@ class _HeaderIconButton extends StatelessWidget {
   }
 }
 
-class _StationHistoryRow extends StatelessWidget {
-  const _StationHistoryRow({required this.transaction, required this.onTap});
+class _AmountInline extends StatelessWidget {
+  const _AmountInline({
+    required this.amount,
+    required this.valueStyle,
+    required this.unitStyle,
+    this.textAlign = TextAlign.left,
+  });
+
+  final int amount;
+  final TextStyle valueStyle;
+  final TextStyle unitStyle;
+  final TextAlign textAlign;
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '${Formatters.numberFr(amount)} MRU',
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
+            TextSpan(text: ' MRU', style: unitStyle),
+          ],
+        ),
+        textAlign: textAlign,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+class _StationHistoryRow extends StatefulWidget {
+  const _StationHistoryRow({required this.transaction});
 
   final BusinessTransaction transaction;
-  final VoidCallback onTap;
+
+  @override
+  State<_StationHistoryRow> createState() => _StationHistoryRowState();
+}
+
+class _StationHistoryRowState extends State<_StationHistoryRow> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final amount = transaction.totalAmount.abs();
-    final date = DateFormat('dd-MM-yyyy').format(transaction.date);
-    final hour = DateFormat('HH:mm').format(transaction.date);
+    final tx = widget.transaction;
+    final amount = tx.totalAmount.abs();
+    final title = tx.displayTitle;
+    final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
+    final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 14, 4, 14),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionPanelList(
+          expandedHeaderPadding: EdgeInsets.zero,
+          elevation: 0,
+          materialGapSize: 0,
+          expansionCallback: (panelIndex, isExpanded) {
+            setState(() => _expanded = !_expanded);
+          },
+          children: [
+            ExpansionPanel(
+              canTapOnHeader: true,
+              backgroundColor: Colors.transparent,
+              isExpanded: _expanded,
+              headerBuilder: (context, isExpanded) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: _StationConsumptionHistoryScreenState
+                                    ._cPrimaryText,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '$dateLabel $hourLabel',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: _StationConsumptionHistoryScreenState
+                                    ._cSecondaryText,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _AmountInline(
+                        amount: amount,
+                        textAlign: TextAlign.right,
+                        valueStyle: GoogleFonts.inter(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: _StationConsumptionHistoryScreenState._cDanger,
+                          height: 1,
+                          letterSpacing: -0.2,
+                        ),
+                        unitStyle: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: _StationConsumptionHistoryScreenState._cDanger
+                              .withValues(alpha: 0.82),
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              body: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                child: _StationHistoryDetailBody(
+                  transaction: tx,
+                  amount: amount,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StationHistoryDetailBody extends StatelessWidget {
+  const _StationHistoryDetailBody({
+    required this.transaction,
+    required this.amount,
+  });
+
+  final BusinessTransaction transaction;
+  final int amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ConsumptionDetailSummary(
+          amount: amount,
+          clientName: transaction.userName,
+          stationName: transaction.stationName ?? 'Station inconnue',
+          txType: transaction.type.label,
+        ),
+        if (transaction.lines.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...transaction.lines.map((line) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: scheme.outline.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      transaction.userName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            _StationConsumptionHistoryScreenState._cPrimaryText,
+                    FaceValueChip(value: line.faceValue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 3),
                     Text(
-                      '$date • $hour',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: _StationConsumptionHistoryScreenState
-                            ._cSecondaryText,
-                        fontWeight: FontWeight.w500,
+                      '${Formatters.numberFr(line.amount)} MRU',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '-${Formatters.number(amount)}',
-                    style: GoogleFonts.inter(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      color: _StationConsumptionHistoryScreenState._cDanger,
-                      height: 1,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'MRU',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          _StationConsumptionHistoryScreenState._cSecondaryText,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          }),
+        ],
+      ],
     );
   }
 }
@@ -724,46 +668,79 @@ class _ConsumptionDetailSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.primaryTint,
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primarySoft),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            txType,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primaryDark,
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.local_gas_station_rounded,
+              color: AppColors.danger,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  clientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$stationName • $txType',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
           Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: _DetailMiniStat(
-                  label: 'Client',
-                  value: clientName,
-                  valueColor: scheme.onSurface,
+              Text(
+                '-${Formatters.number(amount)}',
+                style: GoogleFonts.inter(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.danger,
+                  height: 1,
+                  letterSpacing: -0.2,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _DetailMiniStat(
-                  label: 'Station',
-                  value: stationName,
-                  valueColor: scheme.onSurface,
+              const SizedBox(width: 6),
+              const Text(
+                'MRU',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                  height: 1,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          _DetailMiniStat(
-            label: 'Montant total',
-            value: '${Formatters.numberFr(amount)} MRU',
-            valueColor: AppColors.primaryDeep,
           ),
         ],
       ),
@@ -771,42 +748,160 @@ class _ConsumptionDetailSummary extends StatelessWidget {
   }
 }
 
-class _DetailMiniStat extends StatelessWidget {
-  const _DetailMiniStat({
-    required this.label,
-    required this.value,
-    required this.valueColor,
+// ignore: unused_element
+class _StationConsumptionDetailScreen extends StatelessWidget {
+  const _StationConsumptionDetailScreen({
+    required this.tx,
+    required this.amount,
   });
 
-  final String label;
-  final String value;
-  final Color valueColor;
+  final BusinessTransaction tx;
+  final int amount;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AppColors.muted,
-          ),
+    final scheme = Theme.of(context).colorScheme;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF7EA),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.local_gas_station_rounded,
+                      color: Color(0xFF16A34A),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Consommation station',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          DateFormat('dd-MM-yyyy HH:mm').format(tx.date),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: scheme.outline.withValues(alpha: 0.2)),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(16, 14, 16, 20 + bottom),
+                children: [
+                  _ConsumptionDetailSummary(
+                    amount: amount,
+                    clientName: tx.userName,
+                    stationName: tx.stationName ?? 'Station inconnue',
+                    txType: tx.type.label,
+                  ),
+                  const SizedBox(height: 14),
+                  _DetailInfoGrid(
+                    items: [
+                      ('Transaction', tx.id),
+                      ('Client ID', tx.userId),
+                      ('Station ID', tx.stationId ?? 'â€”'),
+                      ('QR', tx.qrId ?? tx.qrPublicCode ?? 'â€”'),
+                      ('Lot ID', tx.lotId ?? 'â€”'),
+                      ('RÃ©f lot', tx.lotInternalRef ?? 'â€”'),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'DÃ©tail de la consommation',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...tx.lines.map((line) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest.withValues(
+                            alpha: 0.35,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: scheme.outline.withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            FaceValueChip(value: line.faceValue),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${Formatters.numberFr(line.amount)} MRU',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: valueColor,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -901,7 +996,7 @@ class _ErrorPanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Réessayer'),
+            label: const Text('RÃ©essayer'),
           ),
         ],
       ),
@@ -940,7 +1035,7 @@ class _EmptyHistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Aucune consommation enregistrée',
+            'Aucune consommation enregistrÃ©e',
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ],

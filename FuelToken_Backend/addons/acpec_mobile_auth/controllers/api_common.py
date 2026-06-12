@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import logging
 import re
 
@@ -49,7 +49,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         _logger.exception('Unhandled API error')
         return self._error_response(
             'SERVER_ERROR',
-            _('An unexpected server error occurred.'),
+            str(exc) or _('An unexpected server error occurred.'),
         )
 
     def _require_keys(self, params, required_keys):
@@ -168,12 +168,15 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 'email': email,
             }
 
-        self._validate_phone_number(identifier)
+        phone_identifier = re.sub(r'\D', '', identifier)
+        if phone_identifier.startswith('222') and len(phone_identifier) == 11:
+            phone_identifier = phone_identifier[3:]
+        self._validate_phone_number(phone_identifier)
         return {
-            'signup_identifier': identifier,
+            'signup_identifier': phone_identifier,
             'signup_identifier_type': 'phone',
-            'login': identifier,
-            'phone': identifier,
+            'login': phone_identifier,
+            'phone': phone_identifier,
             'email': False,
         }
 
@@ -214,6 +217,10 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         partner = request.env['res.partner'].sudo().create(partner_vals)
 
+        portal_group = request.env.ref('base.group_portal', raise_if_not_found=False)
+        fuel_user_group = request.env.ref('acpec_fueltoken_base.group_fuel_user', raise_if_not_found=False)
+        group_ids = [group.id for group in (portal_group, fuel_user_group) if group]
+
         now = fields.Datetime.now()
         user_vals = {
             'name': name,
@@ -227,13 +234,14 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'password': secret_code,
             'group_ids': [(6, 0, self._mobile_signup_group_ids())],
         }
+        if group_ids:
+            user_vals['groups_id'] = [(6, 0, group_ids)]
         if identifier_vals['phone']:
             user_vals['mobile_phone'] = identifier_vals['phone']
         if email_value:
             user_vals['email'] = email_value
 
         user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
-
         return False, user, identifier_vals
 
     def _get_signup_companies(self):
@@ -304,7 +312,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         session = request.env['acpec.mobile.session'].sudo().authenticate_access_token(token)
         if not session:
             if required:
-                raise AccessError(_('Session mobile invalide ou expirée.'))
+                raise AccessError(_('Session mobile invalide ou expirÃ©e.'))
             return request.env['acpec.mobile.session']
         return session
 
@@ -377,7 +385,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
         elif expected == 'admin':
             if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin'):
                 return True
-        raise AccessError(_('Droits insuffisants pour cette opération.'))
+        raise AccessError(_('Droits insuffisants pour cette opÃ©ration.'))
 
     def _hash_public_value(self, value):
         return hashlib.sha256((value or '').encode('utf-8')).hexdigest()
+

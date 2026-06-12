@@ -19,13 +19,17 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/app_pill.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
+
+const _separerHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
+const _separerHeaderGap = 10.0;
+const _separerHeaderTitleSize = 26.0;
 
 class SeparerQrScreen extends StatefulWidget {
   const SeparerQrScreen({super.key, required this.qrId});
@@ -121,9 +125,10 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
-            title: 'Confirmer la séparation',
-            subtitle: 'Séparation du QR bloqué',
-            confirmLabel: 'Séparer le QR',
+            title: 'Separer les tickets valides',
+            subtitle:
+                'Les tickets expirés restent séparés des tickets encore utilisables',
+            confirmLabel: 'Separer les tickets valides',
             hero: _SeparerConfirmationHero(
               qrCode: parent.publicCode,
               validCount: parent.lines
@@ -241,9 +246,12 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
           child: Column(
             children: [
               AppBarHeader(
-                title: 'Séparer le QR',
+                title: 'Separer les tickets valides',
                 onBack: () => context.pop(),
-                plainBackButton: true,
+                largeTitle: true,
+                largeTitlePadding: _separerHeaderPadding,
+                largeTitleGap: _separerHeaderGap,
+                largeTitleFontSize: _separerHeaderTitleSize,
               ),
               const Expanded(
                 child: Padding(
@@ -340,57 +348,27 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         child: Column(
           children: [
             AppBarHeader(
-              title: 'Séparer le QR',
+              title: 'Separer les tickets valides',
+              subtitle:
+                  'Les tickets expirés restent séparés des tickets encore utilisables',
               onBack: () => context.pop(),
-              plainBackButton: true,
+              largeTitle: true,
+              largeTitlePadding: _separerHeaderPadding,
+              largeTitleGap: _separerHeaderGap,
+              largeTitleFontSize: _separerHeaderTitleSize,
             ),
             Expanded(
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 children: [
-                  AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            AppPill(
-                              label: 'Bloqué',
-                              tone: PillTone.amber,
-                              dot: true,
-                            ),
-                            const Spacer(),
-                            Text(
-                              Formatters.dateTime(parent.createdAt),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          parent.publicCode,
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Les lignes non expirées seront déplacées dans un nouveau QR, sans sélection manuelle.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.body,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
+                  _SeparationSummaryCard(
+                    qrCode: parent.publicCode,
+                    createdAt: parent.createdAt,
+                    validCount: validCount,
+                    expiredCount: expiredCount,
+                    validAmount: validAmount,
+                    expiredAmount: expiredAmount,
                   ),
                   const SizedBox(height: 18),
                   const SectionLabel('Répartition actuelle'),
@@ -398,30 +376,30 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
                   AppCard(
                     child: Column(
                       children: [
-                        _StatRow(
+                        _SummaryStatRow(
                           label: 'Tickets valides',
                           value: '$validCount',
                         ),
                         const SizedBox(height: 8),
-                        _StatRow(
+                        _SummaryStatRow(
                           label: 'Tickets expirés',
                           value: '$expiredCount',
                         ),
                         const SizedBox(height: 8),
-                        _StatRow(
+                        _SummaryStatRow(
                           label: 'Montant valide',
-                          value: '${Formatters.numberFr(validAmount)} MRU',
+                          value: Formatters.money(validAmount),
                         ),
                         const SizedBox(height: 8),
-                        _StatRow(
+                        _SummaryStatRow(
                           label: 'Montant expiré',
-                          value: '${Formatters.numberFr(expiredAmount)} MRU',
+                          value: Formatters.money(expiredAmount),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Lignes'),
+                  const SectionLabel('Repartition des tickets'),
                   const SizedBox(height: 8),
                   for (final line in parent.lines) ...[
                     _LineCard(line: line),
@@ -434,6 +412,188 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SeparationSummaryCard extends StatelessWidget {
+  const _SeparationSummaryCard({
+    required this.qrCode,
+    required this.createdAt,
+    required this.validCount,
+    required this.expiredCount,
+    required this.validAmount,
+    required this.expiredAmount,
+  });
+
+  final String qrCode;
+  final DateTime createdAt;
+  final int validCount;
+  final int expiredCount;
+  final int validAmount;
+  final int expiredAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'QR à séparer',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                Formatters.dateTimeDash(createdAt),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Les lignes non expirées seront déplacées dans un nouveau QR.',
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.body,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            qrCode,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryStatBlock(
+                  label: 'Tickets valides',
+                  value: '$validCount',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SummaryStatBlock(
+                  label: 'Tickets expirés',
+                  value: '$expiredCount',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryStatBlock(
+                  label: 'Montant valide',
+                  value: Formatters.money(validAmount),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SummaryStatBlock(
+                  label: 'Montant expiré',
+                  value: Formatters.money(expiredAmount),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryStatBlock extends StatelessWidget {
+  const _SummaryStatBlock({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.lineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryStatRow extends StatelessWidget {
+  const _SummaryStatRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.body,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -582,45 +742,15 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          Formatters.money(line.amount),
-          style: GoogleFonts.inter(
+        AmountInline(
+          amount: line.amount,
+          valueStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w800,
             color: isExpired ? AppColors.muted : AppColors.ink,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatRow extends StatelessWidget {
-  const _StatRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.body,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
+          unitStyle: TextStyle(
+            color: isExpired ? AppColors.muted : AppColors.ink,
           ),
         ),
       ],
@@ -666,11 +796,14 @@ class _LineCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            '${Formatters.numberFr(line.amount)} MRU',
-            style: GoogleFonts.inter(
+          AmountInline(
+            amount: line.amount,
+            valueStyle: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w800,
+              color: isExpired ? AppColors.muted : AppColors.ink,
+            ),
+            unitStyle: TextStyle(
               color: isExpired ? AppColors.muted : AppColors.ink,
             ),
           ),

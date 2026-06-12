@@ -8,6 +8,7 @@ import '../../core/config/app_brand_config.dart';
 import '../../core/config/acpec_role_overrides.dart';
 import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
+import '../../core/utils/error_presenter.dart';
 import '../../core/validation/contact_validators.dart';
 import '../models/app_user.dart';
 import '../models/user_role.dart';
@@ -48,7 +49,7 @@ class AuthRepository {
       _current = user;
       return user;
     } catch (e) {
-      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+      throw Exception(ErrorPresenter.message(e));
     }
   }
 

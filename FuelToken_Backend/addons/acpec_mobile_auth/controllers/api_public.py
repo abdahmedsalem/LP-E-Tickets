@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 
 from odoo import http, _, fields
 from odoo.http import request
@@ -94,8 +94,8 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                     data['otp_delivery'] = 'dev_response'
             else:
                 return self._error_response(
-                    'UNSUPPORTED_SIGNUP_IDENTIFIER',
-                    _('SMS OTP registration currently supports phone numbers only.')
+                    'PHONE_REQUIRED',
+                    _('Registration OTP currently supports phone numbers only.')
                 )
 
             return self._json_response(data)
@@ -112,7 +112,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             if not self._get_config_bool('acpec_mobile_auth.allow_password_login', default=False):
                 return self._error_response(
                     'PASSWORD_LOGIN_DISABLED',
-                    _('L’authentification par mot de passe est désactivée.')
+                    _('Lâ€™authentification par mot de passe est dÃ©sactivÃ©e.')
                 )
 
             self._require_keys(kwargs, ['identifier', 'secret_code'])
@@ -156,3 +156,4 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
         except Exception as exc:
             _logger.exception("Password Login API Error")
             return self._handle_exception_response(exc)
+

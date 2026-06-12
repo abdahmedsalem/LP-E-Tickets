@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
-import '../../../core/auth/odoo_session_store.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/models/wallet_breakdown_extras.dart';
@@ -65,11 +64,7 @@ class WalletCubit extends Cubit<WalletState> {
     emit(state.copyWith(loading: true, clearError: true, clearBreakdown: true));
     try {
       if (!AppEnvironment.useAcpecLiveData) {
-        emit(const WalletState(
-          loading: false,
-          loadError:
-              'Connexion serveur ACPEC requise pour afficher le porte feuille.',
-        ));
+        emit(state.copyWith(loading: false, clearError: true));
         return;
       }
 
@@ -96,37 +91,21 @@ class WalletCubit extends Cubit<WalletState> {
         ));
       } on OdooJsonRpcException catch (e) {
         if (e.requiresReLogin) {
-          emit(const WalletState(loading: false));
+          emit(state.copyWith(loading: false, clearError: true));
           return;
         }
-        final hint = await OdooSessionStore.readSessionId();
-        final bearer = await OdooSessionStore.readAccessToken();
-        final noSession = (hint == null || hint.isEmpty) &&
-            (bearer == null || bearer.isEmpty);
         emit(state.copyWith(
           loading: false,
-          loadError: noSession
-              ? 'Connectez-vous pour afficher votre portefeuille. '
-                  'Si le problème continue, déconnectez-vous puis reconnectez-vous.'
-              : _shortWalletError(e),
+          clearError: true,
+          clearBreakdown: true,
         ));
       }
     } catch (e) {
       emit(state.copyWith(
         loading: false,
-        loadError: _shortWalletError(e),
+        clearError: true,
+        clearBreakdown: true,
       ));
     }
-  }
-
-  static String _shortWalletError(Object e) {
-    var msg = e.toString().replaceFirst('Exception: ', '');
-    if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      msg = 'Session expirée. Reconnectez-vous pour actualiser votre portefeuille.';
-    }
-    if (msg.length > 280) {
-      return '${msg.substring(0, 280)}…';
-    }
-    return msg;
   }
 }

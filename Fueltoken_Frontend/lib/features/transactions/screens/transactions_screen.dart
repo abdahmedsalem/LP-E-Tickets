@@ -19,7 +19,6 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -31,13 +30,7 @@ class TransactionsScreen extends StatefulWidget {
   State<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-enum _HistoryQuickFilter {
-  all,
-  activeBlocked,
-  purchases,
-  submittedPurchases,
-  consumption,
-}
+enum _HistoryQuickFilter { all, purchases, transfer, consumption, qr }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
@@ -136,19 +129,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     switch (_quickFilter) {
       case _HistoryQuickFilter.all:
         return true;
-      case _HistoryQuickFilter.activeBlocked:
-        return t.type == TxType.qrEmission ||
-            t.type == TxType.qrSeparer ||
-            t.type == TxType.qrRetirer ||
-            t.type == TxType.qrBlocked;
       case _HistoryQuickFilter.purchases:
         return t.type == TxType.purchaseValidated ||
             t.type == TxType.purchaseSubmitted ||
             t.type == TxType.purchaseRejected;
-      case _HistoryQuickFilter.submittedPurchases:
-        return t.type == TxType.purchaseSubmitted;
+      case _HistoryQuickFilter.transfer:
+        return t.type == TxType.carnetTransfer ||
+            t.type == TxType.carnetReceived;
       case _HistoryQuickFilter.consumption:
         return t.type == TxType.stationConsumption;
+      case _HistoryQuickFilter.qr:
+        return t.type == TxType.qrEmission ||
+            t.type == TxType.qrSeparer ||
+            t.type == TxType.qrRetirer ||
+            t.type == TxType.qrBlocked ||
+            t.type == TxType.expiration;
     }
   }
 
@@ -386,7 +381,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  Future<void> _pickFrom() async {
+  Future<void> pickFrom() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _draftFrom,
@@ -398,7 +393,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  Future<void> _pickTo() async {
+  Future<void> pickTo() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _draftTo,
@@ -425,6 +420,138 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       _activeTo = to;
     });
     unawaited(_reloadAcpecForCurrentFilter());
+  }
+
+  Future<void> _openAdvancedFilters() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> pickFrom() async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _draftFrom,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (picked != null && mounted) {
+                setSheetState(() => _draftFrom = picked);
+              }
+            }
+
+            Future<void> pickTo() async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _draftTo,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (picked != null && mounted) {
+                setSheetState(() => _draftTo = picked);
+              }
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD1D5DB),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Filtres avancés',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Affinez la période affichée dans l'historique.",
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _DateFilterChip(
+                        label: 'Du',
+                        value: _compactDate(_draftFrom),
+                        onTap: pickFrom,
+                      ),
+                      const SizedBox(height: 12),
+                      _DateFilterChip(
+                        label: 'Au',
+                        value: _compactDate(_draftTo),
+                        onTap: pickTo,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setSheetState(() {
+                                  final now = DateTime.now();
+                                  _draftFrom = DateTime(now.year, 1, 1);
+                                  _draftTo = DateTime(
+                                    now.year,
+                                    12,
+                                    31,
+                                    23,
+                                    59,
+                                    59,
+                                  );
+                                });
+                              },
+                              child: const Text('Réinitialiser'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                _applyDateFilter();
+                              },
+                              child: const Text('Appliquer'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   static String _titleForRole(UserRole role) {
@@ -458,229 +585,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       case UserRole.admin:
         return 'Synchronisez ou ajoutez des donn\u00e9es : le journal global se remplira automatiquement.';
     }
-  }
-
-  Future<void> _openTransactionDetail(
-    BuildContext context,
-    UserRole role,
-    BusinessTransaction summary,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    if (!AppEnvironment.useAcpecLiveData || role != UserRole.user) {
-      if (!context.mounted) return;
-      await _showTransactionDetailSheet(context, summary);
-      return;
-    }
-    final transactionId = int.tryParse(summary.id.trim());
-    if (transactionId == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('D\u00e9tail indisponible pour cette op\u00e9ration.'),
-        ),
-      );
-      if (!context.mounted) return;
-      await _showTransactionDetailSheet(context, summary);
-      return;
-    }
-
-    var loaded = summary;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: const _TransactionDetailLoadingDialog(),
-      ),
-    );
-    try {
-      final user = context.read<AuthBloc>().state.user;
-      if (user == null) {
-        loaded = summary;
-      } else {
-        final raw = await OdooFueltokenFacade().transactionsDetail({
-          'transaction_id': transactionId,
-        });
-        loaded = AcpecTransactionsMapper.parseDetail(
-          raw,
-          userId: user.id,
-          userName: user.name,
-        );
-      }
-    } on OdooJsonRpcException catch (e) {
-      if (context.mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(e.message)));
-      }
-      loaded = summary;
-    } catch (e) {
-      if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
-      loaded = summary;
-    } finally {
-      if (context.mounted) {
-        final nav = Navigator.of(context, rootNavigator: true);
-        if (nav.canPop()) nav.pop();
-      }
-    }
-
-    if (!context.mounted) return;
-    await _showTransactionDetailSheet(context, loaded);
-  }
-
-  Future<void> _showTransactionDetailSheet(
-    BuildContext context,
-    BusinessTransaction tx,
-  ) async {
-    final scheme = Theme.of(context).colorScheme;
-    final bottom = MediaQuery.paddingOf(context).bottom;
-    final facts = _transactionFacts(tx);
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.48,
-          minChildSize: 0.34,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(22),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: scheme.outline.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
-                      children: [
-                        _TransactionOverviewCard(tx: tx),
-                        const SizedBox(height: 14),
-                        _TransactionFactsGrid(facts: facts),
-                        if (tx.lines.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            'D\u00e9tail des lignes',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.4,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...tx.lines.map((l) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: scheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.35),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: scheme.outline.withValues(
-                                      alpha: 0.22,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    FaceValueChip(value: l.faceValue),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        '${l.qty} ticket${l.qty > 1 ? 's' : ''}',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: scheme.onSurface,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      '${Formatters.numberFr(l.amount)} MRU',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: scheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryTint,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.primarySoft),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
-                                ),
-                              ),
-                              Text(
-                                '${Formatters.numberFr(tx.totalAmount)} MRU',
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDeep,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -860,58 +764,33 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ),
                 const SizedBox(height: 16),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 26),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Filtre de date',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF374151),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
                       Row(
                         children: [
-                          Flexible(
-                            flex: 43,
-                            child: _DateFilterChip(
-                              label: 'Du',
-                              value: _compactDate(_draftFrom),
-                              onTap: _pickFrom,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Flexible(
-                            flex: 43,
-                            child: _DateFilterChip(
-                              label: 'Au',
-                              value: _compactDate(_draftTo),
-                              onTap: _pickTo,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Material(
-                            color: const Color(0xFF16A34A),
-                            borderRadius: BorderRadius.circular(14),
-                            child: InkWell(
-                              onTap: _applyDateFilter,
-                              borderRadius: BorderRadius.circular(14),
-                              child: const SizedBox(
-                                width: 44,
-                                height: 46,
-                                child: Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 24,
-                                  color: Colors.white,
-                                ),
+                          Expanded(
+                            child: Text(
+                              'Période active:  - ',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted,
                               ),
                             ),
                           ),
+                          const SizedBox(width: 12),
+                          TextButton.icon(
+                            onPressed: _openAdvancedFilters,
+                            icon: const Icon(Icons.tune_rounded, size: 18),
+                            label: const Text('Filtres avancés'),
+                          ),
                         ],
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -1004,7 +883,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                                 ),
                                               )
                                             : Text(
-                                                'Fin de l\'historique pour cette période',
+                                                "Fin de l'historique pour cette période",
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: AppColors.muted
@@ -1039,20 +918,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ),
                                   const SizedBox(height: 10),
                                   for (final t in g.items) ...[
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(16),
-                                        onTap: () => unawaited(
-                                          _openTransactionDetail(
-                                            context,
-                                            user.role,
-                                            t,
-                                          ),
-                                        ),
-                                        child: _TxCard(tx: t),
-                                      ),
-                                    ),
+                                    _TxCard(tx: t),
                                     const SizedBox(height: 10),
                                   ],
                                 ],
@@ -1095,85 +961,521 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 }
 
-class _TxCard extends StatelessWidget {
+class _TxCard extends StatefulWidget {
   const _TxCard({required this.tx});
 
   final BusinessTransaction tx;
 
   @override
+  State<_TxCard> createState() => _TxCardState();
+}
+
+class _TxCardState extends State<_TxCard> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final tx = widget.tx;
     final amountColor = _historyAmountColor(tx.type);
-    // Utilise displayTitle pour les transferts (inclut le nom de la partie)
     final title = tx.displayTitle;
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
-    final hourLabel = DateFormat('HH:mm').format(tx.date);
-    final signed = tx.totalAmount < 0;
-    final amountPrefix = signed ? '- ' : '+ ';
+    final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 14, 4, 14),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionPanelList(
+          expandedHeaderPadding: EdgeInsets.zero,
+          elevation: 0,
+          materialGapSize: 0,
+          expansionCallback: (panelIndex, isExpanded) {
+            setState(() => _expanded = !_expanded);
+          },
+          children: [
+            ExpansionPanel(
+              canTapOnHeader: true,
+              backgroundColor: Colors.transparent,
+              isExpanded: _expanded,
+              headerBuilder: (context, isExpanded) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$dateLabel $hourLabel',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _AmountInline(
+                        amount: tx.totalAmount.abs(),
+                        textAlign: TextAlign.right,
+                        valueStyle: GoogleFonts.inter(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: amountColor,
+                          height: 1,
+                          letterSpacing: -0.2,
+                        ),
+                        unitStyle: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: amountColor.withValues(alpha: 0.82),
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              body: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                child: _TxDetailBody(tx: tx),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TxDetailBody extends StatelessWidget {
+  const _TxDetailBody({required this.tx});
+
+  final BusinessTransaction tx;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = _transactionDetailRows(tx);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          _TxDetailRowWidget(row: rows[i]),
+          if (i < rows.length - 1)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE8EAED)),
+        ],
+        if (tx.lines.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            'Lignes',
+            style: GoogleFonts.inter(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.muted,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (var i = 0; i < tx.lines.length; i++) ...[
+            _TxLineRow(txType: tx.type, line: tx.lines[i]),
+            if (i < tx.lines.length - 1) const SizedBox(height: 8),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _TxDetailRow {
+  const _TxDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+}
+
+class _TxDetailRowWidget extends StatelessWidget {
+  const _TxDetailRowWidget({required this.row});
+
+  final _TxDetailRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              row.label,
+              style: GoogleFonts.inter(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 6,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              row.value,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TxLineRow extends StatelessWidget {
+  const _TxLineRow({required this.txType, required this.line});
+
+  final TxType txType;
+  final TransactionLine line;
+
+  bool get _isPurchaseStyle =>
+      txType == TxType.purchaseSubmitted ||
+      txType == TxType.purchaseValidated ||
+      txType == TxType.purchaseRejected ||
+      txType == TxType.carnetTransfer ||
+      txType == TxType.carnetReceived;
+
+  bool get _isQrStyle =>
+      txType == TxType.stationConsumption ||
+      txType == TxType.qrEmission ||
+      txType == TxType.qrSeparer ||
+      txType == TxType.qrRetirer ||
+      txType == TxType.qrBlocked ||
+      txType == TxType.expiration;
+
+  int _carnetSize({required bool fromAmount}) {
+    if (line.carnetSize > 0) return line.carnetSize;
+    if (!fromAmount ||
+        line.faceValue <= 0 ||
+        line.qty <= 0 ||
+        line.amount <= 0) {
+      return 0;
+    }
+    final derived = (line.amount / line.faceValue / line.qty).round();
+    return derived > 0 ? derived : 0;
+  }
+
+  String _purchaseTitle() {
+    final serverLabel = line.carnetTypeName.trim();
+    if (serverLabel.isNotEmpty) return serverLabel;
+    if (line.carnetSize > 0 && line.faceValue > 0) {
+      return _historyCarnetTypeLabel(line.carnetSize, line.faceValue);
+    }
+    final carnetSize = _carnetSize(fromAmount: true);
+    if (carnetSize > 0 && line.faceValue > 0) {
+      return _historyCarnetTypeLabel(carnetSize, line.faceValue);
+    }
+    if (line.faceValue > 0) {
+      return 'Carnet ${Formatters.numberFr(line.faceValue)}';
+    }
+    return 'Carnet';
+  }
+
+  String _lineTypeLabel() {
+    final label = _purchaseTitle();
+    if (label.trim().isNotEmpty) return label;
+    return 'Carnet';
+  }
+
+  String _qrTitle() {
+    final qty = line.qty > 0 ? line.qty : 1;
+    final ticketLabel =
+        '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
+    final carnetLabel = line.carnetSize > 0 && line.faceValue > 0
+        ? 'carnet ${Formatters.numberFr(line.carnetSize)} ×${line.faceValue}'
+        : line.carnetTypeName.trim().isNotEmpty
+        ? line.carnetTypeName.trim().replaceFirst('Carnet', 'carnet')
+        : line.faceValue > 0
+        ? 'carnet ${Formatters.numberFr(line.faceValue)}'
+        : 'carnet';
+    return '$ticketLabel de $carnetLabel';
+  }
+
+  String? _subtitle() {
+    if (line.expirationDate == null) return null;
+    return 'Date d\'expiration : ${DateFormat('dd-MM-yyyy').format(line.expirationDate!)}';
+  }
+
+  Color _amountColor() {
+    if (_isPurchaseStyle) {
+      if (txType == TxType.purchaseRejected) return AppColors.danger;
+      if (txType == TxType.purchaseSubmitted) return AppColors.danger;
+      return AppColors.leaderGreen;
+    }
+    return AppColors.ink;
+  }
+
+  Widget _purchaseBody(BuildContext context) {
+    final subtitle = _subtitle();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  maxLines: 1,
+                  _lineTypeLabel(),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
+                    height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  '$dateLabel \u2022 $hourLabel',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w600,
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                      height: 1.2,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 12),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$amountPrefix${Formatters.numberFr(tx.totalAmount.abs())}',
-                style: GoogleFonts.inter(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: amountColor,
-                  height: 1,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'MRU',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink2.withValues(alpha: 0.78),
-                  height: 1,
-                ),
-              ),
-            ],
+          _AmountInline(
+            amount: line.amount,
+            textAlign: TextAlign.right,
+            valueStyle: GoogleFonts.inter(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w900,
+              color: _amountColor(),
+              height: 1.1,
+            ),
+            unitStyle: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: _amountColor().withValues(alpha: 0.82),
+              height: 1.1,
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _qrBody(BuildContext context) {
+    final subtitle = _subtitle();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _qrTitle(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    height: 1.2,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _AmountInline(
+            amount: line.amount,
+            textAlign: TextAlign.right,
+            valueStyle: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: AppColors.ink,
+              height: 1.1,
+            ),
+            unitStyle: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink.withValues(alpha: 0.72),
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isPurchaseStyle) return _purchaseBody(context);
+    if (_isQrStyle) return _qrBody(context);
+    return _qrBody(context);
+  }
 }
 
-String _historyTxTitle(TxType type) {
+List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
+  final amount = '${Formatters.numberFr(tx.totalAmount.abs())} MRU';
+  final lotRef = tx.lotInternalRef ?? tx.lotId;
+  final qrRef = tx.qrPublicCode ?? tx.qrId;
+  final station = tx.stationName ?? tx.stationId;
+  final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
+
+  switch (tx.type) {
+    case TxType.purchaseSubmitted:
+    case TxType.purchaseValidated:
+    case TxType.purchaseRejected:
+      return [
+        if (lotRef != null && lotRef.isNotEmpty)
+          _TxDetailRow(label: 'Commande', value: lotRef),
+        _TxDetailRow(label: 'Client', value: tx.userName),
+        _TxDetailRow(label: 'Statut', value: historyTxTitle(tx.type)),
+        _TxDetailRow(label: 'Montant', value: amount),
+        if ((tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Note', value: tx.note!.trim()),
+      ];
+    case TxType.qrEmission:
+      return [
+        if (qrRef != null && qrRef.isNotEmpty)
+          _TxDetailRow(label: 'QR', value: qrRef),
+        _TxDetailRow(label: 'Montant', value: amount),
+        if (lotRef != null && lotRef.isNotEmpty)
+          _TxDetailRow(label: 'Lot', value: lotRef),
+      ];
+    case TxType.qrSeparer:
+      return [
+        if (qrRef != null && qrRef.isNotEmpty)
+          _TxDetailRow(label: 'QR', value: qrRef),
+        _TxDetailRow(label: 'Tickets', value: '$totalQty'),
+        _TxDetailRow(label: 'Montant', value: amount),
+        if ((tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Note', value: tx.note!.trim()),
+      ];
+    case TxType.qrRetirer:
+      return [
+        if (qrRef != null && qrRef.isNotEmpty)
+          _TxDetailRow(label: 'QR', value: qrRef),
+        _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
+        _TxDetailRow(label: 'Montant', value: amount),
+      ];
+    case TxType.carnetTransfer:
+      return [
+        if (lotRef != null && lotRef.isNotEmpty)
+          _TxDetailRow(label: 'Référence', value: lotRef),
+        if ((tx.transferParty ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Bénéficiaire', value: tx.transferParty!.trim()),
+        _TxDetailRow(label: 'Montant', value: amount),
+      ];
+    case TxType.carnetReceived:
+      return [
+        if (lotRef != null && lotRef.isNotEmpty)
+          _TxDetailRow(label: 'Référence', value: lotRef),
+        if ((tx.transferParty ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Expéditeur', value: tx.transferParty!.trim()),
+        _TxDetailRow(label: 'Montant', value: amount),
+      ];
+    case TxType.stationConsumption:
+      return [
+        if (station != null && station.isNotEmpty)
+          _TxDetailRow(label: 'Station', value: station),
+        if (qrRef != null && qrRef.isNotEmpty)
+          _TxDetailRow(label: 'QR', value: qrRef),
+        _TxDetailRow(label: 'Tickets', value: '$totalQty'),
+        _TxDetailRow(label: 'Montant', value: amount),
+      ];
+    case TxType.expiration:
+      return [
+        if (qrRef != null && qrRef.isNotEmpty)
+          _TxDetailRow(label: 'QR', value: qrRef),
+        _TxDetailRow(label: 'Tickets expirés', value: '$totalQty'),
+        _TxDetailRow(label: 'Montant', value: amount),
+      ];
+    case TxType.qrBlocked:
+    case TxType.walletLedger:
+      return [
+        if (qrRef != null && qrRef.isNotEmpty)
+          _TxDetailRow(label: 'Référence', value: qrRef),
+        _TxDetailRow(label: 'Montant', value: amount),
+        if ((tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Note', value: tx.note!.trim()),
+      ];
+  }
+}
+
+String historyTxTitle(TxType type) {
   switch (type) {
     case TxType.purchaseSubmitted:
       return 'Achat en attente';
@@ -1182,7 +1484,7 @@ String _historyTxTitle(TxType type) {
     case TxType.purchaseRejected:
       return 'Achat rejeté';
     case TxType.qrEmission:
-      return '\u00c9mission QR';
+      return 'Génération QR';
     case TxType.qrSeparer:
       return 'Séparation QR';
     case TxType.qrRetirer:
@@ -1213,28 +1515,23 @@ String _popupDetailTitle(BusinessTransaction tx) {
 
 Color _historyAmountColor(TxType type) {
   switch (type) {
-    case TxType.purchaseSubmitted:
-      return AppColors.warning;
     case TxType.purchaseValidated:
       return AppColors.leaderGreen;
-    case TxType.purchaseRejected:
-      return AppColors.danger;
-    case TxType.stationConsumption:
-      return const Color(0xFFD97706);
-    case TxType.qrEmission:
-    case TxType.qrSeparer:
-      return const Color(0xFFD97706);
-    case TxType.qrRetirer:
-      return AppColors.warning;
-    case TxType.carnetTransfer:
-      return AppColors.primary;
     case TxType.carnetReceived:
       return AppColors.leaderGreen;
-    case TxType.qrBlocked:
-    case TxType.walletLedger:
-      return AppColors.ink;
+    case TxType.purchaseSubmitted:
+    case TxType.purchaseRejected:
+      return AppColors.danger;
+    case TxType.carnetTransfer:
+    case TxType.stationConsumption:
     case TxType.expiration:
       return AppColors.danger;
+    case TxType.qrBlocked:
+    case TxType.qrEmission:
+    case TxType.qrSeparer:
+    case TxType.qrRetirer:
+    case TxType.walletLedger:
+      return AppColors.primary;
   }
 }
 
@@ -1303,11 +1600,11 @@ class _HistoryFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      (_HistoryQuickFilter.all, 'Tout transaction'),
-      (_HistoryQuickFilter.activeBlocked, 'Active / Bloqu\u00e9es'),
+      (_HistoryQuickFilter.all, 'Tous'),
       (_HistoryQuickFilter.purchases, 'Achats'),
-      (_HistoryQuickFilter.submittedPurchases, 'Soumis'),
+      (_HistoryQuickFilter.transfer, 'Transfert/Reçu'),
       (_HistoryQuickFilter.consumption, 'Consommation'),
+      (_HistoryQuickFilter.qr, 'QR'),
     ];
 
     return SingleChildScrollView(
@@ -1368,6 +1665,7 @@ class _HistoryFilterChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TransactionDetailLoadingDialog extends StatelessWidget {
   const _TransactionDetailLoadingDialog();
 
@@ -1398,6 +1696,117 @@ class _TransactionDetailLoadingDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+// ignore: unused_element
+class _TransactionDetailScreen extends StatelessWidget {
+  const _TransactionDetailScreen({required this.tx, required this.facts});
+
+  final BusinessTransaction tx;
+  final List<_TransactionFact> facts;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Détail transaction',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
+                children: [
+                  _TransactionOverviewCard(tx: tx),
+                  const SizedBox(height: 14),
+                  _TransactionFactsGrid(facts: facts),
+                  if (tx.lines.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Détail des lignes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...tx.lines.map((l) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _TxLineRow(txType: tx.type, line: l),
+                      );
+                    }),
+                  ],
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryTint,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.primarySoft),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                        ),
+                        Text(
+                          '${Formatters.numberFr(tx.totalAmount)} MRU',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDeep,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _historyCarnetTypeLabel(int size, int faceValue) {
+  return 'Carnet ${Formatters.numberFr(size)} ×$faceValue';
 }
 
 class _TransactionOverviewCard extends StatelessWidget {
@@ -1446,7 +1855,7 @@ class _TransactionOverviewCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  Formatters.dateTime(tx.date),
+                  DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -1468,28 +1877,21 @@ class _TransactionOverviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                amountLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: amountColor,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${Formatters.numberFr(tx.totalAmount.abs())} MRU',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: amountColor,
-                  height: 1,
-                ),
-              ),
-            ],
+          _AmountInline(
+            amount: tx.totalAmount.abs(),
+            semanticsLabel: amountLabel,
+            valueStyle: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: amountColor,
+              height: 1,
+            ),
+            unitStyle: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: amountColor.withValues(alpha: 0.82),
+              height: 1,
+            ),
           ),
         ],
       ),
@@ -1580,6 +1982,42 @@ class _TransactionFact {
   final Color color;
 }
 
+class _AmountInline extends StatelessWidget {
+  const _AmountInline({
+    required this.amount,
+    required this.valueStyle,
+    required this.unitStyle,
+    this.textAlign = TextAlign.left,
+    this.semanticsLabel,
+  });
+
+  final int amount;
+  final TextStyle valueStyle;
+  final TextStyle unitStyle;
+  final TextAlign textAlign;
+  final String? semanticsLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = semanticsLabel ?? '${Formatters.numberFr(amount)} MRU';
+    return Semantics(
+      label: label,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
+            TextSpan(text: ' MRU', style: unitStyle),
+          ],
+        ),
+        textAlign: textAlign,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
 List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
   final green = const Color(0xFF1B8F3A);
   final amber = const Color(0xFFF59E0B);
@@ -1612,12 +2050,6 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: blue,
         ),
         _TransactionFact(
-          label: 'Lignes',
-          value: '$lineCount',
-          icon: Icons.view_list_rounded,
-          color: violet,
-        ),
-        _TransactionFact(
           label: 'Montant',
           value: amount,
           icon: Icons.payments_outlined,
@@ -1627,8 +2059,8 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.qrEmission:
       return [
         _TransactionFact(
-          label: 'QR source',
-          value: qr ?? 'â€”',
+          label: 'QR généré',
+          value: qr ?? '—',
           icon: Icons.qr_code_2_rounded,
           color: blue,
         ),
@@ -1725,7 +2157,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
       return [
         _TransactionFact(
           label: 'Reference',
-          value: lotRef ?? 'â€”',
+          value: lotRef ?? '—',
           icon: Icons.swap_horiz_rounded,
           color: blue,
         ),

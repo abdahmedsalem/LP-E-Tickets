@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -51,7 +50,6 @@ Future<void> showTransferSuccessDialog(
 Future<void> showQrGenerationSuccessDialog(
   BuildContext context, {
   required int totalAmount,
-  required int totalQty,
   required DateTime confirmedAt,
   List<QrGenerationSuccessLine> lines = const [],
   VoidCallback? onHome,
@@ -60,7 +58,6 @@ Future<void> showQrGenerationSuccessDialog(
     MaterialPageRoute(
       builder: (_) => QrGenerationSuccessScreen(
         totalAmount: totalAmount,
-        totalQty: totalQty,
         confirmedAt: confirmedAt,
         lines: lines,
         onHome: onHome,
@@ -175,14 +172,12 @@ class QrGenerationSuccessScreen extends StatelessWidget {
   const QrGenerationSuccessScreen({
     super.key,
     required this.totalAmount,
-    required this.totalQty,
     required this.confirmedAt,
     this.lines = const [],
     this.onHome,
   });
 
   final int totalAmount;
-  final int totalQty;
   final DateTime confirmedAt;
   final List<QrGenerationSuccessLine> lines;
   final VoidCallback? onHome;
@@ -200,11 +195,6 @@ class QrGenerationSuccessScreen extends StatelessWidget {
           label: 'Montant total',
           value: Formatters.money(totalAmount),
           valueColor: const Color(0xFF2B8F3A),
-        ),
-        _SuccessRowData(
-          label: 'Tickets',
-          value: Formatters.numberFr(totalQty),
-          valueColor: AppColors.ink,
         ),
         _SuccessRowData(
           label: 'Date',
@@ -314,7 +304,13 @@ class _SuccessScaffold extends StatelessWidget {
                 width: double.infinity,
                 height: 54,
                 child: FilledButton(
-                  onPressed: onHome ?? () => context.go('/home'),
+                  onPressed: () {
+                    if (onHome == null) {
+                      Navigator.of(context).pop();
+                      return;
+                    }
+                    onHome!();
+                  },
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF43A047),
                     shape: RoundedRectangleBorder(
@@ -529,6 +525,18 @@ class _GeneratedQrLineRow extends StatelessWidget {
 
   final QrGenerationSuccessLine line;
 
+  String _carnetLabel() {
+    final raw = line.label.trim();
+    if (raw.isEmpty) return 'Carnet';
+    return raw.replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), '');
+  }
+
+  String _title() {
+    final qtyLabel =
+        '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}';
+    return '$qtyLabel de carnet ${_carnetLabel()}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -540,7 +548,7 @@ class _GeneratedQrLineRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                line.label,
+                _title(),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -561,27 +569,13 @@ class _GeneratedQrLineRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${Formatters.numberFr(line.qty)} tickets',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.body,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              Formatters.money(line.totalAmount),
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF2B8F3A),
-              ),
-            ),
-          ],
+        Text(
+          Formatters.money(line.totalAmount),
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2B8F3A),
+          ),
         ),
       ],
     );

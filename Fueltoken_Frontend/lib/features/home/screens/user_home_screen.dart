@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../settings/data/notifications_store.dart';
 import '../../../shared/widgets/fuel_brand_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
@@ -176,35 +177,22 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                 ],
                               ),
                             ),
-                            _HomeTopAction(
-                              icon: Icons.notifications_outlined,
-                              onTap: () => ctx.push('/notifications'),
+                            const SizedBox(width: 4),
+                            ValueListenableBuilder<int>(
+                              valueListenable:
+                                  NotificationsStore.instance.unreadCount,
+                              builder: (context, unread, _) {
+                                return _HomeTopAction(
+                                  icon: Icons.notifications_outlined,
+                                  badge: unread,
+                                  onTap: () => ctx.push('/notifications'),
+                                );
+                              },
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 14),
-                      if (wallet.loadError != null) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Material(
-                            color: AppColors.brandRedSoft,
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Text(
-                                wallet.loadError!,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: AppColors.brandRed,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SizedBox(
@@ -413,10 +401,15 @@ class _QuickActionCard extends StatelessWidget {
 }
 
 class _HomeTopAction extends StatelessWidget {
-  const _HomeTopAction({required this.icon, required this.onTap});
+  const _HomeTopAction({
+    required this.icon,
+    required this.onTap,
+    this.badge,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+  final int? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -446,10 +439,41 @@ class _HomeTopAction extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(
-              icon,
-              size: 22,
-              color: Theme.of(context).colorScheme.onSurface,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Center(
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                if (badge != null && badge! > 0)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minWidth: 14, minHeight: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandRed,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        badge! > 9 ? '9+' : badge.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -457,3 +481,4 @@ class _HomeTopAction extends StatelessWidget {
     );
   }
 }
+

@@ -64,6 +64,31 @@ class OdooAuthService {
     }
   }
 
+  Future<void> verifySensitiveActionCode({
+    required String identifier,
+    required String secretCode,
+  }) async {
+    final route = OdooAuthRpcConfig.loginRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Validation de code ACPEC indisponible. Configurez ODOO_USE_ACPEC_AUTH=true.',
+      );
+    }
+    try {
+      final idForRpc = _normalizeIdentifierForMobileAuthLogin(identifier);
+      final result = await _api.callRoute(
+        route,
+        params: <String, dynamic>{
+          'identifier': idForRpc,
+          'secret_code': secretCode.trim(),
+        },
+      );
+      _ensureAcpecEnvelopeSuccess(result);
+    } on OdooJsonRpcException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
   String _normalizeIdentifierForMobileAuthLogin(String raw) {
     final t = raw.trim();
     if (t.contains('@')) return t.toLowerCase();
@@ -149,11 +174,12 @@ class OdooAuthService {
         '(et route verify par défaut `/api/acpec/mobile_auth/v1/verify-otp`).',
       );
     }
+    final idForRpc = localMrDigitsFromFull(identifier);
     final result = await _api.callRoute(
       route,
       params: {
         if (challengeId != null && challengeId > 0) 'challenge_id': challengeId,
-        'identifier': identifier.trim(),
+        'identifier': idForRpc,
         'code': code.trim(),
         'name': name.trim(),
         'secret_code': password,
@@ -180,9 +206,10 @@ class OdooAuthService {
         '(et route request-otp par défaut `/api/acpec/mobile_auth/v1/request-otp`).',
       );
     }
+    final idForRpc = localMrDigitsFromFull(identifier);
     final result = await _api.callRoute(
       route,
-      params: {'identifier': identifier.trim(), 'purpose': 'register'},
+      params: {'identifier': idForRpc, 'purpose': 'register'},
     );
     _ensureAcpecEnvelopeSuccess(result);
     return Map<String, dynamic>.from(result as Map);
@@ -234,11 +261,12 @@ class OdooAuthService {
       );
     }
     try {
+      final idForRpc = localMrDigitsFromFull(signupIdentifier);
       final result = await _api.callRoute(
         route,
         params: {
           'name': name.trim(),
-          'signup_identifier': signupIdentifier.trim(),
+          'signup_identifier': idForRpc,
           'secret_code': secretCode,
           'company_id': companyId,
           if (note.trim().isNotEmpty) 'note': note.trim(),

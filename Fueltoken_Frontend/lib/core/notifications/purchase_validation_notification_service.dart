@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -22,7 +22,7 @@ class PurchaseValidationNotificationService {
   static const _channelId = 'purchase_validation';
   static const _channelName = 'Validation de commandes';
   static const _channelDescription =
-      'Notifications pour les commandes de carnets validÃ©es ou rejetÃ©es';
+      'Notifications pour les commandes de carnets validées ou rejetées';
   static const _prefsPrefix = 'ft_purchase_validation_notified_';
 
   final FlutterLocalNotificationsPlugin _plugin =
@@ -77,7 +77,6 @@ class PurchaseValidationNotificationService {
 
     try {
       await initialize();
-      // Garantir que le store est scopÃ© Ã  cet utilisateur avant d'Ã©crire
       await NotificationsStore.instance.loadForUser(user.id);
 
       final raw = await OdooFueltokenFacade().purchasesList(
@@ -190,12 +189,12 @@ class PurchaseValidationNotificationService {
         .toList(growable: false);
     final isRejected = lot.state == PurchaseLotState.rejected;
     final title = isRejected
-        ? 'Commande de carnets rejetÃ©e'
-        : 'Commande de carnets validÃ©e';
+        ? 'Commande de carnets rejetée'
+        : 'Commande de carnets validée';
     final rejectionReason = isRejected ? lot.rejectionReason : null;
     final body = isRejected
         ? _rejectedBody(amountLabel, dateLabel, rejectionReason)
-        : '$amountLabel â€¢ ValidÃ©e le $dateLabel';
+        : '$amountLabel • Validée le $dateLabel';
 
     return NotificationItem(
       id: 'purchase-${lot.id}',
@@ -220,9 +219,9 @@ class PurchaseValidationNotificationService {
         ? null
         : rejectionReason.trim();
     if (reason == null) {
-      return '$amountLabel â€¢ RejetÃ©e le $dateLabel';
+      return '$amountLabel • Rejetée le $dateLabel';
     }
-    return '$amountLabel â€¢ RejetÃ©e le $dateLabel â€¢ Motif: $reason';
+    return '$amountLabel • Rejetée le $dateLabel • Motif: $reason';
   }
 
   String _lineLabel(PurchaseLine line) {

@@ -232,6 +232,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
             args: PurchaseConfirmationArgs(
               lines: confirmLines,
               proofPath: proofPath,
+              proofBytes: proofBytes,
               onConfirm: () async {
                 // Appel API réel: les erreurs remontent au confirmation screen
                 if (!AppEnvironment.useAcpecLiveData) {
@@ -301,12 +302,18 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         ClientHistoryRefreshBus.instance.bump();
         PurchasesRefreshBus.instance.bump();
         final confirmedAt = DateTime.now();
+        await Future<void>.delayed(Duration.zero);
+        if (!mounted) return;
         await showPurchaseSubmitSuccessDialog(
           context,
           result: res.result,
           confirmedAt: confirmedAt,
           lines: res.lines,
-          onHome: () => context.go('/home'),
+          onHome: () {
+            if (mounted) {
+              context.go('/home');
+            }
+          },
         );
         return;
       }
@@ -459,14 +466,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Preuve de paiement obligatoire.',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
-                      ),
-                    ),
+                   
                     const SizedBox(height: 8),
                     _ProofPicker(path: _proofPath, onTap: _pickProof),
                   ],
@@ -809,7 +809,7 @@ class _BottomBar extends StatelessWidget {
                       Text(
                         'MRU',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.muted,
                         ),

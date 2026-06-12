@@ -24,6 +24,10 @@ import '../../../shared/widgets/app_bar_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
+const _settingsHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
+const _settingsHeaderGap = 4.0;
+const _settingsHeaderTitleSize = 24.0;
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -256,6 +260,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Mon compte',
                 showBack: context.canPop(),
                 onBack: () => popOrGoClientHome(context),
+                largeTitle: true,
+                largeTitlePadding: _settingsHeaderPadding,
+                largeTitleGap: _settingsHeaderGap,
+                largeTitleFontSize: _settingsHeaderTitleSize,
               ),
               Expanded(
                 child: ListView(
@@ -368,12 +376,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.how_to_reg_outlined,
-                      title: 'Demande de compte',
-                      subtitle:
-                          'Envoyer une demande d’accès (étape 2) sans passer par la connexion.',
+                      title: 'Inscription OTP',
+                      subtitle: 'Créer un compte avec OTP SMS.',
                       cardBg: cardBg,
                       borderColor: borderColor,
-                      onTap: () => context.push('/settings/acpec-step2'),
+                      onTap: () => context.push('/register'),
                     ),
                     const SizedBox(height: 18),
                     _LogoutTile(

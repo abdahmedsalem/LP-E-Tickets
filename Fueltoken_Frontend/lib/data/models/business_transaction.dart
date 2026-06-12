@@ -12,6 +12,7 @@ enum TxType {
   qrBlocked,
   stationConsumption,
   expiration,
+
   /// Mouvement générique renvoyé par l'API (hors types métier listés).
   walletLedger,
 }
@@ -55,7 +56,7 @@ extension TxTypeX on TxType {
       case TxType.purchaseRejected:
         return 'Achat rejeté';
       case TxType.qrEmission:
-        return 'Émission QR';
+        return 'Génération QR';
       case TxType.qrSeparer:
         return 'Séparation QR';
       case TxType.qrRetirer:
@@ -81,25 +82,45 @@ extension TxTypeX on TxType {
 
 class TransactionLine extends Equatable {
   final String id;
+  final String carnetTypeId;
+  final String carnetTypeCode;
+  final String carnetTypeName;
   final int faceValue;
   final int qty;
   final int amount;
+  final int carnetSize;
+  final DateTime? expirationDate;
   final String? lotId;
   final String? faceLineId;
   final String? qrId;
 
   const TransactionLine({
     required this.id,
+    this.carnetTypeId = '',
+    this.carnetTypeCode = '',
+    this.carnetTypeName = '',
     required this.faceValue,
     required this.qty,
     required this.amount,
+    this.carnetSize = 0,
+    this.expirationDate,
     this.lotId,
     this.faceLineId,
     this.qrId,
   });
 
   @override
-  List<Object?> get props => [id, faceValue, qty, amount];
+  List<Object?> get props => [
+    id,
+    carnetTypeId,
+    carnetTypeCode,
+    carnetTypeName,
+    faceValue,
+    qty,
+    amount,
+    carnetSize,
+    expirationDate,
+  ];
 }
 
 /// acpec.fuel.transaction

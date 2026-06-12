@@ -374,6 +374,12 @@ class _PurchaseTile extends StatelessWidget {
       PurchaseLotState.rejected => const Color(0xFFB91C1C),
       PurchaseLotState.draft => const Color(0xFF6B7280),
     };
+    final amountColor = switch (lot.state) {
+      PurchaseLotState.submitted => const Color(0xFF2563EB),
+      PurchaseLotState.approved => const Color(0xFF0F7A5A),
+      PurchaseLotState.rejected => const Color(0xFFB91C1C),
+      PurchaseLotState.draft => const Color(0xFF6B7280),
+    };
     final typeLabel = _purchaseTypeLabel(lot);
     final validationLabel = lot.validationDate != null
         ? Formatters.date(lot.validationDate!)
@@ -487,7 +493,7 @@ class _PurchaseTile extends StatelessWidget {
                         title: 'Montant total',
                         value: Formatters.money(lot.totalAmount),
                         icon: Icons.payments_outlined,
-                        accent: const Color(0xFF0F7A5A),
+                        accent: amountColor,
                       ),
                     ),
                   ],

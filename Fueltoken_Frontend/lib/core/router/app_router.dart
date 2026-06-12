@@ -36,7 +36,6 @@ import '../../features/station/screens/station_home_screen.dart';
 import '../../features/station/screens/station_profile_screen.dart';
 import '../../features/station/screens/station_consumption_history_screen.dart';
 import '../../features/settings/screens/acpec_connection_step1_screen.dart';
-import '../../features/settings/screens/acpec_signup_step2_screen.dart';
 import '../../features/settings/screens/notifications_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/station/screens/station_shell_scaffold.dart';
@@ -69,7 +68,7 @@ class AppRouter {
             case UserRole.admin:
               return '/admin';
             case UserRole.station:
-              return '/station/scan';
+              return '/station/home';
           }
         }
         // role guards
@@ -96,7 +95,7 @@ class AppRouter {
           }
           if (loc == '/home' && role != UserRole.user) return _homeFor(role);
           if (loc == '/station' && role == UserRole.station) {
-            return '/station/scan';
+            return '/station/home';
           }
           if (role == UserRole.station && loc == '/transactions') {
             return '/station/journal';
@@ -118,7 +117,7 @@ class AppRouter {
             if (x is! ForgotOtpRouteArgs) {
               return const Scaffold(
                 body: Center(
-                  child: Text('Reprendre depuis mot de passe oubliÃƒÆ’Ã‚Â©.'),
+                  child: Text('Reprendre depuis mot de passe oublié.'),
                 ),
               );
             }
@@ -132,7 +131,7 @@ class AppRouter {
             if (x is! ForgotResetRouteArgs) {
               return const Scaffold(
                 body: Center(
-                  child: Text('Reprendre depuis la vÃƒÆ’Ã‚Â©rification OTP.'),
+                  child: Text('Reprendre depuis la vérification OTP.'),
                 ),
               );
             }
@@ -146,11 +145,7 @@ class AppRouter {
             final x = st.extra;
             if (x is! RegisterOtpRouteArgs) {
               return const Scaffold(
-                body: Center(
-                  child: Text(
-                    'Reprendre depuis lÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢inscription.',
-                  ),
-                ),
+                body: Center(child: Text("Reprendre depuis l'inscription.")),
               );
             }
             return RegisterVerifyOtpScreen(args: x);
@@ -161,11 +156,7 @@ class AppRouter {
           builder: (ctx, st) {
             if (st.extra == Object()) {
               return const Scaffold(
-                body: Center(
-                  child: Text(
-                    'Reprendre depuis lÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢inscription.',
-                  ),
-                ),
+                body: Center(child: Text("Reprendre depuis l'inscription.")),
               );
             }
             return const Scaffold(
@@ -233,7 +224,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/settings/acpec-step2',
-          builder: (_, _) => const AcpecSignupStep2Screen(),
+          builder: (_, _) => const RegisterScreen(),
         ),
         GoRoute(
           path: '/notifications',
@@ -381,18 +372,14 @@ class AppRouter {
           builder: (_, st) {
             if (st.extra == Object()) {
               return Scaffold(
-                appBar: AppBar(title: const Text('Demande de compte')),
+                appBar: AppBar(title: const Text('Compte mobile')),
                 body: const Center(
-                  child: Text(
-                    'Demande introuvable. Revenez ÃƒÆ’Ã‚Â  la liste.',
-                  ),
+                  child: Text('Compte introuvable. Revenez à la liste.'),
                 ),
               );
             }
             return const Scaffold(
-              body: Center(
-                child: Text('Validation admin des comptes supprimee.'),
-              ),
+              body: Center(child: Text('Gestion des comptes mobile.')),
             );
           },
         ),
@@ -419,7 +406,7 @@ class AppRouter {
       case UserRole.admin:
         return '/admin';
       case UserRole.station:
-        return '/station/scan';
+        return '/station/home';
     }
   }
 
@@ -428,7 +415,8 @@ class AppRouter {
     if (loc == '/home' || loc == '/faces' || loc == '/transactions') {
       return true;
     }
-    if (loc.startsWith('/settings') || loc == '/notifications') return true;
+    if (loc.startsWith('/settings')) return true;
+    if (loc == '/notifications') return true;
     if (loc.startsWith('/purchases')) return true;
     if (loc.startsWith('/qr')) return true;
     if (loc.startsWith('/wallet')) return true;

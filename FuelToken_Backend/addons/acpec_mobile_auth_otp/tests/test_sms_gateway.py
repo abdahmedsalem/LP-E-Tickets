@@ -120,17 +120,24 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
     def test_hash_otp_uses_sha256(self):
         salt = 'test-salt'
         code = '123456'
-        expected = hashlib.sha256(f'{salt}:{code}'.encode('utf-8')).hexdigest()
+        expected = hashlib.scrypt(
+            code.encode('utf-8'),
+            salt=salt.encode('utf-8'),
+            n=2 ** 14,
+            r=8,
+            p=1,
+            dklen=32,
+        ).hex()
 
         with patch(
-            'odoo.addons.acpec_mobile_auth_otp.models.mobile_auth_otp.hashlib.sha256',
-            wraps=hashlib.sha256,
+            'odoo.addons.acpec_mobile_auth_otp.models.mobile_auth_otp.hashlib.scrypt',
+            wraps=hashlib.scrypt,
         ):
             actual = self.env['acpec.mobile.auth.otp']._hash_otp(code, salt)
 
         self.assertEqual(actual, expected)
 
-    def test_register_otp_creates_account_request_only_after_verification(self):
+    def test_register_otp_creates_account_only_after_verification(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('SMS_PROVIDER', '')
@@ -180,19 +187,17 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         session_data = verify_result['data']
         self.assertTrue(session_data['access_token'])
         self.assertTrue(session_data['refresh_token'])
-        self.assertTrue(session_data['pending_approval'])
+        self.assertNotIn('pending_approval', session_data)
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524655')], limit=1)
         self.assertTrue(user)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'pending')
+        self.assertEqual(user.mobile_state, 'approved')
 
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
             ('user_id', '=', user.id),
-            ('state', '=', 'pending'),
         ], order='id desc', limit=1)
-        self.assertTrue(account_request)
-        self.assertEqual(account_request.signup_identifier, '32524655')
+        self.assertFalse(account_request)
 
     def test_signup_route_returns_register_otp_payload_for_phone(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})

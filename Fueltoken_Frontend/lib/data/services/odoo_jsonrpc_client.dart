@@ -61,6 +61,34 @@ class OdooJsonRpcException implements Exception {
       'OdooJsonRpcException($code): $message${data != null ? ' | $data' : ''}';
 }
 
+String _sanitizeServerMessage(String raw, {String fallback = 'Une erreur est survenue. Réessayez.'}) {
+  var msg = raw.trim();
+  if (msg.isEmpty) return fallback;
+
+  final lower = msg.toLowerCase();
+  if (lower.contains('<html') ||
+      lower.contains('<!doctype') ||
+      (lower.contains('json') && lower.contains('unexpected character')) ||
+      lower.contains('formatexception') ||
+      (lower.contains('json') && lower.contains('html'))) {
+    return 'Le serveur a renvoyé une réponse invalide. Réessayez.';
+  }
+  if (lower.contains('socketexception') ||
+      lower.contains('connection refused') ||
+      lower.contains('failed host lookup') ||
+      lower.contains('network is unreachable')) {
+    return 'Impossible de joindre le serveur. Vérifiez votre connexion.';
+  }
+
+  msg = msg
+      .replaceAll(RegExp(r'<[^>]+>'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (msg.isEmpty) return fallback;
+  if (msg.length > 200) return '${msg.substring(0, 200)}…';
+  return msg;
+}
+
 /// JSON-RPC client for ACPEC / Odoo `type='jsonrpc'` controllers.
 ///
 /// Body: `{ "jsonrpc":"2.0", "method":"call", "params": { ... }, "id": n }` posted to a
@@ -98,7 +126,9 @@ class OdooJsonRpcClient {
   Map<String, dynamic> _asJsonMap(dynamic data) {
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
-    throw OdooJsonRpcException('Réponse invalide : JSON objet attendu.');
+    throw OdooJsonRpcException(
+      'Le serveur a renvoyé une réponse invalide. Réessayez.',
+    );
   }
 
   /// Corps de réponse HTTP → enveloppe JSON-RPC `{ "jsonrpc", "result"|"error", "id" }`.
@@ -112,9 +142,7 @@ class OdooJsonRpcClient {
       final s = data.trim();
       if (s.isEmpty) {
         throw OdooJsonRpcException(
-          'Réponse vide du serveur Odoo (HTTP ${response.statusCode}). '
-          'Vérifiez ODOO_JSONRPC_BASE_URL (depuis un téléphone : pas 127.0.0.1). '
-          'URL : $requestUrl',
+          'Le serveur a renvoyé une réponse vide. Vérifiez l’URL ou réessayez.',
           code: response.statusCode,
         );
       }
@@ -122,40 +150,23 @@ class OdooJsonRpcClient {
       if (s.startsWith('<') ||
           lower.contains('<!doctype') ||
           lower.contains('<html')) {
-        final dbHint = OdooApiConfig.databaseNameTrimmed.isEmpty
-            ? ' Si Odoo est en multi-bases, ajoutez '
-                '`--dart-define=ODOO_DATABASE=nom_de_la_base` '
-                '(en-tête `X-Odoo-Database`).'
-            : '';
-        final dupApi = requestUrl.contains('/api/api/')
-            ? ' L’URL contient `/api/api/` : la base '
-                '`ODOO_JSONRPC_BASE_URL` ne doit pas se terminer par `/api` '
-                '(seulement `http://HÔTE:8199`).'
-            : '';
         throw OdooJsonRpcException(
-          'Le serveur a renvoyé du HTML au lieu du JSON-RPC (route ou base URL incorrecte). '
-          'Utilisez une base du type `http://HÔTE:8199` sans `/acpec/fueltoken/test` '
-          'ni suffixe `/api`.'
-          '$dbHint$dupApi '
-          'HTTP ${response.statusCode}. URL : $requestUrl',
+          'Le serveur a renvoyé une page HTML au lieu d’une réponse API. Vérifiez l’URL.',
           code: response.statusCode,
         );
       }
       try {
         decoded = jsonDecode(s);
       } catch (_) {
-        final clip = s.length > 160 ? '${s.substring(0, 160)}…' : s;
         throw OdooJsonRpcException(
-          'Réponse non JSON du serveur (HTTP ${response.statusCode}) : $clip '
-          '(URL : $requestUrl)',
+          'Le serveur a renvoyé une réponse non JSON. Réessayez.',
           code: response.statusCode,
         );
       }
     }
     if (decoded is! Map) {
       throw OdooJsonRpcException(
-        'Enveloppe JSON-RPC attendue (objet), reçu : ${decoded.runtimeType}. '
-        'URL : $requestUrl',
+        'Le serveur a renvoyé une structure invalide. Réessayez.',
         code: response.statusCode,
       );
     }
@@ -288,7 +299,9 @@ class OdooJsonRpcClient {
         final code = rawCode is int
             ? rawCode
             : int.tryParse(rawCode == null ? '' : '$rawCode');
-        final msg = err['message']?.toString() ?? 'Erreur JSON-RPC';
+        final msg = _sanitizeServerMessage(
+          err['message']?.toString() ?? 'Erreur serveur.',
+        );
         throw OdooJsonRpcException(msg, code: code, data: err['data']);
       }
       final result = map['result'];
@@ -317,10 +330,8 @@ class OdooJsonRpcClient {
       if (e.type == DioExceptionType.connectionError ||
           msgLower.contains('connection refused') ||
           msgLower.contains('failed host lookup')) {
-        final base = OdooApiConfig.baseUrlTrimmed;
         throw OdooJsonRpcException(
-          'Serveur Odoo injoignable ($base). Vérifiez le réseau, le pare-feu, '
-          'et que l’URL est joignable depuis l’appareil (pas 127.0.0.1 depuis un téléphone).',
+          'Impossible de joindre le serveur. Vérifiez votre connexion.',
         );
       }
       final data = e.response?.data;
@@ -330,13 +341,17 @@ class OdooJsonRpcClient {
         if (err is Map) {
           final em = Map<String, dynamic>.from(err);
           throw OdooJsonRpcException(
-            em['message']?.toString() ?? e.message ?? 'Erreur réseau',
+            _sanitizeServerMessage(
+              em['message']?.toString() ?? e.message ?? 'Erreur réseau',
+            ),
             code: em['code'] is int ? em['code'] as int : null,
             data: em['data'],
           );
         }
       }
-      throw OdooJsonRpcException(e.message ?? 'Erreur réseau');
+      throw OdooJsonRpcException(
+        _sanitizeServerMessage(e.message ?? 'Erreur réseau'),
+      );
     }
   }
 

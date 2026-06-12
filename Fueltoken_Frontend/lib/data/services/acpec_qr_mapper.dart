@@ -130,6 +130,7 @@ class AcpecQrMapper {
   }) {
     if (v is! List) return [];
     final out = <QrLine>[];
+    final seen = <String>{};
     for (var i = 0; i < v.length; i++) {
       final e = v[i];
       if (e is! Map) continue;
@@ -166,6 +167,21 @@ class AcpecQrMapper {
           defaultExpiry;
       final lineId =
           row['qr_line_id'] ?? row['id'] ?? row['line_id'] ?? row['qr_lineId'];
+      final faceLineId =
+          row['face_line_id']?.toString() ??
+          row['acpec_line_id']?.toString() ??
+          'fl-$i';
+      final signature = [
+        lineId?.toString().trim() ?? '',
+        faceLineId.trim(),
+        row['lot_id']?.toString().trim() ?? '',
+        qty.toString(),
+        fv.toString(),
+        exp.millisecondsSinceEpoch.toString(),
+      ].join('|');
+      if (!seen.add(signature)) {
+        continue;
+      }
       out.add(
         QrLine(
           id: lineId?.toString() ?? 'ql-$i',
@@ -176,10 +192,7 @@ class AcpecQrMapper {
               row['lot_ref']?.toString() ??
               row['purchase_ref']?.toString() ??
               '—',
-          faceLineId:
-              row['face_line_id']?.toString() ??
-              row['acpec_line_id']?.toString() ??
-              'fl-$i',
+          faceLineId: faceLineId,
           carnetTypeId: row['carnet_type_id']?.toString() ?? '',
           carnetTypeCode:
               row['carnet_type_code']?.toString() ??
