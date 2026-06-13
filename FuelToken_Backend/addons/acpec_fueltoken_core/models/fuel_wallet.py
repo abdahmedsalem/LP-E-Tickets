@@ -24,9 +24,10 @@ class AcpecFuelWallet(models.Model):
     amount_expired = fields.Monetary(string='Montant expiré', compute='_compute_quantities', store=False)
     face_line_ids = fields.One2many('acpec.fuel.face.line', 'wallet_id', string='Lignes de faces')
 
-    _sql_constraints = [
-        ('partner_company_unique', 'unique(partner_id, company_id)', 'Un client ne peut avoir qu’un compte FuelToken par société.'),
-    ]
+    _partner_company_unique = models.Constraint(
+        'UNIQUE(partner_id, company_id)',
+        'Un client ne peut avoir qu’un compte FuelToken par société.',
+    )
 
     @api.depends('partner_id', 'company_id')
     def _compute_name(self):

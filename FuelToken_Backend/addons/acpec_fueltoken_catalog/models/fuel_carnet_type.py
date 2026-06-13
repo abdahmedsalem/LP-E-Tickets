@@ -19,12 +19,22 @@ class AcpecFuelCarnetType(models.Model):
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
     purchase_line_count = fields.Integer(string='Lignes d’achat', compute='_compute_purchase_line_count')
 
-    _sql_constraints = [
-        ('code_company_unique', 'unique(code, company_id)', 'Le code du type de carnet doit être unique par société.'),
-        ('positive_face_count', 'check(face_count > 0)', 'La taille du carnet doit être positive.'),
-        ('positive_face_value', 'check(face_value > 0)', 'La valeur de face doit être positive.'),
-        ('validity_days', 'check(validity_days >= 0)', 'La validité en jours doit être un entier positif.'),
-    ]
+    _code_company_unique = models.Constraint(
+        'UNIQUE(code, company_id)',
+        'Le code du type de carnet doit être unique par société.',
+    )
+    _positive_face_count = models.Constraint(
+        'CHECK(face_count > 0)',
+        'La taille du carnet doit être positive.',
+    )
+    _positive_face_value = models.Constraint(
+        'CHECK(face_value > 0)',
+        'La valeur de face doit être positive.',
+    )
+    _validity_days = models.Constraint(
+        'CHECK(validity_days >= 0)',
+        'La validité en jours doit être un entier positif.',
+    )
 
     @api.depends('face_count', 'face_value')
     def _compute_code(self):

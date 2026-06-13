@@ -14,10 +14,14 @@ class AcpecFuelStation(models.Model):
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     active = fields.Boolean(default=True)
 
-    _sql_constraints = [
-        ('user_unique', 'unique(user_id)', 'Un utilisateur station ne peut être lié qu’à une seule station.'),
-        ('code_company_unique', 'unique(code, company_id)', 'Le code station doit être unique par société.'),
-    ]
+    _user_unique = models.Constraint(
+        'UNIQUE(user_id)',
+        'Un utilisateur station ne peut être lié qu’à une seule station.',
+    )
+    _code_company_unique = models.Constraint(
+        'UNIQUE(code, company_id)',
+        'Le code station doit être unique par société.',
+    )
 
     @api.constrains('user_id', 'company_id')
     def _check_station_user_company(self):

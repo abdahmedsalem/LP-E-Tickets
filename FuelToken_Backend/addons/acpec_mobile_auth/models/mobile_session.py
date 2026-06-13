@@ -40,10 +40,14 @@ class AcpecMobileSession(models.Model):
         ('revoked', 'Revoked'),
     ], default='active', required=True, index=True, tracking=True)
 
-    _sql_constraints = [
-        ('access_token_hash_unique', 'unique(access_token_hash)', 'Access token hash must be unique.'),
-        ('refresh_token_hash_unique', 'unique(refresh_token_hash)', 'Refresh token hash must be unique.'),
-    ]
+    _access_token_hash_unique = models.Constraint(
+        'UNIQUE(access_token_hash)',
+        'Access token hash must be unique.',
+    )
+    _refresh_token_hash_unique = models.Constraint(
+        'UNIQUE(refresh_token_hash)',
+        'Refresh token hash must be unique.',
+    )
 
     @api.model_create_multi
     def create(self, vals_list):

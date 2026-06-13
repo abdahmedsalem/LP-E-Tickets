@@ -34,9 +34,10 @@ class AcpecMobileAuthAccountRequest(models.Model):
     rejection_reason = fields.Text(readonly=True, copy=False)
     note = fields.Text()
 
-    _sql_constraints = [
-        ('acpec_mobile_auth_account_request_name_unique', 'unique(name)', 'The account request reference must be unique.'),
-    ]
+    _acpec_mobile_auth_account_request_name_unique = models.Constraint(
+        'UNIQUE(name)',
+        'The account request reference must be unique.',
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
