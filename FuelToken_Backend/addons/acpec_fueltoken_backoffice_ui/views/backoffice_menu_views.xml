@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Patch 1 — UI back-office légère.
+        Objectif : réorganiser les menus et libellés sans toucher aux modèles métier
+        ni aux contrats API mobile.
+    -->
+
+    <!-- ========================================================= -->
+    <!-- Menus racines FuelToken                                  -->
+    <!-- ========================================================= -->
+
+    <menuitem id="menu_fueltoken_dashboard"
+              name="Tableau de bord"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
+              action="action_today_purchases_to_validate"
+              sequence="5"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <record id="acpec_fueltoken_base.menu_acpec_fueltoken_operations" model="ir.ui.menu">
+        <field name="name">Opérations du jour</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <menuitem id="menu_fueltoken_clients_balances"
+              name="Clients &amp; soldes"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
+              sequence="20"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_fueltoken_company_accounts"
+              name="Comptes Sociétés"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
+              sequence="30"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_fueltoken_stations"
+              name="Stations"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
+              sequence="40"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <record id="acpec_fueltoken_base.menu_acpec_fueltoken_audit" model="ir.ui.menu">
+        <field name="name">Pilotage</field>
+        <field name="sequence">70</field>
+    </record>
+
+    <record id="acpec_fueltoken_base.menu_acpec_fueltoken_config" model="ir.ui.menu">
+        <field name="sequence">90</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Opérations du jour                                       -->
+    <!-- ========================================================= -->
+
+    <menuitem id="menu_today_mobile_account_requests"
+              name="Nouveaux comptes mobiles à valider"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_mobile_account_requests"
+              sequence="5"
+              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
+    <menuitem id="menu_today_purchases_to_validate"
+              name="Achats à valider"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_purchases_to_validate"
+              sequence="10"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_today_station_consumptions"
+              name="Dernières consommations"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_station_consumptions"
+              sequence="20"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_today_carnet_transfers"
+              name="Derniers transferts"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_carnet_transfers"
+              sequence="30"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_today_qr_watch"
+              name="Bons de retrait à surveiller"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_qr_watch"
+              sequence="40"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <!-- Masquer les anciens menus opérationnels techniques remplacés par les menus métier ci-dessus. -->
+    <record id="acpec_fueltoken_purchase.menu_fuel_purchase" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="acpec_fueltoken_core.menu_fuel_carnet_transfer" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Clients & soldes                                         -->
+    <!-- ========================================================= -->
+
+    <record id="acpec_fueltoken_core.menu_fuel_wallet" model="ir.ui.menu">
+        <field name="name">Comptes clients</field>
+        <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.menu_fuel_face_line" model="ir.ui.menu">
+        <field name="name">Crédits disponibles</field>
+        <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.menu_fuel_qr" model="ir.ui.menu">
+        <field name="name">Bons de retrait</field>
+        <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
+        <field name="sequence">30</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.menu_fuel_transaction" model="ir.ui.menu">
+        <field name="name">Historique des mouvements</field>
+        <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
+        <field name="sequence">40</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Comptes Sociétés                                         -->
+    <!-- ========================================================= -->
+
+    <!--
+        Le vrai menu "Comptes Sociétés > Comptes Sociétés" sera ajouté dans le patch
+        acpec_fueltoken_company, quand le modèle acpec.fuel.distributor existera.
+
+        Ici, le back-office ne réalise pas les transferts à la place de la société.
+        Cette entrée sert uniquement à consulter/auditer l'historique des transferts existants.
+        La version filtrée strictement par compte société viendra avec le modèle Compte Société.
+    -->
+
+    <menuitem id="menu_company_transfer_history"
+              name="Historique des transferts de carnets"
+              parent="menu_fueltoken_company_accounts"
+              action="action_today_carnet_transfers"
+              sequence="20"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_company_purchases"
+              name="Achats sociétés"
+              parent="menu_fueltoken_company_accounts"
+              action="action_today_purchases_to_validate"
+              sequence="30"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <!-- ========================================================= -->
+    <!-- Stations                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="acpec_fueltoken_core.menu_fuel_station" model="ir.ui.menu">
+        <field name="name">Stations-service</field>
+        <field name="parent_id" ref="menu_fueltoken_stations"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <menuitem id="menu_station_consumptions"
+              name="Consommations par station"
+              parent="menu_fueltoken_stations"
+              action="acpec_fueltoken_reports.action_report_station_consumptions"
+              sequence="20"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <!-- ========================================================= -->
+    <!-- Pilotage                                                 -->
+    <!-- ========================================================= -->
+
+    <record id="acpec_fueltoken_reports.menu_report_purchases" model="ir.ui.menu">
+        <field name="name">Analyse des achats</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_station_consumptions" model="ir.ui.menu">
+        <field name="name">Analyse des consommations</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <menuitem id="menu_report_distributions"
+              name="Analyse des transferts de carnets"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
+              action="action_today_carnet_transfers"
+              sequence="30"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_report_expirations"
+              name="Expirations à venir"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
+              action="action_today_qr_watch"
+              sequence="40"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <menuitem id="menu_report_qr_all"
+              name="Analyse des bons de retrait"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
+              action="action_report_qr_all"
+              sequence="50"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+
+    <record id="acpec_fueltoken_reports.menu_report_faces_available" model="ir.ui.menu">
+        <field name="name">Analyse des crédits disponibles</field>
+        <field name="sequence">60</field>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_customer_transactions" model="ir.ui.menu">
+        <field name="name">Analyse des mouvements</field>
+        <field name="sequence">70</field>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_qr_active" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_qr_blocked" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_qr_consumed" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_qr_expired" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Configuration                                            -->
+    <!-- ========================================================= -->
+
+    <record id="acpec_fueltoken_catalog.menu_fuel_carnet_type" model="ir.ui.menu">
+        <field name="name">Formules de carnet</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <!-- Intégrer Mobile Auth sous FuelToken au lieu d'une application séparée en anglais. -->
+    <record id="acpec_mobile_auth.menu_mobile_auth_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="acpec_mobile_auth.menu_mobile_auth_operations" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="acpec_mobile_auth.menu_mobile_auth_configuration" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <menuitem id="menu_mobile_account_requests_all"
+              name="Demandes de compte mobile"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_config"
+              action="acpec_mobile_auth.action_acpec_mobile_auth_account_request"
+              sequence="50"
+              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
+    <record id="acpec_mobile_auth.menu_mobile_auth_version_policies" model="ir.ui.menu">
+        <field name="name">Politiques mobile</field>
+        <field name="parent_id" ref="acpec_fueltoken_base.menu_acpec_fueltoken_config"/>
+        <field name="sequence">60</field>
+    </record>
+
+    <record id="acpec_mobile_auth.menu_mobile_auth_sessions" model="ir.ui.menu">
+        <field name="name">Sessions mobile</field>
+        <field name="parent_id" ref="acpec_fueltoken_base.menu_acpec_fueltoken_config"/>
+        <field name="sequence">70</field>
+    </record>
+
+    <record id="acpec_mobile_auth_otp.menu_mobile_auth_otp" model="ir.ui.menu">
+        <field name="name">Vérifications OTP</field>
+        <field name="parent_id" ref="acpec_fueltoken_base.menu_acpec_fueltoken_config"/>
+        <field name="sequence">80</field>
+    </record>
+</odoo>

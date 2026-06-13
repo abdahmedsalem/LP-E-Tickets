@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Francisation légère des boutons Mobile Auth, sans modifier le modèle ni les APIs. -->
+    <record id="view_mobile_account_request_form_french" model="ir.ui.view">
+        <field name="name">acpec.mobile.auth.account.request.form.french</field>
+        <field name="model">acpec.mobile.auth.account.request</field>
+        <field name="inherit_id" ref="acpec_mobile_auth.view_acpec_mobile_auth_account_request_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_approve']" position="attributes">
+                <attribute name="string">Valider</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_reject']" position="attributes">
+                <attribute name="string">Rejeter</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_mobile_session_form_french" model="ir.ui.view">
+        <field name="name">acpec.mobile.session.form.french</field>
+        <field name="model">acpec.mobile.session</field>
+        <field name="inherit_id" ref="acpec_mobile_auth.view_acpec_mobile_session_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_revoke']" position="attributes">
+                <attribute name="string">Révoquer</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Actions back-office FuelToken.
+
+        Doctrine v1 :
+        - les écrans opérationnels/audit ne créent pas d'objets métier manuellement ;
+        - les gestionnaires peuvent continuer à traiter les dossiers via les boutons métier
+          existants : valider, rejeter, bloquer, révoquer, etc. ;
+        - la création reste autorisée dans les modèles de configuration/onboarding
+          comme les formules de carnet, les stations et, plus tard, les Comptes Sociétés.
+
+        Techniquement, on limite seulement la création/suppression depuis les actions.
+        On ne modifie ni les modèles métier, ni les workflows, ni les API mobile.
+    -->
+
+    <!-- ========================================================= -->
+    <!-- Actions opérationnelles filtrées                          -->
+    <!-- ========================================================= -->
+
+    <record id="action_today_mobile_account_requests" model="ir.actions.act_window">
+        <field name="name">Nouveaux comptes mobiles à valider</field>
+        <field name="res_model">acpec.mobile.auth.account.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'pending')]</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="action_today_purchases_to_validate" model="ir.actions.act_window">
+        <field name="name">Achats à valider</field>
+        <field name="res_model">acpec.fuel.purchase</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'submitted')]</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="action_today_station_consumptions" model="ir.actions.act_window">
+        <field name="name">Dernières consommations</field>
+        <field name="res_model">acpec.fuel.transaction</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('transaction_type', '=', 'consommation_station')]</field>
+        <field name="context">{'group_by': 'station_id', 'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="action_today_carnet_transfers" model="ir.actions.act_window">
+        <field name="name">Derniers transferts</field>
+        <field name="res_model">acpec.fuel.carnet.transfer</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'group_by': 'state', 'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="action_today_qr_watch" model="ir.actions.act_window">
+        <field name="name">Bons de retrait à surveiller</field>
+        <field name="res_model">acpec.fuel.qr</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', 'in', ['active', 'blocked'])]</field>
+        <field name="context">{'group_by': 'state', 'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="action_report_qr_all" model="ir.actions.act_window">
+        <field name="name">Analyse des bons de retrait</field>
+        <field name="res_model">acpec.fuel.qr</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'group_by': 'state', 'create': False, 'delete': False}</field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Libellés métier et limitation Create sur actions existantes -->
+    <!-- ========================================================= -->
+
+    <!-- Objets opérationnels : création/suppression manuelle désactivée. -->
+    <record id="acpec_fueltoken_purchase.action_fuel_purchase" model="ir.actions.act_window">
+        <field name="name">Commandes de crédit</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.action_fuel_wallet" model="ir.actions.act_window">
+        <field name="name">Comptes clients</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.action_fuel_face_line" model="ir.actions.act_window">
+        <field name="name">Crédits disponibles</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.action_fuel_qr" model="ir.actions.act_window">
+        <field name="name">Bons de retrait</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.action_fuel_transaction" model="ir.actions.act_window">
+        <field name="name">Historique des mouvements</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.action_fuel_carnet_transfer" model="ir.actions.act_window">
+        <field name="name">Transferts de carnets</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <!-- Configuration/onboarding : création conservée. -->
+    <record id="acpec_fueltoken_core.action_fuel_station" model="ir.actions.act_window">
+        <field name="name">Stations-service</field>
+    </record>
+
+    <record id="acpec_fueltoken_catalog.action_fuel_carnet_type" model="ir.actions.act_window">
+        <field name="name">Formules de carnet</field>
+    </record>
+
+    <!-- Mobile Auth : traitement autorisé par boutons métier, création manuelle désactivée
+         sauf politiques mobile qui restent de la configuration. -->
+    <record id="acpec_mobile_auth.action_acpec_mobile_auth_account_request" model="ir.actions.act_window">
+        <field name="name">Demandes de compte mobile</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_mobile_auth.action_acpec_mobile_session" model="ir.actions.act_window">
+        <field name="name">Sessions mobile</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="acpec_mobile_auth.action_acpec_mobile_app_version_policy" model="ir.actions.act_window">
+        <field name="name">Politiques mobile</field>
+    </record>
+
+    <record id="acpec_mobile_auth_otp.action_acpec_mobile_auth_otp" model="ir.actions.act_window">
+        <field name="name">Vérifications OTP</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+</odoo>

@@ -1,1 +1,12 @@
 *.rar
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs / env
+*.log
+.env
+.venv/
+venv/
