@@ -9,5 +9,5 @@ class ResUsers(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
-    ], string='Mobile State', default='pending', tracking=True)
+    ], string='Mobile State', default='pending',)
     mobile_pin_set_at = fields.Datetime(string='Mobile PIN Set At', readonly=True)
