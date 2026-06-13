@@ -59,13 +59,6 @@ class AcpecFuelCarnetTransfer(models.Model):
         "Cette operation de transfert a deja ete enregistree pour ce compte source.",
     )
 
-    _legacy_sql_constraints_disabled = [
-        (
-            'idempotency_unique',
-            'unique(idempotency_key)',
-            "Cette opération de transfert a déjà été enregistrée (clé idempotence dupliquée).",
-        ),
-    ]
 
     def init(self):
         self.env.cr.execute(
