@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fuel_distributor_manager,acpec.fuel.distributor manager,model_acpec_fuel_distributor,acpec_fueltoken_base.group_fuel_manager,1,1,1,0
+access_fuel_distributor_admin,acpec.fuel.distributor admin,model_acpec_fuel_distributor,acpec_fueltoken_base.group_fuel_admin,1,1,1,0

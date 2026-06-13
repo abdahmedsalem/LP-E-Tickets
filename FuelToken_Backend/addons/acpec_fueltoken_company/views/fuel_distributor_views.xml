@@ -1,0 +1,119 @@
+<odoo>
+    <record id="view_fuel_distributor_list" model="ir.ui.view">
+        <field name="name">acpec.fuel.distributor.list</field>
+        <field name="model">acpec.fuel.distributor</field>
+        <field name="arch" type="xml">
+            <list delete="0" duplicate="0">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="partner_id"/>
+                <field name="member_count"/>
+                <field name="contact_phone"/>
+                <field name="contact_email"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fuel_distributor_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.distributor.form</field>
+        <field name="model">acpec.fuel.distributor</field>
+        <field name="arch" type="xml">
+            <form delete="0" duplicate="0">
+                <header>
+                    <button name="action_activate"
+                            type="object"
+                            string="Activer"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_suspend"
+                            type="object"
+                            string="Suspendre"
+                            invisible="state != 'active'"/>
+                    <button name="action_close"
+                            type="object"
+                            string="Clôturer"
+                            invisible="state not in ('active', 'suspended')"/>
+                    <button name="action_reset_to_draft"
+                            type="object"
+                            string="Remettre en brouillon"
+                            invisible="state != 'closed'"/>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,active,suspended,closed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Compte Société">
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="partner_id"
+                                   context="{'default_is_company': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Contact">
+                            <field name="contact_name"/>
+                            <field name="contact_phone"/>
+                            <field name="contact_email"/>
+                            <field name="member_count" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Membres">
+                            <field name="member_partner_ids"
+                                   widget="many2many_tags"
+                                   domain="[('is_company', '=', False)]"
+                                   context="{'default_is_company': False}"/>
+                        </page>
+                        <page string="Notes internes">
+                            <field name="notes" placeholder="Notes back-office ACPEC..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_fuel_distributor_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.distributor.search</field>
+        <field name="model">acpec.fuel.distributor</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="partner_id"/>
+                <field name="member_partner_ids"/>
+                <field name="contact_phone"/>
+                <filter name="active_accounts" string="Actifs" domain="[('state', '=', 'active')]"/>
+                <filter name="draft_accounts" string="Brouillons" domain="[('state', '=', 'draft')]"/>
+                <filter name="suspended_accounts" string="Suspendus" domain="[('state', '=', 'suspended')]"/>
+                <filter name="closed_accounts" string="Clôturés" domain="[('state', '=', 'closed')]"/>
+                <separator/>
+                <filter name="archived" string="Archivés" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_fuel_distributor" model="ir.actions.act_window">
+        <field name="name">Comptes Sociétés</field>
+        <field name="res_model">acpec.fuel.distributor</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_fuel_distributor_search"/>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_fuel_distributor"
+              name="Comptes Sociétés"
+              parent="acpec_fueltoken_backoffice_ui.menu_fueltoken_company_accounts"
+              action="action_fuel_distributor"
+              sequence="10"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+</odoo>
