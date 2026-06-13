@@ -8,6 +8,7 @@
                 <field name="code"/>
                 <field name="partner_id"/>
                 <field name="member_count"/>
+                <field name="has_portal_user"/>
                 <field name="contact_phone"/>
                 <field name="contact_email"/>
                 <field name="state"/>
@@ -40,6 +41,10 @@
                             type="object"
                             string="Remettre en brouillon"
                             invisible="state != 'closed'"/>
+                    <button name="action_prepare_member_wallets"
+                            type="object"
+                            string="Préparer wallets membres"
+                            invisible="state != 'active'"/>
                     <field name="state"
                            widget="statusbar"
                            statusbar_visible="draft,active,suspended,closed"/>
@@ -51,7 +56,14 @@
                             <field name="code"/>
                             <field name="partner_id"
                                    context="{'default_is_company': True}"/>
+                            <field name="has_portal_user" readonly="1"/>
+                            <field name="portal_user_count" readonly="1"/>
+                            <field name="portal_user_ids" widget="many2many_tags" readonly="1"/>
+                            <field name="blocked_user_count" readonly="1"/>
+                            <field name="blocked_user_ids" widget="many2many_tags" readonly="1" invisible="blocked_user_count == 0"/>
                             <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="wallet_id" readonly="1"/>
+                            <field name="has_wallet" readonly="1"/>
                             <field name="active"/>
                         </group>
                         <group string="Contact">
@@ -59,6 +71,9 @@
                             <field name="contact_phone"/>
                             <field name="contact_email"/>
                             <field name="member_count" readonly="1"/>
+                            <field name="member_wallet_count" readonly="1"/>
+                            <field name="member_mobile_ready_count" readonly="1"/>
+                            <field name="member_mobile_missing_count" readonly="1"/>
                         </group>
                     </group>
                     <notebook>

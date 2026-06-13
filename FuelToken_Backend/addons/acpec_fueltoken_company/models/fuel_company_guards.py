@@ -6,6 +6,26 @@ class AcpecFuelCompanyGuardMixin(models.AbstractModel):
     _name = 'acpec.fuel.company.guard.mixin'
     _description = 'FuelToken Company Guard Mixin'
 
+    def _user_has_group_id(self, user, group_id):
+        """Return True if the given user belongs to group_id.
+
+        Odoo 19 in this environment does not expose groups_id as a searchable
+        ORM field on res.users. Use the standard relation table instead.
+        """
+        if not user or not group_id:
+            return False
+        self.env.cr.execute(
+            """
+            SELECT 1
+              FROM res_groups_users_rel
+             WHERE uid = %s
+               AND gid = %s
+             LIMIT 1
+            """,
+            (user.id, group_id),
+        )
+        return bool(self.env.cr.fetchone())
+
     def _get_distributor_for_partner(self, partner, company, include_inactive=True):
         if not partner or not company:
             return self.env['acpec.fuel.distributor'].browse()
@@ -32,6 +52,27 @@ class AcpecFuelCompanyGuardMixin(models.AbstractModel):
             raise ValidationError(message or _(
                 'Cette opération est interdite sur un Compte Société.'
             ))
+
+    def _get_active_mobile_user_for_partner(self, partner, company):
+        if not partner or not company:
+            return self.env['res.users']
+
+        fuel_user_group = self.env.ref(
+            'acpec_fueltoken_base.group_fuel_user',
+            raise_if_not_found=False,
+        )
+        if not fuel_user_group:
+            return self.env['res.users']
+
+        users = self.env['res.users'].sudo().search([
+            ('partner_id', '=', partner.id),
+            ('active', '=', True),
+            ('company_ids', 'in', [company.id]),
+        ])
+        return users.filtered(
+            lambda user: self._user_has_group_id(user, fuel_user_group.id)
+            and getattr(user, 'mobile_state', False) == 'approved'
+        )[:1]
 
 
 class AcpecFuelQrCompanyGuard(models.Model):
@@ -69,8 +110,7 @@ class AcpecFuelQrCompanyGuard(models.Model):
 class AcpecFuelCarnetTransferCompanyGuard(models.Model):
     _inherit = 'acpec.fuel.carnet.transfer'
 
-    @api.constrains('source_wallet_id', 'dest_wallet_id', 'company_id')
-    def _check_company_distribution_rules(self):
+    def _check_company_distribution_rules_records(self):
         Guard = self.env['acpec.fuel.company.guard.mixin']
 
         for rec in self:
@@ -104,6 +144,20 @@ class AcpecFuelCarnetTransferCompanyGuard(models.Model):
                 raise ValidationError(_(
                     'Le destinataire du transfert doit être un membre du Compte Société source.'
                 ))
+
+            if not Guard._get_active_mobile_user_for_partner(rec.dest_partner_id, rec.company_id):
+                raise ValidationError(_(
+                    'Le membre destinataire doit avoir un compte mobile FuelToken actif et approuvé '
+                    'avant de recevoir une distribution société.'
+                ))
+
+    @api.constrains('source_wallet_id', 'dest_wallet_id', 'company_id')
+    def _check_company_distribution_rules(self):
+        self._check_company_distribution_rules_records()
+
+    def action_confirm(self):
+        self._check_company_distribution_rules_records()
+        return super().action_confirm()
 
 
 class AcpecFuelPurchaseCompanyGuard(models.Model):

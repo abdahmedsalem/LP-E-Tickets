@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Company Accounts',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.3.1',
     'category': 'ACPEC/FuelToken',
     'summary': 'Comptes Sociétés FuelToken pour le back-office ACPEC',
     'author': 'ACPEC SARL',
@@ -8,7 +8,11 @@
     'license': 'OPL-1',
     'depends': [
         'mail',
+        'portal',
+        'acpec_mobile_auth',
         'acpec_fueltoken_base',
+        'acpec_fueltoken_core',
+        'acpec_fueltoken_purchase',
         'acpec_fueltoken_backoffice_ui',
     ],
     'data': [
