@@ -201,7 +201,10 @@
                         </div>
 
                         <div class="card mb-4" t-if="distributor">
-                            <div class="card-header">Membres</div>
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Membres</span>
+                                <a href="/my/fueltoken/members" class="btn btn-sm btn-link">Gérer</a>
+                            </div>
                             <div class="list-group list-group-flush">
                                 <div class="list-group-item d-flex justify-content-between align-items-start" t-foreach="member_rows" t-as="row">
                                     <div>
@@ -412,6 +415,101 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_members" name="Tickets Carburant Société - Membres">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+                    <div>
+                        <h2 class="mb-1">Membres autorisés</h2>
+                        <div class="text-muted">
+                            <span t-esc="distributor.display_name"/>
+                        </div>
+                    </div>
+                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
+                </div>
+
+                <div class="alert alert-info" role="alert">
+                    Ajoutez uniquement des membres dont vous connaissez le numéro exact. La recherche ne propose aucune liste publique : le membre doit déjà avoir un compte mobile Tickets Carburant actif et approuvé.
+                </div>
+                <div t-if="success" class="alert alert-success" role="alert" t-esc="success"/>
+                <div t-if="error" class="alert alert-danger" role="alert" t-esc="error"/>
+
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <form action="/my/fueltoken/members/add" method="post" class="card">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <div class="card-header">Ajouter un membre par téléphone</div>
+                            <div class="card-body">
+                                <label class="form-label" for="member_phone">Téléphone mobile du membre</label>
+                                <input id="member_phone"
+                                       name="phone"
+                                       type="tel"
+                                       autocomplete="off"
+                                       class="form-control"
+                                       t-att-value="phone"
+                                       placeholder="Ex. 46000099"
+                                       required="required"/>
+                                <div class="form-text">
+                                    Recherche exacte uniquement. Le nom du membre est affiché seulement si ce numéro correspond à un compte mobile prêt.
+                                </div>
+                            </div>
+                            <div class="card-footer text-end">
+                                <button type="submit" class="btn btn-primary">Ajouter le membre</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Liste des membres</span>
+                                <span class="badge text-bg-secondary" t-esc="member_count"/>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Membre</th>
+                                            <th>Téléphone</th>
+                                            <th>État mobile</th>
+                                            <th class="text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="member_rows" t-as="row">
+                                            <td>
+                                                <div class="fw-semibold" t-esc="row['name']"/>
+                                                <div class="text-muted small" t-if="row['email']" t-esc="row['email']"/>
+                                            </td>
+                                            <td><span t-esc="row['phone'] or row['mobile_login'] or '—'"/></td>
+                                            <td>
+                                                <span t-if="row['mobile_ready']" class="badge text-bg-success">Mobile actif</span>
+                                                <span t-else="" class="badge text-bg-secondary">Non prêt</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <form action="/my/fueltoken/members/remove" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                    <input type="hidden" name="member_id" t-att-value="row['partner'].id"/>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            onclick="return confirm('Retirer ce membre du compte société ?');">
+                                                        Retirer
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="not member_rows">
+                                            <td colspan="4" class="text-muted text-center py-4">Aucun membre rattaché.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </t>
     </template>

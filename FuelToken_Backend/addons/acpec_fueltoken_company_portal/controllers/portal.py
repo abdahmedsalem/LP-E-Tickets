@@ -17,6 +17,8 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
       purchase request for its commercial partner;
     - distribution/member/wallet functions require an active
       acpec.fuel.distributor linked to the same commercial partner;
+    - member management is limited to exact phone lookup of already approved
+      mobile users; no autocomplete or partial search is exposed;
     - portal access is model-backed through read ACLs and record rules, like
       standard Odoo portal documents;
     - write operations are intentionally narrow controller actions that always
@@ -121,6 +123,112 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             ('source_wallet_id', '=', wallet.id),
         ], order='id desc', limit=limit)
 
+    def _normalize_phone_digits(self, value):
+        return ''.join(ch for ch in (value or '') if ch.isdigit())
+
+    def _phone_variants(self, phone):
+        raw = (phone or '').strip()
+        digits = self._normalize_phone_digits(raw)
+        variants = {raw} if raw else set()
+        if digits:
+            variants.add(digits)
+            variants.add('+' + digits)
+            if len(digits) == 8:
+                variants.add('222' + digits)
+                variants.add('+222' + digits)
+            if digits.startswith('222') and len(digits) > 3:
+                variants.add(digits[3:])
+                variants.add('+222' + digits[3:])
+        return [variant for variant in variants if variant]
+
+    def _user_has_group_id(self, user, group):
+        if not user or not group:
+            return False
+        request.env.cr.execute(
+            """
+            SELECT 1
+              FROM res_groups_users_rel
+             WHERE uid = %s
+               AND gid = %s
+             LIMIT 1
+            """,
+            (user.id, group.id),
+        )
+        return bool(request.env.cr.fetchone())
+
+    def _find_mobile_member_by_phone(self, distributor, phone):
+        """Return an approved mobile user matching an exact phone.
+
+        This is intentionally not an autocomplete and not a partial search.  The
+        company portal user must know the member phone number.  This avoids
+        turning the portal into a public directory of mobile users.
+        """
+        self._get_portal_context(require_distributor=True)
+        variants = self._phone_variants(phone)
+        if not variants:
+            raise ValidationError(_('Saisissez un numéro de téléphone.'))
+
+        fuel_user_group = request.env.ref('acpec_fueltoken_base.group_fuel_user', raise_if_not_found=False)
+        if not fuel_user_group:
+            raise ValidationError(_('Configuration mobile Tickets Carburant incomplète.'))
+
+        Users = request.env['res.users'].sudo().with_context(active_test=False)
+        candidates = Users.search([
+            '|',
+            ('mobile_phone', 'in', variants),
+            ('login', 'in', variants),
+        ], limit=20)
+        target_digits = self._normalize_phone_digits(phone)
+        for user in candidates:
+            user_digits = self._normalize_phone_digits(user.mobile_phone or user.login)
+            if user_digits != target_digits and not (user_digits.endswith(target_digits) or target_digits.endswith(user_digits)):
+                continue
+            if not user.active or getattr(user, 'mobile_state', False) != 'approved':
+                continue
+            if not self._user_has_group_id(user, fuel_user_group):
+                continue
+            if distributor.company_id and distributor.company_id.id not in user.company_ids.ids:
+                continue
+            partner = user.partner_id.sudo()
+            if not partner or partner.is_company or partner == distributor.partner_id:
+                continue
+            return user
+
+        raise ValidationError(_(
+            'Aucun utilisateur mobile prêt trouvé pour ce numéro. Vérifiez que le membre a finalisé son inscription mobile.'
+        ))
+
+    def _build_member_rows(self, distributor):
+        rows = []
+        if not distributor:
+            return rows
+        for member in distributor.member_partner_ids.sudo().sorted(lambda p: (p.name or '', p.id)):
+            mobile_user = distributor._get_active_mobile_user_for_member(member)
+            rows.append({
+                'partner': member,
+                'name': member.display_name,
+                'phone': member.phone or '',
+                'email': member.email or '',
+                'mobile_ready': bool(mobile_user),
+                'mobile_login': mobile_user.login if mobile_user else '',
+            })
+        return rows
+
+    def _build_members_page_values(self, context, error=None, success=None, phone=''):
+        distributor = context['distributor']
+        return {
+            'page_name': 'fueltoken_company_members',
+            'distributor': distributor,
+            'commercial_partner': context['commercial_partner'],
+            'portal_company': context['company'],
+            'portal_company_name': context['portal_company_name'],
+            'member_rows': self._build_member_rows(distributor),
+            'member_count': len(distributor.member_partner_ids) if distributor else 0,
+            'error': error,
+            'success': success,
+            'phone': phone or '',
+        }
+
     def _build_dashboard_values(self, context):
         distributor = context['distributor']
         commercial_partner = context['commercial_partner']
@@ -130,16 +238,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         purchases = self._get_purchases(commercial_partner, company, limit=10)
         distributions = self._get_distributions(wallet, limit=10)
 
-        member_rows = []
-        if distributor:
-            for member in distributor.member_partner_ids.sudo():
-                mobile_ready = bool(distributor._get_active_mobile_user_for_member(member))
-                member_rows.append({
-                    'name': member.display_name,
-                    'phone': member.phone or '',
-                    'email': member.email or '',
-                    'mobile_ready': mobile_ready,
-                })
+        member_rows = self._build_member_rows(distributor) if distributor else []
 
         ticket_rows = []
         for line in ticket_lines:
@@ -236,6 +335,58 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         context = self._get_portal_context(require_distributor=False)
         values = self._build_dashboard_values(context)
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_dashboard', values)
+
+    @http.route(['/my/fueltoken/members'], type='http', auth='user', website=True)
+    def portal_fueltoken_company_members(self, added=False, removed=False, **kwargs):
+        context = self._get_portal_context(require_distributor=True)
+        success = False
+        if added:
+            success = _('Membre ajouté au compte société.')
+        elif removed:
+            success = _('Membre retiré du compte société.')
+        return self._portal_render(
+            'acpec_fueltoken_company_portal.portal_fueltoken_company_members',
+            self._build_members_page_values(context, success=success)
+        )
+
+    @http.route(['/my/fueltoken/members/add'], type='http', auth='user', website=True, methods=['POST'])
+    def portal_fueltoken_company_member_add(self, **post):
+        context = self._get_portal_context(require_distributor=True)
+        distributor = context['distributor']
+        phone = (post.get('phone') or '').strip()
+        try:
+            mobile_user = self._find_mobile_member_by_phone(distributor, phone)
+            member = mobile_user.partner_id.sudo()
+            if member in distributor.member_partner_ids.sudo():
+                raise ValidationError(_('Ce membre est déjà rattaché au compte société.'))
+            distributor.sudo().write({'member_partner_ids': [(4, member.id)]})
+            distributor.sudo().message_post(body=_(
+                'Membre ajouté depuis le portail: %(member)s (%(phone)s).'
+            ) % {
+                'member': member.display_name,
+                'phone': mobile_user.mobile_phone or mobile_user.login,
+            })
+        except (ValidationError, UserError) as exc:
+            values = self._build_members_page_values(context, error=exc.args[0], phone=phone)
+            return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_members', values)
+        return request.redirect('/my/fueltoken/members?added=1')
+
+    @http.route(['/my/fueltoken/members/remove'], type='http', auth='user', website=True, methods=['POST'])
+    def portal_fueltoken_company_member_remove(self, **post):
+        context = self._get_portal_context(require_distributor=True)
+        distributor = context['distributor']
+        try:
+            member_id = int(post.get('member_id') or 0)
+        except (TypeError, ValueError):
+            member_id = 0
+        member = request.env['res.partner'].sudo().browse(member_id).exists()
+        if not member or member not in distributor.member_partner_ids.sudo():
+            raise NotFound()
+        distributor.sudo().write({'member_partner_ids': [(3, member.id)]})
+        distributor.sudo().message_post(body=_(
+            'Membre retiré depuis le portail: %s.'
+        ) % member.display_name)
+        return request.redirect('/my/fueltoken/members?removed=1')
 
     @http.route(['/my/fueltoken/purchases'], type='http', auth='user', website=True)
     def portal_fueltoken_company_purchases(self, **kwargs):
