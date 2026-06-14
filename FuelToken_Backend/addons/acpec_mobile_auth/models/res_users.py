@@ -1,4 +1,5 @@
-from odoo import fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ResUsers(models.Model):
@@ -11,3 +12,67 @@ class ResUsers(models.Model):
         ('rejected', 'Rejected'),
     ], string='Mobile State', default='pending',)
     mobile_pin_set_at = fields.Datetime(string='Mobile PIN Set At', readonly=True)
+
+    def _acpec_group(self, xmlid):
+        return self.env.ref(xmlid, raise_if_not_found=False)
+
+    def _acpec_group_ids(self, xmlids):
+        return [group.id for group in (self._acpec_group(xmlid) for xmlid in xmlids) if group]
+
+    def _acpec_users_with_group_ids(self, group_ids):
+        if not self or not group_ids:
+            return self.env['res.users']
+        self.env.cr.execute(
+            """
+            SELECT uid
+              FROM res_groups_users_rel
+             WHERE uid = ANY(%s)
+               AND gid = ANY(%s)
+            """,
+            (list(self.ids), list(group_ids)),
+        )
+        user_ids = [row[0] for row in self.env.cr.fetchall()]
+        return self.browse(user_ids)
+
+    def _acpec_mobile_identity_group_xmlids(self):
+        return (
+            'acpec_mobile_auth.group_mobile_auth_user',
+            'acpec_fueltoken_base.group_fuel_user',
+            'acpec_fueltoken_base.group_fuel_station',
+            'acpec_fueltoken_base.group_fuel_manager',
+            # group_fuel_admin is currently still present in some mobile/profile
+            # checks. Patch 2 will separate it as a pure back-office group, but
+            # it must already be protected from portal mixing.
+            'acpec_fueltoken_base.group_fuel_admin',
+        )
+
+    def _check_acpec_mobile_not_portal(self):
+        portal_group = self._acpec_group('base.group_portal')
+        if not portal_group:
+            return
+
+        mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
+        portal_users = self._acpec_users_with_group_ids([portal_group.id])
+        if not portal_users:
+            return
+
+        mobile_group_users = portal_users._acpec_users_with_group_ids(mobile_group_ids)
+        mobile_phone_users = portal_users.filtered(lambda user: bool(user.mobile_phone))
+        invalid_users = mobile_group_users | mobile_phone_users
+        if invalid_users:
+            names = ', '.join(invalid_users.mapped('display_name')[:5])
+            raise ValidationError(_(
+                "Un utilisateur mobile FuelToken ne peut pas recevoir l'accès portail Odoo. "
+                "Utilisateurs concernés: %s"
+            ) % names)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        users = super().create(vals_list)
+        users._check_acpec_mobile_not_portal()
+        return users
+
+    def write(self, vals):
+        result = super().write(vals)
+        self._check_acpec_mobile_not_portal()
+        return result

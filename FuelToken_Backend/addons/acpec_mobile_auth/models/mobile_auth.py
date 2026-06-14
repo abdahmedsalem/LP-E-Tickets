@@ -80,13 +80,25 @@ class AcpecMobileAuthAccountRequest(models.Model):
             if duplicate_user:
                 raise ValidationError(_('A mobile account already exists for this identifier.'))
 
+    def _mobile_user_group_ids(self):
+        """Return groups for approved mobile-only FuelToken accounts.
+
+        Mobile accounts must never receive Odoo portal/public website groups.
+        They authenticate through the OTP/mobile-session flow and use only
+        FuelToken mobile application groups.
+        """
+        group_ids = []
+        for xmlid in (
+            'acpec_mobile_auth.group_mobile_auth_user',
+            'acpec_fueltoken_base.group_fuel_user',
+        ):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                group_ids.append(group.id)
+        return group_ids
+
     def action_approve(self):
-        portal_group = self.env.ref('base.group_portal')
-        fuel_user_group = self.env.ref(
-            'acpec_fueltoken_base.group_fuel_user', raise_if_not_found=False)
-        group_ids = [portal_group.id]
-        if fuel_user_group:
-            group_ids.append(fuel_user_group.id)
+        group_ids = self._mobile_user_group_ids()
         now = fields.Datetime.now()
         for record in self:
             if record.state != 'pending':
@@ -96,8 +108,10 @@ class AcpecMobileAuthAccountRequest(models.Model):
             vals = {
                 'active': True,
                 'mobile_state': 'approved',
-                'group_ids': [(6, 0, group_ids)],
             }
+            if group_ids:
+                vals['group_ids'] = [(6, 0, group_ids)]
+                vals['groups_id'] = [(6, 0, group_ids)]
             if record.phone and not record.user_id.mobile_phone:
                 vals['mobile_phone'] = record.phone
             if record.email and not record.user_id.email:

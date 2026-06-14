@@ -181,12 +181,21 @@ class AcpecMobileAuthApiCommon(http.Controller):
         }
 
     def _mobile_signup_group_ids(self):
-        group_ids = [request.env.ref('base.group_portal').id]
-        fuel_user_group = request.env.ref(
-            'acpec_fueltoken_base.group_fuel_user', raise_if_not_found=False
-        )
-        if fuel_user_group:
-            group_ids.append(fuel_user_group.id)
+        """Return the groups assigned to accounts created by the mobile OTP flow.
+
+        Mobile FuelToken users are mobile-only identities. They must not
+        receive Odoo's portal or public website groups; their access is driven
+        only by the mobile authentication/session layer and FuelToken mobile
+        application groups.
+        """
+        group_ids = []
+        for xmlid in (
+            'acpec_mobile_auth.group_mobile_auth_user',
+            'acpec_fueltoken_base.group_fuel_user',
+        ):
+            group = request.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                group_ids.append(group.id)
         return group_ids
 
     def _create_mobile_signup_account(self, *, name, signup_identifier, secret_code, company, email=False, note=False):
@@ -217,9 +226,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         partner = request.env['res.partner'].sudo().create(partner_vals)
 
-        portal_group = request.env.ref('base.group_portal', raise_if_not_found=False)
-        fuel_user_group = request.env.ref('acpec_fueltoken_base.group_fuel_user', raise_if_not_found=False)
-        group_ids = [group.id for group in (portal_group, fuel_user_group) if group]
+        mobile_group_ids = self._mobile_signup_group_ids()
 
         now = fields.Datetime.now()
         user_vals = {
@@ -232,10 +239,10 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'mobile_state': 'approved',
             'mobile_pin_set_at': now,
             'password': secret_code,
-            'group_ids': [(6, 0, self._mobile_signup_group_ids())],
         }
-        if group_ids:
-            user_vals['groups_id'] = [(6, 0, group_ids)]
+        if mobile_group_ids:
+            user_vals['group_ids'] = [(6, 0, mobile_group_ids)]
+            user_vals['groups_id'] = [(6, 0, mobile_group_ids)]
         if identifier_vals['phone']:
             user_vals['mobile_phone'] = identifier_vals['phone']
         if email_value:
