@@ -1,12 +1,24 @@
 <odoo>
+    <template id="portal_my_home_fueltoken" name="FuelToken - Home Portal Entry" inherit_id="portal.portal_my_home" priority="40">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-if="fueltoken_portal_enabled" t-call="portal.portal_docs_entry">
+                <t t-set="title">FuelToken</t>
+                <t t-set="url" t-value="'/my/fueltoken'"/>
+                <t t-set="text">Acheter et suivre vos carnets FuelToken</t>
+                <t t-set="placeholder_count" t-value="'fueltoken_purchase_count'"/>
+            </t>
+        </xpath>
+    </template>
+
     <template id="portal_fueltoken_company_dashboard" name="FuelToken Société - Portail">
         <t t-call="portal.portal_layout">
             <div class="container my-4 o_acpec_fueltoken_company_portal">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
                     <div>
-                        <h2 class="mb-1">FuelToken Société</h2>
+                        <h2 class="mb-1">FuelToken</h2>
                         <p class="text-muted mb-0">
-                            <span t-esc="distributor.display_name"/>
+                            <span t-if="distributor" t-esc="distributor.display_name"/>
+                            <span t-else="" t-esc="commercial_partner.display_name"/>
                         </p>
                     </div>
                     <div class="d-flex gap-2">
@@ -15,8 +27,13 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info" role="alert">
-                    Les demandes d’achat créées depuis le portail sont soumises à validation ACPEC avant crédit du wallet société.
+                <div t-if="distributor" class="alert alert-info" role="alert">
+                    Les demandes d’achat créées depuis le portail sont soumises à validation par
+                    <span t-esc="portal_company_name"/> avant crédit du wallet société.
+                </div>
+                <div t-else="" class="alert alert-warning" role="alert">
+                    Vous pouvez soumettre une demande d’achat FuelToken. La gestion des membres et la distribution de carnets seront disponibles après activation du compte société par
+                    <span t-esc="portal_company_name"/>.
                 </div>
 
                 <div class="row g-3 mb-4">
@@ -42,7 +59,7 @@
                                 <div class="text-muted small">Montant disponible</div>
                                 <div class="fs-4 fw-bold">
                                     <span t-esc="total_amount_available"/>
-                                    <span t-esc="distributor.company_id.currency_id.name"/>
+                                    <span t-esc="portal_company.currency_id.name"/>
                                 </div>
                             </div>
                         </div>
@@ -59,9 +76,9 @@
 
                 <div class="row g-4">
                     <div class="col-lg-7">
-                        <div class="card mb-4">
+                        <div class="card mb-4" t-if="distributor">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Carnets / tickets disponibles</span>
+                                <span>Carnets disponibles</span>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle mb-0">
@@ -133,7 +150,7 @@
                     </div>
 
                     <div class="col-lg-5">
-                        <div class="card mb-4">
+                        <div class="card mb-4" t-if="distributor">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <span>Dernières distributions</span>
                                 <a href="/my/fueltoken/distributions" class="btn btn-sm btn-link">Tout voir</a>
@@ -166,7 +183,7 @@
                             </div>
                         </div>
 
-                        <div class="card mb-4">
+                        <div class="card mb-4" t-if="distributor">
                             <div class="card-header">Membres</div>
                             <div class="list-group list-group-flush">
                                 <div class="list-group-item d-flex justify-content-between align-items-start" t-foreach="member_rows" t-as="row">
@@ -185,6 +202,13 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="card mb-4" t-if="not distributor">
+                            <div class="card-header">Compte société FuelToken</div>
+                            <div class="card-body text-muted">
+                                Aucun compte société FuelToken actif n’est encore rattaché à ce portail. Les demandes d’achat restent possibles ; la distribution à des membres sera ouverte après activation.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -195,7 +219,7 @@
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Demandes d’achat société</h2>
+                    <h2>Demandes d’achat FuelToken</h2>
                     <div class="d-flex gap-2">
                         <a href="/my/fueltoken/purchases/new" class="btn btn-primary">Nouvelle demande</a>
                         <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
@@ -224,7 +248,7 @@
                                 <td class="text-end"><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></td>
                             </tr>
                             <tr t-if="not purchases">
-                                <td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat société.</td>
+                                <td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat FuelToken.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -244,7 +268,7 @@
                     <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Retour achats</a>
                 </div>
                 <div t-if="created" class="alert alert-success" role="alert">
-                    Votre demande d’achat a été soumise. Elle sera traitée par ACPEC.
+                    Votre demande d’achat a été soumise. Elle sera traitée par <span t-esc="portal_company_name"/>.
                 </div>
                 <div class="card mb-4">
                     <div class="card-body row g-3">
@@ -282,8 +306,8 @@
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h2 class="mb-1">Nouvelle demande d’achat société</h2>
-                        <div class="text-muted" t-esc="distributor.display_name"/>
+                        <h2 class="mb-1">Nouvelle demande d’achat FuelToken</h2>
+                        <div class="text-muted" t-esc="commercial_partner.display_name"/>
                     </div>
                     <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Retour achats</a>
                 </div>
@@ -298,7 +322,8 @@
 
                     <div class="card-body">
                         <div class="alert alert-info" role="alert">
-                            Saisissez le nombre de carnets souhaité par type. La demande sera soumise à validation ACPEC.
+                            Saisissez le nombre de carnets souhaité par type. La demande sera soumise à validation par
+                            <span t-esc="portal_company_name"/>.
                         </div>
 
                         <div class="table-responsive mb-4">

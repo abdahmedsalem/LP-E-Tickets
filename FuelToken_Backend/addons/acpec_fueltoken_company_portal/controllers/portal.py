@@ -13,12 +13,14 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
     """Portal surface for FuelToken company accounts.
 
     Access doctrine:
-    - a normal Odoo portal user can access FuelToken company pages only when
-      its commercial partner is linked to an active acpec.fuel.distributor;
+    - a classic Odoo portal user may see FuelToken and submit a company
+      purchase request for its commercial partner;
+    - distribution/member/wallet functions require an active
+      acpec.fuel.distributor linked to the same commercial partner;
     - portal access is model-backed through read ACLs and record rules, like
       standard Odoo portal documents;
     - write operations are intentionally narrow controller actions that always
-      start from the active distributor found for the current portal user.
+      start from the current portal user context.
     """
 
     def _user_has_group(self, user, xmlid):
@@ -32,16 +34,20 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         qcontext.update(values or {})
         return request.render(template, qcontext)
 
+    def _get_portal_company(self):
+        website = getattr(request, 'website', False)
+        return (website and website.company_id) or request.env.company
+
     def _get_portal_commercial_partner(self, user):
         partner = user.sudo().partner_id
         return partner.commercial_partner_id or partner
 
-    def _get_portal_distributor(self):
+    def _get_portal_context(self, require_distributor=False):
         user = request.env.user
         if not user or user._is_public():
             raise NotFound()
 
-        # A FuelToken company user is a classic Odoo portal user, not an
+        # A FuelToken company portal user is a classic Odoo portal user, not an
         # internal back-office user and not a mobile FuelToken user.
         if self._user_has_group(user, 'base.group_user'):
             raise NotFound()
@@ -58,15 +64,46 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         if any(self._user_has_group(user, xmlid) for xmlid in forbidden_group_xmlids):
             raise NotFound()
 
-        commercial_partner = self._get_portal_commercial_partner(user)
+        commercial_partner = self._get_portal_commercial_partner(user).sudo()
+        company = self._get_portal_company().sudo()
         distributor = request.env['acpec.fuel.distributor'].sudo().search([
             ('partner_id', '=', commercial_partner.id),
             ('active', '=', True),
             ('state', '=', 'active'),
         ], limit=1)
-        if not distributor:
+        if require_distributor and not distributor:
             raise NotFound()
-        return distributor.sudo()
+        return {
+            'user': user,
+            'commercial_partner': commercial_partner,
+            'company': company,
+            'distributor': distributor.sudo() if distributor else False,
+            'portal_company_name': company.name,
+        }
+
+    def _get_portal_distributor(self):
+        return self._get_portal_context(require_distributor=True)['distributor']
+
+    def _prepare_home_portal_values(self, counters=None):
+        values = super()._prepare_home_portal_values(counters or [])
+        try:
+            context = self._get_portal_context(require_distributor=False)
+        except NotFound:
+            values.update({
+                'fueltoken_portal_enabled': False,
+                'fueltoken_purchase_count': 0,
+            })
+            return values
+
+        purchase_count = request.env['acpec.fuel.purchase'].sudo().search_count([
+            ('partner_id', '=', context['commercial_partner'].id),
+            ('company_id', '=', context['company'].id),
+        ])
+        values.update({
+            'fueltoken_portal_enabled': True,
+            'fueltoken_purchase_count': purchase_count,
+        })
+        return values
 
     def _get_company_wallet(self, distributor):
         wallet = distributor._get_company_wallet(create=False)
@@ -80,16 +117,16 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             ('qty_available', '>', 0),
         ], order='expires_at NULLS LAST, id')
 
-    def _get_available_carnet_types(self, distributor):
+    def _get_available_carnet_types(self, company):
         return request.env['acpec.fuel.carnet.type'].sudo().search([
             ('active', '=', True),
-            ('company_id', '=', distributor.company_id.id),
+            ('company_id', '=', company.id),
         ], order='face_value, face_count, code, id')
 
-    def _get_purchases(self, distributor, limit=None):
+    def _get_purchases(self, partner, company, limit=None):
         return request.env['acpec.fuel.purchase'].sudo().search([
-            ('partner_id', '=', distributor.partner_id.id),
-            ('company_id', '=', distributor.company_id.id),
+            ('partner_id', '=', partner.id),
+            ('company_id', '=', company.id),
         ], order='id desc', limit=limit)
 
     def _get_distributions(self, wallet, limit=None):
@@ -99,21 +136,25 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             ('source_wallet_id', '=', wallet.id),
         ], order='id desc', limit=limit)
 
-    def _build_dashboard_values(self, distributor):
-        wallet = self._get_company_wallet(distributor)
+    def _build_dashboard_values(self, context):
+        distributor = context['distributor']
+        commercial_partner = context['commercial_partner']
+        company = context['company']
+        wallet = self._get_company_wallet(distributor) if distributor else request.env['acpec.fuel.wallet'].sudo().browse()
         ticket_lines = self._get_ticket_lines(wallet)
-        purchases = self._get_purchases(distributor, limit=10)
+        purchases = self._get_purchases(commercial_partner, company, limit=10)
         distributions = self._get_distributions(wallet, limit=10)
 
         member_rows = []
-        for member in distributor.member_partner_ids.sudo():
-            mobile_ready = bool(distributor._get_active_mobile_user_for_member(member))
-            member_rows.append({
-                'name': member.display_name,
-                'phone': member.phone or '',
-                'email': member.email or '',
-                'mobile_ready': mobile_ready,
-            })
+        if distributor:
+            for member in distributor.member_partner_ids.sudo():
+                mobile_ready = bool(distributor._get_active_mobile_user_for_member(member))
+                member_rows.append({
+                    'name': member.display_name,
+                    'phone': member.phone or '',
+                    'email': member.email or '',
+                    'mobile_ready': mobile_ready,
+                })
 
         ticket_rows = []
         for line in ticket_lines:
@@ -125,6 +166,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         return {
             'page_name': 'fueltoken_company',
             'distributor': distributor,
+            'commercial_partner': commercial_partner,
+            'portal_company': company,
+            'portal_company_name': context['portal_company_name'],
             'wallet': wallet,
             'ticket_lines': ticket_lines,
             'ticket_rows': ticket_rows,
@@ -132,8 +176,8 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             'purchases': purchases,
             'distributions': distributions,
             'purchase_count': request.env['acpec.fuel.purchase'].sudo().search_count([
-                ('partner_id', '=', distributor.partner_id.id),
-                ('company_id', '=', distributor.company_id.id),
+                ('partner_id', '=', commercial_partner.id),
+                ('company_id', '=', company.id),
             ]),
             'distribution_count': request.env['acpec.fuel.carnet.transfer'].sudo().search_count([
                 ('source_wallet_id', '=', wallet.id),
@@ -144,9 +188,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             'total_transferable_carnets': sum(row['transferable_carnet_count'] for row in ticket_rows),
         }
 
-    def _build_purchase_form_values(self, distributor, error=None, form_data=None):
+    def _build_purchase_form_values(self, context, error=None, form_data=None):
         form_data = form_data or {}
-        carnet_types = self._get_available_carnet_types(distributor)
+        carnet_types = self._get_available_carnet_types(context['company'])
         carnet_rows = []
         for carnet_type in carnet_types:
             qty = form_data.get('qty_%s' % carnet_type.id, '')
@@ -156,16 +200,19 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             })
         return {
             'page_name': 'fueltoken_company_purchase_new',
-            'distributor': distributor,
+            'distributor': context['distributor'],
+            'commercial_partner': context['commercial_partner'],
+            'portal_company': context['company'],
+            'portal_company_name': context['portal_company_name'],
             'carnet_rows': carnet_rows,
             'payment_reference': form_data.get('payment_reference', ''),
             'idempotency_key': form_data.get('idempotency_key') or str(uuid.uuid4()),
             'error': error,
         }
 
-    def _prepare_purchase_lines_from_post(self, distributor, post):
+    def _prepare_purchase_lines_from_post(self, company, post):
         lines = []
-        carnet_types = self._get_available_carnet_types(distributor)
+        carnet_types = self._get_available_carnet_types(company)
         available_ids = set(carnet_types.ids)
         for carnet_type in carnet_types:
             raw_qty = post.get('qty_%s' % carnet_type.id)
@@ -201,37 +248,40 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
 
     @http.route(['/my/fueltoken'], type='http', auth='user', website=True)
     def portal_fueltoken_company_dashboard(self, **kwargs):
-        distributor = self._get_portal_distributor()
-        values = self._build_dashboard_values(distributor)
+        context = self._get_portal_context(require_distributor=False)
+        values = self._build_dashboard_values(context)
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_dashboard', values)
 
     @http.route(['/my/fueltoken/purchases'], type='http', auth='user', website=True)
     def portal_fueltoken_company_purchases(self, **kwargs):
-        distributor = self._get_portal_distributor()
-        purchases = self._get_purchases(distributor)
+        context = self._get_portal_context(require_distributor=False)
+        purchases = self._get_purchases(context['commercial_partner'], context['company'])
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_purchases', {
             'page_name': 'fueltoken_company_purchases',
-            'distributor': distributor,
+            'distributor': context['distributor'],
+            'commercial_partner': context['commercial_partner'],
+            'portal_company': context['company'],
+            'portal_company_name': context['portal_company_name'],
             'purchases': purchases,
         })
 
     @http.route(['/my/fueltoken/purchases/new'], type='http', auth='user', website=True, methods=['GET'])
     def portal_fueltoken_company_purchase_new(self, **kwargs):
-        distributor = self._get_portal_distributor()
+        context = self._get_portal_context(require_distributor=False)
         return self._portal_render(
             'acpec_fueltoken_company_portal.portal_fueltoken_company_purchase_new',
-            self._build_purchase_form_values(distributor)
+            self._build_purchase_form_values(context)
         )
 
     @http.route(['/my/fueltoken/purchases/new'], type='http', auth='user', website=True, methods=['POST'])
     def portal_fueltoken_company_purchase_submit(self, **post):
-        distributor = self._get_portal_distributor()
+        context = self._get_portal_context(require_distributor=False)
         try:
-            lines = self._prepare_purchase_lines_from_post(distributor, post)
+            lines = self._prepare_purchase_lines_from_post(context['company'], post)
             proof_filename, proof_data = self._read_purchase_proof_from_post(post)
             purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
-                partner=distributor.partner_id,
-                company=distributor.company_id,
+                partner=context['commercial_partner'],
+                company=context['company'],
                 lines=lines,
                 proof_filename=proof_filename,
                 proof_data=proof_data,
@@ -239,23 +289,26 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
                 idempotency_key=(post.get('idempotency_key') or '').strip() or False,
             )
         except (ValidationError, UserError) as exc:
-            values = self._build_purchase_form_values(distributor, error=exc.args[0], form_data=post)
+            values = self._build_purchase_form_values(context, error=exc.args[0], form_data=post)
             return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_purchase_new', values)
         return request.redirect('/my/fueltoken/purchases/%s?created=1' % purchase.id)
 
     @http.route(['/my/fueltoken/purchases/<int:purchase_id>'], type='http', auth='user', website=True)
     def portal_fueltoken_company_purchase_detail(self, purchase_id, created=False, **kwargs):
-        distributor = self._get_portal_distributor()
+        context = self._get_portal_context(require_distributor=False)
         purchase = request.env['acpec.fuel.purchase'].sudo().search([
             ('id', '=', purchase_id),
-            ('partner_id', '=', distributor.partner_id.id),
-            ('company_id', '=', distributor.company_id.id),
+            ('partner_id', '=', context['commercial_partner'].id),
+            ('company_id', '=', context['company'].id),
         ], limit=1)
         if not purchase:
             raise NotFound()
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_purchase_detail', {
             'page_name': 'fueltoken_company_purchases',
-            'distributor': distributor,
+            'distributor': context['distributor'],
+            'commercial_partner': context['commercial_partner'],
+            'portal_company': context['company'],
+            'portal_company_name': context['portal_company_name'],
             'purchase': purchase,
             'created': bool(created),
         })
@@ -268,6 +321,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_distributions', {
             'page_name': 'fueltoken_company_distributions',
             'distributor': distributor,
+            'commercial_partner': distributor.partner_id,
+            'portal_company': distributor.company_id,
+            'portal_company_name': distributor.company_id.name,
             'wallet': wallet,
             'distributions': distributions,
         })
@@ -287,6 +343,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_distribution_detail', {
             'page_name': 'fueltoken_company_distributions',
             'distributor': distributor,
+            'commercial_partner': distributor.partner_id,
+            'portal_company': distributor.company_id,
+            'portal_company_name': distributor.company_id.name,
             'wallet': wallet,
             'transfer': transfer,
         })

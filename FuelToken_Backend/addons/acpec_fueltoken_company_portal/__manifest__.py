@@ -1,8 +1,8 @@
 {
     'name': 'ACPEC FuelToken Company Portal',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.1.1',
     'category': 'ACPEC/FuelToken',
-    'summary': 'Portail société FuelToken : consultation et demande d’achat',
+    'summary': 'Portail FuelToken : consultation et demande d’achat',
     'author': 'ACPEC SARL',
     'website': 'https://acpec.odoorim.com',
     'license': 'OPL-1',
