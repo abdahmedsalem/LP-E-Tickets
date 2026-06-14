@@ -9,11 +9,14 @@
                             <span t-esc="distributor.display_name"/>
                         </p>
                     </div>
-                    <a href="/my" class="btn btn-outline-secondary">Retour au portail</a>
+                    <div class="d-flex gap-2">
+                        <a href="/my/fueltoken/purchases/new" class="btn btn-primary">Nouvelle demande d’achat</a>
+                        <a href="/my" class="btn btn-outline-secondary">Retour au portail</a>
+                    </div>
                 </div>
 
                 <div class="alert alert-info" role="alert">
-                    Espace en lecture seule. Les demandes d’achat et les distributions seront ouvertes dans les prochains lots.
+                    Les demandes d’achat créées depuis le portail sont soumises à validation ACPEC avant crédit du wallet société.
                 </div>
 
                 <div class="row g-3 mb-4">
@@ -193,7 +196,10 @@
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>Demandes d’achat société</h2>
-                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
+                    <div class="d-flex gap-2">
+                        <a href="/my/fueltoken/purchases/new" class="btn btn-primary">Nouvelle demande</a>
+                        <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
+                    </div>
                 </div>
                 <div class="table-responsive card">
                     <table class="table align-middle mb-0">
@@ -237,6 +243,9 @@
                     </div>
                     <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Retour achats</a>
                 </div>
+                <div t-if="created" class="alert alert-success" role="alert">
+                    Votre demande d’achat a été soumise. Elle sera traitée par ACPEC.
+                </div>
                 <div class="card mb-4">
                     <div class="card-body row g-3">
                         <div class="col-md-4"><strong>Montant total</strong><br/><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></div>
@@ -264,6 +273,103 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_purchase_new" name="FuelToken Société - Nouvelle demande d'achat">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1">Nouvelle demande d’achat société</h2>
+                        <div class="text-muted" t-esc="distributor.display_name"/>
+                    </div>
+                    <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Retour achats</a>
+                </div>
+
+                <div class="alert alert-danger" role="alert" t-if="error">
+                    <span t-esc="error"/>
+                </div>
+
+                <form action="/my/fueltoken/purchases/new" method="post" enctype="multipart/form-data" class="card">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="idempotency_key" t-att-value="idempotency_key"/>
+
+                    <div class="card-body">
+                        <div class="alert alert-info" role="alert">
+                            Saisissez le nombre de carnets souhaité par type. La demande sera soumise à validation ACPEC.
+                        </div>
+
+                        <div class="table-responsive mb-4">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Type de carnet</th>
+                                        <th class="text-end">Tickets / carnet</th>
+                                        <th class="text-end">Valeur ticket</th>
+                                        <th class="text-end">Montant carnet</th>
+                                        <th style="width: 180px;" class="text-end">Carnets à acheter</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="carnet_rows" t-as="row">
+                                        <td><span t-esc="row['carnet_type'].display_name"/></td>
+                                        <td class="text-end"><span t-esc="row['carnet_type'].face_count"/></td>
+                                        <td class="text-end">
+                                            <span t-esc="row['carnet_type'].face_value"/>
+                                            <span t-esc="row['carnet_type'].currency_id.name"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="row['carnet_type'].carnet_amount"/>
+                                            <span t-esc="row['carnet_type'].currency_id.name"/>
+                                        </td>
+                                        <td>
+                                            <input type="number"
+                                                   min="0"
+                                                   step="1"
+                                                   class="form-control text-end"
+                                                   t-att-name="'qty_%s' % row['carnet_type'].id"
+                                                   t-att-value="row['qty']"
+                                                   placeholder="0"/>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="not carnet_rows">
+                                        <td colspan="5" class="text-muted text-center py-4">Aucun type de carnet actif disponible.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="payment_reference">Référence paiement</label>
+                                <input id="payment_reference"
+                                       name="payment_reference"
+                                       type="text"
+                                       class="form-control"
+                                       t-att-value="payment_reference"
+                                       placeholder="Référence virement, reçu, transaction..."/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="proof_file">Preuve de paiement <span class="text-danger">*</span></label>
+                                <input id="proof_file"
+                                       name="proof_file"
+                                       type="file"
+                                       class="form-control"
+                                       required="required"/>
+                                <div class="form-text">Joignez la preuve exigée pour soumettre la demande.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer d-flex justify-content-end gap-2">
+                        <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-primary" t-att-disabled="not carnet_rows and 'disabled' or None">
+                            Soumettre la demande
+                        </button>
+                    </div>
+                </form>
             </div>
         </t>
     </template>
