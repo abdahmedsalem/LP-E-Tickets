@@ -14,7 +14,7 @@ class AcpecFuelCarnetTransfer(models.Model):
         required=True, index=True, ondelete='restrict', tracking=True,
     )
     source_partner_id = fields.Many2one(
-        'res.partner', related='source_wallet_id.partner_id',
+        'res.partner', related='source_wallet_id.partner_id', string="Client source",
         store=True, readonly=True, index=True,
     )
     dest_wallet_id = fields.Many2one(
@@ -22,7 +22,7 @@ class AcpecFuelCarnetTransfer(models.Model):
         required=True, index=True, ondelete='restrict', tracking=True,
     )
     dest_partner_id = fields.Many2one(
-        'res.partner', related='dest_wallet_id.partner_id',
+        'res.partner', related='dest_wallet_id.partner_id', string="Client bénéficiaire",
         store=True, readonly=True, index=True,
     )
     company_id = fields.Many2one(
