@@ -4,7 +4,7 @@ from odoo.exceptions import UserError, ValidationError
 
 class AcpecFuelDistributor(models.Model):
     _name = 'acpec.fuel.distributor'
-    _description = 'Compte Société FuelToken'
+    _description = 'Compte Société Tickets Carburant'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name, id'
 
@@ -56,7 +56,7 @@ class AcpecFuelDistributor(models.Model):
         string='Wallet société',
         compute='_compute_wallet_state',
         readonly=True,
-        help='Wallet FuelToken technique du Compte Société, créé à la demande.',
+        help='Wallet Tickets Carburant technique du Compte Société, créé à la demande.',
     )
     has_wallet = fields.Boolean(
         string='Wallet société existant',
@@ -115,7 +115,7 @@ class AcpecFuelDistributor(models.Model):
         readonly=True,
         help=(
             'Utilisateurs liés à la société partenaire avec des groupes incompatibles '
-            '(interne Odoo, mobile FuelToken, station ou back-office FuelToken).'
+            '(interne Odoo, mobile Tickets Carburant, station ou back-office Tickets Carburant).'
         ),
     )
     blocked_user_count = fields.Integer(
@@ -296,7 +296,7 @@ class AcpecFuelDistributor(models.Model):
 
             if blocked_users:
                 raise ValidationError(_(
-                    'La société partenaire est déjà liée à un utilisateur interne, mobile, station ou back-office FuelToken. '
+                    'La société partenaire est déjà liée à un utilisateur interne, mobile, station ou back-office Tickets Carburant. '
                     'Un Compte Société doit être lié uniquement à un partenaire société avec accès portail Odoo standard.'
                 ))
 
@@ -322,7 +322,7 @@ class AcpecFuelDistributor(models.Model):
                 ))
 
     # -------------------------------------------------------------------------
-    # Backend distribution API — called later by FuelToken_WebClient / portal
+    # Backend distribution API — called later by TicketsCarburant_WebClient / portal
     # -------------------------------------------------------------------------
 
     def _get_company_wallet(self, create=False):
@@ -350,7 +350,7 @@ class AcpecFuelDistributor(models.Model):
         ], limit=1)
 
     def _get_active_mobile_user_for_member(self, member_partner):
-        """Return a validated mobile FuelToken user for a member partner.
+        """Return a validated mobile Tickets Carburant user for a member partner.
 
         The method deliberately does not approve or modify the mobile account.
         It only checks the existing mobile state used by the mobile flow.
@@ -400,7 +400,7 @@ class AcpecFuelDistributor(models.Model):
         mobile_user = self._get_active_mobile_user_for_member(member_partner)
         if not mobile_user:
             raise ValidationError(_(
-                'Le membre destinataire doit avoir un compte mobile FuelToken actif et approuvé '
+                'Le membre destinataire doit avoir un compte mobile Tickets Carburant actif et approuvé '
                 'avant de recevoir une distribution société.'
             ))
 
@@ -522,7 +522,7 @@ class AcpecFuelDistributor(models.Model):
     def action_distribute_to_member(self, member_partner, lines, note=False, idempotency_key=False, confirm=True):
         """Backend method for controlled company distribution to one member.
 
-        This is the method that FuelToken_WebClient / portal should call later.
+        This is the method that TicketsCarburant_WebClient / portal should call later.
         It uses the existing acpec.fuel.carnet.transfer engine and does not
         duplicate transfer accounting logic.
         """

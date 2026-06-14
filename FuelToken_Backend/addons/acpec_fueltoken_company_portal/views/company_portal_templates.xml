@@ -1,21 +1,25 @@
 <odoo>
-    <template id="portal_my_home_fueltoken" name="FuelToken - Home Portal Entry" inherit_id="portal.portal_my_home" priority="40">
+    <template id="portal_my_home_fueltoken" name="Tickets Carburant - Home Portal Entry" inherit_id="portal.portal_my_home" priority="40">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
             <t t-if="fueltoken_portal_enabled" t-call="portal.portal_docs_entry">
-                <t t-set="title">FuelToken</t>
+                <t t-set="title">Tickets Carburant</t>
+                <t t-set="icon" t-value="'/acpec_fueltoken_base/static/description/icon.png'"/>
                 <t t-set="url" t-value="'/my/fueltoken'"/>
-                <t t-set="text">Acheter et suivre vos carnets FuelToken</t>
+                <t t-set="text">Acheter et suivre vos carnets de tickets</t>
                 <t t-set="placeholder_count" t-value="'fueltoken_purchase_count'"/>
             </t>
         </xpath>
     </template>
 
-    <template id="portal_fueltoken_company_dashboard" name="FuelToken Société - Portail">
+    <template id="portal_fueltoken_company_dashboard" name="Tickets Carburant Société - Portail">
         <t t-call="portal.portal_layout">
             <div class="container my-4 o_acpec_fueltoken_company_portal">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
                     <div>
-                        <h2 class="mb-1">FuelToken</h2>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <img src="/acpec_fueltoken_base/static/description/icon.png" alt="Tickets Carburant" style="width: 40px; height: 40px; object-fit: contain;"/>
+                            <h2 class="mb-0">Tickets Carburant</h2>
+                        </div>
                         <p class="text-muted mb-0">
                             <span t-if="distributor" t-esc="distributor.display_name"/>
                             <span t-else="" t-esc="commercial_partner.display_name"/>
@@ -32,7 +36,7 @@
                     <span t-esc="portal_company_name"/> avant crédit du wallet société.
                 </div>
                 <div t-else="" class="alert alert-warning" role="alert">
-                    Vous pouvez soumettre une demande d’achat FuelToken. La gestion des membres et la distribution de carnets seront disponibles après activation du compte société par
+                    Vous pouvez soumettre une demande d’achat Tickets Carburant. La gestion des membres et la distribution de carnets seront disponibles après activation du compte société par
                     <span t-esc="portal_company_name"/>.
                 </div>
 
@@ -204,9 +208,9 @@
                         </div>
 
                         <div class="card mb-4" t-if="not distributor">
-                            <div class="card-header">Compte société FuelToken</div>
+                            <div class="card-header">Compte société Tickets Carburant</div>
                             <div class="card-body text-muted">
-                                Aucun compte société FuelToken actif n’est encore rattaché à ce portail. Les demandes d’achat restent possibles ; la distribution à des membres sera ouverte après activation.
+                                Aucun compte société Tickets Carburant actif n’est encore rattaché à ce portail. Les demandes d’achat restent possibles ; la distribution à des membres sera ouverte après activation.
                             </div>
                         </div>
                     </div>
@@ -215,14 +219,14 @@
         </t>
     </template>
 
-    <template id="portal_fueltoken_company_purchases" name="FuelToken Société - Achats">
+    <template id="portal_fueltoken_company_purchases" name="Tickets Carburant Société - Achats">
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Demandes d’achat FuelToken</h2>
+                    <h2>Demandes d’achat Tickets Carburant</h2>
                     <div class="d-flex gap-2">
                         <a href="/my/fueltoken/purchases/new" class="btn btn-primary">Nouvelle demande</a>
-                        <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
+                        <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
                     </div>
                 </div>
                 <div class="table-responsive card">
@@ -248,7 +252,7 @@
                                 <td class="text-end"><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></td>
                             </tr>
                             <tr t-if="not purchases">
-                                <td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat FuelToken.</td>
+                                <td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat Tickets Carburant.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -257,7 +261,7 @@
         </t>
     </template>
 
-    <template id="portal_fueltoken_company_purchase_detail" name="FuelToken Société - Détail achat">
+    <template id="portal_fueltoken_company_purchase_detail" name="Tickets Carburant Société - Détail achat">
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -301,12 +305,12 @@
         </t>
     </template>
 
-    <template id="portal_fueltoken_company_purchase_new" name="FuelToken Société - Nouvelle demande d'achat">
+    <template id="portal_fueltoken_company_purchase_new" name="Tickets Carburant Société - Nouvelle demande d'achat">
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h2 class="mb-1">Nouvelle demande d’achat FuelToken</h2>
+                        <h2 class="mb-1">Nouvelle demande d’achat Tickets Carburant</h2>
                         <div class="text-muted" t-esc="commercial_partner.display_name"/>
                     </div>
                     <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Retour achats</a>
@@ -399,12 +403,12 @@
         </t>
     </template>
 
-    <template id="portal_fueltoken_company_distributions" name="FuelToken Société - Distributions">
+    <template id="portal_fueltoken_company_distributions" name="Tickets Carburant Société - Distributions">
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>Distributions société</h2>
-                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
+                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
                 </div>
                 <div class="table-responsive card">
                     <table class="table align-middle mb-0">
@@ -440,7 +444,7 @@
         </t>
     </template>
 
-    <template id="portal_fueltoken_company_distribution_detail" name="FuelToken Société - Détail distribution">
+    <template id="portal_fueltoken_company_distribution_detail" name="Tickets Carburant Société - Détail distribution">
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">

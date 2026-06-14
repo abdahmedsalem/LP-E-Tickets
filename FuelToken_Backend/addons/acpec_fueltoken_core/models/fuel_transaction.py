@@ -4,7 +4,7 @@ from odoo.exceptions import UserError
 
 class AcpecFuelTransaction(models.Model):
     _name = 'acpec.fuel.transaction'
-    _description = 'Transaction métier FuelToken'
+    _description = 'Transaction Tickets Carburant'
     _order = 'id desc'
 
     name = fields.Char(string='Référence', default='New', readonly=True, copy=False)
@@ -19,7 +19,7 @@ class AcpecFuelTransaction(models.Model):
         ('expiration_qr', 'Expiration QR'),
         ('transfert_carnet', 'Transfert de carnets'),
     ], string='Type', required=True, index=True)
-    wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte FuelToken', index=True)
+    wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
@@ -93,13 +93,13 @@ class AcpecFuelTransaction(models.Model):
 
     def write(self, vals):
         if not self.env.context.get('allow_fuel_transaction_update') and set(vals) - {'note'}:
-            raise UserError(_('Les transactions FuelToken ne doivent pas être modifiées directement.'))
+            raise UserError(_('Les transactions Tickets Carburant ne doivent pas être modifiées directement.'))
         return super().write(vals)
 
 
 class AcpecFuelTransactionLine(models.Model):
     _name = 'acpec.fuel.transaction.line'
-    _description = 'Ligne transaction FuelToken'
+    _description = 'Ligne transaction Tickets Carburant'
     _order = 'transaction_id, id'
 
     transaction_id = fields.Many2one('acpec.fuel.transaction', string='Transaction', required=True, ondelete='cascade')

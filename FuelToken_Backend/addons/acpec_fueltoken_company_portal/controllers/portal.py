@@ -10,10 +10,10 @@ from odoo.addons.portal.controllers.portal import CustomerPortal
 
 
 class AcpecFuelTokenCompanyPortal(CustomerPortal):
-    """Portal surface for FuelToken company accounts.
+    """Portal surface for Tickets Carburant company accounts.
 
     Access doctrine:
-    - a classic Odoo portal user may see FuelToken and submit a company
+    - a classic Odoo portal user may see Tickets Carburant and submit a company
       purchase request for its commercial partner;
     - distribution/member/wallet functions require an active
       acpec.fuel.distributor linked to the same commercial partner;
@@ -47,8 +47,8 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         if not user or user._is_public():
             raise NotFound()
 
-        # A FuelToken company portal user is a classic Odoo portal user, not an
-        # internal back-office user and not a mobile FuelToken user.
+        # A Tickets Carburant company portal user is a classic Odoo portal user, not an
+        # internal back-office user and not a mobile Tickets Carburant user.
         if self._user_has_group(user, 'base.group_user'):
             raise NotFound()
         if not self._user_has_group(user, 'base.group_portal'):

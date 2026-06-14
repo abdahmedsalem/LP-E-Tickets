@@ -4,7 +4,7 @@ from odoo.exceptions import UserError, ValidationError
 
 class AcpecFuelCarnetTransfer(models.Model):
     _name = 'acpec.fuel.carnet.transfer'
-    _description = 'Transfert de carnets FuelToken'
+    _description = 'Transfert de carnets de tickets'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
@@ -14,7 +14,7 @@ class AcpecFuelCarnetTransfer(models.Model):
         required=True, index=True, ondelete='restrict', tracking=True,
     )
     source_partner_id = fields.Many2one(
-        'res.partner', related='source_wallet_id.partner_id', string="Client source",
+        'res.partner', related='source_wallet_id.partner_id',
         store=True, readonly=True, index=True,
     )
     dest_wallet_id = fields.Many2one(
@@ -22,7 +22,7 @@ class AcpecFuelCarnetTransfer(models.Model):
         required=True, index=True, ondelete='restrict', tracking=True,
     )
     dest_partner_id = fields.Many2one(
-        'res.partner', related='dest_wallet_id.partner_id', string="Client bénéficiaire",
+        'res.partner', related='dest_wallet_id.partner_id',
         store=True, readonly=True, index=True,
     )
     company_id = fields.Many2one(
@@ -264,7 +264,7 @@ class AcpecFuelCarnetTransfer(models.Model):
 
 class AcpecFuelCarnetTransferLine(models.Model):
     _name = 'acpec.fuel.carnet.transfer.line'
-    _description = 'Ligne de transfert de carnets FuelToken'
+    _description = 'Ligne de transfert de carnets de tickets'
     _order = 'transfer_id, id'
 
     transfer_id = fields.Many2one(

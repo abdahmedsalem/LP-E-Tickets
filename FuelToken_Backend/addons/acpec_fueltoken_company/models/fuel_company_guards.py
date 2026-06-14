@@ -147,7 +147,7 @@ class AcpecFuelCarnetTransferCompanyGuard(models.Model):
 
             if not Guard._get_active_mobile_user_for_partner(rec.dest_partner_id, rec.company_id):
                 raise ValidationError(_(
-                    'Le membre destinataire doit avoir un compte mobile FuelToken actif et approuvé '
+                    'Le membre destinataire doit avoir un compte mobile Tickets Carburant actif et approuvé '
                     'avant de recevoir une distribution société.'
                 ))
 

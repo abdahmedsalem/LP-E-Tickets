@@ -1,14 +1,14 @@
 <odoo>
     <!--
         Odoo portal pages are model-backed: portal users receive read ACLs and
-        record rules limited to their own commercial partner.  FuelToken Société
+        record rules limited to their own commercial partner.  Tickets Carburant Société
         follows the same principle: being a classic portal user is not enough;
         access is limited to records attached to the user's commercial partner,
         while the controller also requires an active acpec.fuel.distributor.
     -->
 
     <record id="rule_res_partner_fueltoken_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - partenaires lisibles</field>
+        <field name="name">Tickets Carburant portail société - partenaires lisibles</field>
         <field name="model_id" ref="base.model_res_partner"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('id', 'child_of', [(user.partner_id.commercial_partner_id.id or user.partner_id.id)])]</field>
@@ -19,7 +19,7 @@
     </record>
 
     <record id="rule_fuel_distributor_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - compte société actif</field>
+        <field name="name">Tickets Carburant portail société - compte société actif</field>
         <field name="model_id" ref="acpec_fueltoken_company.model_acpec_fuel_distributor"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id)), ('active', '=', True), ('state', '=', 'active')]</field>
@@ -30,7 +30,7 @@
     </record>
 
     <record id="rule_fuel_wallet_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - wallet société</field>
+        <field name="name">Tickets Carburant portail société - wallet société</field>
         <field name="model_id" ref="acpec_fueltoken_core.model_acpec_fuel_wallet"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id))]</field>
@@ -41,7 +41,7 @@
     </record>
 
     <record id="rule_fuel_face_line_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - tickets société</field>
+        <field name="name">Tickets Carburant portail société - tickets société</field>
         <field name="model_id" ref="acpec_fueltoken_core.model_acpec_fuel_face_line"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('wallet_id.partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id))]</field>
@@ -52,7 +52,7 @@
     </record>
 
     <record id="rule_fuel_carnet_type_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - types de carnet actifs</field>
+        <field name="name">Tickets Carburant portail société - types de carnet actifs</field>
         <field name="model_id" ref="acpec_fueltoken_catalog.model_acpec_fuel_carnet_type"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('active', '=', True)]</field>
@@ -63,7 +63,7 @@
     </record>
 
     <record id="rule_fuel_purchase_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - achats société</field>
+        <field name="name">Tickets Carburant portail société - achats société</field>
         <field name="model_id" ref="acpec_fueltoken_purchase.model_acpec_fuel_purchase"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id))]</field>
@@ -74,7 +74,7 @@
     </record>
 
     <record id="rule_fuel_purchase_line_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - lignes achat société</field>
+        <field name="name">Tickets Carburant portail société - lignes achat société</field>
         <field name="model_id" ref="acpec_fueltoken_purchase.model_acpec_fuel_purchase_line"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('purchase_id.partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id))]</field>
@@ -85,7 +85,7 @@
     </record>
 
     <record id="rule_fuel_carnet_transfer_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - distributions société</field>
+        <field name="name">Tickets Carburant portail société - distributions société</field>
         <field name="model_id" ref="acpec_fueltoken_core.model_acpec_fuel_carnet_transfer"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('source_wallet_id.partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id))]</field>
@@ -96,7 +96,7 @@
     </record>
 
     <record id="rule_fuel_carnet_transfer_line_company_portal" model="ir.rule">
-        <field name="name">FuelToken portail société - lignes distribution société</field>
+        <field name="name">Tickets Carburant portail société - lignes distribution société</field>
         <field name="model_id" ref="acpec_fueltoken_core.model_acpec_fuel_carnet_transfer_line"/>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
         <field name="domain_force">[('transfer_id.source_wallet_id.partner_id', '=', (user.partner_id.commercial_partner_id.id or user.partner_id.id))]</field>

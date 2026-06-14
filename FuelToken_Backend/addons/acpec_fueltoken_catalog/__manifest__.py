@@ -1,7 +1,7 @@
 {
-    'name': 'ACPEC FuelToken Catalog',
+    'name': 'ACPEC Tickets Carburant Catalog',
     'version': '1.0.0',
-    'category': 'ACPEC/FuelToken',
+    'category': 'ACPEC/Tickets Carburant',
     'summary': 'Catalogue des types de carnets FuelToken',
     'author': 'ACPEC SARL',
     'website': 'https://acpec.odoorim.com',

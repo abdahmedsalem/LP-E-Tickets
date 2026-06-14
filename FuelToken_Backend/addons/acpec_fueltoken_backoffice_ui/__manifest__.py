@@ -2,7 +2,7 @@
     'name': 'ACPEC FuelToken Back-office UI',
     'version': '19.0.1.3.7',
     'category': 'ACPEC/FuelToken',
-    'summary': 'Menus et libellés métier pour le back-office FuelToken',
+    'summary': 'Menus et libellés métier pour le back-office Tickets Carburant',
     'author': 'ACPEC SARL',
     'website': 'https://acpec.odoorim.com',
     'license': 'OPL-1',

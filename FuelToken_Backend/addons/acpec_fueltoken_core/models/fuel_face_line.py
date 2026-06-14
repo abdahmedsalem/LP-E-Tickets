@@ -5,10 +5,10 @@ from odoo.tools import float_compare
 
 class AcpecFuelFaceLine(models.Model):
     _name = 'acpec.fuel.face.line'
-    _description = 'Ligne de faces FuelToken'
+    _description = 'Ligne de tickets'
     _order = 'expires_at, id'
 
-    wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte FuelToken', required=True, index=True, ondelete='restrict')
+    wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True, ondelete='restrict')
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='wallet_id.company_id', store=True, readonly=True, index=True)
     currency_id = fields.Many2one('res.currency', related='wallet_id.currency_id', store=True, readonly=True)
@@ -28,7 +28,7 @@ class AcpecFuelFaceLine(models.Model):
 
     _purchase_line_unique = models.Constraint(
         'UNIQUE(purchase_line_id, wallet_id)',
-        "Une ligne d'achat ne peut avoir qu'une seule ligne de faces par compte FuelToken.",
+        "Une ligne d'achat ne peut avoir qu'une seule ligne de faces par compte Tickets Carburant.",
     )
 
     @api.depends('face_value', 'qty_available', 'qty_initial')

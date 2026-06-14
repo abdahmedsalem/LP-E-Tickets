@@ -8,12 +8,12 @@ _logger = logging.getLogger(__name__)
 
 class AcpecFuelQr(models.Model):
     _name = 'acpec.fuel.qr'
-    _description = 'QR FuelToken'
+    _description = 'Bon de retrait'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
     name = fields.Char(string='Référence interne', default='New', readonly=True, copy=False)
-    wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte FuelToken', required=True, index=True)
+    wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='wallet_id.company_id', store=True, readonly=True, index=True)
     currency_id = fields.Many2one('res.currency', related='wallet_id.currency_id', store=True, readonly=True)
@@ -477,7 +477,7 @@ class AcpecFuelQr(models.Model):
 
 class AcpecFuelQrLine(models.Model):
     _name = 'acpec.fuel.qr.line'
-    _description = 'Ligne QR FuelToken'
+    _description = 'Ligne Bon de retrait'
     _order = 'qr_id, id'
 
     qr_id = fields.Many2one('acpec.fuel.qr', string='QR', required=True, ondelete='cascade', index=True)

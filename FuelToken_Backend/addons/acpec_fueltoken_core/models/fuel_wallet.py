@@ -4,7 +4,7 @@ from odoo.exceptions import UserError
 
 class AcpecFuelWallet(models.Model):
     _name = 'acpec.fuel.wallet'
-    _description = 'Compte FuelToken calculé'
+    _description = 'Compte Tickets Carburant calculé'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'partner_id'
 
@@ -26,7 +26,7 @@ class AcpecFuelWallet(models.Model):
 
     _partner_company_unique = models.Constraint(
         'UNIQUE(partner_id, company_id)',
-        'Un client ne peut avoir qu’un compte FuelToken par société.',
+        'Un client ne peut avoir qu’un compte Tickets Carburant par société.',
     )
 
     @api.depends('partner_id', 'company_id')
@@ -90,5 +90,5 @@ class AcpecFuelWallet(models.Model):
 
     def write(self, vals):
         if 'balance' in vals:
-            raise UserError(_('Le solde FuelToken est calculé et ne peut pas être modifié directement.'))
+            raise UserError(_('Le solde Tickets Carburant est calculé et ne peut pas être modifié directement.'))
         return super().write(vals)

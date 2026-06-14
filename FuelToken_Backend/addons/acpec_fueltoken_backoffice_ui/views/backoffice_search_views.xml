@@ -75,7 +75,7 @@
                 <filter name="purchases" string="Achats de carnets" domain="[('transaction_type', '=', 'achat_carnets')]"/>
                 <group>
                     <filter name="group_type" string="Type" context="{'group_by': 'transaction_type'}"/>
-                    <filter name="group_wallet" string="Compte FuelToken" context="{'group_by': 'wallet_id'}"/>
+                    <filter name="group_wallet" string="Compte Tickets Carburant" context="{'group_by': 'wallet_id'}"/>
                     <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_station" string="Station" context="{'group_by': 'station_id'}"/>
                     <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
@@ -100,7 +100,7 @@
                 <filter name="state_expired" string="Expirés" domain="[('state', '=', 'expired')]"/>
                 <group>
                     <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
-                    <filter name="group_wallet" string="Compte FuelToken" context="{'group_by': 'wallet_id'}"/>
+                    <filter name="group_wallet" string="Compte Tickets Carburant" context="{'group_by': 'wallet_id'}"/>
                     <filter name="group_station" string="Station" context="{'group_by': 'consumed_station_id'}"/>
                 </group>
             </search>
@@ -121,7 +121,7 @@
                 <filter name="consumed" string="Consommées" domain="[('qty_consumed', '&gt;', 0)]"/>
                 <filter name="expired" string="Expirées" domain="[('qty_expired', '&gt;', 0)]"/>
                 <group>
-                    <filter name="group_wallet" string="Compte FuelToken" context="{'group_by': 'wallet_id'}"/>
+                    <filter name="group_wallet" string="Compte Tickets Carburant" context="{'group_by': 'wallet_id'}"/>
                     <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_carnet_type" string="Type de carnet" context="{'group_by': 'carnet_type_id'}"/>
                     <filter name="group_purchase" string="Lot d'achat" context="{'group_by': 'purchase_id'}"/>

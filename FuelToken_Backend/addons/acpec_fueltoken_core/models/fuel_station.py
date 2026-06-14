@@ -4,7 +4,7 @@ from odoo.exceptions import ValidationError
 
 class AcpecFuelStation(models.Model):
     _name = 'acpec.fuel.station'
-    _description = 'Station FuelToken'
+    _description = 'Station Tickets Carburant'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
 
