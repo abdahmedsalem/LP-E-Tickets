@@ -46,7 +46,8 @@
 
                                     <!-- Champ métier principal -->
                                     <field name="carnet_type_id"
-                                           string="Type de carnet"
+										   width="220"
+                                           string="Carnet"
                                            required="1"
                                            domain="[('id', 'in', available_carnet_type_ids)]"
                                            options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True, 'no_open': True}"/>
