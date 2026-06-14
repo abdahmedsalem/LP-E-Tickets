@@ -85,25 +85,10 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         return self._get_portal_context(require_distributor=True)['distributor']
 
     def _prepare_home_portal_values(self, counters=None):
-        values = super()._prepare_home_portal_values(counters or [])
-        try:
-            context = self._get_portal_context(require_distributor=False)
-        except NotFound:
-            values.update({
-                'fueltoken_portal_enabled': False,
-                'fueltoken_purchase_count': 0,
-            })
-            return values
-
-        purchase_count = request.env['acpec.fuel.purchase'].sudo().search_count([
-            ('partner_id', '=', context['commercial_partner'].id),
-            ('company_id', '=', context['company'].id),
-        ])
-        values.update({
-            'fueltoken_portal_enabled': True,
-            'fueltoken_purchase_count': purchase_count,
-        })
-        return values
+        # Keep standard portal counters untouched. The Tickets Carburant card is
+        # rendered statically in the portal template, so it must not participate
+        # in the async counter mechanism that may leave a residual spinner.
+        return super()._prepare_home_portal_values(counters or [])
 
     def _get_company_wallet(self, distributor):
         wallet = distributor._get_company_wallet(create=False)
