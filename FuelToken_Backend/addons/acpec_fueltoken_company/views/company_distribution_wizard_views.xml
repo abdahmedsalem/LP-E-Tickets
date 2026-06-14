@@ -5,41 +5,125 @@
         <field name="arch" type="xml">
             <form string="Distribuer des carnets">
                 <sheet>
+                    <!-- Champs techniques nécessaires aux domaines -->
+                    <field name="allowed_member_partner_ids" invisible="1"/>
+                    <field name="available_carnet_type_ids" invisible="1"/>
+
                     <group>
                         <group string="Distribution">
-                            <field name="distributor_id" readonly="1"/>
-                            <field name="company_id" readonly="1" groups="base.group_multi_company"/>
-                            <field name="source_wallet_id" readonly="1"/>
-                            <field name="member_partner_id"/>
+                            <field name="member_partner_id"
+                                   string="Bénéficiaire"
+                                   required="1"
+                                   domain="[('id', 'in', allowed_member_partner_ids)]"
+                                   options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True, 'no_open': True}"/>
                         </group>
+
                         <group string="Options">
                             <field name="confirm_transfer"/>
-                            <field name="note" placeholder="Note interne sur la distribution..."/>
+                            <field name="note"
+                                   placeholder="Note interne sur la distribution..."/>
                         </group>
                     </group>
-                    <field name="allowed_member_partner_ids" invisible="1"/>
+
                     <notebook>
-                        <page string="Carnets disponibles">
+                        <page string="Carnets à distribuer">
                             <field name="line_ids">
-                                <list editable="bottom" create="0" delete="0">
-                                    <field name="source_wallet_id" invisible="1"/>
-                                    <field name="face_line_id" readonly="1" force_save="1" string="Ligne de tickets source"/>
-                                    <field name="carnet_type_id" readonly="1"/>
-                                    <field name="face_value" readonly="1" string="Valeur du ticket"/>
-                                    <field name="face_count" readonly="1" string="Tickets par carnet"/>
-                                    <field name="qty_available" readonly="1" string="Tickets disponibles"/>
-                                    <field name="transferable_carnet_count" readonly="1"/>
-                                    <field name="carnet_qty"/>
-                                    <field name="qty_faces" readonly="1" string="Tickets à distribuer"/>
-                                    <field name="amount_total" readonly="1"/>
+                                <list editable="bottom" create="1" delete="1">
+                                    <!-- Champs techniques de ligne nécessaires aux domaines / calculs -->
+                                    <field name="available_carnet_type_ids" column_invisible="1"/>
+
+                                    <field name="source_wallet_id"
+                                           string="Wallet"
+                                           readonly="1"
+                                           force_save="1"
+                                           optional="hide"/>
+
+                                    <field name="face_line_id"
+                                           string="Ligne de tickets source"
+                                           readonly="1"
+                                           force_save="1"
+                                           optional="hide"/>
+
+                                    <!-- Champ métier principal -->
+                                    <field name="carnet_type_id"
+                                           string="Type de carnet"
+                                           required="1"
+                                           domain="[('id', 'in', available_carnet_type_ids)]"
+                                           options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True, 'no_open': True}"/>
+
+                                    <!-- Détails redondants, disponibles en audit mais masqués par défaut -->
+                                    <field name="face_value"
+                                           string="Valeur du ticket"
+                                           readonly="1"
+                                           force_save="1"
+                                           optional="hide"/>
+
+                                    <field name="face_count"
+                                           string="Tickets par carnet"
+                                           readonly="1"
+                                           force_save="1"
+                                           optional="hide"/>
+
+                                    <field name="qty_available"
+                                           string="Tickets disponibles"
+                                           readonly="1"
+                                           force_save="1"
+                                           optional="hide"/>
+
+                                    <!-- Colonnes utiles en usage normal -->
+                                    <field name="transferable_carnet_count"
+                                           string="Carnets disponibles"
+                                           readonly="1"
+                                           force_save="1"/>
+
+                                    <field name="carnet_qty"
+                                           string="Carnets à distribuer"
+                                           required="1"
+                                           sum="Total carnets"/>
+
+                                    <field name="qty_faces"
+                                           string="Tickets à distribuer"
+                                           readonly="1"
+                                           force_save="1"
+                                           optional="hide"
+                                           sum="Total tickets"/>
+
+                                    <field name="amount_total"
+                                           string="Montant"
+                                           readonly="1"
+                                           force_save="1"
+                                           sum="Total montant"/>
                                 </list>
                             </field>
                         </page>
                     </notebook>
+
+                    <group string="Technique">
+                        <group>
+                            <field name="distributor_id"
+                                   readonly="1"
+                                   force_save="1"/>
+
+                            <field name="company_id"
+                                   readonly="1"
+                                   force_save="1"
+                                   groups="base.group_multi_company"/>
+
+                            <field name="source_wallet_id"
+                                   readonly="1"
+                                   force_save="1"/>
+                        </group>
+                    </group>
                 </sheet>
+
                 <footer>
-                    <button name="action_distribute" type="object" string="Distribuer" class="btn-primary"/>
-                    <button string="Annuler" special="cancel"/>
+                    <button name="action_distribute"
+                            type="object"
+                            string="Distribuer"
+                            class="btn-primary"/>
+
+                    <button string="Annuler"
+                            special="cancel"/>
                 </footer>
             </form>
         </field>

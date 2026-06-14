@@ -309,3 +309,19 @@ La règle métier ne change pas : toute ligne réellement distribuée doit toujo
 
 - Les libellés visibles du wizard de distribution société utilisent **Ticket** au lieu de **Face**.
 - Les noms techniques/API (`face_line_id`, `face_value`) restent inchangés pour ne pas casser les appels backend et mobile.
+
+
+## 19.0.1.4.3
+
+- Masque par défaut les colonnes redondantes `Tickets par carnet` et `Valeur du ticket` dans le wizard de distribution société.
+
+
+### 19.0.1.4.4 — Distribution manuelle par type de carnet
+
+- Le wizard de distribution société ne pré-remplit plus les lignes avec tous les soldes disponibles.
+- L’opérateur saisit explicitement les types de carnets et les quantités à distribuer.
+- Le choix du bénéficiaire interdit la création rapide, la création/édition et l’ouverture du contact depuis le wizard.
+- Les colonnes techniques `Wallet` et `Ligne de tickets source` restent disponibles en audit mais sont masquées par défaut.
+- Les colonnes redondantes `Tickets disponibles`, `Tickets par carnet`, `Valeur du ticket` et `Tickets à distribuer` sont masquées par défaut selon leur utilité métier.
+- Les colonnes `Carnets à distribuer`, `Tickets à distribuer` et `Montant` affichent des totaux en bas de liste.
+- Le backend alloue automatiquement les carnets demandés sur les lignes techniques disponibles du wallet société, par ordre d’expiration puis ID.
