@@ -170,7 +170,10 @@
                         <div class="card mb-4" t-if="distributor">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <span>Dernières distributions</span>
-                                <a href="/my/fueltoken/distributions" class="btn btn-sm btn-link">Tout voir</a>
+                                <div class="d-flex gap-2">
+                                    <a href="/my/fueltoken/distributions/new" class="btn btn-sm btn-outline-primary">Distribuer</a>
+                                    <a href="/my/fueltoken/distributions" class="btn btn-sm btn-link">Tout voir</a>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle mb-0">
@@ -514,12 +517,126 @@
         </t>
     </template>
 
+    <template id="portal_fueltoken_company_distribution_new" name="Tickets Carburant Société - Nouvelle distribution">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1">Distribuer des carnets</h2>
+                        <div class="text-muted" t-esc="distributor.display_name"/>
+                    </div>
+                    <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Retour distributions</a>
+                </div>
+
+                <div class="alert alert-info" role="alert">
+                    Sélectionnez un membre autorisé puis les carnets à distribuer. La distribution est confirmée immédiatement et crédite le wallet mobile du membre.
+                </div>
+                <div t-if="error" class="alert alert-danger" role="alert" t-esc="error"/>
+
+                <form action="/my/fueltoken/distributions/new" method="post" class="card">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="idempotency_key" t-att-value="idempotency_key"/>
+
+                    <div class="card-body">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label" for="member_partner_id">Bénéficiaire</label>
+                                <select name="member_partner_id" id="member_partner_id" class="form-select" required="required">
+                                    <option value="">Sélectionner un membre mobile actif...</option>
+                                    <option t-foreach="member_rows" t-as="row"
+                                            t-att-value="row['partner'].id"
+                                            t-att-selected="row['partner'].id == member_partner_id and 'selected' or None">
+                                        <t t-esc="row['name']"/>
+                                        <t t-if="row['phone']"> - <t t-esc="row['phone']"/></t>
+                                    </option>
+                                </select>
+                                <div class="form-text">
+                                    Seuls les membres autorisés avec compte mobile actif sont proposés.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="note">Note interne</label>
+                                <textarea name="note" id="note" class="form-control" rows="3" placeholder="Note interne sur la distribution..."><t t-esc="note"/></textarea>
+                            </div>
+                        </div>
+
+                        <div t-if="not member_rows" class="alert alert-warning" role="alert">
+                            Aucun membre mobile actif n’est actuellement rattaché à ce compte société. Ajoutez d’abord un membre depuis la page Membres autorisés.
+                        </div>
+                        <div t-if="not carnet_rows" class="alert alert-warning" role="alert">
+                            Aucun carnet distribuable n’est disponible dans le wallet société.
+                        </div>
+
+                        <div class="table-responsive" t-if="carnet_rows">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Type de carnet</th>
+                                        <th class="text-end">Tickets disponibles</th>
+                                        <th class="text-end">Carnets disponibles</th>
+                                        <th class="text-end">Montant disponible</th>
+                                        <th class="text-end">Carnets à distribuer</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="carnet_rows" t-as="row">
+                                        <td>
+                                            <div class="fw-semibold" t-esc="row['carnet_type'].display_name"/>
+                                            <div class="text-muted small" t-esc="row['carnet_type'].code"/>
+                                        </td>
+                                        <td class="text-end" t-esc="row['qty_available']"/>
+                                        <td class="text-end" t-esc="row['transferable_carnet_count']"/>
+                                        <td class="text-end">
+                                            <span t-esc="row['amount_available']"/>
+                                            <span t-esc="row['carnet_type'].currency_id.name"/>
+                                        </td>
+                                        <td class="text-end" style="width: 180px;">
+                                            <input type="number"
+                                                   min="0"
+                                                   step="1"
+                                                   class="form-control text-end"
+                                                   t-att-name="'qty_%s' % row['carnet_type'].id"
+                                                   t-att-max="row['transferable_carnet_count']"
+                                                   t-att-value="row['qty']"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light fw-semibold">
+                                        <td>Total</td>
+                                        <td class="text-end" t-esc="distribution_totals['qty_available']"/>
+                                        <td class="text-end" t-esc="distribution_totals['transferable_carnet_count']"/>
+                                        <td class="text-end">
+                                            <span t-esc="distribution_totals['amount_available']"/>
+                                            <span t-esc="distribution_totals['currency_name']"/>
+                                        </td>
+                                        <td class="text-end" t-esc="distribution_totals['selected_carnet_qty']"/>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card-footer d-flex justify-content-end gap-2">
+                        <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Annuler</a>
+                        <button type="submit" class="btn btn-primary" t-att-disabled="(not member_rows or not carnet_rows) and 'disabled' or None">
+                            Distribuer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </t>
+    </template>
+
     <template id="portal_fueltoken_company_distributions" name="Tickets Carburant Société - Distributions">
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>Distributions société</h2>
-                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
+                    <div class="d-flex gap-2">
+                        <a href="/my/fueltoken/distributions/new" class="btn btn-primary">Nouvelle distribution</a>
+                        <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
+                    </div>
                 </div>
                 <div class="table-responsive card">
                     <table class="table align-middle mb-0">
@@ -549,6 +666,16 @@
                                 <td colspan="6" class="text-muted text-center py-4">Aucune distribution société.</td>
                             </tr>
                         </tbody>
+                        <tfoot t-if="distributions">
+                            <tr class="table-light fw-semibold">
+                                <td colspan="4">Total</td>
+                                <td class="text-end" t-esc="distribution_totals['face_qty_total']"/>
+                                <td class="text-end">
+                                    <span t-esc="distribution_totals['amount_total']"/>
+                                    <span t-esc="distribution_totals['currency_name']"/>
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>

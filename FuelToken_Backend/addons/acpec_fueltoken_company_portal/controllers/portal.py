@@ -22,7 +22,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
     - portal access is model-backed through read ACLs and record rules, like
       standard Odoo portal documents;
     - write operations are intentionally narrow controller actions that always
-      start from the current portal user context.
+      start from the current portal user context;
+    - portal distributions call the company distribution engine and never
+      reimplement wallet/accounting movements.
     """
 
     def _user_has_group(self, user, xmlid):
@@ -330,6 +332,148 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             raise ValidationError(_('La preuve de paiement est obligatoire.'))
         return filename, base64.b64encode(content).decode('ascii')
 
+    def _get_transferable_face_lines(self, wallet, carnet_type=None):
+        FaceLine = request.env['acpec.fuel.face.line'].sudo()
+        if not wallet:
+            return FaceLine.browse()
+        domain = [
+            ('wallet_id', '=', wallet.id),
+            ('qty_available', '>', 0),
+        ]
+        if carnet_type:
+            domain.append(('carnet_type_id', '=', carnet_type.id))
+        face_lines = FaceLine.search(domain, order='expires_at NULLS LAST, id')
+        return face_lines.filtered(lambda line: line.is_transferable_carnet_line())
+
+    def _build_distribution_carnet_rows(self, wallet, form_data=None):
+        form_data = form_data or {}
+        rows = []
+        face_lines = self._get_transferable_face_lines(wallet)
+        carnet_types = request.env['acpec.fuel.carnet.type'].sudo().browse()
+        for face_line in face_lines:
+            carnet_types |= face_line.carnet_type_id
+        for carnet_type in carnet_types.sorted(lambda c: (c.face_value or 0, c.face_count or 0, c.code or '', c.id)):
+            type_lines = face_lines.filtered(lambda line: line.carnet_type_id == carnet_type)
+            qty_available = sum(type_lines.mapped('qty_available'))
+            transferable_carnet_count = sum(line.transferable_carnet_count() for line in type_lines)
+            amount_available = sum(type_lines.mapped('amount_available'))
+            rows.append({
+                'carnet_type': carnet_type,
+                'qty': form_data.get('qty_%s' % carnet_type.id, ''),
+                'qty_available': qty_available,
+                'transferable_carnet_count': transferable_carnet_count,
+                'amount_available': amount_available,
+            })
+        return rows
+
+    def _build_distribution_totals(self, carnet_rows, currency_name=False):
+        selected_carnet_qty = 0
+        for row in carnet_rows:
+            raw_qty = row.get('qty')
+            if raw_qty in (None, ''):
+                continue
+            try:
+                selected_carnet_qty += max(int(raw_qty), 0)
+            except (TypeError, ValueError):
+                continue
+        return {
+            'qty_available': sum(row.get('qty_available', 0) for row in carnet_rows),
+            'transferable_carnet_count': sum(row.get('transferable_carnet_count', 0) for row in carnet_rows),
+            'amount_available': sum(row.get('amount_available', 0) for row in carnet_rows),
+            'selected_carnet_qty': selected_carnet_qty,
+            'currency_name': currency_name or '',
+        }
+
+    def _build_transfer_totals(self, transfers, currency_name=False):
+        return {
+            'face_qty_total': sum(transfers.mapped('face_qty_total')),
+            'amount_total': sum(transfers.mapped('amount_total')),
+            'currency_name': currency_name or '',
+        }
+
+    def _build_distribution_form_values(self, context, error=None, form_data=None):
+        form_data = form_data or {}
+        distributor = context['distributor']
+        wallet = self._get_company_wallet(distributor)
+        member_rows = [row for row in self._build_member_rows(distributor) if row['mobile_ready']]
+        carnet_rows = self._build_distribution_carnet_rows(wallet, form_data=form_data)
+        currency = (wallet and wallet.currency_id) or context['company'].currency_id
+        return {
+            'page_name': 'fueltoken_company_distribution_new',
+            'distributor': distributor,
+            'commercial_partner': context['commercial_partner'],
+            'portal_company': context['company'],
+            'portal_company_name': context['portal_company_name'],
+            'wallet': wallet,
+            'member_rows': member_rows,
+            'carnet_rows': carnet_rows,
+            'distribution_totals': self._build_distribution_totals(carnet_rows, currency.name if currency else ''),
+            'member_partner_id': int(form_data.get('member_partner_id') or 0),
+            'note': form_data.get('note', ''),
+            'idempotency_key': form_data.get('idempotency_key') or str(uuid.uuid4()),
+            'error': error,
+        }
+
+    def _allocate_carnets_from_company_wallet(self, wallet, carnet_type, carnet_qty):
+        if not wallet:
+            raise ValidationError(_('Le Compte Société ne dispose d’aucun wallet source.'))
+        remaining = int(carnet_qty or 0)
+        if remaining <= 0:
+            return []
+        allocations = []
+        for face_line in self._get_transferable_face_lines(wallet, carnet_type=carnet_type):
+            available = face_line.transferable_carnet_count()
+            if available <= 0:
+                continue
+            to_take = min(available, remaining)
+            if to_take:
+                allocations.append({
+                    'face_line_id': face_line.id,
+                    'carnet_qty': to_take,
+                })
+                remaining -= to_take
+            if remaining <= 0:
+                break
+        if remaining > 0:
+            allocated = int(carnet_qty or 0) - remaining
+            raise ValidationError(_(
+                'Carnets insuffisants pour %(type)s : %(available)s disponibles, %(asked)s demandés.'
+            ) % {
+                'type': carnet_type.display_name,
+                'available': allocated,
+                'asked': int(carnet_qty or 0),
+            })
+        return allocations
+
+    def _prepare_distribution_lines_from_post(self, distributor, wallet, post):
+        if not wallet:
+            raise ValidationError(_('Le Compte Société ne dispose d’aucun wallet source.'))
+        selected_by_type = {}
+        for row in self._build_distribution_carnet_rows(wallet):
+            carnet_type = row['carnet_type']
+            raw_qty = post.get('qty_%s' % carnet_type.id)
+            if raw_qty in (None, ''):
+                continue
+            try:
+                carnet_qty = int(raw_qty)
+            except (TypeError, ValueError):
+                raise ValidationError(_('Les quantités de carnets doivent être des entiers.'))
+            if carnet_qty < 0:
+                raise ValidationError(_('Les quantités de carnets ne peuvent pas être négatives.'))
+            if carnet_qty == 0:
+                continue
+            selected_by_type[carnet_type.id] = selected_by_type.get(carnet_type.id, 0) + carnet_qty
+        if not selected_by_type:
+            raise ValidationError(_('Veuillez saisir au moins une quantité de carnets à distribuer.'))
+
+        selected_lines = []
+        for carnet_type_id, carnet_qty in selected_by_type.items():
+            carnet_type = request.env['acpec.fuel.carnet.type'].sudo().browse(carnet_type_id).exists()
+            if not carnet_type:
+                raise ValidationError(_('Type de carnet indisponible.'))
+            selected_lines.extend(self._allocate_carnets_from_company_wallet(wallet, carnet_type, carnet_qty))
+        return selected_lines
+
     @http.route(['/my/fueltoken'], type='http', auth='user', website=True)
     def portal_fueltoken_company_dashboard(self, **kwargs):
         context = self._get_portal_context(require_distributor=False)
@@ -449,11 +593,48 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             'created': bool(created),
         })
 
+    @http.route(['/my/fueltoken/distributions/new'], type='http', auth='user', website=True, methods=['GET'])
+    def portal_fueltoken_company_distribution_new(self, **kwargs):
+        context = self._get_portal_context(require_distributor=True)
+        return self._portal_render(
+            'acpec_fueltoken_company_portal.portal_fueltoken_company_distribution_new',
+            self._build_distribution_form_values(context)
+        )
+
+    @http.route(['/my/fueltoken/distributions/new'], type='http', auth='user', website=True, methods=['POST'])
+    def portal_fueltoken_company_distribution_submit(self, **post):
+        context = self._get_portal_context(require_distributor=True)
+        distributor = context['distributor']
+        wallet = self._get_company_wallet(distributor)
+        try:
+            member_id = int(post.get('member_partner_id') or 0)
+        except (TypeError, ValueError):
+            member_id = 0
+        try:
+            member = request.env['res.partner'].sudo().browse(member_id).exists()
+            if not member or member not in distributor.member_partner_ids.sudo():
+                raise ValidationError(_('Sélectionnez un membre autorisé.'))
+            if not distributor._get_active_mobile_user_for_member(member):
+                raise ValidationError(_('Le membre sélectionné n’a pas de compte mobile actif et approuvé.'))
+            lines = self._prepare_distribution_lines_from_post(distributor, wallet, post)
+            transfer = distributor.sudo().action_distribute_to_member(
+                member,
+                lines,
+                note=(post.get('note') or '').strip() or False,
+                idempotency_key=(post.get('idempotency_key') or '').strip() or False,
+                confirm=True,
+            )
+        except (ValidationError, UserError) as exc:
+            values = self._build_distribution_form_values(context, error=exc.args[0], form_data=post)
+            return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_distribution_new', values)
+        return request.redirect('/my/fueltoken/distributions/%s?created=1' % transfer.id)
+
     @http.route(['/my/fueltoken/distributions'], type='http', auth='user', website=True)
     def portal_fueltoken_company_distributions(self, **kwargs):
         distributor = self._get_portal_distributor()
         wallet = self._get_company_wallet(distributor)
         distributions = self._get_distributions(wallet)
+        currency = (wallet and wallet.currency_id) or distributor.company_id.currency_id
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_distributions', {
             'page_name': 'fueltoken_company_distributions',
             'distributor': distributor,
@@ -462,6 +643,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             'portal_company_name': distributor.company_id.name,
             'wallet': wallet,
             'distributions': distributions,
+            'distribution_totals': self._build_transfer_totals(distributions, currency.name if currency else ''),
         })
 
     @http.route(['/my/fueltoken/distributions/<int:transfer_id>'], type='http', auth='user', website=True)

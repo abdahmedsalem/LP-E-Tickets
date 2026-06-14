@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC Tickets Carburant Company Portal',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.1',
     'category': 'ACPEC/FuelToken',
     'summary': 'Portail Tickets Carburant : consultation et demande d’achat',
     'author': 'ACPEC SARL',
