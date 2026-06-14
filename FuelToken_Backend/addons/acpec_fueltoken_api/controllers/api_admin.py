@@ -13,11 +13,9 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
         return user
 
     def _carnet_type_label(self, rec):
-        face_count = int(rec.face_count or 0)
-        face_value = int(rec.face_value or 0)
-        if face_count > 0 and face_value > 0:
-            return 'Carnet %s × %s' % (face_count, face_value)
-        return rec.name or rec.code or 'Carnet'
+        if not rec:
+            return False
+        return rec.name or rec.code or _('Carnet de tickets')
 
     def _carnet_payload(self, rec):
         return {

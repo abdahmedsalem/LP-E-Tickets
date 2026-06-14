@@ -8,11 +8,9 @@ from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuth
 class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
 
     def _carnet_type_label(self, carnet):
-        face_count = int(carnet.face_count or 0)
-        face_value = int(carnet.face_value or 0)
-        if face_count > 0 and face_value > 0:
-            return 'Carnet %s × %s' % (face_count, face_value)
-        return carnet.name or carnet.code or 'Carnet'
+        if not carnet:
+            return False
+        return carnet.name or carnet.code or _('Carnet de tickets')
 
     def _mobile_wallet(self):
         user = self._require_mobile_auth()
