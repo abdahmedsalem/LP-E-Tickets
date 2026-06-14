@@ -55,7 +55,7 @@
                                 </div>
                                 <div class="acpec-card-body">
                                     <div class="acpec-warning">
-                                        Cette console est un outil de test. Elle ne crée pas de données de démonstration automatiquement : les types de carnets, les validations de lots et les stations doivent être préparés dans le backend. Après /login, /password-login ou /verify-otp, le token Bearer est capturé automatiquement.
+                                        Cette console appelle les endpoints réels. Le module de test local force uniquement l’OTP à 0000 et désactive l’envoi SMS. Après /login, /password-login ou /verify-otp, le token Bearer est capturé automatiquement.
                                     </div>
 
                                     <div class="acpec-field">
@@ -107,12 +107,12 @@
                                         <div class="acpec-card-body" style="padding-top:16px;">
                                             <ol class="acpec-order">
                                                 <li>Version check et signup companies.</li>
-                                                <li>Signup client, puis validation de la demande par un administrateur.</li>
-                                                <li>Login client ou verify OTP, puis vérification de session avec Bearer token.</li>
+                                                <li>Signup client par téléphone : l’API retourne otp_challenge_id et otp_dev_code=0000.</li>
+                                                <li>Verify OTP avec le payload prérempli automatiquement, puis vérification de session avec Bearer token.</li>
                                                 <li>Wallet courant.</li>
                                                 <li>Création d’un lot d’achat avec un <code>carnet_type_id</code> réel.</li>
-                                                <li>Validation du lot dans le backend pour générer les faces.</li>
-                                                <li>Liste des faces, émission QR, détail QR et séparation si nécessaire.</li>
+                                                <li>Validation du lot dans le backend pour générer les tickets.</li>
+                                                <li>Liste des tickets disponibles, émission QR, détail QR et séparation si nécessaire.</li>
                                                 <li>Connexion avec un utilisateur station, puis station/profile, station/qr/check et consommation QR.</li>
                                             </ol>
                                         </div>
@@ -163,6 +163,15 @@
 
                         let accessToken = window.localStorage.getItem('acpec_ft_access_token') || '';
                         let refreshToken = window.localStorage.getItem('acpec_ft_refresh_token') || '';
+                        let lastOtpIdentifier = window.localStorage.getItem('acpec_ft_last_otp_identifier') || '';
+                        let lastOtpChallengeId = window.localStorage.getItem('acpec_ft_last_otp_challenge_id') || '';
+                        let lastOtpCode = window.localStorage.getItem('acpec_ft_last_otp_code') || '0000';
+                        let lastSignupPayload = {};
+                        try {
+                            lastSignupPayload = JSON.parse(window.localStorage.getItem('acpec_ft_last_signup_payload') || '{}');
+                        } catch (error) {
+                            lastSignupPayload = {};
+                        }
 
                         function syncTokenBoxes() {
                             accessTokenBox.value = accessToken || '';
@@ -192,6 +201,81 @@
                         function captureTokens(result) {
                             const data = result && result.result && result.result.data ? result.result.data : {};
                             saveTokens(data.access_token, data.refresh_token);
+                        }
+
+                        function deepClone(value) {
+                            return JSON.parse(JSON.stringify(value || {}));
+                        }
+
+                        function captureOtpContext(result, submittedPayload, endpoint) {
+                            const data = result && result.result && result.result.data ? result.result.data : {};
+                            const submitted = submittedPayload || {};
+                            const route = endpoint || '';
+
+                            if (route.indexOf('/signup') !== -1 && route.indexOf('/signup-companies') === -1) {
+                                lastSignupPayload = {
+                                    name: submitted.name || data.name || '',
+                                    secret_code: submitted.secret_code || '',
+                                    company_id: submitted.company_id || data.company_id || false,
+                                    email: submitted.email || '',
+                                    note: submitted.note || ''
+                                };
+                                window.localStorage.setItem('acpec_ft_last_signup_payload', JSON.stringify(lastSignupPayload));
+                            }
+                            const identifier = data.signup_identifier || data.identifier || '';
+                            const challengeId = data.otp_challenge_id || data.challenge_id || '';
+                            const code = data.otp_dev_code || data.dev_otp_code || '';
+
+                            if (identifier) {
+                                lastOtpIdentifier = identifier;
+                                window.localStorage.setItem('acpec_ft_last_otp_identifier', lastOtpIdentifier);
+                            }
+                            if (challengeId) {
+                                lastOtpChallengeId = String(challengeId);
+                                window.localStorage.setItem('acpec_ft_last_otp_challenge_id', lastOtpChallengeId);
+                            }
+                            if (code) {
+                                lastOtpCode = code;
+                                window.localStorage.setItem('acpec_ft_last_otp_code', lastOtpCode);
+                            }
+                        }
+
+                        function applyOtpContext(item, payload) {
+                            const route = item && item.route ? item.route : '';
+                            if (route.indexOf('/verify-otp') === -1) {
+                                return payload;
+                            }
+                            if (lastOtpIdentifier) {
+                                payload.identifier = lastOtpIdentifier;
+                            }
+                            if (lastOtpChallengeId) {
+                                const parsedChallengeId = parseInt(lastOtpChallengeId, 10);
+                                if (!isNaN(parsedChallengeId)) {
+                                    payload.challenge_id = parsedChallengeId;
+                                }
+                            }
+                            payload.code = lastOtpCode || '0000';
+
+                            // Pour un challenge de type register, le vrai endpoint verify-otp
+                            // exige les mêmes informations métier que le signup.
+                            // On ne rend pas l'endpoint production plus permissif :
+                            // la console reprend simplement le payload du dernier signup.
+                            if (lastSignupPayload && lastSignupPayload.name) {
+                                payload.name = lastSignupPayload.name;
+                            }
+                            if (lastSignupPayload && lastSignupPayload.secret_code) {
+                                payload.secret_code = lastSignupPayload.secret_code;
+                            }
+                            if (lastSignupPayload && lastSignupPayload.company_id) {
+                                payload.company_id = lastSignupPayload.company_id;
+                            }
+                            if (lastSignupPayload && lastSignupPayload.email) {
+                                payload.email = lastSignupPayload.email;
+                            }
+                            if (lastSignupPayload && lastSignupPayload.note) {
+                                payload.note = lastSignupPayload.note;
+                            }
+                            return payload;
                         }
 
                         function statusClass(kind) {
@@ -231,7 +315,7 @@
                             }
                             methodInput.value = 'POST (JSON-RPC)';
                             endpointInput.value = item.route || '/';
-                            payloadInput.value = JSON.stringify(item.payload || {}, null, 2);
+                            payloadInput.value = JSON.stringify(applyOtpContext(item, deepClone(item.payload || {})), null, 2);
                             apiNote.textContent = item.note || '';
                         }
 
@@ -279,6 +363,7 @@
                                 const response = await fetch(endpoint, options);
                                 const result = await response.json();
                                 captureTokens(result);
+                                captureOtpContext(result, userPayload, endpoint);
                                 const formatted = JSON.stringify(result, null, 2);
 
                                 if (!response.ok) {

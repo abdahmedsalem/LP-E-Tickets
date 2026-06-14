@@ -86,7 +86,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
                 if not user:
                     with request.env.cr.savepoint():
-                        _, user, _ = self._create_mobile_signup_account(
+                        partner, user, account_request = self._create_mobile_signup_account(
                             name=name,
                             signup_identifier=identifier_vals['signup_identifier'],
                             secret_code=secret_code,

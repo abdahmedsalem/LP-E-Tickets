@@ -242,7 +242,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
         }
         if mobile_group_ids:
             user_vals['group_ids'] = [(6, 0, mobile_group_ids)]
-            user_vals['groups_id'] = [(6, 0, mobile_group_ids)]
         if identifier_vals['phone']:
             user_vals['mobile_phone'] = identifier_vals['phone']
         if email_value:

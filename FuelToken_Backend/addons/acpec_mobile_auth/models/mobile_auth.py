@@ -111,7 +111,6 @@ class AcpecMobileAuthAccountRequest(models.Model):
             }
             if group_ids:
                 vals['group_ids'] = [(6, 0, group_ids)]
-                vals['groups_id'] = [(6, 0, group_ids)]
             if record.phone and not record.user_id.mobile_phone:
                 vals['mobile_phone'] = record.phone
             if record.email and not record.user_id.email:
