@@ -8,10 +8,11 @@ class AcpecFuelCarnetType(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'face_value, face_count, code'
 
-    name = fields.Char(string='Nom', compute='_compute_name', store=True, readonly=False)
-    code = fields.Char(string='Code', compute='_compute_code', store=True, readonly=False, index=True)
+    name = fields.Char(string='Nom', compute='_compute_name', store=True, readonly=True)
+    code = fields.Char(string='Code', compute='_compute_code', store=True, readonly=True, index=True)
+    
     face_count = fields.Integer(string='Taille du carnet', required=True, default=10, tracking=True)
-    face_value = fields.Monetary(string='Valeur de face', required=True, tracking=True)
+    face_value = fields.Monetary(string='Valeur de ticket', required=True, tracking=True)
     carnet_amount = fields.Monetary(string='Montant du carnet', compute='_compute_carnet_amount', store=True)
     validity_days = fields.Integer(string='Validité en jours', default=365)
     active = fields.Boolean(default=True)
@@ -36,18 +37,28 @@ class AcpecFuelCarnetType(models.Model):
         'La validité en jours doit être un entier positif.',
     )
 
+
+    def _format_carnet_number(self, value):
+        value = value or 0
+        number = float(value)
+        if number.is_integer():
+            return str(int(number))
+        return ('%.6f' % number).rstrip('0').rstrip('.')
+
     @api.depends('face_count', 'face_value')
     def _compute_code(self):
         for rec in self:
-            value = int(rec.face_value) if rec.face_value == int(rec.face_value) else rec.face_value
-            rec.code = 'C%s-%s' % (rec.face_count, value)
+            count = rec._format_carnet_number(rec.face_count)
+            value = rec._format_carnet_number(rec.face_value)
+            rec.code = 'C%sT-%s' % (count, value)
 
     @api.depends('face_count', 'face_value')
     def _compute_name(self):
         for rec in self:
-            value = int(rec.face_value) if rec.face_value == int(rec.face_value) else rec.face_value
-            rec.name = _('Carnet %s × %s') % (rec.face_count, value)
-
+            count = rec._format_carnet_number(rec.face_count)
+            value = rec._format_carnet_number(rec.face_value)
+            rec.name = 'C%sT-%sMRU' % (count, value)
+            
     @api.depends('face_count', 'face_value')
     def _compute_carnet_amount(self):
         for rec in self:
@@ -64,8 +75,20 @@ class AcpecFuelCarnetType(models.Model):
         for rec in self:
             if rec.validity_days < 0:
                 raise ValidationError(_('La validité en jours ne peut pas être négative.'))
+            
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            vals.pop('name', None)
+            vals.pop('code', None)
+        return super().create(vals_list)
+
 
     def write(self, vals):
+        vals = dict(vals)
+        vals.pop('name', None)
+        vals.pop('code', None)
+
         protected = {'face_count', 'face_value', 'company_id'}
         if protected.intersection(vals):
             for rec in self:
