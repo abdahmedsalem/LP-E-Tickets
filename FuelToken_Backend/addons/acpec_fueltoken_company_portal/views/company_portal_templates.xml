@@ -405,6 +405,7 @@
                                        name="proof_file"
                                        type="file"
                                        class="form-control"
+                                       accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                                        required="required"/>
                                 <div class="form-text">Joignez la preuve exigée pour soumettre la demande.</div>
                             </div>

@@ -24,8 +24,8 @@ API_CATALOG_FUELTOKEN = [
         'method': 'POST',
         'payload': {
             'lines': [{'carnet_type_id': 1, 'carnet_qty': 1}],
-            'proof_filename': 'preuve_paiement_test.txt',
-            'proof_data': 'UHJldXZlIGRlIHBhaWVtZW50IHRlc3Q=',
+            'proof_filename': 'preuve_paiement_test.pdf',
+            'proof_data': 'JVBERi0xLjQKJSBGdWVsVG9rZW4gdGVzdCBwYXltZW50IHByb29mCiUlRU9GCg==',
             'payment_reference': 'TEST-PAIEMENT-001',
             'idempotency_key': 'TEST-PURCHASE-001',
         },

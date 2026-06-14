@@ -1,3 +1,8 @@
+import base64
+import binascii
+import os
+import re
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
@@ -62,6 +67,121 @@ class AcpecFuelPurchase(models.Model):
             rec.amount_total = sum(rec.line_ids.mapped('amount_total'))
             rec.face_qty_total = sum(rec.line_ids.mapped('generated_face_qty'))
 
+    _PROOF_MAX_BYTES = 5 * 1024 * 1024
+    _PROOF_ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg'}
+    _PROOF_ALLOWED_MIMETYPES = {'application/pdf', 'image/png', 'image/jpeg'}
+
+    @api.model
+    def _proof_upload_max_bytes(self):
+        """Return max proof size in bytes.
+
+        Configurable for deployments, but deliberately capped by default to avoid
+        storing arbitrary large base64 payloads in ir.attachment.
+        """
+        raw_value = self.env['ir.config_parameter'].sudo().get_param(
+            'acpec_fueltoken_purchase.proof_max_bytes',
+            str(self._PROOF_MAX_BYTES),
+        )
+        try:
+            max_bytes = int(raw_value)
+        except (TypeError, ValueError):
+            max_bytes = self._PROOF_MAX_BYTES
+        return max(1, max_bytes)
+
+    @api.model
+    def _proof_upload_max_label(self, max_bytes):
+        max_mb = max_bytes / float(1024 * 1024)
+        if max_mb.is_integer():
+            return '%s Mo' % int(max_mb)
+        return '%.1f Mo' % max_mb
+
+    @api.model
+    def _sanitize_proof_filename_stem(self, filename):
+        filename = (filename or '').replace('\\', '/')
+        filename = os.path.basename(filename).strip()
+        filename = re.sub(r'[^A-Za-z0-9_.()\- ]+', '_', filename)
+        filename = filename[:120].strip(' .')
+        stem = os.path.splitext(filename)[0].strip(' .')
+        return stem or 'preuve_paiement'
+
+    @api.model
+    def _split_proof_data_uri(self, proof_data):
+        if proof_data in (False, None, ''):
+            raise ValidationError(_('La preuve de paiement est obligatoire.'))
+        if isinstance(proof_data, bytes):
+            proof_data = proof_data.decode('ascii', errors='ignore')
+        proof_data = str(proof_data).strip()
+        declared_mimetype = False
+        if proof_data.lower().startswith('data:'):
+            if ',' not in proof_data:
+                raise ValidationError(_('La preuve de paiement doit etre un fichier base64 valide.'))
+            header, proof_data = proof_data.split(',', 1)
+            match = re.match(r'^data:([^;,]+);base64$', header.strip(), flags=re.IGNORECASE)
+            if not match:
+                raise ValidationError(_('La preuve de paiement doit etre un fichier base64 valide.'))
+            declared_mimetype = match.group(1).lower()
+        return declared_mimetype, re.sub(r'\s+', '', proof_data)
+
+    @api.model
+    def _detect_proof_mimetype(self, content):
+        if content.startswith(b'%PDF-'):
+            return 'application/pdf'
+        if content.startswith(b'\x89PNG\r\n\x1a\n'):
+            return 'image/png'
+        if content.startswith(b'\xff\xd8\xff'):
+            return 'image/jpeg'
+        return False
+
+    @api.model
+    def _proof_extension_for_mimetype(self, mimetype):
+        return {
+            'application/pdf': '.pdf',
+            'image/png': '.png',
+            'image/jpeg': '.jpg',
+        }.get(mimetype)
+
+    @api.model
+    def _validate_purchase_proof(self, proof_filename, proof_data):
+        """Validate and normalize a payment proof before creating ir.attachment.
+
+        Accepted formats are PDF, PNG and JPEG. The client filename is treated
+        as a display hint only: the stored extension is derived from detected
+        magic bytes. This avoids rejecting mobile screenshots when the handset or
+        Flutter image picker changes the real image format without updating the
+        original filename.
+        """
+        filename_stem = self._sanitize_proof_filename_stem(proof_filename)
+
+        declared_mimetype, proof_data = self._split_proof_data_uri(proof_data)
+        if declared_mimetype and declared_mimetype not in self._PROOF_ALLOWED_MIMETYPES:
+            raise ValidationError(_('Format de preuve interdit. Formats autorises : PDF, PNG, JPG.'))
+
+        max_bytes = self._proof_upload_max_bytes()
+        max_label = self._proof_upload_max_label(max_bytes)
+        max_encoded_len = ((max_bytes + 2) // 3) * 4 + 16
+        if len(proof_data) > max_encoded_len:
+            raise ValidationError(_('La preuve de paiement depasse la taille maximale autorisee de %s.') % max_label)
+
+        try:
+            content = base64.b64decode(proof_data, validate=True)
+        except (binascii.Error, ValueError):
+            raise ValidationError(_('La preuve de paiement doit etre un fichier base64 valide.'))
+
+        if not content:
+            raise ValidationError(_('La preuve de paiement est obligatoire.'))
+        if len(content) > max_bytes:
+            raise ValidationError(_('La preuve de paiement depasse la taille maximale autorisee de %s.') % max_label)
+
+        detected_mimetype = self._detect_proof_mimetype(content)
+        if detected_mimetype not in self._PROOF_ALLOWED_MIMETYPES:
+            raise ValidationError(_('Format de preuve interdit. Formats autorises : PDF, PNG, JPG.'))
+        if declared_mimetype and declared_mimetype != detected_mimetype:
+            raise ValidationError(_('Le type MIME de la preuve ne correspond pas au contenu du fichier.'))
+
+        extension = self._proof_extension_for_mimetype(detected_mimetype)
+        filename = '%s%s' % (filename_stem, extension)
+        return filename, base64.b64encode(content).decode('ascii'), detected_mimetype
+
     def _check_before_submit(self):
         for rec in self:
             if not rec.line_ids:
@@ -103,6 +223,12 @@ class AcpecFuelPurchase(models.Model):
             })
 
     def _create_face_lines_after_approval(self):
+        """Hook intentionally left empty in acpec_fueltoken_purchase.
+
+        This module owns the purchase workflow only. The actual fuel value
+        creation is implemented by acpec_fueltoken_core, which depends on this
+        module and overrides this hook after approval.
+        """
         return True
 
     def write(self, vals):
@@ -122,6 +248,7 @@ class AcpecFuelPurchase(models.Model):
             ], limit=1)
             if existing:
                 return existing
+        proof_filename, proof_data, proof_mimetype = self._validate_purchase_proof(proof_filename, proof_data)
         with self.env.cr.savepoint():
             purchase = self.sudo().create({
                 'partner_id': partner.id,
@@ -142,15 +269,15 @@ class AcpecFuelPurchase(models.Model):
                     'carnet_type_id': carnet_type.id,
                     'carnet_qty': int(item.get('carnet_qty') or 0),
                 })
-            if proof_data:
-                attachment = self.env['ir.attachment'].sudo().create({
-                    'name': proof_filename or _('Preuve de paiement'),
-                    'datas': proof_data,
-                    'res_model': self._name,
-                    'res_id': purchase.id,
-                    'type': 'binary',
-                })
-                purchase.write({'proof_attachment_ids': [(4, attachment.id)]})
+            attachment = self.env['ir.attachment'].sudo().create({
+                'name': proof_filename,
+                'datas': proof_data,
+                'mimetype': proof_mimetype,
+                'res_model': self._name,
+                'res_id': purchase.id,
+                'type': 'binary',
+            })
+            purchase.write({'proof_attachment_ids': [(4, attachment.id)]})
             purchase.action_submit()
             return purchase
 

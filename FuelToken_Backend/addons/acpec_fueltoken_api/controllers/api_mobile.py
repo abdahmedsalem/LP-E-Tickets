@@ -761,48 +761,6 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
         '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
         type='jsonrpc', auth='public', methods=['POST'], csrf=False,
     )
-    def transfer_recipient_lookup(self, **kwargs):
-        """Vérifie et retourne le client destinataire d'un transfert."""
-        try:
-            self._require_keys(kwargs, ['recipient_phone'])
-            source_user = self._require_mobile_auth()
-            self._require_fuel_group(source_user, 'client')
-            wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
-                source_user.partner_id, source_user.company_id,
-            )
-            recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
-            if not recipient_phone:
-                raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
-            
-            # Normalisation et validation du numéro de téléphone destinataire
-            parsed = self._parse_signup_identifier(recipient_phone)
-            recipient_phone = parsed['login']
-
-            recipient_user = request.env['res.users'].sudo().search([
-                ('login', '=', recipient_phone),
-                ('active', '=', True),
-                ('company_ids', 'in', [wallet.company_id.id]),
-            ], limit=1)
-            if not recipient_user:
-                raise ValidationError(
-                    _("Aucun compte trouvé pour le numéro '%s'.") % recipient_phone
-                )
-            if recipient_user.id == source_user.id:
-                raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
-            if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
-                raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
-            return self._json_response({
-                'recipient_phone': recipient_phone,
-                'recipient_name': recipient_user.partner_id.display_name or recipient_user.name,
-                'recipient_partner_id': recipient_user.partner_id.id,
-            })
-        except Exception as exc:
-            return self._handle_exception_response(exc)
-
-    @http.route(
-        '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
-        type='jsonrpc', auth='public', methods=['POST'], csrf=False,
-    )
     def transfer_carnets_recipient(self, **kwargs):
         """Résout un numéro de téléphone en nom de destinataire avant transfert.
 
@@ -830,13 +788,11 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 ('company_ids', 'in', [wallet.company_id.id]),
             ], limit=1)
             if not recipient_user:
-                raise ValidationError(
-                    _("Aucun compte FuelToken trouvé pour le numéro '%s'.") % recipient_phone
-                )
+                raise ValidationError(_('Destinataire introuvable ou indisponible.'))
             if recipient_user.id == source_user.id:
                 raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
             if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
-                raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
+                raise ValidationError(_('Destinataire introuvable ou indisponible.'))
 
             return self._json_response({
                 'recipient_name': recipient_user.partner_id.display_name or recipient_phone,

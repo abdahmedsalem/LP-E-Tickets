@@ -327,9 +327,12 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         if not upload:
             raise ValidationError(_('La preuve de paiement est obligatoire.'))
         filename = getattr(upload, 'filename', '') or _('Preuve de paiement')
-        content = upload.read()
+        max_bytes = request.env['acpec.fuel.purchase'].sudo()._proof_upload_max_bytes()
+        content = upload.read(max_bytes + 1)
         if not content:
             raise ValidationError(_('La preuve de paiement est obligatoire.'))
+        if len(content) > max_bytes:
+            raise ValidationError(_('La preuve de paiement depasse la taille maximale autorisee de 5 Mo.'))
         return filename, base64.b64encode(content).decode('ascii')
 
     def _get_transferable_face_lines(self, wallet, carnet_type=None):
