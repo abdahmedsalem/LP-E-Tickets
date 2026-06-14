@@ -104,3 +104,8 @@ La doctrine finale est : mobile = OTP automatique ; portail FuelToken Société 
 
 Correction Odoo 19 : les héritages de vues ne sélectionnent plus les pages ou groupes avec `@string`, car Odoo refuse `string` comme sélecteur XPath. Les libellés Ticket restent inchangés ; seuls les sélecteurs techniques ont été sécurisés.
 
+
+
+## 19.0.1.3.7
+
+- Masque par défaut les colonnes redondantes `Tickets par carnet` et `Valeur du ticket` dans les listes où le type de carnet porte déjà l'information métier.

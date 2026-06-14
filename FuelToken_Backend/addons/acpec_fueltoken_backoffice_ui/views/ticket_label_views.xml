@@ -28,9 +28,11 @@
         <field name="arch" type="xml">
             <field name="face_count" position="attributes">
                 <attribute name="string">Tickets par carnet</attribute>
+                <attribute name="optional">hide</attribute>
             </field>
             <field name="face_value" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </field>
         </field>
     </record>
@@ -73,9 +75,11 @@
             </field>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_count']" position="attributes">
                 <attribute name="string">Tickets par carnet</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='generated_face_qty']" position="attributes">
                 <attribute name="string">Tickets générés</attribute>
@@ -99,6 +103,7 @@
             </xpath>
             <xpath expr="//field[@name='face_line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_initial']" position="attributes">
                 <attribute name="string">Tickets initiaux</attribute>
@@ -129,6 +134,7 @@
         <field name="arch" type="xml">
             <field name="face_value" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </field>
             <field name="qty_initial" position="attributes">
                 <attribute name="string">Tickets initiaux</attribute>
@@ -212,6 +218,7 @@
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='child_ids']//field[@name='public_code']" position="replace"/>
             <xpath expr="//sheet/notebook" position="after">
@@ -233,6 +240,7 @@
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
         </field>
     </record>
@@ -264,9 +272,11 @@
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_count']" position="attributes">
                 <attribute name="string">Tickets par carnet</attribute>
+                <attribute name="optional">hide</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='qty_faces']" position="attributes">
                 <attribute name="string">Tickets transférés</attribute>
