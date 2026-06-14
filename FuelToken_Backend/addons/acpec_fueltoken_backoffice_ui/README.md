@@ -1,139 +1,106 @@
 # ACPEC FuelToken Back-office UI
 
-Module Odoo 19 destiné à améliorer l'ergonomie du back-office FuelToken sans modifier la logique métier existante.
+Module d'ergonomie back-office pour FuelToken.
 
 ## Objectif
 
-Ce module fournit une première couche UI pour les opérateurs ACPEC : menus plus lisibles, libellés métier en français et accès rapides aux files de travail quotidiennes.
+Ce module réorganise les menus FuelToken et applique la doctrine back-office ACPEC sans modifier les modèles métier, les workflows de validation, les contrôleurs ou les API mobile.
 
-Il respecte les principes de la refonte FuelToken v3.2 :
+## Doctrine appliquée
 
-- ne pas toucher au frontend mobile ;
-- ne pas modifier les contrats des API mobile ;
-- ne pas modifier les modèles métier FuelToken ;
-- garder la logique métier dans les méthodes existantes ;
-- préparer l'arrivée des futurs Comptes Sociétés sans créer encore le modèle société.
+### 1. No create / no delete sur l'opérationnel
 
-## Périmètre fonctionnel
+Les écrans opérationnels et d'audit ne doivent pas servir à créer ou supprimer manuellement les objets métier sensibles.
 
-Le menu FuelToken est réorganisé autour des usages back-office :
+Exemples :
 
-```text
-FuelToken
-├── Tableau de bord
-├── Opérations du jour
-│   ├── Nouveaux comptes mobiles à valider
-│   ├── Achats à valider
-│   ├── Dernières consommations
-│   ├── Derniers transferts
-│   └── Bons de retrait à surveiller
-├── Clients & soldes
-│   ├── Comptes clients
-│   ├── Crédits disponibles
-│   ├── Bons de retrait
-│   └── Historique des mouvements
-├── Comptes Sociétés
-│   ├── Historique des transferts de carnets
-│   └── Achats sociétés
-├── Stations
-│   ├── Stations-service
-│   └── Consommations par station
-├── Pilotage
-└── Configuration
-```
+- achats à valider ;
+- crédits disponibles ;
+- bons de retrait ;
+- transferts de carnets ;
+- mouvements ;
+- sessions mobile ;
+- OTP ;
+- demandes de comptes mobile.
 
-## Politique de création v1
+La création reste autorisée sur les objets d'onboarding/configuration : formules de carnet, stations, comptes sociétés, politiques mobile.
 
-Pour limiter les erreurs opérationnelles, la création manuelle est désactivée sur les écrans métier opérationnels et d'audit : achats, wallets, crédits disponibles, bons de retrait, transactions, transferts, sessions mobile et OTP.
+### 2. Pas de domaines rigides pour les menus métier
 
-La création reste autorisée sur les écrans de configuration ou d'onboarding :
+Les menus métier comme **Achats à valider**, **Demandes d’inscription mobile**, **Dernières consommations**, **Bons de retrait à surveiller** et **Crédits disponibles** utilisent maintenant des filtres par défaut (`search_default_*`) au lieu de domaines rigides sur l'action.
 
-- formules de carnet ;
-- stations-service ;
-- politiques mobile ;
-- futurs Comptes Sociétés, quand le module `acpec_fueltoken_company` sera livré.
+Conséquence : l'utilisateur ouvre l'écran avec le bon filtre, mais peut retirer ce filtre depuis la barre de recherche pour consulter l'historique complet selon ses droits.
 
-Cette limitation se fait uniquement au niveau des actions UI, via le contexte Odoo. Elle ne remplace pas les contrôles serveur et ne modifie pas les droits d'accès existants.
+### 3. Sécurité hors UX
 
-## Comptes Sociétés
+Les restrictions réelles doivent rester dans les groupes, les ACL et les règles d'accès (`ir.rule`). Les filtres d'action sont seulement de l'ergonomie.
 
-Le menu `Comptes Sociétés` est préparé, mais le modèle technique `acpec.fuel.distributor` n'est pas encore créé par ce module.
+## Contenu technique
 
-Dans cette première version, le back-office ne réalise pas les transferts à la place de la société. L'entrée `Historique des transferts de carnets` sert uniquement à consulter/auditer les transferts existants. Le filtrage strict par compte société sera ajouté dans un module ultérieur.
+Le module ajoute :
 
-## Modules dépendants
+- des search views back-office dédiées ;
+- des actions avec filtres par défaut ;
+- des menus métier FuelToken ;
+- des libellés français ;
+- la désactivation de la création/suppression sur les vues opérationnelles.
 
-Ce module dépend de :
+Il ne touche pas :
 
-- `acpec_fueltoken_reports` ;
-- `acpec_mobile_auth_otp`.
+- aux API mobile ;
+- au signup mobile ;
+- à Flutter ;
+- aux modèles métier FuelToken ;
+- aux méthodes de validation ;
+- aux règles SQL.
 
-Les dépendances transitives FuelToken et Mobile Auth doivent donc être installées.
+## Version
 
-## Installation
+`19.0.1.3.4`
 
-1. Placer le module dans le dossier addons :
+Correction principale : remplacement des domaines rigides des actions back-office par des filtres par défaut retirables.
 
-```text
-FuelToken_Backend/addons/acpec_fueltoken_backoffice_ui
-```
+## v1.3 — Utilisateurs mobiles à valider
 
-2. Vérifier que `addons_path` pointe vers le dossier `addons` :
+Historique : cette version a ajouté un menu **Opérations du jour > Utilisateurs mobiles en attente** sur `res.users`.
 
-```ini
-addons_path = /mnt/extra-addons/github/FuelToken/FuelToken_Backend/addons
-```
+Cette orientation a été revue en v1.3.4, car les utilisateurs mobiles FuelToken sont validés automatiquement par OTP.
 
-3. Redémarrer Odoo.
-4. Mettre à jour la liste des applications.
-5. Installer `ACPEC FuelToken Back-office UI`.
 
-## Mise à jour
+## v1.3.1 — Correctif ordre de chargement Odoo
 
-En ligne de commande :
+Le fichier `mobile_users_backoffice_views.xml` est chargé avant `backoffice_menu_views.xml`, car le menu `Utilisateurs mobiles en attente` référence l'action `action_today_mobile_users_to_approve` définie dans ce fichier. Cela évite l'erreur `External ID not found` lors de la mise à jour du module.
 
-```bash
-odoo -c /etc/odoo/odoo.conf -d <base> -u acpec_fueltoken_backoffice_ui --stop-after-init
-```
 
-Ou depuis l'interface Odoo : Apps > ACPEC FuelToken Back-office UI > Upgrade.
+## v1.3.3 — Libellés et visibilité des menus mobile
 
-## Vérifications recommandées
+Clarifie les deux menus mobile :
 
-Après installation ou mise à jour :
+- **Demandes d’inscription mobile** : ouvre `acpec.mobile.auth.account.request`. Ce menu reste réservé au groupe `acpec_mobile_auth.group_mobile_auth_admin`, car il porte le flux d’inscription / audit mobile.
+- **Utilisateurs mobiles en attente** : ouvre `res.users` avec le filtre par défaut `mobile_state = pending`. Ce menu est visible aux gestionnaires et administrateurs FuelToken (`group_fuel_manager`, `group_fuel_admin`).
 
-- le menu `FuelToken` reste visible ;
-- `Opérations du jour` contient les files de travail attendues ;
-- `Nouveaux comptes mobiles à valider` apparaît dans `Opérations du jour` ;
-- les anciens menus QR multiples sont masqués ;
-- `Mobile Auth` n'apparaît plus comme application séparée ;
-- les écrans opérationnels ne proposent pas le bouton `Nouveau` ;
-- les boutons métier existants restent disponibles : valider, rejeter, révoquer, bloquer, etc.
+La règle UX reste : filtre par défaut retirables, pas de domaine rigide.
 
-## Limites connues
 
-- `Tableau de bord` est provisoire : il pointe vers une action existante en attendant un vrai dashboard.
-- `Comptes Sociétés` ne contient pas encore le vrai modèle société ; il sera alimenté par le futur module `acpec_fueltoken_company`.
-- Les historiques liés aux sociétés ne sont pas encore filtrés strictement par société, car le modèle distributeur n'existe pas encore dans ce module.
+## v1.3.4 — Doctrine mobile OTP et audit utilisateurs
 
-## Non-objectifs
+Révision de doctrine :
 
-Ce module ne fait pas :
+- les utilisateurs mobiles sont validés automatiquement via OTP ;
+- le menu opérationnel **Utilisateurs mobiles en attente** est neutralisé et réservé à `base.group_no_one` pour éviter une validation manuelle métier depuis `res.users` ;
+- la liste **Configuration > Utilisateurs mobiles — audit** reste disponible pour support/audit uniquement, avec accès réservé à `acpec_mobile_auth.group_mobile_auth_admin` et `acpec_fueltoken_base.group_fuel_admin` ;
+- les actions serveur historiques de validation/rejet/remise en attente sur `res.users` sont déliées du menu Action et remplacées par un message d'arrêt ;
+- **Demandes d’inscription mobile** reste visible seulement pour `acpec_mobile_auth.group_mobile_auth_admin`.
 
-- de modification Flutter ;
-- de modification des API mobile ;
-- de modification de `res.partner` ;
-- de création de `acpec.fuel.distributor` ;
-- de gardes serveur société ;
-- de web client société ;
-- de changement de workflow métier.
+La doctrine finale est : mobile = OTP automatique ; portail FuelToken Société = portail Odoo classique + `acpec.fuel.distributor` actif.
 
-## Roadmap associée
+## v1.3.5 — Libellés Ticket et code public technique
 
-Les étapes suivantes prévues sont :
+- Le vocabulaire back-office privilégie désormais **Ticket** au lieu de **Face**.
+- Les noms techniques Python/API (`face_line_id`, `face_value`, `public_code`) ne sont pas renommés afin de ne pas casser l’application mobile ni les intégrations.
+- `Code public` est retiré des listes principales et déplacé en bas des formulaires dans une section technique.
 
-1. vues métier back-office plus contrôlées ;
-2. module `acpec_fueltoken_company` pour les Comptes Sociétés ;
-3. gardes serveur société ;
-4. API portal société ;
-5. pages web client société.
+## Version 19.0.1.3.6
+
+Correction Odoo 19 : les héritages de vues ne sélectionnent plus les pages ou groupes avec `@string`, car Odoo refuse `string` comme sélecteur XPath. Les libellés Ticket restent inchangés ; seuls les sélecteurs techniques ont été sécurisés.
+

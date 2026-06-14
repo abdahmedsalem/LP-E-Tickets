@@ -54,11 +54,24 @@
     <!-- ========================================================= -->
 
     <menuitem id="menu_today_mobile_account_requests"
-              name="Nouveaux comptes mobiles à valider"
+              name="Demandes d’inscription mobile"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_mobile_account_requests"
               sequence="5"
               groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
+    <!--
+        Les utilisateurs mobiles sont validés automatiquement par OTP.
+        L'ancien menu opérationnel "Utilisateurs mobiles en attente" est donc
+        volontairement retiré de l'usage métier courant. On conserve l'XML ID
+        pour neutraliser proprement les bases déjà mises à jour en v1.3.x.
+    -->
+    <menuitem id="menu_today_mobile_users_to_approve"
+              name="Utilisateurs mobiles en attente — désactivé"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_mobile_users_to_approve"
+              sequence="6"
+              groups="base.group_no_one"/>
 
     <menuitem id="menu_today_purchases_to_validate"
               name="Achats à valider"
@@ -108,7 +121,7 @@
     </record>
 
     <record id="acpec_fueltoken_core.menu_fuel_face_line" model="ir.ui.menu">
-        <field name="name">Crédits disponibles</field>
+        <field name="name">Tickets disponibles</field>
         <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
         <field name="sequence">20</field>
     </record>
@@ -205,7 +218,7 @@
               groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
 
     <record id="acpec_fueltoken_reports.menu_report_faces_available" model="ir.ui.menu">
-        <field name="name">Analyse des crédits disponibles</field>
+        <field name="name">Analyse des tickets disponibles</field>
         <field name="sequence">60</field>
     </record>
 
@@ -258,6 +271,13 @@
               action="acpec_mobile_auth.action_acpec_mobile_auth_account_request"
               sequence="50"
               groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
+    <menuitem id="menu_mobile_users_all"
+              name="Utilisateurs mobiles — audit"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_config"
+              action="action_backoffice_mobile_users"
+              sequence="55"
+              groups="acpec_mobile_auth.group_mobile_auth_admin,acpec_fueltoken_base.group_fuel_admin"/>
 
     <record id="acpec_mobile_auth.menu_mobile_auth_version_policies" model="ir.ui.menu">
         <field name="name">Politiques mobile</field>

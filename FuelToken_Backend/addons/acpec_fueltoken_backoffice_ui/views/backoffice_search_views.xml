@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Search views back-office FuelToken.
+
+        Doctrine UX : les menus métier ne doivent pas cacher les enregistrements
+        via des domaines rigides. Les menus ouvrent avec des filtres par défaut
+        que l'utilisateur peut retirer dans la barre de recherche.
+    -->
+
+    <record id="view_backoffice_mobile_account_request_search" model="ir.ui.view">
+        <field name="name">acpec.mobile.auth.account.request.backoffice.search</field>
+        <field name="model">acpec.mobile.auth.account.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="name_display"/>
+                <field name="signup_identifier"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="login"/>
+                <filter name="state_pending" string="À valider" domain="[('state', '=', 'pending')]"/>
+                <filter name="state_approved" string="Approuvées" domain="[('state', '=', 'approved')]"/>
+                <filter name="state_rejected" string="Rejetées" domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="archived" string="Archivées" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_identifier_type" string="Type identifiant" context="{'group_by': 'signup_identifier_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_purchase_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.backoffice.search</field>
+        <field name="model">acpec.fuel.purchase</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="public_code"/>
+                <field name="partner_id"/>
+                <field name="payment_reference"/>
+                <filter name="state_draft" string="Brouillons" domain="[('state', '=', 'draft')]"/>
+                <filter name="state_submitted" string="À valider" domain="[('state', '=', 'submitted')]"/>
+                <filter name="state_approved" string="Validés" domain="[('state', '=', 'approved')]"/>
+                <filter name="state_rejected" string="Rejetés" domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="has_payment_reference" string="Avec référence paiement" domain="[('payment_reference', '!=', False)]"/>
+                <group>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_approved_by" string="Validé par" context="{'group_by': 'approved_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_transaction_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.transaction.backoffice.search</field>
+        <field name="model">acpec.fuel.transaction</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="wallet_id"/>
+                <field name="partner_id"/>
+                <field name="purchase_id"/>
+                <field name="qr_id"/>
+                <field name="station_id"/>
+                <filter name="station_consumptions" string="Consommations station" domain="[('transaction_type', '=', 'consommation_station')]"/>
+                <filter name="qr_emissions" string="Émissions QR" domain="[('transaction_type', '=', 'emission_qr')]"/>
+                <filter name="carnet_transfers" string="Transferts de carnets" domain="[('transaction_type', '=', 'transfert_carnet')]"/>
+                <filter name="purchases" string="Achats de carnets" domain="[('transaction_type', '=', 'achat_carnets')]"/>
+                <group>
+                    <filter name="group_type" string="Type" context="{'group_by': 'transaction_type'}"/>
+                    <filter name="group_wallet" string="Compte FuelToken" context="{'group_by': 'wallet_id'}"/>
+                    <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_station" string="Station" context="{'group_by': 'station_id'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_qr_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.qr.backoffice.search</field>
+        <field name="model">acpec.fuel.qr</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="public_code"/>
+                <field name="wallet_id"/>
+                <field name="consumed_station_id"/>
+                <filter name="to_watch" string="À surveiller" domain="[('state', 'in', ['active', 'blocked'])]"/>
+                <filter name="state_active" string="Actifs" domain="[('state', '=', 'active')]"/>
+                <filter name="state_blocked" string="Bloqués" domain="[('state', '=', 'blocked')]"/>
+                <filter name="state_consumed" string="Consommés" domain="[('state', '=', 'consumed')]"/>
+                <filter name="state_expired" string="Expirés" domain="[('state', '=', 'expired')]"/>
+                <group>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_wallet" string="Compte FuelToken" context="{'group_by': 'wallet_id'}"/>
+                    <filter name="group_station" string="Station" context="{'group_by': 'consumed_station_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_face_line_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.face.line.backoffice.search</field>
+        <field name="model">acpec.fuel.face.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="wallet_id"/>
+                <field name="partner_id"/>
+                <field name="purchase_id"/>
+                <field name="carnet_type_id"/>
+                <filter name="available" string="Disponibles" domain="[('qty_available', '&gt;', 0)]"/>
+                <filter name="in_qr" string="En QR" domain="['|', ('qty_qr_active', '&gt;', 0), ('qty_qr_blocked', '&gt;', 0)]"/>
+                <filter name="consumed" string="Consommées" domain="[('qty_consumed', '&gt;', 0)]"/>
+                <filter name="expired" string="Expirées" domain="[('qty_expired', '&gt;', 0)]"/>
+                <group>
+                    <filter name="group_wallet" string="Compte FuelToken" context="{'group_by': 'wallet_id'}"/>
+                    <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_carnet_type" string="Type de carnet" context="{'group_by': 'carnet_type_id'}"/>
+                    <filter name="group_purchase" string="Lot d'achat" context="{'group_by': 'purchase_id'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_carnet_transfer_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.carnet.transfer.backoffice.search</field>
+        <field name="model">acpec.fuel.carnet.transfer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="public_code"/>
+                <field name="source_partner_id"/>
+                <field name="dest_partner_id"/>
+                <filter name="state_draft" string="Brouillons" domain="[('state', '=', 'draft')]"/>
+                <filter name="state_confirmed" string="Confirmés" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="state_cancelled" string="Annulés" domain="[('state', '=', 'cancelled')]"/>
+                <group>
+                    <filter name="group_state" string="État" context="{'group_by': 'state'}"/>
+                    <filter name="group_source" string="Source" context="{'group_by': 'source_partner_id'}"/>
+                    <filter name="group_dest" string="Destinataire" context="{'group_by': 'dest_partner_id'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

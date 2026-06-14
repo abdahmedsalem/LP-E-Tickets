@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Company Accounts',
-    'version': '19.0.1.3.1',
+    'version': '19.0.1.4.2',
     'category': 'ACPEC/FuelToken',
     'summary': 'Comptes Sociétés FuelToken pour le back-office ACPEC',
     'author': 'ACPEC SARL',
@@ -18,6 +18,7 @@
     'data': [
         'security/ir.model.access.csv',
         'security/fueltoken_company_rules.xml',
+        'views/company_distribution_wizard_views.xml',
         'views/fuel_distributor_views.xml',
     ],
     'installable': True,

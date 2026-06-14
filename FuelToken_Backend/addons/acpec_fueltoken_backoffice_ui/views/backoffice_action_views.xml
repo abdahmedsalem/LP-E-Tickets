@@ -15,37 +15,38 @@
     -->
 
     <!-- ========================================================= -->
-    <!-- Actions opérationnelles filtrées                          -->
+    <!-- Actions opérationnelles avec filtres par défaut           -->
     <!-- ========================================================= -->
 
     <record id="action_today_mobile_account_requests" model="ir.actions.act_window">
-        <field name="name">Nouveaux comptes mobiles à valider</field>
+        <field name="name">Demandes d’inscription mobile</field>
         <field name="res_model">acpec.mobile.auth.account.request</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'pending')]</field>
-        <field name="context">{'create': False, 'delete': False}</field>
+        <field name="search_view_id" ref="view_backoffice_mobile_account_request_search"/>
+        <field name="context">{'search_default_state_pending': 1, 'create': False, 'delete': False}</field>
     </record>
 
     <record id="action_today_purchases_to_validate" model="ir.actions.act_window">
         <field name="name">Achats à valider</field>
         <field name="res_model">acpec.fuel.purchase</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('state', '=', 'submitted')]</field>
-        <field name="context">{'create': False, 'delete': False}</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_purchase_search"/>
+        <field name="context">{'search_default_state_submitted': 1, 'create': False, 'delete': False}</field>
     </record>
 
     <record id="action_today_station_consumptions" model="ir.actions.act_window">
         <field name="name">Dernières consommations</field>
         <field name="res_model">acpec.fuel.transaction</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('transaction_type', '=', 'consommation_station')]</field>
-        <field name="context">{'group_by': 'station_id', 'create': False, 'delete': False}</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_transaction_search"/>
+        <field name="context">{'search_default_station_consumptions': 1, 'group_by': 'station_id', 'create': False, 'delete': False}</field>
     </record>
 
     <record id="action_today_carnet_transfers" model="ir.actions.act_window">
         <field name="name">Derniers transferts</field>
         <field name="res_model">acpec.fuel.carnet.transfer</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_carnet_transfer_search"/>
         <field name="context">{'group_by': 'state', 'create': False, 'delete': False}</field>
     </record>
 
@@ -53,14 +54,15 @@
         <field name="name">Bons de retrait à surveiller</field>
         <field name="res_model">acpec.fuel.qr</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('state', 'in', ['active', 'blocked'])]</field>
-        <field name="context">{'group_by': 'state', 'create': False, 'delete': False}</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_qr_search"/>
+        <field name="context">{'search_default_to_watch': 1, 'group_by': 'state', 'create': False, 'delete': False}</field>
     </record>
 
     <record id="action_report_qr_all" model="ir.actions.act_window">
         <field name="name">Analyse des bons de retrait</field>
         <field name="res_model">acpec.fuel.qr</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_qr_search"/>
         <field name="context">{'group_by': 'state', 'create': False, 'delete': False}</field>
     </record>
 
@@ -71,6 +73,7 @@
     <!-- Objets opérationnels : création/suppression manuelle désactivée. -->
     <record id="acpec_fueltoken_purchase.action_fuel_purchase" model="ir.actions.act_window">
         <field name="name">Commandes de crédit</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_purchase_search"/>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 
@@ -80,22 +83,26 @@
     </record>
 
     <record id="acpec_fueltoken_core.action_fuel_face_line" model="ir.actions.act_window">
-        <field name="name">Crédits disponibles</field>
-        <field name="context">{'create': False, 'delete': False}</field>
+        <field name="name">Tickets disponibles</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_face_line_search"/>
+        <field name="context">{'search_default_available': 1, 'create': False, 'delete': False}</field>
     </record>
 
     <record id="acpec_fueltoken_core.action_fuel_qr" model="ir.actions.act_window">
         <field name="name">Bons de retrait</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_qr_search"/>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 
     <record id="acpec_fueltoken_core.action_fuel_transaction" model="ir.actions.act_window">
         <field name="name">Historique des mouvements</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_transaction_search"/>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 
     <record id="acpec_fueltoken_core.action_fuel_carnet_transfer" model="ir.actions.act_window">
         <field name="name">Transferts de carnets</field>
+        <field name="search_view_id" ref="view_backoffice_fuel_carnet_transfer_search"/>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 
@@ -112,6 +119,7 @@
          sauf politiques mobile qui restent de la configuration. -->
     <record id="acpec_mobile_auth.action_acpec_mobile_auth_account_request" model="ir.actions.act_window">
         <field name="name">Demandes de compte mobile</field>
+        <field name="search_view_id" ref="view_backoffice_mobile_account_request_search"/>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 

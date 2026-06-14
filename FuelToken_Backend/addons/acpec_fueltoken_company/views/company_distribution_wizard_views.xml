@@ -1,0 +1,47 @@
+<odoo>
+    <record id="view_fuel_distributor_distribution_wizard_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.distributor.distribution.wizard.form</field>
+        <field name="model">acpec.fuel.distributor.distribution.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Distribuer des carnets">
+                <sheet>
+                    <group>
+                        <group string="Distribution">
+                            <field name="distributor_id" readonly="1"/>
+                            <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                            <field name="source_wallet_id" readonly="1"/>
+                            <field name="member_partner_id"/>
+                        </group>
+                        <group string="Options">
+                            <field name="confirm_transfer"/>
+                            <field name="note" placeholder="Note interne sur la distribution..."/>
+                        </group>
+                    </group>
+                    <field name="allowed_member_partner_ids" invisible="1"/>
+                    <notebook>
+                        <page string="Carnets disponibles">
+                            <field name="line_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="source_wallet_id" invisible="1"/>
+                                    <field name="face_line_id" readonly="1" force_save="1" string="Ligne de tickets source"/>
+                                    <field name="carnet_type_id" readonly="1"/>
+                                    <field name="face_value" readonly="1" string="Valeur du ticket"/>
+                                    <field name="face_count" readonly="1" string="Tickets par carnet"/>
+                                    <field name="qty_available" readonly="1" string="Tickets disponibles"/>
+                                    <field name="transferable_carnet_count" readonly="1"/>
+                                    <field name="carnet_qty"/>
+                                    <field name="qty_faces" readonly="1" string="Tickets à distribuer"/>
+                                    <field name="amount_total" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_distribute" type="object" string="Distribuer" class="btn-primary"/>
+                    <button string="Annuler" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

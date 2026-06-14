@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Back-office mobile users — audit/support.
+
+        Doctrine :
+        - ne pas modifier les APIs mobile ;
+        - les utilisateurs mobiles sont validés automatiquement par OTP ;
+        - ne pas exposer de validation manuelle res.users dans les opérations
+          métier quotidiennes ;
+        - conserver une liste audit/support des utilisateurs mobiles pour les
+          administrateurs, avec filtres par défaut retirables.
+    -->
+
+    <record id="view_backoffice_mobile_user_list" model="ir.ui.view">
+        <field name="name">res.users.backoffice.mobile.list</field>
+        <field name="model">res.users</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0">
+                <field name="name"/>
+                <field name="login"/>
+                <field name="partner_id"/>
+                <field name="mobile_phone"/>
+                <field name="mobile_state"/>
+                <field name="active"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_backoffice_mobile_user_search" model="ir.ui.view">
+        <field name="name">res.users.backoffice.mobile.search</field>
+        <field name="model">res.users</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="login"/>
+                <field name="partner_id"/>
+                <field name="mobile_phone"/>
+                <field name="email"/>
+                <filter name="mobile_pending" string="En attente" domain="[('mobile_state', '=', 'pending')]"/>
+                <filter name="mobile_approved" string="Approuvés" domain="[('mobile_state', '=', 'approved')]"/>
+                <filter name="mobile_rejected" string="Rejetés" domain="[('mobile_state', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="has_mobile_phone" string="Avec téléphone mobile" domain="[('mobile_phone', '!=', False)]"/>
+                <filter name="active_users" string="Actifs" domain="[('active', '=', True)]"/>
+                <filter name="inactive_users" string="Inactifs" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_mobile_state" string="État mobile" context="{'group_by': 'mobile_state'}"/>
+                    <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_today_mobile_users_to_approve" model="ir.actions.act_window">
+        <field name="name">Utilisateurs mobiles — audit</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_backoffice_mobile_user_list"/>
+        <field name="search_view_id" ref="view_backoffice_mobile_user_search"/>
+        <field name="context">{'search_default_has_mobile_phone': 1, 'create': False, 'delete': False}</field>
+    </record>
+
+    <record id="action_backoffice_mobile_users" model="ir.actions.act_window">
+        <field name="name">Utilisateurs mobiles — audit</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_backoffice_mobile_user_list"/>
+        <field name="search_view_id" ref="view_backoffice_mobile_user_search"/>
+        <field name="context">{'search_default_has_mobile_phone': 1, 'create': False, 'delete': False}</field>
+    </record>
+
+    <!-- Actions explicites depuis la liste/formulaire res.users. -->
+    <record id="server_action_mobile_user_approve" model="ir.actions.server">
+        <field name="name">Valider mobile — désactivé</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="binding_model_id" eval="False"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+raise UserError("Action désactivée : les utilisateurs mobiles sont validés automatiquement par OTP, pas depuis res.users.")
+        
+        ]]></field>
+    </record>
+
+    <record id="server_action_mobile_user_reject" model="ir.actions.server">
+        <field name="name">Rejeter mobile — désactivé</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="binding_model_id" eval="False"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+raise UserError("Action désactivée : le rejet manuel res.users n'est plus exposé dans la doctrine back-office.")
+        
+        ]]></field>
+    </record>
+
+    <record id="server_action_mobile_user_reset_pending" model="ir.actions.server">
+        <field name="name">Remettre mobile en attente — désactivé</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="binding_model_id" eval="False"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+raise UserError("Action désactivée : le retour manuel en attente sur res.users n'est plus exposé dans la doctrine back-office.")
+        
+        ]]></field>
+    </record>
+</odoo>

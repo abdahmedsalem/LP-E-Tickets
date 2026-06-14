@@ -1,0 +1,284 @@
+<odoo>
+    <!-- ========================================================= -->
+    <!-- Doctrine UX : Ticket côté métier, Face reste technique/API -->
+    <!-- ========================================================= -->
+
+    <!-- Actions et menus historiques exposés hors back-office UI. -->
+    <record id="acpec_fueltoken_core.action_fuel_face_line" model="ir.actions.act_window">
+        <field name="name">Tickets disponibles</field>
+    </record>
+
+    <record id="acpec_fueltoken_core.menu_fuel_face_line" model="ir.ui.menu">
+        <field name="name">Tickets disponibles</field>
+    </record>
+
+    <record id="acpec_fueltoken_reports.action_report_faces_available" model="ir.actions.act_window">
+        <field name="name">Tickets disponibles</field>
+    </record>
+
+    <record id="acpec_fueltoken_reports.menu_report_faces_available" model="ir.ui.menu">
+        <field name="name">Analyse des tickets disponibles</field>
+    </record>
+
+    <!-- Catalogue : type de carnet. -->
+    <record id="view_fuel_carnet_type_list_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.carnet.type.list.ticket.labels</field>
+        <field name="model">acpec.fuel.carnet.type</field>
+        <field name="inherit_id" ref="acpec_fueltoken_catalog.view_fuel_carnet_type_list"/>
+        <field name="arch" type="xml">
+            <field name="face_count" position="attributes">
+                <attribute name="string">Tickets par carnet</attribute>
+            </field>
+            <field name="face_value" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_fuel_carnet_type_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.carnet.type.form.ticket.labels</field>
+        <field name="model">acpec.fuel.carnet.type</field>
+        <field name="inherit_id" ref="acpec_fueltoken_catalog.view_fuel_carnet_type_form"/>
+        <field name="arch" type="xml">
+            <field name="face_count" position="attributes">
+                <attribute name="string">Tickets par carnet</attribute>
+            </field>
+            <field name="face_value" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </field>
+        </field>
+    </record>
+
+    <!-- Commandes de crédit / achats. -->
+    <record id="view_fuel_purchase_list_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.list.ticket.labels</field>
+        <field name="model">acpec.fuel.purchase</field>
+        <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_list"/>
+        <field name="arch" type="xml">
+            <field name="public_code" position="replace"/>
+            <field name="face_qty_total" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_fuel_purchase_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.form.ticket.labels</field>
+        <field name="model">acpec.fuel.purchase</field>
+        <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group/group[1]/field[@name='public_code']" position="replace"/>
+            <field name="face_qty_total" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </field>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_count']" position="attributes">
+                <attribute name="string">Tickets par carnet</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='generated_face_qty']" position="attributes">
+                <attribute name="string">Tickets générés</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="after">
+                <group string="Technique">
+                    <field name="public_code" readonly="1" string="Code public"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Wallet : lignes disponibles. -->
+    <record id="view_fuel_wallet_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.wallet.form.ticket.labels</field>
+        <field name="model">acpec.fuel.wallet</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_wallet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='face_line_ids']/ancestor::page[1]" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='face_value']" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_initial']" position="attributes">
+                <attribute name="string">Tickets initiaux</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_available']" position="attributes">
+                <attribute name="string">Tickets disponibles</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_qr_active']" position="attributes">
+                <attribute name="string">Tickets en bon actif</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_qr_blocked']" position="attributes">
+                <attribute name="string">Tickets en bon bloqué</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_consumed']" position="attributes">
+                <attribute name="string">Tickets consommés</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_line_ids']//list/field[@name='qty_expired']" position="attributes">
+                <attribute name="string">Tickets expirés</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Tickets disponibles : modèle technique acpec.fuel.face.line. -->
+    <record id="view_fuel_face_line_list_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.face.line.list.ticket.labels</field>
+        <field name="model">acpec.fuel.face.line</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_face_line_list"/>
+        <field name="arch" type="xml">
+            <field name="face_value" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </field>
+            <field name="qty_initial" position="attributes">
+                <attribute name="string">Tickets initiaux</attribute>
+            </field>
+            <field name="qty_available" position="attributes">
+                <attribute name="string">Tickets disponibles</attribute>
+            </field>
+            <field name="qty_qr_active" position="attributes">
+                <attribute name="string">Tickets en bon actif</attribute>
+            </field>
+            <field name="qty_qr_blocked" position="attributes">
+                <attribute name="string">Tickets en bon bloqué</attribute>
+            </field>
+            <field name="qty_consumed" position="attributes">
+                <attribute name="string">Tickets consommés</attribute>
+            </field>
+            <field name="qty_expired" position="attributes">
+                <attribute name="string">Tickets expirés</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_face_line_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.face.line.form.ticket.labels</field>
+        <field name="model">acpec.fuel.face.line</field>
+        <field name="arch" type="xml">
+            <form string="Ticket disponible" create="0" delete="0">
+                <sheet>
+                    <group>
+                        <group string="Compte">
+                            <field name="wallet_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="purchase_id" readonly="1"/>
+                            <field name="purchase_line_id" readonly="1"/>
+                            <field name="carnet_type_id" readonly="1"/>
+                        </group>
+                        <group string="Tickets">
+                            <field name="face_value" readonly="1" string="Valeur du ticket"/>
+                            <field name="qty_initial" readonly="1" string="Tickets initiaux"/>
+                            <field name="qty_available" readonly="1" string="Tickets disponibles"/>
+                            <field name="qty_qr_active" readonly="1" string="Tickets en bon actif"/>
+                            <field name="qty_qr_blocked" readonly="1" string="Tickets en bon bloqué"/>
+                            <field name="qty_consumed" readonly="1" string="Tickets consommés"/>
+                            <field name="qty_expired" readonly="1" string="Tickets expirés"/>
+                            <field name="expires_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Technique">
+                        <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                        <field name="currency_id" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Bons de retrait / QR. -->
+    <record id="view_fuel_qr_list_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.qr.list.ticket.labels</field>
+        <field name="model">acpec.fuel.qr</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_qr_list"/>
+        <field name="arch" type="xml">
+            <field name="public_code" position="replace"/>
+            <field name="face_qty_total" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_fuel_qr_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.qr.form.ticket.labels</field>
+        <field name="model">acpec.fuel.qr</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_qr_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group/group[1]/field[@name='public_code']" position="replace"/>
+            <field name="face_qty_total" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </field>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_line_id']" position="attributes">
+                <attribute name="string">Ligne de tickets</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </xpath>
+            <xpath expr="//field[@name='child_ids']//field[@name='public_code']" position="replace"/>
+            <xpath expr="//sheet/notebook" position="after">
+                <group string="Technique">
+                    <field name="public_code" readonly="1" string="Code public"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Historique des mouvements. -->
+    <record id="view_fuel_transaction_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.transaction.form.ticket.labels</field>
+        <field name="model">acpec.fuel.transaction</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_transaction_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_line_id']" position="attributes">
+                <attribute name="string">Ligne de tickets</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Transferts de carnets. -->
+    <record id="view_fuel_carnet_transfer_list_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.carnet.transfer.list.ticket.labels</field>
+        <field name="model">acpec.fuel.carnet.transfer</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_carnet_transfer_list"/>
+        <field name="arch" type="xml">
+            <field name="public_code" position="replace"/>
+            <field name="face_qty_total" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_fuel_carnet_transfer_form_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.carnet.transfer.form.ticket.labels</field>
+        <field name="model">acpec.fuel.carnet.transfer</field>
+        <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_carnet_transfer_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='face_qty_total']/preceding-sibling::field[@name='public_code']" position="replace"/>
+            <field name="face_qty_total" position="attributes">
+                <attribute name="string">Tickets</attribute>
+            </field>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_line_id']" position="attributes">
+                <attribute name="string">Ligne de tickets source</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
+                <attribute name="string">Valeur du ticket</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='face_count']" position="attributes">
+                <attribute name="string">Tickets par carnet</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='qty_faces']" position="attributes">
+                <attribute name="string">Tickets transférés</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//list/field[@name='dest_face_line_id']" position="attributes">
+                <attribute name="string">Ligne de tickets destination</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="after">
+                <group string="Technique">
+                    <field name="public_code" readonly="1" string="Code public"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

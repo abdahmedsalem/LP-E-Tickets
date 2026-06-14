@@ -45,6 +45,15 @@
                             type="object"
                             string="Préparer wallets membres"
                             invisible="state != 'active'"/>
+                    <button name="action_open_distribution_wizard"
+                            type="object"
+                            string="Distribuer carnets"
+                            class="btn-primary"
+                            invisible="state != 'active'"/>
+                    <button name="action_create_company_purchase"
+                            type="object"
+                            string="Créer achat société"
+                            invisible="state != 'active'"/>
                     <field name="state"
                            widget="statusbar"
                            statusbar_visible="draft,active,suspended,closed"/>

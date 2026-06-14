@@ -430,20 +430,20 @@ class AcpecFuelDistributor(models.Model):
                 raise ValidationError(_("Paramètre 'carnet_qty' doit être un entier positif."))
             if face_line_id in seen_face_line_ids:
                 raise ValidationError(_(
-                    'Une même ligne de faces ne peut pas apparaître plusieurs fois dans une distribution.'
+                    'Une même ligne de tickets ne peut pas apparaître plusieurs fois dans une distribution.'
                 ))
             seen_face_line_ids.add(face_line_id)
 
             face_line = FaceLine.browse(face_line_id).exists()
             if not face_line:
-                raise ValidationError(_('Ligne de faces introuvable: %s.') % face_line_id)
+                raise ValidationError(_('Ligne de tickets introuvable: %s.') % face_line_id)
             if face_line.wallet_id != company_wallet:
                 raise ValidationError(_(
-                    "La ligne de faces '%s' n’appartient pas au wallet du Compte Société."
+                    "La ligne de tickets '%s' n’appartient pas au wallet du Compte Société."
                 ) % (face_line.carnet_type_id.code or face_line.id))
             if not face_line.is_transferable_carnet_line():
                 raise ValidationError(_(
-                    "La ligne de faces '%s' n’est pas transférable en carnets intacts."
+                    "La ligne de tickets '%s' n’est pas transférable en carnets intacts."
                 ) % (face_line.carnet_type_id.code or face_line.id))
             if carnet_qty > face_line.transferable_carnet_count():
                 raise ValidationError(_(
@@ -564,7 +564,7 @@ class AcpecFuelDistributor(models.Model):
             transfer.action_confirm()
 
         self.message_post(body=_(
-            'Distribution société vers %(member)s: %(transfer)s, %(qty)s faces.'
+            'Distribution société vers %(member)s: %(transfer)s, %(qty)s tickets.'
         ) % {
             'member': member_partner.display_name,
             'transfer': transfer.name,
@@ -604,6 +604,109 @@ class AcpecFuelDistributor(models.Model):
                 )
                 transfers |= transfer
         return transfers
+
+
+    def action_open_distribution_wizard(self):
+        """Open the controlled back-office distribution wizard.
+
+        The wizard is an ACPEC back-office surface. It calls the backend
+        distribution method and does not bypass company/member/mobile guards.
+        """
+        self.ensure_one()
+
+        if not self.active or self.state != 'active':
+            raise UserError(_(
+                'Le Compte Société doit être actif pour distribuer des carnets.'
+            ))
+
+        if not self.member_partner_ids:
+            raise UserError(_(
+                'Ajoutez au moins un membre avant de distribuer des carnets.'
+            ))
+
+        wallet = self._get_company_wallet(create=False)
+        if not wallet:
+            raise UserError(_(
+                'Le Compte Société ne dispose pas encore de wallet alimenté. Créez et validez d’abord un achat société.'
+            ))
+
+        transferable_lines = self.env['acpec.fuel.face.line'].sudo().search([
+            ('wallet_id', '=', wallet.id),
+            ('qty_available', '>', 0),
+        ])
+        if not any(line.is_transferable_carnet_line() for line in transferable_lines):
+            raise UserError(_(
+                'Aucun carnet intact disponible pour distribution sur le wallet société.'
+            ))
+
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': _('Distribuer des carnets'),
+            'res_model': 'acpec.fuel.distributor.distribution.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_distributor_id': self.id,
+                'active_model': self._name,
+                'active_id': self.id,
+            },
+        }
+        wizard_view = self.env.ref(
+            'acpec_fueltoken_company.view_fuel_distributor_distribution_wizard_form',
+            raise_if_not_found=False,
+        )
+        if wizard_view:
+            action['views'] = [(wizard_view.id, 'form')]
+        return action
+
+
+    def action_create_company_purchase(self):
+        """Create a controlled draft purchase for this Compte Société.
+
+        The generic back-office lists keep create disabled by doctrine. This
+        explicit button is the controlled entry point for ACPEC operators to
+        open a company purchase request prefilled with the distributor partner.
+        The purchase is only a draft: lines, proof of payment, submit and
+        approval stay in the standard acpec.fuel.purchase workflow.
+        """
+        self.ensure_one()
+
+        if not self.active or self.state != 'active':
+            raise UserError(_(
+                'Le Compte Société doit être actif pour créer une demande d’achat.'
+            ))
+
+        # Recheck the portal-only contract before creating an operational record.
+        self._check_partner_is_company_portal_only()
+
+        purchase = self.env['acpec.fuel.purchase'].create({
+            'partner_id': self.partner_id.id,
+            'company_id': self.company_id.id,
+        })
+
+        self.message_post(body=_(
+            'Demande d’achat société créée: %s.'
+        ) % purchase.display_name)
+
+        form_view = self.env.ref(
+            'acpec_fueltoken_purchase.view_fuel_purchase_form',
+            raise_if_not_found=False,
+        )
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': _('Demande d’achat société'),
+            'res_model': 'acpec.fuel.purchase',
+            'res_id': purchase.id,
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_partner_id': self.partner_id.id,
+                'default_company_id': self.company_id.id,
+            },
+        }
+        if form_view:
+            action['views'] = [(form_view.id, 'form')]
+        return action
 
     def action_activate(self):
         self.write({'state': 'active', 'active': True})

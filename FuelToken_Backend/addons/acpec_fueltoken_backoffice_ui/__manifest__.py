@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Back-office UI',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.3.6',
     'category': 'ACPEC/FuelToken',
     'summary': 'Menus et libellés métier pour le back-office FuelToken',
     'author': 'ACPEC SARL',
@@ -12,9 +12,14 @@
     ],
     'data': [
         # Les actions doivent être chargées avant les menuitem qui les référencent.
+        'views/backoffice_search_views.xml',
         'views/backoffice_action_views.xml',
-        'views/backoffice_menu_views.xml',
+        'views/mobile_users_backoffice_views.xml',
         'views/mobile_auth_french_views.xml',
+        # Les menus sont chargés en dernier : ils référencent des actions
+        # définies dans backoffice_action_views.xml et mobile_users_backoffice_views.xml.
+        'views/backoffice_menu_views.xml',
+        'views/ticket_label_views.xml',
     ],
     'installable': True,
     'application': False,

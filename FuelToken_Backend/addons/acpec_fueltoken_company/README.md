@@ -2,7 +2,7 @@
 
 Module Odoo 19 pour gérer les **Comptes Sociétés** FuelToken dans le back-office ACPEC.
 
-Version : `19.0.1.3.0`.
+Version : `19.0.1.3.2`.
 
 ## Doctrine fonctionnelle
 
@@ -137,6 +137,29 @@ La méthode vérifie :
 
 Le moteur de transfert reste celui du core : `acpec.fuel.carnet.transfer.action_confirm()`.
 
+
+## Achat société depuis le back-office
+
+Les listes opérationnelles back-office peuvent rester en **no create** conformément à la doctrine.
+Pour créer une demande d’achat pour un Compte Société, utiliser le bouton dédié sur la fiche :
+
+```text
+Compte Société actif > Créer achat société
+```
+
+Ce bouton crée un `acpec.fuel.purchase` en brouillon avec :
+
+```text
+partner_id = partner société du Compte Société
+company_id = company_id du Compte Société
+```
+
+Il ouvre ensuite le formulaire achat standard pour que l’agent ACPEC ajoute les lignes de carnets,
+la preuve de paiement et soumette/valide via le workflow existant.
+
+Le bouton ne valide pas automatiquement l’achat, ne crédite pas le wallet directement et ne modifie
+aucun flux mobile. La validation reste dans `acpec.fuel.purchase.action_approve()`.
+
 ## Garde-fous métier inclus
 
 Le module contient aussi des garde-fous pour éviter que le Compte Société se comporte comme un utilisateur mobile :
@@ -215,7 +238,7 @@ Cas acceptés :
 
 - société `is_company = True` avec accès portail actif, sans groupe interne/mobile, avec membres individuels ;
 - préparation wallets membres pour membres déjà mobiles actifs/approuvés ;
-- distribution société active vers membre déclaré, mobile actif/approuvé, avec ligne de faces transférable.
+- distribution société active vers membre déclaré, mobile actif/approuvé, avec ligne de tickets transférable.
 
 Cas refusés :
 
@@ -239,3 +262,50 @@ groupes passent donc par la table standard `res_groups_users_rel` pour vérifier
 - l’accès portail standard ;
 - l’absence de groupes internes / mobile / station / back-office ;
 - le statut mobile actif et approuvé des membres avant distribution.
+
+## Version 1.4.0 — distribution back-office contrôlée
+
+Cette version ajoute une surface back-office explicite pour distribuer des carnets depuis un Compte Société vers un membre.
+
+Bouton ajouté sur `acpec.fuel.distributor` :
+
+- **Distribuer carnets**
+
+Le bouton ouvre un assistant modal qui :
+
+- affiche les lignes de carnets intactes disponibles sur le wallet société ;
+- permet de choisir uniquement un membre rattaché au Compte Société ;
+- permet de saisir le nombre de carnets à transférer par ligne ;
+- appelle la méthode backend `action_distribute_to_member()` ;
+- crée un `acpec.fuel.carnet.transfer` via le moteur existant ;
+- confirme immédiatement le transfert par défaut.
+
+Règles conservées :
+
+- le Compte Société doit être actif ;
+- le membre doit appartenir à `member_partner_ids` ;
+- le membre doit être un partenaire individuel ;
+- le membre doit avoir un utilisateur mobile FuelToken actif et approuvé ;
+- le wallet membre peut être créé techniquement à la demande ;
+- le compte mobile du membre n’est jamais approuvé automatiquement ;
+- aucune API mobile n’est modifiée ;
+- aucun portail write n’est ajouté dans cette version.
+
+Cette action est une surface ACPEC back-office. Le futur `FuelToken_WebClient` devra appeler les mêmes méthodes backend au lieu de réimplémenter le métier.
+
+
+## v1.4.1 — Correction assistant distribution Odoo 19
+
+Correction de robustesse sur l’assistant de distribution back-office :
+
+- `face_line_id` n’est plus `required=True` au niveau ORM sur la ligne transitoire ;
+- les lignes avec quantité > 0 sont validées explicitement avant distribution ;
+- le champ `face_line_id` est sauvegardé avec `force_save="1"` dans la vue ;
+- les lignes transitoires vides ou incomplètes ne provoquent plus d’erreur technique `Missing required value`.
+
+La règle métier ne change pas : toute ligne réellement distribuée doit toujours référencer une ligne de tickets source.
+
+## v1.4.2 — Libellés Ticket dans la distribution société
+
+- Les libellés visibles du wizard de distribution société utilisent **Ticket** au lieu de **Face**.
+- Les noms techniques/API (`face_line_id`, `face_value`) restent inchangés pour ne pas casser les appels backend et mobile.
