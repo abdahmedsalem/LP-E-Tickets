@@ -77,7 +77,7 @@ Le fichier `mobile_users_backoffice_views.xml` est chargé avant `backoffice_men
 Clarifie les deux menus mobile :
 
 - **Demandes d’inscription mobile** : ouvre `acpec.mobile.auth.account.request`. Ce menu reste réservé au groupe `acpec_mobile_auth.group_mobile_auth_admin`, car il porte le flux d’inscription / audit mobile.
-- **Utilisateurs mobiles en attente** : ouvre `res.users` avec le filtre par défaut `mobile_state = pending`. Ce menu est visible aux gestionnaires et administrateurs FuelToken (`group_fuel_manager`, `group_fuel_admin`).
+- **Utilisateurs mobiles en attente** : ouvre `res.users` avec le filtre par défaut `mobile_state = pending`. Ce menu ne doit plus être utilisé comme opération métier ; le back-office FuelToken est réservé à `group_fuel_admin`.
 
 La règle UX reste : filtre par défaut retirables, pas de domaine rigide.
 

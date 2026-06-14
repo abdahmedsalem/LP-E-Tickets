@@ -29,6 +29,6 @@
     <record id="group_fuel_admin" model="res.groups">
         <field name="name">FuelToken - Administrateur</field>
         <field name="privilege_id" ref="privilege_acpec_fueltoken"/>
-        <field name="implied_ids" eval="[(4, ref('group_fuel_manager'))]"/>
+        <field name="implied_ids" eval="[(3, ref('group_fuel_manager'))]"/>
     </record>
 </odoo>

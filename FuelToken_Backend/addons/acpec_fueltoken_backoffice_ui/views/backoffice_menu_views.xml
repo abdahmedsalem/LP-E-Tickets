@@ -15,7 +15,7 @@
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
               action="action_today_purchases_to_validate"
               sequence="5"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <record id="acpec_fueltoken_base.menu_acpec_fueltoken_operations" model="ir.ui.menu">
         <field name="name">Opérations du jour</field>
@@ -26,19 +26,19 @@
               name="Clients &amp; soldes"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
               sequence="20"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_fueltoken_company_accounts"
               name="Comptes Sociétés"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
               sequence="30"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_fueltoken_stations"
               name="Stations"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_root"
               sequence="40"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <record id="acpec_fueltoken_base.menu_acpec_fueltoken_audit" model="ir.ui.menu">
         <field name="name">Pilotage</field>
@@ -78,28 +78,28 @@
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_purchases_to_validate"
               sequence="10"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_today_station_consumptions"
               name="Dernières consommations"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_station_consumptions"
               sequence="20"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_today_carnet_transfers"
               name="Derniers transferts"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_carnet_transfers"
               sequence="30"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_today_qr_watch"
               name="Bons de retrait à surveiller"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_qr_watch"
               sequence="40"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <!-- Masquer les anciens menus opérationnels techniques remplacés par les menus métier ci-dessus. -->
     <record id="acpec_fueltoken_purchase.menu_fuel_purchase" model="ir.ui.menu">
@@ -156,14 +156,14 @@
               parent="menu_fueltoken_company_accounts"
               action="action_today_carnet_transfers"
               sequence="20"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_company_purchases"
               name="Achats sociétés"
               parent="menu_fueltoken_company_accounts"
               action="action_today_purchases_to_validate"
               sequence="30"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <!-- ========================================================= -->
     <!-- Stations                                                 -->
@@ -180,7 +180,7 @@
               parent="menu_fueltoken_stations"
               action="acpec_fueltoken_reports.action_report_station_consumptions"
               sequence="20"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <!-- ========================================================= -->
     <!-- Pilotage                                                 -->
@@ -201,21 +201,21 @@
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
               action="action_today_carnet_transfers"
               sequence="30"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_report_expirations"
               name="Expirations à venir"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
               action="action_today_qr_watch"
               sequence="40"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_report_qr_all"
               name="Analyse des bons de retrait"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
               action="action_report_qr_all"
               sequence="50"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <record id="acpec_fueltoken_reports.menu_report_faces_available" model="ir.ui.menu">
         <field name="name">Analyse des tickets disponibles</field>

@@ -40,39 +40,43 @@ class ResUsers(models.Model):
             'acpec_fueltoken_base.group_fuel_user',
             'acpec_fueltoken_base.group_fuel_station',
             'acpec_fueltoken_base.group_fuel_manager',
-            # group_fuel_admin is currently still present in some mobile/profile
-            # checks. Patch 2 will separate it as a pure back-office group, but
-            # it must already be protected from portal mixing.
+        )
+
+    def _acpec_mobile_forbidden_group_xmlids(self):
+        return (
+            'base.group_portal',
+            'base.group_user',
             'acpec_fueltoken_base.group_fuel_admin',
         )
 
-    def _check_acpec_mobile_not_portal(self):
-        portal_group = self._acpec_group('base.group_portal')
-        if not portal_group:
-            return
-
+    def _check_acpec_mobile_user_separation(self):
         mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
-        portal_users = self._acpec_users_with_group_ids([portal_group.id])
-        if not portal_users:
+        forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
+        if not mobile_group_ids or not forbidden_group_ids:
             return
 
-        mobile_group_users = portal_users._acpec_users_with_group_ids(mobile_group_ids)
-        mobile_phone_users = portal_users.filtered(lambda user: bool(user.mobile_phone))
-        invalid_users = mobile_group_users | mobile_phone_users
+        mobile_group_users = self._acpec_users_with_group_ids(mobile_group_ids)
+        mobile_phone_users = self.filtered(lambda user: bool(user.mobile_phone))
+        mobile_users = mobile_group_users | mobile_phone_users
+        if not mobile_users:
+            return
+
+        invalid_users = mobile_users._acpec_users_with_group_ids(forbidden_group_ids)
         if invalid_users:
             names = ', '.join(invalid_users.mapped('display_name')[:5])
             raise ValidationError(_(
-                "Un utilisateur mobile FuelToken ne peut pas recevoir l'accès portail Odoo. "
+                "Un utilisateur mobile FuelToken doit rester mobile-only : "
+                "pas d'accès portail, pas d'accès interne Odoo et pas de groupe back-office FuelToken. "
                 "Utilisateurs concernés: %s"
             ) % names)
 
     @api.model_create_multi
     def create(self, vals_list):
         users = super().create(vals_list)
-        users._check_acpec_mobile_not_portal()
+        users._check_acpec_mobile_user_separation()
         return users
 
     def write(self, vals):
         result = super().write(vals)
-        self._check_acpec_mobile_not_portal()
+        self._check_acpec_mobile_user_separation()
         return result

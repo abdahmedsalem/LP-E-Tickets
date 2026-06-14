@@ -267,12 +267,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return False
 
     def _get_mobile_profile(self, user):
-        if (
-            user.has_group('base.group_system')
-            or self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin')
-            or self._has_group_safe(user, 'acpec_mobile_auth.group_mobile_auth_admin')
-        ):
-            return 'admin'
+        # Mobile profiles are intentionally limited to the mobile/API groups.
+        # group_fuel_admin is reserved for the Odoo back-office and must not be
+        # interpreted as an application mobile role.
         if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager'):
             return 'manager'
         if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_station'):
@@ -323,9 +320,23 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return request.env['acpec.mobile.session']
         return session
 
+    def _assert_mobile_only_user(self, user):
+        if not user or not user.exists() or not user.active:
+            raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
+        forbidden_xmlids = (
+            'base.group_user',
+            'base.group_portal',
+            'acpec_fueltoken_base.group_fuel_admin',
+        )
+        for xmlid in forbidden_xmlids:
+            if self._has_group_safe(user, xmlid):
+                raise AccessError(_('Ce compte n’est pas autorisé à utiliser l’application mobile FuelToken.'))
+
     def _require_mobile_auth(self):
         session = self._get_mobile_session(required=True)
-        return session.user_id.sudo()
+        user = session.user_id.sudo()
+        self._assert_mobile_only_user(user)
+        return user
 
     def _mobile_profile_payload(self, user, session=False):
         data = {
@@ -375,22 +386,15 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return self._session_payload(session, tokens=token_data)
 
     def _require_fuel_group(self, user, expected):
-        if user.has_group('base.group_system'):
-            return True
+        self._assert_mobile_only_user(user)
         if expected == 'client':
             if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_user'):
                 return True
         elif expected == 'station':
             if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_station'):
                 return True
-        elif expected == 'manager':
-            if (
-                self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager')
-                or self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin')
-            ):
-                return True
-        elif expected == 'admin':
-            if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_admin'):
+        elif expected in ('manager', 'admin'):
+            if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager'):
                 return True
         raise AccessError(_('Droits insuffisants pour cette opÃ©ration.'))
 

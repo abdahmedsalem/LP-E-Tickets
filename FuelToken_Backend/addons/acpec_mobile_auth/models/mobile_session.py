@@ -82,11 +82,30 @@ class AcpecMobileSession(models.Model):
             return 30
 
     @api.model
-    def create_for_user(self, user, device_vals=None):
+    def _has_group_safe(self, user, xmlid):
+        try:
+            return user.has_group(xmlid)
+        except Exception:
+            return False
+
+    @api.model
+    def _check_mobile_only_user(self, user):
         if not user or not user.exists() or not user.active:
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
             raise AccessError(_('Compte mobile rejeté.'))
+        forbidden_xmlids = (
+            'base.group_user',
+            'base.group_portal',
+            'acpec_fueltoken_base.group_fuel_admin',
+        )
+        for xmlid in forbidden_xmlids:
+            if self._has_group_safe(user, xmlid):
+                raise AccessError(_('Ce compte n’est pas autorisé à utiliser l’application mobile FuelToken.'))
+
+    @api.model
+    def create_for_user(self, user, device_vals=None):
+        self._check_mobile_only_user(user)
         device_vals = device_vals or {}
         access_token = self._new_token()
         refresh_token = self._new_token()
@@ -130,7 +149,9 @@ class AcpecMobileSession(models.Model):
         if session.expires_at and session.expires_at <= now:
             session.sudo().write({'state': 'expired'})
             return self.browse()
-        if not session.user_id.active:
+        try:
+            self._check_mobile_only_user(session.user_id.sudo())
+        except AccessError:
             session.sudo().write({'state': 'revoked', 'revoked_at': now})
             return self.browse()
         session.sudo().write({'last_seen_at': now})
@@ -148,9 +169,11 @@ class AcpecMobileSession(models.Model):
         if session.refresh_expires_at and session.refresh_expires_at <= now:
             session.sudo().write({'state': 'expired'})
             raise AccessError(_('Refresh token expiré.'))
-        if not session.user_id.active:
+        try:
+            self._check_mobile_only_user(session.user_id.sudo())
+        except AccessError as exc:
             session.sudo().write({'state': 'revoked', 'revoked_at': now})
-            raise AccessError(_('Utilisateur mobile inactif.'))
+            raise exc
         access_token = self._new_token()
         new_refresh_token = self._new_token()
         expires_at = now + relativedelta(minutes=self._access_minutes())

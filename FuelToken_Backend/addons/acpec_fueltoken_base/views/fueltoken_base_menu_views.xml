@@ -1,6 +1,6 @@
 <odoo>
-    <menuitem id="menu_acpec_fueltoken_root" name="FuelToken" sequence="45" groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+    <menuitem id="menu_acpec_fueltoken_root" name="FuelToken" sequence="45" groups="acpec_fueltoken_base.group_fuel_admin"/>
     <menuitem id="menu_acpec_fueltoken_config" name="Configuration" parent="menu_acpec_fueltoken_root" sequence="90" groups="acpec_fueltoken_base.group_fuel_admin"/>
-    <menuitem id="menu_acpec_fueltoken_operations" name="Opérations" parent="menu_acpec_fueltoken_root" sequence="10" groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
-    <menuitem id="menu_acpec_fueltoken_audit" name="Audit" parent="menu_acpec_fueltoken_root" sequence="70" groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+    <menuitem id="menu_acpec_fueltoken_operations" name="Opérations" parent="menu_acpec_fueltoken_root" sequence="10" groups="acpec_fueltoken_base.group_fuel_admin"/>
+    <menuitem id="menu_acpec_fueltoken_audit" name="Audit" parent="menu_acpec_fueltoken_root" sequence="70" groups="acpec_fueltoken_base.group_fuel_admin"/>
 </odoo>

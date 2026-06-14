@@ -28,10 +28,10 @@
                 <header>
                     <button name="action_confirm" type="object" string="Confirmer"
                             invisible="state != 'draft'" class="btn-primary"
-                            groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+                            groups="acpec_fueltoken_base.group_fuel_admin"/>
                     <button name="action_cancel" type="object" string="Annuler"
                             invisible="state != 'draft'"
-                            groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+                            groups="acpec_fueltoken_base.group_fuel_admin"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,cancelled"/>
                 </header>
                 <sheet>

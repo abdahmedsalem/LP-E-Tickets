@@ -139,5 +139,5 @@
               parent="acpec_fueltoken_backoffice_ui.menu_fueltoken_company_accounts"
               action="action_fuel_distributor"
               sequence="10"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
 </odoo>
