@@ -52,13 +52,14 @@ class AcpecFuelCarnetType(models.Model):
             value = rec._format_carnet_number(rec.face_value)
             rec.code = 'C%sT-%s' % (count, value)
 
-    @api.depends('face_count', 'face_value')
+    @api.depends('face_count', 'face_value', 'currency_id')
     def _compute_name(self):
         for rec in self:
             count = rec._format_carnet_number(rec.face_count)
             value = rec._format_carnet_number(rec.face_value)
-            rec.name = 'C%sT-%sMRU' % (count, value)
-            
+            currency = rec.currency_id.name or ''
+            rec.name = 'C%sT-%s%s' % (count, value, currency)
+        
     @api.depends('face_count', 'face_value')
     def _compute_carnet_amount(self):
         for rec in self:
