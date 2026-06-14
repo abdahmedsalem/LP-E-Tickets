@@ -1,13 +1,25 @@
 <odoo>
     <template id="portal_my_home_fueltoken" name="Tickets Carburant - Home Portal Entry" inherit_id="portal.portal_my_home" priority="40">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
-            <t t-if="fueltoken_portal_enabled" t-call="portal.portal_docs_entry">
-                <t t-set="title">Tickets Carburant</t>
-                <t t-set="icon" t-value="'/acpec_fueltoken_base/static/description/icon.png'"/>
-                <t t-set="url" t-value="'/my/fueltoken'"/>
-                <t t-set="text">Acheter et suivre vos carnets de tickets</t>
-                <t t-set="placeholder_count" t-value="'fueltoken_purchase_count'"/>
-            </t>
+            <!--
+                Carte volontairement rendue sans portal.portal_docs_entry ni placeholder_count.
+                Dans Odoo 19, les compteurs de portal_docs_entry peuvent rester en chargement
+                si le compteur custom n'est pas repris exactement par le mécanisme async du portail.
+                Ici la carte est un simple lien statique, donc pas de spinner résiduel.
+            -->
+            <div t-if="fueltoken_portal_enabled" class="col-12 col-md-6 o_portal_index_card">
+                <a href="/my/fueltoken"
+                   class="d-flex align-items-center p-3 gap-3 h-100 rounded text-decoration-none text-reset bg-100">
+                    <img src="/acpec_fueltoken_base/static/description/icon.png"
+                         alt="Tickets Carburant"
+                         class="flex-shrink-0"
+                         style="width: 64px; height: 64px; object-fit: contain;"/>
+                    <div class="min-w-0">
+                        <h5 class="mb-1">Tickets Carburant</h5>
+                        <p class="mb-0 text-muted">Acheter et suivre vos carnets de tickets</p>
+                    </div>
+                </a>
+            </div>
         </xpath>
     </template>
 
