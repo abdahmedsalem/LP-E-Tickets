@@ -1,0 +1,357 @@
+<odoo>
+    <template id="portal_fueltoken_company_dashboard" name="FuelToken Société - Portail">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4 o_acpec_fueltoken_company_portal">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+                    <div>
+                        <h2 class="mb-1">FuelToken Société</h2>
+                        <p class="text-muted mb-0">
+                            <span t-esc="distributor.display_name"/>
+                        </p>
+                    </div>
+                    <a href="/my" class="btn btn-outline-secondary">Retour au portail</a>
+                </div>
+
+                <div class="alert alert-info" role="alert">
+                    Espace en lecture seule. Les demandes d’achat et les distributions seront ouvertes dans les prochains lots.
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Tickets disponibles</div>
+                                <div class="fs-4 fw-bold" t-esc="total_tickets_available"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Carnets distribuables</div>
+                                <div class="fs-4 fw-bold" t-esc="total_transferable_carnets"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Montant disponible</div>
+                                <div class="fs-4 fw-bold">
+                                    <span t-esc="total_amount_available"/>
+                                    <span t-esc="distributor.company_id.currency_id.name"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Membres</div>
+                                <div class="fs-4 fw-bold" t-esc="member_count"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Carnets / tickets disponibles</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Type de carnet</th>
+                                            <th class="text-end">Tickets</th>
+                                            <th class="text-end">Carnets distribuables</th>
+                                            <th class="text-end">Montant</th>
+                                            <th>Expiration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="ticket_rows" t-as="row">
+                                            <td><span t-esc="row['line'].carnet_type_id.display_name"/></td>
+                                            <td class="text-end"><span t-esc="row['line'].qty_available"/></td>
+                                            <td class="text-end"><span t-esc="row['transferable_carnet_count']"/></td>
+                                            <td class="text-end">
+                                                <span t-esc="row['line'].amount_available"/>
+                                                <span t-esc="row['line'].currency_id.name"/>
+                                            </td>
+                                            <td>
+                                                <span t-if="row['line'].expires_at" t-field="row['line'].expires_at"/>
+                                                <span t-else="">—</span>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="not ticket_rows">
+                                            <td colspan="5" class="text-muted text-center py-3">Aucun ticket disponible.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Dernières demandes d’achat</span>
+                                <a href="/my/fueltoken/purchases" class="btn btn-sm btn-link">Tout voir</a>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Référence</th>
+                                            <th>État</th>
+                                            <th class="text-end">Tickets</th>
+                                            <th class="text-end">Montant</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="purchases" t-as="purchase">
+                                            <td>
+                                                <a t-att-href="'/my/fueltoken/purchases/%s' % purchase.id" t-esc="purchase.name"/>
+                                            </td>
+                                            <td><span t-field="purchase.state"/></td>
+                                            <td class="text-end"><span t-esc="purchase.face_qty_total"/></td>
+                                            <td class="text-end">
+                                                <span t-esc="purchase.amount_total"/>
+                                                <span t-esc="purchase.currency_id.name"/>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="not purchases">
+                                            <td colspan="4" class="text-muted text-center py-3">Aucune demande d’achat.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Dernières distributions</span>
+                                <a href="/my/fueltoken/distributions" class="btn btn-sm btn-link">Tout voir</a>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Référence</th>
+                                            <th>Bénéficiaire</th>
+                                            <th class="text-end">Montant</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="distributions" t-as="transfer">
+                                            <td>
+                                                <a t-att-href="'/my/fueltoken/distributions/%s' % transfer.id" t-esc="transfer.name"/>
+                                            </td>
+                                            <td><span t-esc="transfer.dest_partner_id.display_name"/></td>
+                                            <td class="text-end">
+                                                <span t-esc="transfer.amount_total"/>
+                                                <span t-esc="transfer.currency_id.name"/>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="not distributions">
+                                            <td colspan="3" class="text-muted text-center py-3">Aucune distribution.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4">
+                            <div class="card-header">Membres</div>
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item d-flex justify-content-between align-items-start" t-foreach="member_rows" t-as="row">
+                                    <div>
+                                        <div class="fw-semibold" t-esc="row['name']"/>
+                                        <div class="text-muted small">
+                                            <span t-esc="row['phone']"/>
+                                            <span t-if="row['email']"> · <span t-esc="row['email']"/></span>
+                                        </div>
+                                    </div>
+                                    <span t-if="row['mobile_ready']" class="badge text-bg-success">Mobile actif</span>
+                                    <span t-else="" class="badge text-bg-secondary">Non prêt</span>
+                                </div>
+                                <div class="list-group-item text-muted text-center" t-if="not member_rows">
+                                    Aucun membre rattaché.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_purchases" name="FuelToken Société - Achats">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Demandes d’achat société</h2>
+                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
+                </div>
+                <div class="table-responsive card">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>État</th>
+                                <th>Date</th>
+                                <th class="text-end">Tickets</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="purchases" t-as="purchase">
+                                <td><a t-att-href="'/my/fueltoken/purchases/%s' % purchase.id" t-esc="purchase.name"/></td>
+                                <td><span t-field="purchase.state"/></td>
+                                <td>
+                                    <span t-if="purchase.submitted_at" t-field="purchase.submitted_at"/>
+                                    <span t-else="" t-field="purchase.create_date"/>
+                                </td>
+                                <td class="text-end"><span t-esc="purchase.face_qty_total"/></td>
+                                <td class="text-end"><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></td>
+                            </tr>
+                            <tr t-if="not purchases">
+                                <td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat société.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_purchase_detail" name="FuelToken Société - Détail achat">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1">Demande d’achat <span t-esc="purchase.name"/></h2>
+                        <div class="text-muted">État : <span t-field="purchase.state"/></div>
+                    </div>
+                    <a href="/my/fueltoken/purchases" class="btn btn-outline-secondary">Retour achats</a>
+                </div>
+                <div class="card mb-4">
+                    <div class="card-body row g-3">
+                        <div class="col-md-4"><strong>Montant total</strong><br/><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></div>
+                        <div class="col-md-4"><strong>Tickets</strong><br/><span t-esc="purchase.face_qty_total"/></div>
+                        <div class="col-md-4"><strong>Référence paiement</strong><br/><span t-esc="purchase.payment_reference or '—'"/></div>
+                    </div>
+                </div>
+                <div class="table-responsive card">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type de carnet</th>
+                                <th class="text-end">Carnets</th>
+                                <th class="text-end">Tickets</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="purchase.line_ids" t-as="line">
+                                <td><span t-esc="line.carnet_type_id.display_name"/></td>
+                                <td class="text-end"><span t-esc="line.carnet_qty"/></td>
+                                <td class="text-end"><span t-esc="line.generated_face_qty"/></td>
+                                <td class="text-end"><span t-esc="line.amount_total"/> <span t-esc="line.currency_id.name"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_distributions" name="FuelToken Société - Distributions">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Distributions société</h2>
+                    <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour FuelToken</a>
+                </div>
+                <div class="table-responsive card">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>État</th>
+                                <th>Bénéficiaire</th>
+                                <th>Date</th>
+                                <th class="text-end">Tickets</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="distributions" t-as="transfer">
+                                <td><a t-att-href="'/my/fueltoken/distributions/%s' % transfer.id" t-esc="transfer.name"/></td>
+                                <td><span t-field="transfer.state"/></td>
+                                <td><span t-esc="transfer.dest_partner_id.display_name"/></td>
+                                <td>
+                                    <span t-if="transfer.confirmed_at" t-field="transfer.confirmed_at"/>
+                                    <span t-else="" t-field="transfer.create_date"/>
+                                </td>
+                                <td class="text-end"><span t-esc="transfer.face_qty_total"/></td>
+                                <td class="text-end"><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></td>
+                            </tr>
+                            <tr t-if="not distributions">
+                                <td colspan="6" class="text-muted text-center py-4">Aucune distribution société.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_distribution_detail" name="FuelToken Société - Détail distribution">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1">Distribution <span t-esc="transfer.name"/></h2>
+                        <div class="text-muted">Bénéficiaire : <span t-esc="transfer.dest_partner_id.display_name"/></div>
+                    </div>
+                    <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Retour distributions</a>
+                </div>
+                <div class="card mb-4">
+                    <div class="card-body row g-3">
+                        <div class="col-md-4"><strong>État</strong><br/><span t-field="transfer.state"/></div>
+                        <div class="col-md-4"><strong>Tickets</strong><br/><span t-esc="transfer.face_qty_total"/></div>
+                        <div class="col-md-4"><strong>Montant</strong><br/><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></div>
+                    </div>
+                </div>
+                <div class="table-responsive card">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Type de carnet</th>
+                                <th class="text-end">Carnets</th>
+                                <th class="text-end">Tickets</th>
+                                <th class="text-end">Montant</th>
+                                <th>Expiration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="transfer.line_ids" t-as="line">
+                                <td><span t-esc="line.carnet_type_id.display_name"/></td>
+                                <td class="text-end"><span t-esc="line.carnet_qty"/></td>
+                                <td class="text-end"><span t-esc="line.qty_faces"/></td>
+                                <td class="text-end"><span t-esc="line.amount_total"/> <span t-esc="line.currency_id.name"/></td>
+                                <td>
+                                    <span t-if="line.expires_at" t-field="line.expires_at"/>
+                                    <span t-else="">—</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

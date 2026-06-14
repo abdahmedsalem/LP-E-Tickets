@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_res_partner_fueltoken_company_portal,res.partner.fueltoken.company.portal,base.model_res_partner,base.group_portal,1,0,0,0
+access_fuel_distributor_company_portal,acpec.fuel.distributor.company.portal,acpec_fueltoken_company.model_acpec_fuel_distributor,base.group_portal,1,0,0,0
+access_fuel_wallet_company_portal,acpec.fuel.wallet.company.portal,acpec_fueltoken_core.model_acpec_fuel_wallet,base.group_portal,1,0,0,0
+access_fuel_face_line_company_portal,acpec.fuel.face.line.company.portal,acpec_fueltoken_core.model_acpec_fuel_face_line,base.group_portal,1,0,0,0
+access_fuel_carnet_type_company_portal,acpec.fuel.carnet.type.company.portal,acpec_fueltoken_catalog.model_acpec_fuel_carnet_type,base.group_portal,1,0,0,0
+access_fuel_purchase_company_portal,acpec.fuel.purchase.company.portal,acpec_fueltoken_purchase.model_acpec_fuel_purchase,base.group_portal,1,0,0,0
+access_fuel_purchase_line_company_portal,acpec.fuel.purchase.line.company.portal,acpec_fueltoken_purchase.model_acpec_fuel_purchase_line,base.group_portal,1,0,0,0
+access_fuel_carnet_transfer_company_portal,acpec.fuel.carnet.transfer.company.portal,acpec_fueltoken_core.model_acpec_fuel_carnet_transfer,base.group_portal,1,0,0,0
+access_fuel_carnet_transfer_line_company_portal,acpec.fuel.carnet.transfer.line.company.portal,acpec_fueltoken_core.model_acpec_fuel_carnet_transfer_line,base.group_portal,1,0,0,0
