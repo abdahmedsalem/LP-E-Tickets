@@ -9,13 +9,16 @@ class AcpecFuelPurchaseCore(models.Model):
         tx_model = self.env['acpec.fuel.transaction'].sudo()
         wallet_model = self.env['acpec.fuel.wallet'].sudo()
         for purchase in self:
-            existing = tx_model.search([('purchase_id', '=', purchase.id)], limit=1)
+            existing = tx_model.search([
+                ('purchase_id', '=', purchase.id),
+                ('transaction_type', '=', 'purchase_submitted'),
+            ], limit=1)
             if existing:
                 continue
 
             wallet = wallet_model.get_or_create(purchase.partner_id, purchase.company_id)
             tx_model.log(
-                'achat_carnets',
+                'purchase_submitted',
                 purchase.company_id,
                 wallet=wallet,
                 purchase=purchase,
@@ -75,14 +78,17 @@ class AcpecFuelPurchaseCore(models.Model):
                         'qty': line.generated_face_qty,
                     })
 
-                if not tx_model.search([('purchase_id', '=', purchase.id)], limit=1):
+                if not tx_model.search([
+                    ('purchase_id', '=', purchase.id),
+                    ('transaction_type', '=', 'purchase_approved'),
+                ], limit=1):
                     tx_model.log(
-                        'achat_carnets',
+                        'purchase_approved',
                         purchase.company_id,
                         wallet=wallet,
                         purchase=purchase,
                         lines=tx_lines,
-                        note=_("Demande d'achat validee"),
+                        note=_("Achat approuve - tickets crees"),
                         idempotency_key=purchase.idempotency_key,
                     )
                 purchase.sudo().write({'fuel_value_created': True})

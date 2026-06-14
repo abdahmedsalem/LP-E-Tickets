@@ -9,7 +9,8 @@ class AcpecFuelTransaction(models.Model):
 
     name = fields.Char(string='Référence', default='New', readonly=True, copy=False)
     transaction_type = fields.Selection([
-        ('achat_carnets', 'Achat de carnets'),
+        ('purchase_submitted', 'Demande d’achat soumise'),
+        ('purchase_approved', 'Achat approuvé'),
         ('emission_qr', 'Émission QR'),
         ('retirer_qr', 'Retrait partiel QR'),
         ('separer_qr', 'Separation QR expire/non expire'),

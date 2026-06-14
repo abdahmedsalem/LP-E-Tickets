@@ -72,7 +72,7 @@
                 <filter name="station_consumptions" string="Consommations station" domain="[('transaction_type', '=', 'consommation_station')]"/>
                 <filter name="qr_emissions" string="Émissions QR" domain="[('transaction_type', '=', 'emission_qr')]"/>
                 <filter name="carnet_transfers" string="Transferts de carnets" domain="[('transaction_type', '=', 'transfert_carnet')]"/>
-                <filter name="purchases" string="Achats de carnets" domain="[('transaction_type', '=', 'achat_carnets')]"/>
+                <filter name="purchases" string="Achats de carnets" domain="[('transaction_type', 'in', ['purchase_submitted', 'purchase_approved'])]"/>
                 <group>
                     <filter name="group_type" string="Type" context="{'group_by': 'transaction_type'}"/>
                     <filter name="group_wallet" string="Compte Tickets Carburant" context="{'group_by': 'wallet_id'}"/>

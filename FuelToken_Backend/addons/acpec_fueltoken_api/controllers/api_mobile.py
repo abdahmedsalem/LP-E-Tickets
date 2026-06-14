@@ -74,6 +74,10 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
         return False
 
     def _history_line_expiration(self, line, fallback=False):
+        transaction = line.transaction_id
+        if transaction and transaction.transaction_type == 'purchase_submitted':
+            return fallback or False
+
         face_line = line.face_line_id
         if face_line and face_line.expires_at:
             return face_line.expires_at
@@ -83,7 +87,6 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
         if purchase_line and purchase_line.carnet_type_id:
             validity_days = int(purchase_line.carnet_type_id.validity_days or 0)
         if validity_days > 0:
-            transaction = line.transaction_id
             purchase = transaction.purchase_id if transaction and transaction.purchase_id else False
             base = (
                 (purchase.approved_at if purchase else False)
@@ -144,9 +147,19 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'expiration_date': fields.Datetime.to_string(expiration) if expiration else False,
         }
 
+    def _purchase_event_state(self, tx):
+        if tx.transaction_type == 'purchase_submitted':
+            return 'submitted'
+        if tx.transaction_type == 'purchase_approved':
+            return 'approved'
+        return tx.purchase_id.state if tx.purchase_id else False
+
     def _tx_payload(self, tx):
         purchase = tx.purchase_id
         transfer = tx.transfer_id
+        purchase_event_state = self._purchase_event_state(tx)
+        is_purchase_submitted = tx.transaction_type == 'purchase_submitted'
+        is_purchase_approved = tx.transaction_type == 'purchase_approved'
 
         # Direction du transfert de carnets : sortant (source) ou entrant (dest)
         transfer_direction = False
@@ -172,14 +185,15 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'purchase_id': purchase.id if purchase else False,
             'purchase_name': purchase.name if purchase else False,
             'purchase_public_code': purchase.public_code if purchase else False,
-            'state': purchase.state if purchase else False,
-            'purchase_state': purchase.state if purchase else False,
+            'state': purchase_event_state,
+            'purchase_state': purchase_event_state,
+            'purchase_current_state': purchase.state if purchase else False,
             'submitted_at': fields.Datetime.to_string(tx.purchase_submitted_at) if tx.purchase_submitted_at else False,
-            'approved_at': fields.Datetime.to_string(tx.purchase_approved_at) if tx.purchase_approved_at else False,
-            'approved_by': purchase.approved_by.name if purchase and purchase.approved_by else False,
-            'rejected_at': fields.Datetime.to_string(tx.purchase_rejected_at) if tx.purchase_rejected_at else False,
-            'rejected_by': purchase.rejected_by.name if purchase and purchase.rejected_by else False,
-            'rejection_reason': tx.purchase_rejection_reason or False,
+            'approved_at': fields.Datetime.to_string(tx.purchase_approved_at) if is_purchase_approved and tx.purchase_approved_at else False,
+            'approved_by': purchase.approved_by.name if is_purchase_approved and purchase and purchase.approved_by else False,
+            'rejected_at': fields.Datetime.to_string(tx.purchase_rejected_at) if not is_purchase_submitted and tx.purchase_rejected_at else False,
+            'rejected_by': purchase.rejected_by.name if not is_purchase_submitted and purchase and purchase.rejected_by else False,
+            'rejection_reason': False if is_purchase_submitted else (tx.purchase_rejection_reason or False),
             'qr_id': tx.qr_id.id if tx.qr_id else False,
             'qr_public_code': tx.qr_id.public_code if tx.qr_id else False,
             'parent_qr_id': tx.parent_qr_id.id if tx.parent_qr_id else False,
@@ -199,8 +213,8 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
         return {
             'id': f'purchase-submitted-{purchase.id}',
             'name': purchase.name,
-            'transaction_type': 'achat_carnets',
-            'transaction_type_label': 'Achat de carnets',
+            'transaction_type': 'purchase_submitted',
+            'transaction_type_label': 'Demande d’achat soumise',
             'amount_total': purchase.amount_total,
             'qty_total': purchase.face_qty_total,
             'created_at': fields.Datetime.to_string(created_at) if created_at else False,
@@ -208,14 +222,15 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'purchase_id': purchase.id,
             'purchase_name': purchase.name,
             'purchase_public_code': purchase.public_code,
-            'state': purchase.state,
-            'purchase_state': purchase.state,
+            'state': 'submitted',
+            'purchase_state': 'submitted',
+            'purchase_current_state': purchase.state,
             'submitted_at': fields.Datetime.to_string(purchase.submitted_at) if purchase.submitted_at else False,
-            'approved_at': fields.Datetime.to_string(purchase.approved_at) if purchase.approved_at else False,
-            'approved_by': purchase.approved_by.name if purchase.approved_by else False,
-            'rejected_at': fields.Datetime.to_string(purchase.rejected_at) if purchase.rejected_at else False,
-            'rejected_by': purchase.rejected_by.name if purchase.rejected_by else False,
-            'rejection_reason': purchase.rejection_reason or False,
+            'approved_at': False,
+            'approved_by': False,
+            'rejected_at': False,
+            'rejected_by': False,
+            'rejection_reason': False,
             'qr_id': False,
             'qr_public_code': False,
             'parent_qr_id': False,
@@ -224,7 +239,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'station_name': False,
             'note': _('Demande d’achat en attente de validation') if purchase.state == 'submitted' else False,
             'lines': [
-                self._purchase_history_line_payload(purchase, line)
+                dict(self._purchase_history_line_payload(purchase, line), expiration_date=False)
                 for line in purchase.line_ids
             ],
         }
@@ -517,8 +532,9 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             if date_to:
                 domain.append(('create_date', '<=', fields.Datetime.to_string(date_to)))
 
-            # Achats soumis en attente (pas encore de transaction liée) — toujours peu nombreux,
-            # on les charge une seule fois pour construire l'historique unifié.
+            # Fallback défensif : une soumission doit désormais avoir sa vraie
+            # transaction purchase_submitted. On ne synthétise que les rares achats
+            # soumis sans transaction, pour éviter les doublons dans l'historique.
             submitted_domain = [
                 ('partner_id', '=', wallet.partner_id.id),
                 ('company_id', '=', wallet.company_id.id),
@@ -530,7 +546,17 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             )
             submitted_items = []
             existing_purchase_ids = set()
+            submitted_purchase_ids = submitted_purchases.ids
+            purchase_ids_with_submitted_tx = set()
+            if submitted_purchase_ids:
+                purchase_ids_with_submitted_tx = set(tx_model.search([
+                    ('wallet_id', '=', wallet.id),
+                    ('purchase_id', 'in', submitted_purchase_ids),
+                    ('transaction_type', '=', 'purchase_submitted'),
+                ]).mapped('purchase_id').ids)
             for purchase in submitted_purchases:
+                if purchase.id in purchase_ids_with_submitted_tx:
+                    continue
                 payload = self._purchase_submission_payload(purchase, wallet)
                 created_at = self._parse_datetime_param(payload.get('created_at'), 'created_at') if payload.get('created_at') else False
                 if date_from and created_at and created_at < date_from:
