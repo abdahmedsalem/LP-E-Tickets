@@ -61,7 +61,7 @@ class _PurchaseConfirmationScreenState
     try {
       final ok = await showSensitiveActionPasswordDialog(
         context,
-        title: 'Vérification du mot des passe',
+        title: 'Vérification du mot de passe',
         description:
             'Saisissez votre mot de passe pour confirmer cette opération.',
       );
