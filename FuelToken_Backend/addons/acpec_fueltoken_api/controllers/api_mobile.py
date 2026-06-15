@@ -2,10 +2,10 @@ from odoo import http, _, fields
 from odoo.exceptions import ValidationError
 from odoo.http import request
 
-from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
+from .api_common import AcpecFuelTokenApiCommon
 
 
-class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
+class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
     def _carnet_type_label(self, carnet):
         if not carnet:
@@ -49,17 +49,6 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'state': line.state,
             'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
         } for line in qr.line_ids]
-
-    def _parse_datetime_param(self, raw_value, key_name):
-        if raw_value in (False, None, ''):
-            return False
-        try:
-            parsed = fields.Datetime.to_datetime(raw_value)
-        except Exception:
-            parsed = False
-        if not parsed:
-            raise ValidationError(_("Le paramètre '%s' est invalide.") % key_name)
-        return parsed
 
     def _tx_type_label(self, tx):
         return dict(tx._fields['transaction_type'].selection).get(tx.transaction_type, tx.transaction_type)
@@ -432,10 +421,22 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
     def purchases(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
-            items = request.env['acpec.fuel.purchase'].sudo().search([
+            limit, offset = self._pagination_params(kwargs, default_limit=50, max_limit=100)
+            include_meta = self._include_pagination_meta(kwargs)
+            date_from, date_to = self._date_range_params(kwargs)
+            state = self._get_clean_str(kwargs, 'state')
+
+            domain = [
                 ('partner_id', '=', wallet.partner_id.id),
                 ('company_id', '=', wallet.company_id.id),
-            ], order='id desc', limit=50)
+            ]
+            if state and state != 'all':
+                domain.append(('state', '=', state))
+            self._add_date_range_domain(domain, date_from, date_to, field_name='submitted_at')
+
+            purchase_model = request.env['acpec.fuel.purchase'].sudo()
+            total = purchase_model.search_count(domain)
+            items = purchase_model.search(domain, order='id desc', limit=limit, offset=offset)
             result = []
             for p in items:
                 lines = []
@@ -463,7 +464,10 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                     'rejection_reason': p.rejection_reason or False,
                     'lines': lines,
                 })
-            return self._json_response({'items': result})
+            return self._json_response({
+                'items': result,
+                **self._pagination_meta_opt_in(total, limit, offset, len(items), include_meta),
+            })
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -520,13 +524,17 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             wallet = self._mobile_wallet()
             tx_model = request.env['acpec.fuel.transaction'].sudo()
             purchase_model = request.env['acpec.fuel.purchase'].sudo()
-            date_from = self._parse_datetime_param(kwargs.get('date_from'), 'date_from')
-            date_to = self._parse_datetime_param(kwargs.get('date_to'), 'date_to')
-            limit = max(1, min(self._get_optional_int(kwargs, 'limit', 20), 200))
-            offset = max(0, self._get_optional_int(kwargs, 'offset', 0))
-            if date_from and date_to and date_from > date_to:
-                raise ValidationError(_('La plage de dates est invalide.'))
+            date_from, date_to = self._date_range_params(kwargs)
+            limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=200)
+            include_meta = self._include_pagination_meta(kwargs)
+            transaction_type_filter = self._get_clean_str(kwargs, 'transaction_type')
             domain = [('wallet_id', '=', wallet.id)]
+            tx_filter_state, tx_filter_value, tx_filter_error = self._apply_transaction_type_filter(
+                domain,
+                transaction_type_filter,
+            )
+            if tx_filter_error:
+                return tx_filter_error
             if date_from:
                 domain.append(('create_date', '>=', fields.Datetime.to_string(date_from)))
             if date_to:
@@ -535,15 +543,20 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             # Fallback défensif : une soumission doit désormais avoir sa vraie
             # transaction purchase_submitted. On ne synthétise que les rares achats
             # soumis sans transaction, pour éviter les doublons dans l'historique.
+            # Si le client filtre sur un autre type, ce fallback ne doit pas polluer
+            # le résultat.
+            include_submitted_fallback = tx_filter_state != 'ok' or tx_filter_value == 'purchase_submitted'
             submitted_domain = [
                 ('partner_id', '=', wallet.partner_id.id),
                 ('company_id', '=', wallet.company_id.id),
                 ('state', '=', 'submitted'),
             ]
-            submitted_purchases = purchase_model.search(
-                submitted_domain,
-                order='submitted_at desc, id desc',
-            )
+            submitted_purchases = purchase_model.browse()
+            if include_submitted_fallback:
+                submitted_purchases = purchase_model.search(
+                    submitted_domain,
+                    order='submitted_at desc, id desc',
+                )
             submitted_items = []
             existing_purchase_ids = set()
             submitted_purchase_ids = submitted_purchases.ids
@@ -589,10 +602,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
 
             return self._json_response({
                 'items': page_items,
-                'count': total_count,
-                'limit': limit,
-                'offset': offset,
-                'has_more': (offset + len(page_items)) < total_count,
+                **self._pagination_meta_legacy(total_count, limit, offset, len(page_items), include_meta),
             })
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -684,12 +694,21 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
     def qr_list(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
-            state = kwargs.get('state')
+            limit, offset = self._pagination_params(kwargs, default_limit=50, max_limit=100)
+            include_meta = self._include_pagination_meta(kwargs)
+            date_from, date_to = self._date_range_params(kwargs)
+            state = self._get_clean_str(kwargs, 'state')
             domain = [('wallet_id', '=', wallet.id)]
-            if state:
+            if state and state != 'all':
                 domain.append(('state', '=', state))
-            qrs = request.env['acpec.fuel.qr'].sudo().search(domain, order='id desc', limit=50)
-            return self._json_response({'items': [self._qr_payload(qr) for qr in qrs]})
+            self._add_date_range_domain(domain, date_from, date_to, field_name='create_date')
+            qr_model = request.env['acpec.fuel.qr'].sudo()
+            total = qr_model.search_count(domain)
+            qrs = qr_model.search(domain, order='id desc', limit=limit, offset=offset)
+            return self._json_response({
+                'items': [self._qr_payload(qr) for qr in qrs],
+                **self._pagination_meta_opt_in(total, limit, offset, len(qrs), include_meta),
+            })
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -765,6 +784,7 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
             'name': transfer.name,
             'public_code': transfer.public_code,
             'state': transfer.state,
+            'created_at': fields.Datetime.to_string(transfer.create_date) if transfer.create_date else False,
             'amount_total': transfer.amount_total,
             'face_qty_total': transfer.face_qty_total,
             'source_partner': transfer.source_partner_id.display_name,
@@ -938,9 +958,11 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
         try:
             user = self._require_mobile_auth()
             self._require_fuel_group(user, 'client')
-            limit = max(1, min(self._get_optional_int(kwargs, 'limit', 20), 100))
-            offset = max(0, self._get_optional_int(kwargs, 'offset', 0))
+            limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=100)
+            include_meta = self._include_pagination_meta(kwargs)
+            date_from, date_to = self._date_range_params(kwargs)
             direction = kwargs.get('direction')  # 'sent' | 'received' | None (tous)
+            state = self._get_clean_str(kwargs, 'state')
 
             domain = ['|',
                 ('source_partner_id', '=', user.partner_id.id),
@@ -950,17 +972,18 @@ class AcpecFuelTokenMobileApi(AcpecMobileAuthApiCommon):
                 domain = [('source_partner_id', '=', user.partner_id.id)]
             elif direction == 'received':
                 domain = [('dest_partner_id', '=', user.partner_id.id)]
+            if state and state != 'all':
+                domain.append(('state', '=', state))
+            self._add_date_range_domain(domain, date_from, date_to, field_name='create_date')
 
-            total = request.env['acpec.fuel.carnet.transfer'].sudo().search_count(domain)
-            records = request.env['acpec.fuel.carnet.transfer'].sudo().search(
+            transfer_model = request.env['acpec.fuel.carnet.transfer'].sudo()
+            total = transfer_model.search_count(domain)
+            records = transfer_model.search(
                 domain, order='id desc', limit=limit, offset=offset,
             )
             return self._json_response({
                 'items': [self._transfer_payload(t) for t in records],
-                'count': total,
-                'limit': limit,
-                'offset': offset,
-                'has_more': (offset + len(records)) < total,
+                **self._pagination_meta_legacy(total, limit, offset, len(records), include_meta),
             })
         except Exception as exc:
             return self._handle_exception_response(exc)

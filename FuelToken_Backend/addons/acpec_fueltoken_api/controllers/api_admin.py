@@ -2,10 +2,10 @@ from odoo import http, _, fields
 from odoo.exceptions import ValidationError
 from odoo.http import request
 
-from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
+from .api_common import AcpecFuelTokenApiCommon
 
 
-class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
+class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
 
     def _admin_user(self):
         user = self._require_mobile_auth()
@@ -165,13 +165,23 @@ class AcpecFuelTokenAdminApi(AcpecMobileAuthApiCommon):
     def purchases_pending(self, **kwargs):
         try:
             user = self._admin_user()
+            limit, offset = self._pagination_params(kwargs, default_limit=100, max_limit=200)
+            include_meta = self._include_pagination_meta(kwargs)
+            date_from, date_to = self._date_range_params(kwargs)
             state = kwargs.get('state') or 'submitted'
             domain = [('company_id', 'in', user.company_ids.ids)]
             if state != 'all':
                 domain.append(('state', '=', state))
-            total = request.env['acpec.fuel.purchase'].sudo().search_count(domain)
-            records = request.env['acpec.fuel.purchase'].sudo().search(domain, order='id desc', limit=100)
-            return self._json_response({'items': [self._purchase_payload(purchase) for purchase in records], 'count': total})
+            self._add_date_range_domain(domain, date_from, date_to, field_name='submitted_at')
+            purchase_model = request.env['acpec.fuel.purchase'].sudo()
+            total = purchase_model.search_count(domain)
+            records = purchase_model.search(
+                domain, order='id desc', limit=limit, offset=offset,
+            )
+            return self._json_response({
+                'items': [self._purchase_payload(purchase) for purchase in records],
+                **self._pagination_meta_count_only(total, limit, offset, len(records), include_meta),
+            })
         except Exception as exc:
             return self._handle_exception_response(exc)
 

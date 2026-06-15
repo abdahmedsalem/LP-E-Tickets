@@ -2,10 +2,11 @@ from odoo import http, _, fields
 from odoo.exceptions import ValidationError
 from odoo.http import request
 
-from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
+from .api_common import AcpecFuelTokenApiCommon
 
 
-class AcpecFuelTokenStationApi(AcpecMobileAuthApiCommon):
+class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
+
 
     def _station_user(self):
         user = self._require_mobile_auth()
@@ -104,10 +105,19 @@ class AcpecFuelTokenStationApi(AcpecMobileAuthApiCommon):
     def station_transactions(self, **kwargs):
         try:
             station, user = self._station_user()
-            limit = max(1, min(self._get_optional_int(kwargs, 'limit', 20), 200))
-            offset = max(0, self._get_optional_int(kwargs, 'offset', 0))
+            limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=200)
+            include_meta = self._include_pagination_meta(kwargs)
+            date_from, date_to = self._date_range_params(kwargs)
+            transaction_type = self._get_clean_str(kwargs, 'transaction_type')
             domain = [('station_id', '=', station.id)]
             tx_model = request.env['acpec.fuel.transaction'].sudo()
+            _tx_filter_state, _tx_filter_value, tx_filter_error = self._apply_transaction_type_filter(
+                domain,
+                transaction_type,
+            )
+            if tx_filter_error:
+                return tx_filter_error
+            self._add_date_range_domain(domain, date_from, date_to, field_name='create_date')
             total_count = tx_model.search_count(domain)
             records = tx_model.search(domain, order='create_date desc, id desc', limit=limit, offset=offset)
             items = []
@@ -128,10 +138,7 @@ class AcpecFuelTokenStationApi(AcpecMobileAuthApiCommon):
             return self._json_response({
                 'station': self._station_payload(station),
                 'items': items,
-                'count': total_count,
-                'limit': limit,
-                'offset': offset,
-                'has_more': (offset + len(records)) < total_count,
+                **self._pagination_meta_legacy(total_count, limit, offset, len(records), include_meta),
             })
         except Exception as exc:
             return self._handle_exception_response(exc)
