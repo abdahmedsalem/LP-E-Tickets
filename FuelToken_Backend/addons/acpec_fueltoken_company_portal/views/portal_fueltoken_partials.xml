@@ -1,0 +1,45 @@
+<odoo>
+    <!--
+        Partials reutilisables du portail Tickets Carburant.
+        Charges avant les templates qui les appellent (cf. ordre dans le manifest).
+    -->
+
+    <!-- Pastille de statut : couleur derivee de l'etat, libelle = contenu (t-out=0).
+         Centralise la correspondance etat -> couleur (une seule source). -->
+    <template id="ft_status_pill" name="FT — Pastille de statut">
+        <t t-set="_s" t-value="(state or '')"/>
+        <t t-set="_pill"
+           t-value="_s in ('approved', 'validated', 'done') and 'ft-pill-green'
+                    or _s in ('submitted', 'pending') and 'ft-pill-yellow'
+                    or _s in ('cancelled', 'rejected') and 'ft-pill-red'
+                    or 'ft-pill-muted'"/>
+        <span t-attf-class="ft-pill #{_pill}"><t t-out="0"/></span>
+    </template>
+
+    <!-- En-tete de page : icone + titre + sous-titre + barre d'action (t-out=0).
+         Params : title (str), subtitle (str, optionnel). -->
+    <template id="ft_page_header" name="FT — En-tete de page">
+        <div class="ft-topbar d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <span class="ft-title-icon">
+                    <img src="/acpec_fueltoken_base/static/description/icon.png" alt="Tickets Carburant"/>
+                </span>
+                <div>
+                    <h2 class="mb-1 fw-bold" t-esc="title"/>
+                    <div class="ft-muted" t-if="subtitle" t-esc="subtitle"/>
+                </div>
+            </div>
+            <div class="ft-action-bar d-flex gap-2 flex-wrap"><t t-out="0"/></div>
+        </div>
+    </template>
+
+    <!-- Etat vide : icone + message + CTA optionnel (t-out=0).
+         Params : icon (classe fa, optionnel), message (str). -->
+    <template id="ft_empty_state" name="FT — Etat vide">
+        <div class="ft-empty">
+            <div class="ft-empty-icon"><i t-attf-class="fa #{icon or 'fa-inbox'}"/></div>
+            <div t-esc="message"/>
+            <div class="mt-3"><t t-out="0"/></div>
+        </div>
+    </template>
+</odoo>

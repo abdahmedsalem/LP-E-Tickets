@@ -72,6 +72,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         company = self._get_portal_company().sudo()
         distributor = request.env['acpec.fuel.distributor'].sudo().search([
             ('partner_id', '=', commercial_partner.id),
+            ('company_id', '=', company.id),
             ('active', '=', True),
             ('state', '=', 'active'),
         ], limit=1)
@@ -349,6 +350,12 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         return face_lines.filtered(lambda line: line.is_transferable_carnet_line())
 
     def _build_distribution_carnet_rows(self, wallet, form_data=None):
+        """Return available carnet types for the portal line composer.
+
+        The UI must not display every carnet as a quantity table anymore.  We
+        still need a compact catalogue to feed the per-line selector and to keep
+        the server-side validation authoritative.
+        """
         form_data = form_data or {}
         rows = []
         face_lines = self._get_transferable_face_lines(wallet)
@@ -360,30 +367,87 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             qty_available = sum(type_lines.mapped('qty_available'))
             transferable_carnet_count = sum(line.transferable_carnet_count() for line in type_lines)
             amount_available = sum(type_lines.mapped('amount_available'))
+            face_count = int(carnet_type.face_count or 0)
+            if not face_count and transferable_carnet_count:
+                face_count = int(qty_available / transferable_carnet_count)
+            amount_per_carnet = 0.0
+            if transferable_carnet_count:
+                amount_per_carnet = amount_available / transferable_carnet_count
+            elif face_count and carnet_type.face_value:
+                amount_per_carnet = face_count * carnet_type.face_value
             rows.append({
                 'carnet_type': carnet_type,
                 'qty': form_data.get('qty_%s' % carnet_type.id, ''),
                 'qty_available': qty_available,
                 'transferable_carnet_count': transferable_carnet_count,
                 'amount_available': amount_available,
+                'face_count': face_count,
+                'amount_per_carnet': amount_per_carnet,
+                'currency_name': carnet_type.currency_id.name,
             })
         return rows
 
-    def _build_distribution_totals(self, carnet_rows, currency_name=False):
-        selected_carnet_qty = 0
-        for row in carnet_rows:
-            raw_qty = row.get('qty')
-            if raw_qty in (None, ''):
-                continue
+    def _build_distribution_line_slots(self, form_data=None, slot_count=8):
+        """Return fixed UI slots for a line-by-line distribution composer.
+
+        We render a small finite number of rows and hide unused ones client-side.
+        This keeps the POST contract simple, deterministic and easy to validate
+        without reintroducing a full catalogue table.
+        """
+        form_data = form_data or {}
+        slots = []
+        for index in range(slot_count):
+            raw_type = form_data.get('line_%s_carnet_type_id' % index)
+            raw_qty = form_data.get('line_%s_qty' % index)
             try:
-                selected_carnet_qty += max(int(raw_qty), 0)
+                carnet_type_id = int(raw_type or 0)
             except (TypeError, ValueError):
-                continue
+                carnet_type_id = 0
+            qty = raw_qty if raw_qty not in (None, False) else ''
+            slots.append({
+                'index': index,
+                'carnet_type_id': carnet_type_id,
+                'qty': qty,
+                'visible': index == 0 or bool(carnet_type_id) or qty not in ('', None, False),
+            })
+        return slots
+
+    def _distribution_carnet_catalog_by_id(self, carnet_rows):
+        return {row['carnet_type'].id: row for row in carnet_rows}
+
+    def _build_distribution_totals(self, carnet_rows, currency_name=False):
         return {
             'qty_available': sum(row.get('qty_available', 0) for row in carnet_rows),
             'transferable_carnet_count': sum(row.get('transferable_carnet_count', 0) for row in carnet_rows),
             'amount_available': sum(row.get('amount_available', 0) for row in carnet_rows),
+            'selected_carnet_qty': 0,
+            'selected_ticket_qty': 0,
+            'selected_amount_total': 0,
+            'currency_name': currency_name or '',
+        }
+
+    def _build_selected_distribution_totals(self, carnet_rows, line_slots, currency_name=False):
+        catalog = self._distribution_carnet_catalog_by_id(carnet_rows)
+        selected_carnet_qty = 0
+        selected_ticket_qty = 0
+        selected_amount_total = 0.0
+        for slot in line_slots:
+            row = catalog.get(slot.get('carnet_type_id'))
+            if not row:
+                continue
+            try:
+                carnet_qty = int(slot.get('qty') or 0)
+            except (TypeError, ValueError):
+                continue
+            if carnet_qty <= 0:
+                continue
+            selected_carnet_qty += carnet_qty
+            selected_ticket_qty += carnet_qty * int(row.get('face_count') or 0)
+            selected_amount_total += carnet_qty * float(row.get('amount_per_carnet') or 0.0)
+        return {
             'selected_carnet_qty': selected_carnet_qty,
+            'selected_ticket_qty': selected_ticket_qty,
+            'selected_amount_total': selected_amount_total,
             'currency_name': currency_name or '',
         }
 
@@ -400,7 +464,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         wallet = self._get_company_wallet(distributor)
         member_rows = [row for row in self._build_member_rows(distributor) if row['mobile_ready']]
         carnet_rows = self._build_distribution_carnet_rows(wallet, form_data=form_data)
+        line_slots = self._build_distribution_line_slots(form_data=form_data)
         currency = (wallet and wallet.currency_id) or context['company'].currency_id
+        currency_name = currency.name if currency else ''
         return {
             'page_name': 'fueltoken_company_distribution_new',
             'distributor': distributor,
@@ -410,7 +476,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             'wallet': wallet,
             'member_rows': member_rows,
             'carnet_rows': carnet_rows,
-            'distribution_totals': self._build_distribution_totals(carnet_rows, currency.name if currency else ''),
+            'distribution_line_slots': line_slots,
+            'distribution_totals': self._build_distribution_totals(carnet_rows, currency_name),
+            'selected_distribution_totals': self._build_selected_distribution_totals(carnet_rows, line_slots, currency_name),
             'member_partner_id': int(form_data.get('member_partner_id') or 0),
             'note': form_data.get('note', ''),
             'idempotency_key': form_data.get('idempotency_key') or str(uuid.uuid4()),
@@ -448,26 +516,62 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             })
         return allocations
 
-    def _prepare_distribution_lines_from_post(self, distributor, wallet, post):
-        if not wallet:
-            raise ValidationError(_('Le Compte Société ne dispose d’aucun wallet source.'))
+    def _parse_distribution_selected_by_type(self, wallet, post):
+        carnet_rows = self._build_distribution_carnet_rows(wallet)
+        allowed_type_ids = {row['carnet_type'].id for row in carnet_rows}
         selected_by_type = {}
-        for row in self._build_distribution_carnet_rows(wallet):
-            carnet_type = row['carnet_type']
-            raw_qty = post.get('qty_%s' % carnet_type.id)
-            if raw_qty in (None, ''):
+
+        # New line-by-line contract: line_0_carnet_type_id / line_0_qty, etc.
+        for index in range(8):
+            raw_type = post.get('line_%s_carnet_type_id' % index)
+            raw_qty = post.get('line_%s_qty' % index)
+            if raw_type in (None, '') and raw_qty in (None, ''):
                 continue
             try:
-                carnet_qty = int(raw_qty)
+                carnet_type_id = int(raw_type or 0)
+            except (TypeError, ValueError):
+                raise ValidationError(_('Type de carnet invalide sur une ligne de distribution.'))
+            try:
+                carnet_qty = int(raw_qty or 0)
             except (TypeError, ValueError):
                 raise ValidationError(_('Les quantités de carnets doivent être des entiers.'))
             if carnet_qty < 0:
                 raise ValidationError(_('Les quantités de carnets ne peuvent pas être négatives.'))
-            if carnet_qty == 0:
+            if carnet_qty == 0 and not carnet_type_id:
                 continue
-            selected_by_type[carnet_type.id] = selected_by_type.get(carnet_type.id, 0) + carnet_qty
+            if not carnet_type_id:
+                raise ValidationError(_('Sélectionnez un type de carnet pour chaque ligne renseignée.'))
+            if carnet_type_id not in allowed_type_ids:
+                raise ValidationError(_('Type de carnet indisponible.'))
+            if carnet_qty <= 0:
+                raise ValidationError(_('La quantité doit être positive pour chaque ligne renseignée.'))
+            selected_by_type[carnet_type_id] = selected_by_type.get(carnet_type_id, 0) + carnet_qty
+
+        # Backward-compatible fallback for the previous table contract.
         if not selected_by_type:
-            raise ValidationError(_('Veuillez saisir au moins une quantité de carnets à distribuer.'))
+            for row in carnet_rows:
+                carnet_type = row['carnet_type']
+                raw_qty = post.get('qty_%s' % carnet_type.id)
+                if raw_qty in (None, ''):
+                    continue
+                try:
+                    carnet_qty = int(raw_qty)
+                except (TypeError, ValueError):
+                    raise ValidationError(_('Les quantités de carnets doivent être des entiers.'))
+                if carnet_qty < 0:
+                    raise ValidationError(_('Les quantités de carnets ne peuvent pas être négatives.'))
+                if carnet_qty == 0:
+                    continue
+                selected_by_type[carnet_type.id] = selected_by_type.get(carnet_type.id, 0) + carnet_qty
+
+        return selected_by_type
+
+    def _prepare_distribution_lines_from_post(self, distributor, wallet, post):
+        if not wallet:
+            raise ValidationError(_('Le Compte Société ne dispose d’aucun wallet source.'))
+        selected_by_type = self._parse_distribution_selected_by_type(wallet, post)
+        if not selected_by_type:
+            raise ValidationError(_('Veuillez saisir au moins une ligne de carnets à distribuer.'))
 
         selected_lines = []
         for carnet_type_id, carnet_qty in selected_by_type.items():

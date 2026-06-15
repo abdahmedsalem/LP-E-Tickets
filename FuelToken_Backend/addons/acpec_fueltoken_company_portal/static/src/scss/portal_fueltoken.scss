@@ -1,0 +1,244 @@
+// =============================================================================
+// FuelToken — Portail société : design system
+// Source unique, chargée via web.assets_frontend (manifest).
+// Remplace les blocs <style> qui etaient dupliques dans les templates QWeb.
+// Toutes les regles sont scopees sous .o_acpec_ft_portal : aucune fuite globale.
+// =============================================================================
+
+.o_acpec_ft_portal {
+    --ft-navy: #101b3d;
+    --ft-muted: #637083;
+    --ft-line: #e8edf5;
+    --ft-soft: #f7f9fd;
+    --ft-blue: #2563eb;
+    --ft-green: #16a34a;
+    --ft-purple: #7e2f8e;
+    --ft-orange: #ea580c;
+
+    .ft-topbar {
+        border-bottom: 1px solid var(--ft-line);
+        padding-bottom: 1rem;
+    }
+
+    .ft-title-icon,
+    .ft-kpi-icon,
+    .ft-step-badge,
+    .ft-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    .ft-title-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 18px;
+        background: #eaf2ff;
+
+        img {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+        }
+    }
+
+    .ft-action-primary,
+    .ft-action-purple {
+        border: 0;
+        color: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        padding: .75rem 1.15rem;
+        box-shadow: 0 10px 24px rgba(16, 27, 61, .10);
+        transition: filter .15s ease, transform .05s ease, box-shadow .15s ease;
+    }
+
+    .ft-action-primary { background: linear-gradient(135deg, #16a34a, #22c55e); }
+    .ft-action-purple  { background: linear-gradient(135deg, #7e2f8e, #5e1b69); }
+
+    .ft-action-light {
+        border: 1px solid #d8e0ec;
+        color: var(--ft-navy);
+        background: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        padding: .75rem 1.15rem;
+        transition: background .15s ease, border-color .15s ease;
+    }
+
+    // Etats interactifs (manquaient : importants pour le clavier et l'affordance)
+    .ft-action-primary,
+    .ft-action-purple,
+    .ft-action-light {
+        &:hover { filter: brightness(1.03); text-decoration: none; }
+        &:active { transform: translateY(1px); }
+        &:focus-visible {
+            outline: 3px solid rgba(37, 99, 235, .45);
+            outline-offset: 2px;
+        }
+    }
+    .ft-action-light:hover { background: var(--ft-soft); border-color: #c4d0e2; }
+
+    .ft-alert {
+        border: 1px solid #cfe0ff;
+        background: linear-gradient(135deg, #eef6ff, #f7fbff);
+        color: #16407d;
+        border-radius: 14px;
+        padding: .9rem 1rem;
+    }
+
+    .ft-card {
+        background: #fff;
+        border: 1px solid var(--ft-line);
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(16, 27, 61, .06);
+    }
+
+    .ft-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.1rem .75rem;
+        border-bottom: 1px solid var(--ft-line);
+    }
+
+    .ft-card-title {
+        font-weight: 800;
+        color: var(--ft-navy);
+        margin: 0;
+    }
+
+    .ft-muted { color: var(--ft-muted); }
+
+    .ft-kpi {
+        min-height: 118px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .ft-kpi-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        font-size: 1.35rem;
+    }
+
+    .ft-kpi-blue   { color: var(--ft-blue);   background: #eaf2ff; }
+    .ft-kpi-purple { color: var(--ft-purple); background: #f4eafa; }
+    .ft-kpi-green  { color: var(--ft-green);  background: #eaf9ef; }
+    .ft-kpi-orange { color: var(--ft-orange); background: #fff3e6; }
+
+    .ft-kpi-value {
+        color: var(--ft-navy);
+        font-size: 1.8rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .ft-table th {
+        color: #44516a;
+        background: #f8fafc;
+        font-size: .83rem;
+        border-bottom: 1px solid var(--ft-line);
+    }
+
+    .ft-table td {
+        border-bottom: 1px solid #edf1f7;
+        vertical-align: middle;
+    }
+
+    .ft-link-purple {
+        color: var(--ft-purple);
+        font-weight: 700;
+        text-decoration: none;
+
+        &:hover { text-decoration: underline; }
+    }
+
+    .ft-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 84px;
+        border-radius: 999px;
+        padding: .2rem .6rem;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .ft-pill-green  { background: #dcfce7; color: #15803d; }
+    .ft-pill-yellow { background: #fef3c7; color: #a16207; }
+    .ft-pill-red    { background: #fee2e2; color: #b91c1c; }
+    .ft-pill-muted  { background: #e5e7eb; color: #4b5563; }
+
+    .ft-member-row {
+        padding: 1rem;
+        border-bottom: 1px solid var(--ft-line);
+
+        &:last-child { border-bottom: 0; }
+    }
+
+    .ft-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #f4eafa;
+        color: var(--ft-purple);
+        font-weight: 800;
+    }
+
+    .ft-step-badge {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        background: #eaf2ff;
+        color: var(--ft-blue);
+        font-weight: 800;
+    }
+
+    .ft-line-row {
+        border: 1px solid var(--ft-line);
+        border-radius: 14px;
+        padding: .8rem;
+        margin-bottom: .65rem;
+        background: #fff;
+    }
+
+    .ft-summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .9rem 0;
+        border-bottom: 1px solid var(--ft-line);
+
+        &:last-child { border-bottom: 0; }
+    }
+
+    .ft-add-line {
+        border: 1px dashed #a855f7;
+        color: var(--ft-purple);
+        background: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+    }
+
+    // Etat vide partage
+    .ft-empty {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: var(--ft-muted);
+
+        .ft-empty-icon {
+            font-size: 2.2rem;
+            color: #b8c2d4;
+            margin-bottom: .6rem;
+        }
+    }
+}
+
+@media (max-width: 991.98px) {
+    .o_acpec_ft_portal .ft-action-bar { width: 100%; }
+    .o_acpec_ft_portal .ft-action-bar .btn { flex: 1 1 auto; }
+}

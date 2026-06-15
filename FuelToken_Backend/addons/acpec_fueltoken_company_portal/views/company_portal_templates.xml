@@ -26,79 +26,98 @@
 
     <template id="portal_fueltoken_company_dashboard" name="Tickets Carburant Société - Portail">
         <t t-call="portal.portal_layout">
-            <div class="container my-4 o_acpec_fueltoken_company_portal">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <img src="/acpec_fueltoken_base/static/description/icon.png" alt="Tickets Carburant" style="width: 40px; height: 40px; object-fit: contain;"/>
-                            <h2 class="mb-0">Tickets Carburant</h2>
+            <div class="container-fluid px-lg-5 my-4 o_acpec_ft_portal">
+                <div class="ft-topbar d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="ft-title-icon">
+                            <img src="/acpec_fueltoken_base/static/description/icon.png" alt="Tickets Carburant"/>
+                        </span>
+                        <div>
+                            <h2 class="mb-1 fw-bold">Tickets Carburant</h2>
+                            <div class="ft-muted">
+                                <span t-if="distributor" t-esc="distributor.display_name"/>
+                                <span t-else="" t-esc="commercial_partner.display_name"/>
+                            </div>
                         </div>
-                        <p class="text-muted mb-0">
-                            <span t-if="distributor" t-esc="distributor.display_name"/>
-                            <span t-else="" t-esc="commercial_partner.display_name"/>
-                        </p>
                     </div>
-                    <div class="d-flex gap-2">
-                        <a href="/my/fueltoken/purchases/new" class="btn btn-primary">Nouvelle demande d’achat</a>
-                        <a href="/my" class="btn btn-outline-secondary">Retour au portail</a>
+                    <div class="ft-action-bar d-flex gap-2 flex-wrap">
+                        <a href="/my/fueltoken/purchases/new" class="btn ft-action-primary">
+                            <i class="fa fa-shopping-cart me-2"/>Commander
+                        </a>
+                        <a t-if="distributor" href="/my/fueltoken/members" class="btn ft-action-light">
+                            <i class="fa fa-users me-2"/>Bénéficiaires
+                        </a>
+                        <a t-if="distributor" href="/my/fueltoken/distributions/new" class="btn ft-action-purple">
+                            <i class="fa fa-gift me-2"/>Distribuer des carnets
+                        </a>
+                        <a t-if="not distributor" href="/my" class="btn ft-action-light">Retour au portail</a>
                     </div>
                 </div>
 
-                <div t-if="distributor" class="alert alert-info" role="alert">
-                    Les demandes d’achat créées depuis le portail sont soumises à validation par
-                    <span t-esc="portal_company_name"/> avant crédit du wallet société.
+                <div t-if="distributor" class="ft-alert d-flex align-items-center justify-content-between gap-3 mb-4" role="alert">
+                    <div>
+                        <i class="fa fa-info-circle me-2"/>
+                        Les demandes d’achat créées depuis le portail sont soumises à validation par
+                        <span t-esc="portal_company_name"/> avant crédit du wallet société.
+                    </div>
+                    <span class="text-muted">×</span>
                 </div>
-                <div t-else="" class="alert alert-warning" role="alert">
+                <div t-else="" class="alert alert-warning rounded-3" role="alert">
                     Vous pouvez soumettre une demande d’achat Tickets Carburant. La gestion des membres et la distribution de carnets seront disponibles après activation du compte société par
                     <span t-esc="portal_company_name"/>.
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">Tickets disponibles</div>
-                                <div class="fs-4 fw-bold" t-esc="total_tickets_available"/>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="ft-card ft-kpi p-3 h-100">
+                            <span class="ft-kpi-icon ft-kpi-blue"><i class="fa fa-ticket"/></span>
+                            <div>
+                                <div class="ft-muted small">Tickets disponibles</div>
+                                <div class="ft-kpi-value text-primary" t-esc="total_tickets_available"/>
+                                <div class="ft-muted small">en stock</div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">Carnets distribuables</div>
-                                <div class="fs-4 fw-bold" t-esc="total_transferable_carnets"/>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="ft-card ft-kpi p-3 h-100">
+                            <span class="ft-kpi-icon ft-kpi-purple"><i class="fa fa-book"/></span>
+                            <div>
+                                <div class="ft-muted small">Carnets distribuables</div>
+                                <div class="ft-kpi-value" t-esc="total_transferable_carnets"/>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">Montant disponible</div>
-                                <div class="fs-4 fw-bold">
-                                    <span t-esc="total_amount_available"/>
-                                    <span t-esc="portal_company.currency_id.name"/>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="ft-card ft-kpi p-3 h-100">
+                            <span class="ft-kpi-icon ft-kpi-green"><i class="fa fa-credit-card"/></span>
+                            <div>
+                                <div class="ft-muted small">Montant disponible</div>
+                                <div class="ft-kpi-value text-success">
+                                    <span t-esc="total_amount_available"/> <span t-esc="portal_company.currency_id.name"/>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="text-muted small">Membres</div>
-                                <div class="fs-4 fw-bold" t-esc="member_count"/>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="ft-card ft-kpi p-3 h-100">
+                            <span class="ft-kpi-icon ft-kpi-orange"><i class="fa fa-user-o"/></span>
+                            <div>
+                                <div class="ft-muted small">Membres</div>
+                                <div class="ft-kpi-value text-danger" t-esc="member_count"/>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="row g-4">
-                    <div class="col-lg-7">
-                        <div class="card mb-4" t-if="distributor">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Carnets disponibles</span>
+                    <div class="col-xl-8">
+                        <div class="ft-card mb-4" t-if="distributor">
+                            <div class="ft-card-header">
+                                <h5 class="ft-card-title"><i class="fa fa-book me-2"/>Carnets disponibles</h5>
+                                <a href="/my/fueltoken/distributions/new" class="ft-link-purple">Distribuer <i class="fa fa-angle-right ms-1"/></a>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0">
+                                <table class="table ft-table table-sm align-middle mb-0">
                                     <thead>
                                         <tr>
                                             <th>Type de carnet</th>
@@ -110,127 +129,91 @@
                                     </thead>
                                     <tbody>
                                         <tr t-foreach="ticket_rows" t-as="row">
-                                            <td><span t-esc="row['line'].carnet_type_id.display_name"/></td>
+                                            <td class="fw-semibold"><span t-esc="row['line'].carnet_type_id.display_name"/></td>
                                             <td class="text-end"><span t-esc="row['line'].qty_available"/></td>
                                             <td class="text-end"><span t-esc="row['transferable_carnet_count']"/></td>
-                                            <td class="text-end">
-                                                <span t-esc="row['line'].amount_available"/>
-                                                <span t-esc="row['line'].currency_id.name"/>
-                                            </td>
-                                            <td>
-                                                <span t-if="row['line'].expires_at" t-field="row['line'].expires_at"/>
-                                                <span t-else="">—</span>
-                                            </td>
+                                            <td class="text-end"><span t-esc="row['line'].amount_available"/> <span t-esc="row['line'].currency_id.name"/></td>
+                                            <td><span t-if="row['line'].expires_at" t-field="row['line'].expires_at"/><span t-else="">—</span></td>
                                         </tr>
-                                        <tr t-if="not ticket_rows">
-                                            <td colspan="5" class="text-muted text-center py-3">Aucun ticket disponible.</td>
-                                        </tr>
+                                        <tr t-if="not ticket_rows"><td colspan="5" class="text-muted text-center py-4">Aucun ticket disponible.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Dernières demandes d’achat</span>
-                                <a href="/my/fueltoken/purchases" class="btn btn-sm btn-link">Tout voir</a>
+                        <div class="ft-card mb-4">
+                            <div class="ft-card-header">
+                                <h5 class="ft-card-title"><i class="fa fa-shopping-cart me-2"/>Dernières demandes d’achat</h5>
+                                <a href="/my/fueltoken/purchases" class="ft-link-purple">Voir tout <i class="fa fa-angle-right ms-1"/></a>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Référence</th>
-                                            <th>État</th>
-                                            <th class="text-end">Tickets</th>
-                                            <th class="text-end">Montant</th>
-                                        </tr>
-                                    </thead>
+                                <table class="table ft-table table-sm align-middle mb-0">
+                                    <thead><tr><th>Référence</th><th>État</th><th class="text-end">Tickets</th><th class="text-end">Montant</th><th>Demandé le</th></tr></thead>
                                     <tbody>
                                         <tr t-foreach="purchases" t-as="purchase">
+                                            <td><a class="ft-link-purple" t-att-href="'/my/fueltoken/purchases/%s' % purchase.id" t-esc="purchase.name"/></td>
                                             <td>
-                                                <a t-att-href="'/my/fueltoken/purchases/%s' % purchase.id" t-esc="purchase.name"/>
+                                                <t t-call="acpec_fueltoken_company_portal.ft_status_pill">
+                                                    <t t-set="state" t-value="purchase.state"/>
+                                                    <span t-field="purchase.state"/>
+                                                </t>
                                             </td>
-                                            <td><span t-field="purchase.state"/></td>
                                             <td class="text-end"><span t-esc="purchase.face_qty_total"/></td>
-                                            <td class="text-end">
-                                                <span t-esc="purchase.amount_total"/>
-                                                <span t-esc="purchase.currency_id.name"/>
-                                            </td>
+                                            <td class="text-end"><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></td>
+                                            <td><span t-field="purchase.create_date"/></td>
                                         </tr>
-                                        <tr t-if="not purchases">
-                                            <td colspan="4" class="text-muted text-center py-3">Aucune demande d’achat.</td>
-                                        </tr>
+                                        <tr t-if="not purchases"><td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-lg-5">
-                        <div class="card mb-4" t-if="distributor">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Dernières distributions</span>
-                                <div class="d-flex gap-2">
-                                    <a href="/my/fueltoken/distributions/new" class="btn btn-sm btn-outline-primary">Distribuer</a>
-                                    <a href="/my/fueltoken/distributions" class="btn btn-sm btn-link">Tout voir</a>
-                                </div>
+                    <div class="col-xl-4">
+                        <div class="ft-card mb-4" t-if="distributor">
+                            <div class="ft-card-header">
+                                <h5 class="ft-card-title"><i class="fa fa-exchange me-2"/>Dernières distributions</h5>
+                                <a href="/my/fueltoken/distributions" class="ft-link-purple">Voir tout <i class="fa fa-angle-right ms-1"/></a>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Référence</th>
-                                            <th>Bénéficiaire</th>
-                                            <th class="text-end">Montant</th>
-                                        </tr>
-                                    </thead>
+                                <table class="table ft-table table-sm align-middle mb-0">
+                                    <thead><tr><th>Référence</th><th>Bénéficiaire</th><th class="text-end">Montant</th></tr></thead>
                                     <tbody>
                                         <tr t-foreach="distributions" t-as="transfer">
-                                            <td>
-                                                <a t-att-href="'/my/fueltoken/distributions/%s' % transfer.id" t-esc="transfer.name"/>
-                                            </td>
-                                            <td><span t-esc="transfer.dest_partner_id.display_name"/></td>
-                                            <td class="text-end">
-                                                <span t-esc="transfer.amount_total"/>
-                                                <span t-esc="transfer.currency_id.name"/>
-                                            </td>
+                                            <td><a class="ft-link-purple" t-att-href="'/my/fueltoken/distributions/%s' % transfer.id" t-esc="transfer.name"/></td>
+                                            <td><span class="ft-pill ft-pill-green" t-esc="transfer.dest_partner_id.display_name"/></td>
+                                            <td class="text-end"><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></td>
                                         </tr>
-                                        <tr t-if="not distributions">
-                                            <td colspan="3" class="text-muted text-center py-3">Aucune distribution.</td>
-                                        </tr>
+                                        <tr t-if="not distributions"><td colspan="3" class="text-muted text-center py-4">Aucune distribution.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="card mb-4" t-if="distributor">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>Membres</span>
-                                <a href="/my/fueltoken/members" class="btn btn-sm btn-link">Gérer</a>
+                        <div class="ft-card mb-4" t-if="distributor">
+                            <div class="ft-card-header">
+                                <h5 class="ft-card-title"><i class="fa fa-users me-2"/>Membres</h5>
+                                <a href="/my/fueltoken/members" class="ft-link-purple">Gérer</a>
                             </div>
-                            <div class="list-group list-group-flush">
-                                <div class="list-group-item d-flex justify-content-between align-items-start" t-foreach="member_rows" t-as="row">
-                                    <div>
-                                        <div class="fw-semibold" t-esc="row['name']"/>
-                                        <div class="text-muted small">
-                                            <span t-esc="row['phone']"/>
-                                            <span t-if="row['email']"> · <span t-esc="row['email']"/></span>
+                            <div>
+                                <div class="ft-member-row d-flex justify-content-between align-items-center gap-3" t-foreach="member_rows" t-as="row">
+                                    <div class="d-flex align-items-center gap-3 min-w-0">
+                                        <span class="ft-avatar"><t t-esc="(row['name'] or '?')[:1]"/></span>
+                                        <div class="min-w-0">
+                                            <div class="fw-bold text-truncate" t-esc="row['name']"/>
+                                            <div class="ft-muted small text-truncate"><span t-esc="row['phone'] or row['mobile_login'] or '—'"/><span t-if="row['email']"> · <span t-esc="row['email']"/></span></div>
                                         </div>
                                     </div>
-                                    <span t-if="row['mobile_ready']" class="badge text-bg-success">Mobile actif</span>
-                                    <span t-else="" class="badge text-bg-secondary">Non prêt</span>
+                                    <span t-if="row['mobile_ready']" class="ft-pill ft-pill-green">mobile actif</span>
+                                    <span t-else="" class="ft-pill ft-pill-muted">non prêt</span>
                                 </div>
-                                <div class="list-group-item text-muted text-center" t-if="not member_rows">
-                                    Aucun membre rattaché.
-                                </div>
+                                <div class="text-muted text-center py-4" t-if="not member_rows">Aucun membre rattaché.</div>
                             </div>
                         </div>
 
-                        <div class="card mb-4" t-if="not distributor">
-                            <div class="card-header">Compte société Tickets Carburant</div>
-                            <div class="card-body text-muted">
-                                Aucun compte société Tickets Carburant actif n’est encore rattaché à ce portail. Les demandes d’achat restent possibles ; la distribution à des membres sera ouverte après activation.
-                            </div>
+                        <div class="ft-card mb-4" t-if="not distributor">
+                            <div class="ft-card-header"><h5 class="ft-card-title">Compte société Tickets Carburant</h5></div>
+                            <div class="p-3 ft-muted">Aucun compte société Tickets Carburant actif n’est encore rattaché à ce portail. Les demandes d’achat restent possibles ; la distribution à des membres sera ouverte après activation.</div>
                         </div>
                     </div>
                 </div>
@@ -240,41 +223,65 @@
 
     <template id="portal_fueltoken_company_purchases" name="Tickets Carburant Société - Achats">
         <t t-call="portal.portal_layout">
-            <div class="container my-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Demandes d’achat Tickets Carburant</h2>
-                    <div class="d-flex gap-2">
-                        <a href="/my/fueltoken/purchases/new" class="btn btn-primary">Nouvelle demande</a>
-                        <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
+            <div class="container-fluid px-lg-5 my-4 o_acpec_ft_portal">
+                <t t-call="acpec_fueltoken_company_portal.ft_page_header">
+                    <t t-set="title">Demandes d’achat Tickets Carburant</t>
+                    <t t-set="subtitle" t-value="''"/>
+                    <a href="/my/fueltoken/purchases/new" class="btn ft-action-primary">
+                        <i class="fa fa-plus me-2"/>Nouvelle demande
+                    </a>
+                    <a href="/my/fueltoken" class="btn ft-action-light">Retour Tickets Carburant</a>
+                </t>
+
+                <div class="ft-card">
+                    <div class="table-responsive">
+                        <table class="table ft-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Référence</th>
+                                    <th>État</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Tickets</th>
+                                    <th class="text-end">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="purchases" t-as="purchase">
+                                    <td>
+                                        <a class="ft-link-purple"
+                                           t-att-href="'/my/fueltoken/purchases/%s' % purchase.id"
+                                           t-esc="purchase.name"/>
+                                    </td>
+                                    <td>
+                                        <t t-call="acpec_fueltoken_company_portal.ft_status_pill">
+                                            <t t-set="state" t-value="purchase.state"/>
+                                            <span t-field="purchase.state"/>
+                                        </t>
+                                    </td>
+                                    <td>
+                                        <span t-if="purchase.submitted_at" t-field="purchase.submitted_at"/>
+                                        <span t-else="" t-field="purchase.create_date"/>
+                                    </td>
+                                    <td class="text-end"><span t-esc="purchase.face_qty_total"/></td>
+                                    <td class="text-end">
+                                        <span t-field="purchase.amount_total"
+                                              t-options="{'widget': 'monetary', 'display_currency': purchase.currency_id}"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="not purchases">
+                                    <td colspan="5" class="p-0">
+                                        <t t-call="acpec_fueltoken_company_portal.ft_empty_state">
+                                            <t t-set="icon">fa-shopping-cart</t>
+                                            <t t-set="message">Aucune demande d’achat Tickets Carburant pour le moment.</t>
+                                            <a href="/my/fueltoken/purchases/new" class="btn ft-action-primary">
+                                                <i class="fa fa-plus me-2"/>Créer une demande
+                                            </a>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                <div class="table-responsive card">
-                    <table class="table align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Référence</th>
-                                <th>État</th>
-                                <th>Date</th>
-                                <th class="text-end">Tickets</th>
-                                <th class="text-end">Montant</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="purchases" t-as="purchase">
-                                <td><a t-att-href="'/my/fueltoken/purchases/%s' % purchase.id" t-esc="purchase.name"/></td>
-                                <td><span t-field="purchase.state"/></td>
-                                <td>
-                                    <span t-if="purchase.submitted_at" t-field="purchase.submitted_at"/>
-                                    <span t-else="" t-field="purchase.create_date"/>
-                                </td>
-                                <td class="text-end"><span t-esc="purchase.face_qty_total"/></td>
-                                <td class="text-end"><span t-esc="purchase.amount_total"/> <span t-esc="purchase.currency_id.name"/></td>
-                            </tr>
-                            <tr t-if="not purchases">
-                                <td colspan="5" class="text-muted text-center py-4">Aucune demande d’achat Tickets Carburant.</td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </t>
@@ -520,111 +527,291 @@
 
     <template id="portal_fueltoken_company_distribution_new" name="Tickets Carburant Société - Nouvelle distribution">
         <t t-call="portal.portal_layout">
-            <div class="container my-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="container-fluid px-lg-5 my-4 o_acpec_ft_portal o_acpec_ft_distribution" t-att-data-currency="selected_distribution_totals['currency_name']">
+
+
+                <div class="mb-3">
+                    <a href="/my/fueltoken/distributions" class="text-decoration-none ft-link-purple"><i class="fa fa-arrow-left me-2"/>Retour aux distributions</a>
+                </div>
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div>
-                        <h2 class="mb-1">Distribuer des carnets</h2>
-                        <div class="text-muted" t-esc="distributor.display_name"/>
+                        <h2 class="mb-1 fw-bold">Distribuer des carnets</h2>
+                        <div class="ft-muted" t-esc="distributor.display_name"/>
                     </div>
-                    <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Retour distributions</a>
                 </div>
 
-                <div class="alert alert-info" role="alert">
-                    Sélectionnez un membre autorisé puis les carnets à distribuer. La distribution est confirmée immédiatement et crédite le wallet mobile du membre.
+                <div class="ft-alert d-flex align-items-center justify-content-between gap-3 mb-4" role="alert">
+                    <div>
+                        <i class="fa fa-info-circle me-2"/>
+                        Sélectionnez d’abord un bénéficiaire, puis composez les carnets à distribuer ligne par ligne. La distribution sera confirmée et créditée sur le wallet mobile du membre.
+                    </div>
+                    <span class="text-muted">×</span>
                 </div>
-                <div t-if="error" class="alert alert-danger" role="alert" t-esc="error"/>
+                <div t-if="error" class="alert alert-danger rounded-3" role="alert" t-esc="error"/>
 
-                <form action="/my/fueltoken/distributions/new" method="post" class="card">
+                <form action="/my/fueltoken/distributions/new" method="post">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <input type="hidden" name="idempotency_key" t-att-value="idempotency_key"/>
 
-                    <div class="card-body">
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label" for="member_partner_id">Bénéficiaire</label>
-                                <select name="member_partner_id" id="member_partner_id" class="form-select" required="required">
-                                    <option value="">Sélectionner un membre mobile actif...</option>
-                                    <option t-foreach="member_rows" t-as="row"
-                                            t-att-value="row['partner'].id"
-                                            t-att-selected="row['partner'].id == member_partner_id and 'selected' or None">
-                                        <t t-esc="row['name']"/>
-                                        <t t-if="row['phone']"> - <t t-esc="row['phone']"/></t>
-                                    </option>
-                                </select>
-                                <div class="form-text">
-                                    Seuls les membres autorisés avec compte mobile actif sont proposés.
+                    <div class="row g-4">
+                        <div class="col-xl-8">
+                            <div class="ft-card p-3 p-lg-4 mb-4">
+                                <div class="d-flex align-items-start gap-3 mb-4">
+                                    <span class="ft-step-badge">1</span>
+                                    <div>
+                                        <h5 class="mb-1 fw-bold">Bénéficiaire</h5>
+                                        <div class="ft-muted">Sélectionnez le membre qui recevra les carnets.</div>
+                                    </div>
+                                </div>
+                                <div t-if="not member_rows" class="alert alert-warning rounded-3" role="alert">
+                                    Aucun membre mobile actif n’est actuellement rattaché à ce compte société. Ajoutez d’abord un membre depuis la page Membres autorisés.
+                                </div>
+                                <div class="row g-3 align-items-center" t-if="member_rows">
+                                    <div class="col-lg-6">
+                                        <label class="form-label fw-semibold" for="member_partner_id">Membre bénéficiaire</label>
+                                        <select name="member_partner_id" id="member_partner_id" class="form-select ft-member-select" required="required">
+                                            <option value="">Rechercher un membre (nom, email ou téléphone)</option>
+                                            <option t-foreach="member_rows" t-as="row"
+                                                    t-att-value="row['partner'].id"
+                                                    t-att-selected="row['partner'].id == member_partner_id and 'selected' or None"
+                                                    t-att-data-name="row['name']"
+                                                    t-att-data-phone="row['phone'] or row['mobile_login'] or ''"
+                                                    t-att-data-email="row['email'] or ''">
+                                                <t t-esc="row['name']"/>
+                                                <t t-if="row['phone']"> - <t t-esc="row['phone']"/></t>
+                                            </option>
+                                        </select>
+                                        <div class="form-text">Seuls les membres autorisés avec compte mobile actif sont proposés.</div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <div class="ft-card p-3 border ft-selected-member d-none">
+                                            <div class="d-flex align-items-center justify-content-between gap-3">
+                                                <div class="d-flex align-items-center gap-3 min-w-0">
+                                                    <span class="ft-avatar ft-selected-member-avatar">?</span>
+                                                    <div class="min-w-0">
+                                                        <div class="fw-bold ft-selected-member-name">—</div>
+                                                        <div class="ft-muted small text-truncate ft-selected-member-contact">—</div>
+                                                    </div>
+                                                </div>
+                                                <span class="ft-pill ft-pill-green">mobile actif</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="note">Note interne</label>
-                                <textarea name="note" id="note" class="form-control" rows="3" placeholder="Note interne sur la distribution..."><t t-esc="note"/></textarea>
+
+                            <div class="ft-card p-3 p-lg-4 mb-4">
+                                <div class="d-flex align-items-start gap-3 mb-4">
+                                    <span class="ft-step-badge">2</span>
+                                    <div>
+                                        <h5 class="mb-1 fw-bold">Carnets à distribuer</h5>
+                                        <div class="ft-muted">Ajoutez les carnets à distribuer au bénéficiaire sélectionné.</div>
+                                    </div>
+                                </div>
+                                <div t-if="not carnet_rows" class="alert alert-warning rounded-3" role="alert">
+                                    Aucun carnet distribuable n’est disponible dans le wallet société.
+                                </div>
+                                <div t-if="carnet_rows">
+                                    <div class="row g-2 fw-semibold small ft-muted px-2 mb-2 d-none d-lg-flex">
+                                        <div class="col-lg-4">Type de carnet</div>
+                                        <div class="col-lg-3">Stock disponible</div>
+                                        <div class="col-lg-2 text-center">Nombre de carnets</div>
+                                        <div class="col-lg-2 text-end">Montant estimé</div>
+                                        <div class="col-lg-1 text-end">Actions</div>
+                                    </div>
+                                    <div class="ft-lines">
+                                        <div class="ft-line-row" t-foreach="distribution_line_slots" t-as="slot" t-att-data-line-index="slot['index']" t-att-style="not slot['visible'] and 'display: none;' or None">
+                                            <div class="row g-2 align-items-center">
+                                                <div class="col-lg-4">
+                                                    <select class="form-select ft-carnet-select" t-att-name="'line_%s_carnet_type_id' % slot['index']">
+                                                        <option value="">Choisir un type...</option>
+                                                        <option t-foreach="carnet_rows" t-as="option"
+                                                                t-att-value="option['carnet_type'].id"
+                                                                t-att-selected="option['carnet_type'].id == slot['carnet_type_id'] and 'selected' or None"
+                                                                t-att-data-face-count="option['face_count']"
+                                                                t-att-data-carnets="option['transferable_carnet_count']"
+                                                                t-att-data-tickets="option['qty_available']"
+                                                                t-att-data-amount-per-carnet="option['amount_per_carnet']"
+                                                                t-att-data-currency="option['currency_name']">
+                                                            <t t-esc="option['carnet_type'].display_name"/>
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-lg-3">
+                                                    <div class="small fw-semibold"><span class="ft-line-tickets">—</span> tickets disponibles</div>
+                                                    <div class="small ft-muted"><span class="ft-line-carnets">—</span> carnets disponibles</div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <input type="number" min="0" step="1" class="form-control text-center ft-line-qty" t-att-name="'line_%s_qty' % slot['index']" t-att-value="slot['qty']"/>
+                                                </div>
+                                                <div class="col-lg-2 text-lg-end fw-semibold">
+                                                    <span class="ft-line-amount">0</span> <span class="ft-line-currency" t-esc="selected_distribution_totals['currency_name']"/>
+                                                </div>
+                                                <div class="col-lg-1 text-lg-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger ft-remove-line" title="Retirer la ligne"><i class="fa fa-trash"/></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn ft-add-line mt-2 px-3"><i class="fa fa-plus me-2"/>Ajouter une ligne</button>
+                                    <div class="small ft-muted mt-3"><i class="fa fa-info-circle me-1"/>Les stocks sont mis à jour au moment de la validation.</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div t-if="not member_rows" class="alert alert-warning" role="alert">
-                            Aucun membre mobile actif n’est actuellement rattaché à ce compte société. Ajoutez d’abord un membre depuis la page Membres autorisés.
-                        </div>
-                        <div t-if="not carnet_rows" class="alert alert-warning" role="alert">
-                            Aucun carnet distribuable n’est disponible dans le wallet société.
-                        </div>
-
-                        <div class="table-responsive" t-if="carnet_rows">
-                            <table class="table align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Type de carnet</th>
-                                        <th class="text-end">Tickets disponibles</th>
-                                        <th class="text-end">Carnets disponibles</th>
-                                        <th class="text-end">Montant disponible</th>
-                                        <th class="text-end">Carnets à distribuer</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="carnet_rows" t-as="row">
-                                        <td>
-                                            <div class="fw-semibold" t-esc="row['carnet_type'].display_name"/>
-                                            <div class="text-muted small" t-esc="row['carnet_type'].code"/>
-                                        </td>
-                                        <td class="text-end" t-esc="row['qty_available']"/>
-                                        <td class="text-end" t-esc="row['transferable_carnet_count']"/>
-                                        <td class="text-end">
-                                            <span t-esc="row['amount_available']"/>
-                                            <span t-esc="row['carnet_type'].currency_id.name"/>
-                                        </td>
-                                        <td class="text-end" style="width: 180px;">
-                                            <input type="number"
-                                                   min="0"
-                                                   step="1"
-                                                   class="form-control text-end"
-                                                   t-att-name="'qty_%s' % row['carnet_type'].id"
-                                                   t-att-max="row['transferable_carnet_count']"
-                                                   t-att-value="row['qty']"/>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                                <tfoot>
-                                    <tr class="table-light fw-semibold">
-                                        <td>Total</td>
-                                        <td class="text-end" t-esc="distribution_totals['qty_available']"/>
-                                        <td class="text-end" t-esc="distribution_totals['transferable_carnet_count']"/>
-                                        <td class="text-end">
-                                            <span t-esc="distribution_totals['amount_available']"/>
-                                            <span t-esc="distribution_totals['currency_name']"/>
-                                        </td>
-                                        <td class="text-end" t-esc="distribution_totals['selected_carnet_qty']"/>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                        <div class="col-xl-4">
+                            <div class="ft-card p-3 p-lg-4 mb-4 sticky-lg-top" style="top: 1rem;">
+                                <h5 class="fw-bold mb-3">Récapitulatif de la distribution</h5>
+                                <div class="border rounded-3 px-3 mb-4">
+                                    <div class="ft-summary-row">
+                                        <span><span class="ft-kpi-icon ft-kpi-blue me-2" style="width:34px;height:34px;font-size:.9rem;"><i class="fa fa-ticket"/></span>Total tickets</span>
+                                        <strong class="ft-total-tickets" t-esc="selected_distribution_totals['selected_ticket_qty']"/>
+                                    </div>
+                                    <div class="ft-summary-row">
+                                        <span><span class="ft-kpi-icon ft-kpi-purple me-2" style="width:34px;height:34px;font-size:.9rem;"><i class="fa fa-book"/></span>Total carnets</span>
+                                        <strong class="ft-total-carnets" t-esc="selected_distribution_totals['selected_carnet_qty']"/>
+                                    </div>
+                                    <div class="ft-summary-row">
+                                        <span><span class="ft-kpi-icon ft-kpi-green me-2" style="width:34px;height:34px;font-size:.9rem;"><i class="fa fa-credit-card"/></span>Montant total distribué</span>
+                                        <strong class="text-success"><span class="ft-total-amount" t-esc="selected_distribution_totals['selected_amount_total']"/> <span class="ft-total-currency" t-esc="selected_distribution_totals['currency_name']"/></strong>
+                                    </div>
+                                </div>
+                                <label class="form-label fw-semibold" for="note">Note interne <span class="fw-normal ft-muted">(optionnelle)</span></label>
+                                <textarea name="note" id="note" class="form-control" rows="6" maxlength="300" placeholder="Ajouter une note interne sur cette distribution..."><t t-esc="note"/></textarea>
+                                <div class="text-end small ft-muted mt-1">0 / 300</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="card-footer d-flex justify-content-end gap-2">
-                        <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Annuler</a>
-                        <button type="submit" class="btn btn-primary" t-att-disabled="(not member_rows or not carnet_rows) and 'disabled' or None">
-                            Distribuer
+                    <div class="d-flex justify-content-end gap-2 mt-2">
+                        <a href="/my/fueltoken/distributions" class="btn ft-action-light px-4">Annuler</a>
+                        <button type="submit" class="btn ft-action-purple px-4" t-att-disabled="(not member_rows or not carnet_rows) and 'disabled' or None">
+                            <i class="fa fa-gift me-2"/>Distribuer
                         </button>
                     </div>
                 </form>
+
+                <script><![CDATA[
+(function () {
+    function ready(fn) {
+        if (document.readyState !== 'loading') { fn(); }
+        else { document.addEventListener('DOMContentLoaded', fn); }
+    }
+    ready(function () {
+        var root = document.querySelector('.o_acpec_ft_distribution');
+        if (!root) { return; }
+        var currencyFallback = root.getAttribute('data-currency') || '';
+        function numberValue(value) {
+            var parsed = parseFloat(String(value || '0').replace(',', '.'));
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        function intValue(value) {
+            var parsed = parseInt(value || '0', 10);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        function fmtAmount(value) {
+            return numberValue(value).toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1});
+        }
+        function visibleRows() {
+            return Array.prototype.slice.call(root.querySelectorAll('.ft-line-row')).filter(function (row) {
+                return row.style.display !== 'none';
+            });
+        }
+        function updateMemberCard() {
+            var select = root.querySelector('.ft-member-select');
+            var card = root.querySelector('.ft-selected-member');
+            if (!select || !card) { return; }
+            var option = select.options[select.selectedIndex];
+            if (!option || !option.value) {
+                card.classList.add('d-none');
+                return;
+            }
+            var name = option.getAttribute('data-name') || option.textContent.trim();
+            var phone = option.getAttribute('data-phone') || '';
+            var email = option.getAttribute('data-email') || '';
+            card.querySelector('.ft-selected-member-avatar').textContent = (name || '?').trim().slice(0, 2).toUpperCase();
+            card.querySelector('.ft-selected-member-name').textContent = name || '—';
+            card.querySelector('.ft-selected-member-contact').textContent = [phone, email].filter(Boolean).join(' · ') || '—';
+            card.classList.remove('d-none');
+        }
+        function updateLine(row) {
+            var select = row.querySelector('.ft-carnet-select');
+            var qtyInput = row.querySelector('.ft-line-qty');
+            var option = select && select.options[select.selectedIndex];
+            var qty = intValue(qtyInput && qtyInput.value);
+            if (!option || !option.value) {
+                row.querySelector('.ft-line-tickets').textContent = '—';
+                row.querySelector('.ft-line-carnets').textContent = '—';
+                row.querySelector('.ft-line-amount').textContent = '0';
+                return {tickets: 0, carnets: 0, amount: 0, currency: currencyFallback};
+            }
+            var maxCarnets = intValue(option.getAttribute('data-carnets'));
+            if (qty > maxCarnets) {
+                qty = maxCarnets;
+                if (qtyInput) { qtyInput.value = String(qty); }
+            }
+            var faceCount = intValue(option.getAttribute('data-face-count'));
+            var ticketsAvailable = intValue(option.getAttribute('data-tickets'));
+            var amountPerCarnet = numberValue(option.getAttribute('data-amount-per-carnet'));
+            var currency = option.getAttribute('data-currency') || currencyFallback;
+            var amount = qty * amountPerCarnet;
+            row.querySelector('.ft-line-tickets').textContent = String(ticketsAvailable);
+            row.querySelector('.ft-line-carnets').textContent = String(maxCarnets);
+            row.querySelector('.ft-line-amount').textContent = fmtAmount(amount);
+            row.querySelector('.ft-line-currency').textContent = currency;
+            return {tickets: qty * faceCount, carnets: qty, amount: amount, currency: currency};
+        }
+        function updateTotals() {
+            var totals = {tickets: 0, carnets: 0, amount: 0, currency: currencyFallback};
+            visibleRows().forEach(function (row) {
+                var item = updateLine(row);
+                totals.tickets += item.tickets;
+                totals.carnets += item.carnets;
+                totals.amount += item.amount;
+                if (item.currency) { totals.currency = item.currency; }
+            });
+            var tickets = root.querySelector('.ft-total-tickets');
+            var carnets = root.querySelector('.ft-total-carnets');
+            var amount = root.querySelector('.ft-total-amount');
+            var currency = root.querySelector('.ft-total-currency');
+            if (tickets) { tickets.textContent = String(totals.tickets); }
+            if (carnets) { carnets.textContent = String(totals.carnets); }
+            if (amount) { amount.textContent = fmtAmount(totals.amount); }
+            if (currency) { currency.textContent = totals.currency; }
+        }
+        root.querySelectorAll('.ft-carnet-select, .ft-line-qty').forEach(function (el) {
+            el.addEventListener('change', updateTotals);
+            el.addEventListener('input', updateTotals);
+        });
+        var memberSelect = root.querySelector('.ft-member-select');
+        if (memberSelect) { memberSelect.addEventListener('change', updateMemberCard); }
+        var addLine = root.querySelector('.ft-add-line');
+        if (addLine) {
+            addLine.addEventListener('click', function () {
+                var hidden = Array.prototype.slice.call(root.querySelectorAll('.ft-line-row')).find(function (row) {
+                    return row.style.display === 'none';
+                });
+                if (hidden) {
+                    hidden.style.display = '';
+                    hidden.querySelector('.ft-carnet-select').focus();
+                }
+                updateTotals();
+            });
+        }
+        root.querySelectorAll('.ft-remove-line').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var row = button.closest('.ft-line-row');
+                if (!row) { return; }
+                row.querySelectorAll('select, input').forEach(function (el) { el.value = ''; });
+                if (visibleRows().length > 1) { row.style.display = 'none'; }
+                updateTotals();
+            });
+        });
+        updateMemberCard();
+        updateTotals();
+    });
+})();
+                ]]></script>
             </div>
         </t>
     </template>
