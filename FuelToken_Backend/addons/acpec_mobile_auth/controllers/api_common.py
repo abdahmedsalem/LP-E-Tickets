@@ -1,9 +1,11 @@
-﻿import hashlib
+import hashlib
 import logging
 import re
 
 from odoo import http, _, fields
 from odoo.exceptions import AccessError, ValidationError
+
+from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -40,6 +42,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return payload
 
     def _handle_exception_response(self, exc):
+        if isinstance(exc, MobileAuthRateLimitError):
+            _logger.warning(str(exc))
+            return self._error_response('RATE_LIMITED', str(exc))
         if isinstance(exc, ValidationError):
             _logger.warning(str(exc))
             return self._error_response('VALIDATION_ERROR', str(exc))
@@ -91,6 +96,20 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if isinstance(value, bool):
             return value
         return str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'oui')
+
+    def _request_ip(self):
+        """Return the client IP when an HTTP request is bound.
+
+        Unit tests may call controller methods directly, outside Odoo's
+        request-local context.  In that case werkzeug raises RuntimeError
+        when resolving the request proxy; returning an empty IP keeps the
+        public API helpers testable without weakening runtime behaviour.
+        """
+        try:
+            httprequest = getattr(request, 'httprequest', None)
+        except RuntimeError:
+            return ''
+        return (getattr(httprequest, 'remote_addr', '') or '').strip()
 
     def _get_config_bool(self, key, default=False):
         value = request.env['ir.config_parameter'].sudo().get_param(key)
@@ -315,7 +334,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         session = request.env['acpec.mobile.session'].sudo().authenticate_access_token(token)
         if not session:
             if required:
-                raise AccessError(_('Session mobile invalide ou expirÃ©e.'))
+                raise AccessError(_('Session mobile invalide ou expirée.'))
             return request.env['acpec.mobile.session']
         return session
 
@@ -395,7 +414,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         elif expected in ('manager', 'admin'):
             if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager'):
                 return True
-        raise AccessError(_('Droits insuffisants pour cette opÃ©ration.'))
+        raise AccessError(_('Droits insuffisants pour cette opération.'))
 
     def _hash_public_value(self, value):
         return hashlib.sha256((value or '').encode('utf-8')).hexdigest()

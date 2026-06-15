@@ -18,6 +18,12 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 identifier_vals = self._parse_signup_identifier(identifier)
                 if identifier_vals['signup_identifier_type'] != 'phone':
                     raise ValidationError(_('Registration OTP currently supports phone numbers only.'))
+                identifier = identifier_vals['phone']
+                request.env['acpec.mobile.auth.otp'].sudo()._check_request_rate_limits(
+                    identifier,
+                    purpose='register',
+                    request_ip=self._request_ip(),
+                )
 
                 existing_user = request.env['res.users'].sudo().with_context(active_test=False).search([
                     '|',
@@ -30,7 +36,11 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         _('A mobile account already exists for this identifier.')
                     )
 
-            challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(identifier, purpose=purpose)
+            challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                identifier,
+                purpose=purpose,
+                request_ip=self._request_ip(),
+            )
             data = {
                 'challenge_id': challenge.id,
                 'challenge_ref': challenge.name,

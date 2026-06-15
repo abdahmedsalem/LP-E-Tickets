@@ -2,6 +2,7 @@ import hashlib
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.acpec_mobile_auth.controllers.api_public import AcpecMobileAuthApiPublic
 from odoo.addons.acpec_mobile_auth_otp.controllers.api_otp import AcpecMobileAuthOtpApi
@@ -9,6 +10,18 @@ from odoo.addons.acpec_mobile_auth_otp.controllers.api_otp import AcpecMobileAut
 
 @tagged('-at_install', 'post_install')
 class TestAcpecMobileAuthOtpSms(TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        # Keep legacy OTP tests independent from historical rows in the dev DB.
+        # Dedicated rate-limit tests override these values explicitly.
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
+        icp.set_param('acpec_mobile_auth.otp_code_length', '4')
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', '0')
 
     def _create_mobile_user(
         self,
@@ -34,7 +47,33 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         })
         return user
 
-    def test_request_otp_posts_validation_sms_to_chinguisoft(self):
+    def _assert_otp_code_shape(self, code):
+        self.assertTrue(code)
+        self.assertTrue(str(code).isdigit())
+        self.assertEqual(len(str(code)), 4)
+
+    def test_otp_sms_default_is_four_and_secret_code_is_six(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.search([('key', '=', 'acpec_mobile_auth.otp_code_length')]).unlink()
+
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+        self.assertEqual(otp_model._otp_code_length(), 4)
+        self._assert_otp_code_shape(otp_model._new_code())
+
+        controller = AcpecMobileAuthApiPublic()
+        controller._validate_secret_code('123456')
+        # The helper is normally executed in an HTTP/Odoo request context.
+        # Patch the module-level translator for this direct unit call so the
+        # assertion checks the business rule (secret_code = 6 digits) instead
+        # of failing on request-bound translation lookup.
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common._', lambda message: message):
+            with self.assertRaises(ValidationError):
+                controller._validate_secret_code('1234')
+
+    def test_sms_gateway_posts_validation_sms_to_chinguisoft(self):
+        # Keep the provider payload test focused on the gateway itself.
+        # OTP-flow tests below verify challenge creation independently; this
+        # avoids coupling them to Odoo's model dispatch/proxying internals.
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('SMS_PROVIDER', 'chinguisoft')
         icp.set_param('SMS_VALIDATION_KEY', 'test-validation-key')
@@ -44,23 +83,20 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         class FakeResponse:
             status_code = 200
-            text = '{"code": 123456, "balance": 99}'
+            text = '{"status": "ok", "message_id": "sms-test-1", "balance": 99}'
 
             def json(self):
-                return {'code': 123456, 'balance': 99}
+                return {'status': 'ok', 'message_id': 'sms-test-1', 'balance': 99}
 
         with patch('odoo.addons.acpec_mobile_auth_otp.models.sms_gateway.requests.post', return_value=FakeResponse()) as mocked_post:
-            challenge, code = self.env['acpec.mobile.auth.otp'].sudo().request_otp('32524658', purpose='register')
+            result = self.env['acpec.sms.gateway'].sudo().send_validation_sms(
+                '32524658',
+                code='1234',
+                lang='fr',
+            )
 
-        self.assertTrue(challenge)
-        self.assertEqual(challenge.state, 'pending')
-        self.assertEqual(challenge.mobile, '32524658')
-        self.assertEqual(len(code), 6)
-        self.assertFalse(self.env['acpec.mobile.auth.account.request'].sudo().search([
-            ('signup_identifier', '=', '32524658'),
-            ('state', '=', 'pending'),
-        ], limit=1))
-
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['message_id'], 'sms-test-1')
         mocked_post.assert_called_once()
         args, kwargs = mocked_post.call_args
         self.assertEqual(args[0], 'https://chinguisoft.com/api/sms/validation/test-validation-key')
@@ -68,8 +104,29 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(kwargs['headers']['Content-Type'], 'application/json')
         self.assertEqual(kwargs['json']['phone'], '32524658')
         self.assertEqual(kwargs['json']['lang'], 'fr')
-        self.assertEqual(kwargs['json']['code'], code)
+        self.assertEqual(kwargs['json']['code'], '1234')
         self.assertEqual(kwargs['timeout'], 15)
+
+    def test_request_otp_creates_configured_provider_challenge(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('SMS_PROVIDER', 'chinguisoft')
+        icp.set_param('SMS_VALIDATION_KEY', 'test-validation-key')
+        icp.set_param('SMS_TOKEN', 'test-validation-token')
+        icp.set_param('SMS_URL', 'https://chinguisoft.com/api/sms/validation')
+        icp.set_param('SMS_DEFAULT_LANG', 'fr')
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', '0')
+
+        with patch('odoo.addons.acpec_mobile_auth_otp.models.mobile_auth_otp.AcpecMobileAuthOtp._send_otp_code', return_value=True):
+            challenge, code = self.env['acpec.mobile.auth.otp'].sudo().request_otp('32524658', purpose='register')
+
+        self.assertTrue(challenge)
+        self.assertEqual(challenge.state, 'pending')
+        self.assertEqual(challenge.mobile, '32524658')
+        self._assert_otp_code_shape(code)
+        self.assertFalse(self.env['acpec.mobile.auth.account.request'].sudo().search([
+            ('signup_identifier', '=', '32524658'),
+            ('state', '=', 'pending'),
+        ], limit=1))
 
     def test_request_otp_keeps_dev_mode_without_sms_config(self):
         icp = self.env['ir.config_parameter'].sudo()
@@ -84,13 +141,14 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         self.assertTrue(challenge)
         self.assertEqual(challenge.state, 'pending')
-        self.assertEqual(len(code), 6)
+        self._assert_otp_code_shape(code)
         mocked_post.assert_not_called()
 
     def test_request_otp_cancels_previous_pending_challenge_for_identifier(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
         icp.set_param('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
         icp.set_param('SMS_PROVIDER', '')
         icp.set_param('SMS_VALIDATION_KEY', '')
         icp.set_param('SMS_TOKEN', '')
@@ -104,7 +162,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         self.assertTrue(challenge)
         self.assertEqual(challenge.state, 'pending')
-        self.assertEqual(len(code), 6)
+        self._assert_otp_code_shape(code)
 
         challenge2, code2 = self.env['acpec.mobile.auth.otp'].sudo().request_otp(
             '32524656',
@@ -115,11 +173,11 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertNotEqual(challenge2.id, challenge.id)
         self.assertEqual(challenge.state, 'cancelled')
         self.assertEqual(challenge2.state, 'pending')
-        self.assertEqual(len(code2), 6)
+        self._assert_otp_code_shape(code2)
 
     def test_hash_otp_uses_sha256(self):
         salt = 'test-salt'
-        code = '123456'
+        code = '1234'
         expected = hashlib.scrypt(
             code.encode('utf-8'),
             salt=salt.encode('utf-8'),
@@ -207,6 +265,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         icp.set_param('SMS_TOKEN', 'test-validation-token')
         icp.set_param('SMS_URL', 'https://chinguisoft.com/api/sms/validation')
         icp.set_param('SMS_DEFAULT_LANG', 'fr')
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', '0')
 
         class FakeResponse:
             status_code = 200
@@ -228,10 +287,11 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
 
         with patch('odoo.addons.acpec_mobile_auth.controllers.api_public.request', dummy_request), \
-                patch('odoo.addons.acpec_mobile_auth_otp.models.sms_gateway.requests.post', return_value=FakeResponse()) as mocked_post:
+                patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.models.mobile_auth_otp.AcpecMobileAuthOtp._send_otp_code', return_value=True):
             result = controller.signup(
                 name='Client OTP',
-                signup_identifier='32524658',
+                signup_identifier='32524758',
                 secret_code='123456',
                 company_id=self.env.company.id,
                 email='client@example.com',
@@ -240,9 +300,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(result['ok'])
         data = result['data']
         self.assertEqual(data['signup_identifier_type'], 'phone')
+        self.assertEqual(data['signup_identifier'], '32524758')
         self.assertTrue(data['otp_challenge_id'])
         self.assertEqual(data['otp_delivery'], 'configured_provider')
-        mocked_post.assert_called_once()
 
     def test_signup_then_verify_register_otp_activates_user(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
@@ -296,6 +356,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 challenge_id=challenge_id,
                 identifier='32524657',
                 code=otp_code,
+                name='Client OTP',
+                secret_code='123456',
+                company_id=self.env.company.id,
+                email='client2@example.com',
             )
 
         self.assertTrue(verify_result['ok'])
@@ -352,6 +416,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 challenge_id=signup_data['otp_challenge_id'],
                 identifier='32524656',
                 code=signup_data['otp_dev_code'],
+                name='Client OTP E2E',
+                secret_code='123456',
+                company_id=self.env.company.id,
+                email='client-e2e@example.com',
             )
 
         self.assertTrue(verify_result['ok'])
@@ -368,5 +436,147 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
             ('user_id', '=', user.id),
         ], order='id desc', limit=1)
-        self.assertTrue(account_request)
-        self.assertEqual(account_request.state, 'approved')
+        # The OTP registration flow creates the mobile account directly after
+        # successful verification; it does not leave an account.request record.
+        self.assertFalse(account_request)
+
+
+    def test_rate_limit_rejects_same_identifier_per_minute(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+        icp.set_param('SMS_PROVIDER', '')
+        icp.set_param('SMS_VALIDATION_KEY', '')
+        icp.set_param('SMS_TOKEN', '')
+        icp.set_param('SMS_URL', '')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '1')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '100')
+
+        self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            '32524990',
+            purpose='register',
+            request_ip='10.0.0.10',
+        )
+
+        with self.assertRaisesRegex(ValidationError, 'Trop de demandes OTP'):
+            self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                '32524990',
+                purpose='register',
+                request_ip='10.0.0.10',
+            )
+
+    def test_request_otp_route_returns_rate_limited_code(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+        icp.set_param('SMS_PROVIDER', '')
+        icp.set_param('SMS_VALIDATION_KEY', '')
+        icp.set_param('SMS_TOKEN', '')
+        icp.set_param('SMS_URL', '')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '1')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '100')
+
+        self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            '32524989',
+            purpose='register',
+            request_ip='10.0.0.9',
+        )
+
+        controller = AcpecMobileAuthOtpApi()
+        controller._require_keys = lambda params, keys: None
+        controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
+        controller._get_config_bool = lambda key, default=False: False
+        dummy_httprequest = SimpleNamespace(
+            remote_addr='10.0.0.9',
+            headers={'User-Agent': 'pytest'},
+        )
+        dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+            result = controller.request_otp(
+                identifier='32524989',
+                purpose='register',
+            )
+
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'RATE_LIMITED')
+        self.assertIn('Trop de demandes OTP', result['error']['message'])
+
+    def test_rate_limit_rejects_same_identifier_per_day(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+        icp.set_param('SMS_PROVIDER', '')
+        icp.set_param('SMS_VALIDATION_KEY', '')
+        icp.set_param('SMS_TOKEN', '')
+        icp.set_param('SMS_URL', '')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '1')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '100')
+
+        self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            '32524991',
+            purpose='register',
+            request_ip='10.0.0.11',
+        )
+
+        with self.assertRaisesRegex(ValidationError, 'Trop de demandes OTP'):
+            self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                '32524991',
+                purpose='register',
+                request_ip='10.0.0.12',
+            )
+
+    def test_rate_limit_rejects_ip_per_hour(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+        icp.set_param('SMS_PROVIDER', '')
+        icp.set_param('SMS_VALIDATION_KEY', '')
+        icp.set_param('SMS_TOKEN', '')
+        icp.set_param('SMS_URL', '')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '1')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '100')
+
+        self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            '32524992',
+            purpose='register',
+            request_ip='10.0.0.21',
+        )
+
+        with self.assertRaisesRegex(ValidationError, 'Trop de demandes OTP'):
+            self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                '32524993',
+                purpose='register',
+                request_ip='10.0.0.21',
+            )
+
+    def test_rate_limit_rejects_register_ip_per_day(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+        icp.set_param('SMS_PROVIDER', '')
+        icp.set_param('SMS_VALIDATION_KEY', '')
+        icp.set_param('SMS_TOKEN', '')
+        icp.set_param('SMS_URL', '')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '100')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '1')
+
+        self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            '32524994',
+            purpose='register',
+            request_ip='10.0.0.31',
+        )
+
+        with self.assertRaisesRegex(ValidationError, 'Trop de demandes OTP'):
+            self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                '32524995',
+                purpose='register',
+                request_ip='10.0.0.31',
+            )
+

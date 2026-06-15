@@ -1,4 +1,5 @@
-﻿import hashlib
+import hashlib
+import logging
 import os
 import secrets
 
@@ -6,6 +7,14 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
+
+from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
+
+_logger = logging.getLogger(__name__)
+
+OTP_SMS_CODE_LENGTH_DEFAULT = 4
+OTP_SMS_CODE_LENGTH_MIN = 4
+OTP_SMS_CODE_LENGTH_MAX = 10
 
 
 class AcpecMobileAuthOtp(models.Model):
@@ -18,6 +27,7 @@ class AcpecMobileAuthOtp(models.Model):
     identifier = fields.Char(required=True, index=True)
     mobile = fields.Char(index=True)
     email = fields.Char(index=True)
+    request_ip = fields.Char(index=True, copy=False)
     otp_hash = fields.Char(required=True, copy=False)
     salt = fields.Char(required=True, copy=False)
     purpose = fields.Selection([
@@ -61,8 +71,23 @@ class AcpecMobileAuthOtp(models.Model):
         ).hex()
 
     @api.model
+    def _otp_code_length(self):
+        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_code_length')
+        try:
+            # OTP SMS codes are intentionally short: 4 digits by default.
+            # Do not confuse this with the signup/password secret_code,
+            # which remains exactly 6 digits in acpec_mobile_auth.
+            return min(
+                OTP_SMS_CODE_LENGTH_MAX,
+                max(OTP_SMS_CODE_LENGTH_MIN, int(value or OTP_SMS_CODE_LENGTH_DEFAULT)),
+            )
+        except Exception:
+            return OTP_SMS_CODE_LENGTH_DEFAULT
+
+    @api.model
     def _new_code(self):
-        return str(secrets.randbelow(1000000)).zfill(6)
+        length = self._otp_code_length()
+        return str(secrets.randbelow(10 ** length)).zfill(length)
 
     @api.model
     def _expiration_minutes(self):
@@ -91,6 +116,150 @@ class AcpecMobileAuthOtp(models.Model):
             return 60
 
     @api.model
+    def _rate_limit_int(self, key, default):
+        value = self.env['ir.config_parameter'].sudo().get_param(key)
+        try:
+            return max(0, int(value if value not in (False, None, '') else default))
+        except Exception:
+            return default
+
+    @api.model
+    def _otp_limit_identifier_per_minute(self):
+        return self._rate_limit_int('acpec_mobile_auth.otp_limit_identifier_per_minute', 1)
+
+    @api.model
+    def _otp_limit_identifier_per_day(self):
+        return self._rate_limit_int('acpec_mobile_auth.otp_limit_identifier_per_day', 10)
+
+    @api.model
+    def _otp_limit_ip_per_hour(self):
+        return self._rate_limit_int('acpec_mobile_auth.otp_limit_ip_per_hour', 30)
+
+    @api.model
+    def _otp_limit_register_ip_per_day(self):
+        return self._rate_limit_int('acpec_mobile_auth.otp_limit_register_ip_per_day', 100)
+
+    @api.model
+    def _rate_limit_message(self):
+        return _('Trop de demandes OTP. Veuillez réessayer plus tard.')
+
+    @api.model
+    def _mask_identifier(self, identifier):
+        value = (identifier or '').strip()
+        if len(value) <= 4:
+            return '****' if value else ''
+        return '%s****%s' % (value[:2], value[-2:])
+
+    @api.model
+    def _mask_ip(self, ip_address):
+        value = (ip_address or '').strip()
+        if not value:
+            return ''
+        if ':' in value:
+            parts = value.split(':')
+            return ':'.join(parts[:2] + ['****'])
+        parts = value.split('.')
+        if len(parts) == 4:
+            return '.'.join(parts[:2] + ['*', '*'])
+        return value[:3] + '****'
+
+    @api.model
+    def _log_rate_limit_refusal(self, *, scope, identifier=False, purpose=False, request_ip=False, limit=0):
+        _logger.warning(
+            'OTP rate-limit refusal scope=%s purpose=%s identifier=%s ip=%s limit=%s',
+            scope,
+            purpose or '',
+            self._mask_identifier(identifier),
+            self._mask_ip(request_ip),
+            limit,
+        )
+
+    @api.model
+    def _count_recent_otp(self, domain, since):
+        return self.sudo().search_count(domain + [
+            ('create_date', '>=', fields.Datetime.to_string(since)),
+        ])
+
+    @api.model
+    def _check_request_rate_limits(self, identifier, purpose='login', request_ip=False):
+        """Protect public OTP/SMS endpoints from abuse.
+
+        Limits are enforced before creating/sending the OTP so a refused
+        request never reaches the SMS provider. Messages returned to callers
+        stay neutral; details are only written to server logs.
+        """
+        now = fields.Datetime.now()
+        identifier = (identifier or '').strip()
+        purpose = purpose or 'login'
+        request_ip = (request_ip or '').strip()
+
+        identifier_minute_limit = self._otp_limit_identifier_per_minute()
+        if identifier_minute_limit > 0:
+            minute_count = self._count_recent_otp(
+                [('identifier', '=', identifier), ('purpose', '=', purpose)],
+                now - relativedelta(minutes=1),
+            )
+            if minute_count >= identifier_minute_limit:
+                self._log_rate_limit_refusal(
+                    scope='identifier_per_minute',
+                    identifier=identifier,
+                    purpose=purpose,
+                    request_ip=request_ip,
+                    limit=identifier_minute_limit,
+                )
+                raise MobileAuthRateLimitError(self._rate_limit_message())
+
+        identifier_day_limit = self._otp_limit_identifier_per_day()
+        if identifier_day_limit > 0:
+            day_count = self._count_recent_otp(
+                [('identifier', '=', identifier), ('purpose', '=', purpose)],
+                now - relativedelta(days=1),
+            )
+            if day_count >= identifier_day_limit:
+                self._log_rate_limit_refusal(
+                    scope='identifier_per_day',
+                    identifier=identifier,
+                    purpose=purpose,
+                    request_ip=request_ip,
+                    limit=identifier_day_limit,
+                )
+                raise MobileAuthRateLimitError(self._rate_limit_message())
+
+        if request_ip:
+            ip_hour_limit = self._otp_limit_ip_per_hour()
+            if ip_hour_limit > 0:
+                ip_hour_count = self._count_recent_otp(
+                    [('request_ip', '=', request_ip)],
+                    now - relativedelta(hours=1),
+                )
+                if ip_hour_count >= ip_hour_limit:
+                    self._log_rate_limit_refusal(
+                        scope='ip_per_hour',
+                        identifier=identifier,
+                        purpose=purpose,
+                        request_ip=request_ip,
+                        limit=ip_hour_limit,
+                    )
+                    raise MobileAuthRateLimitError(self._rate_limit_message())
+
+            if purpose == 'register':
+                register_ip_day_limit = self._otp_limit_register_ip_per_day()
+                if register_ip_day_limit > 0:
+                    register_ip_day_count = self._count_recent_otp(
+                        [('request_ip', '=', request_ip), ('purpose', '=', 'register')],
+                        now - relativedelta(days=1),
+                    )
+                    if register_ip_day_count >= register_ip_day_limit:
+                        self._log_rate_limit_refusal(
+                            scope='register_ip_per_day',
+                            identifier=identifier,
+                            purpose=purpose,
+                            request_ip=request_ip,
+                            limit=register_ip_day_limit,
+                        )
+                        raise MobileAuthRateLimitError(self._rate_limit_message())
+
+    @api.model
     def _find_user(self, identifier):
         identifier = (identifier or '').strip()
         if not identifier:
@@ -100,33 +269,42 @@ class AcpecMobileAuthOtp(models.Model):
         if not user:
             raise AccessError(_('Compte mobile introuvable.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
-            raise AccessError(_('Compte mobile rejetÃ©.'))
+            raise AccessError(_('Compte mobile rejeté.'))
         return user
 
     @api.model
-    def request_otp(self, identifier, purpose='login'):
+    def request_otp(self, identifier, purpose='login', request_ip=False):
         purpose = purpose or 'login'
         if purpose not in ('login', 'register', 'reset'):
             raise ValidationError(_('Objet OTP invalide.'))
+        identifier = (identifier or '').strip()
+        if not identifier:
+            raise ValidationError(_('Identifiant requis.'))
+
+        # Gate public OTP requests before user/account lookup whenever the
+        # identifier and purpose are known.  This rejects already-throttled
+        # clients earlier and prevents needless database lookups.  This is
+        # not an anti-enumeration mechanism by itself: requests that have
+        # never created OTP rows still require uniform responses in a separate
+        # hardening patch.
+        self._check_request_rate_limits(identifier, purpose=purpose, request_ip=request_ip)
+
         user = False
         mobile_state = False
         is_station = False
         if purpose == 'register':
-            identifier = (identifier or '').strip()
-            if not identifier:
-                raise ValidationError(_('Identifiant requis.'))
             if '@' in identifier:
                 raise ValidationError(_('Registration OTP currently supports phone numbers only.'))
             user_domain = ['|', ('login', '=', identifier), ('mobile_phone', '=', identifier)]
             user = self.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
             if user:
-                raise AccessError(_('Compte mobile dÃ©jÃ  existant.'))
+                raise AccessError(_('Compte mobile déjà existant.'))
             pending_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
                 ('signup_identifier', '=', identifier),
                 ('state', '=', 'pending'),
             ], limit=1)
             if pending_request:
-                raise AccessError(_('Une demande de compte en attente existe dÃ©jÃ  pour cet identifiant.'))
+                raise AccessError(_('Une demande de compte en attente existe déjà pour cet identifiant.'))
         else:
             user = self._find_user(identifier)
             try:
@@ -137,21 +315,8 @@ class AcpecMobileAuthOtp(models.Model):
             if not user.active:
                 raise AccessError(_('Compte mobile inactif.'))
             if not is_station and mobile_state not in (False, 'approved'):
-                raise AccessError(_('Compte mobile non approuvÃ©.'))
+                raise AccessError(_('Compte mobile non approuvé.'))
         now = fields.Datetime.now()
-        cooldown_seconds = self._request_cooldown_seconds()
-        if cooldown_seconds > 0:
-            cutoff = now - relativedelta(seconds=cooldown_seconds)
-            recent = self.sudo().search([
-                ('identifier', '=', identifier),
-                ('purpose', '=', purpose),
-                ('state', '=', 'pending'),
-                ('create_date', '>=', fields.Datetime.to_string(cutoff)),
-            ], limit=1)
-            if recent:
-                raise ValidationError(
-                    _('Veuillez patienter %ds avant de redemander un OTP.') % cooldown_seconds
-                )
         self.sudo().search([
             ('identifier', '=', identifier),
             ('purpose', '=', purpose),
@@ -163,6 +328,7 @@ class AcpecMobileAuthOtp(models.Model):
             'identifier': identifier,
             'mobile': user.mobile_phone or identifier,
             'email': user.email or False,
+            'request_ip': request_ip or False,
             'user_id': user.id if user else False,
             'purpose': purpose,
             'salt': salt,
@@ -208,7 +374,10 @@ class AcpecMobileAuthOtp(models.Model):
         return provider == 'chinguisoft' and bool(validation_key) and bool(token)
 
     def _otp_dev_mode(self):
-        return bool(self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_dev_mode'))
+        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_dev_mode')
+        if value in (False, None, ''):
+            return False
+        return str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'oui')
 
     def _send_otp_code(self, code):
         self.ensure_one()
@@ -229,13 +398,16 @@ class AcpecMobileAuthOtp(models.Model):
         if self.state != 'pending':
             raise ValidationError(_("Ce challenge OTP n'est plus actif."))
         if self.blocked_until and self.blocked_until > now:
-            raise AccessError(_('Ce challenge OTP est temporairement bloquÃ©.'))
+            raise AccessError(_('Ce challenge OTP est temporairement bloqué.'))
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})
-            raise ValidationError(_('Le code OTP a expirÃ©.'))
+            raise ValidationError(_('Le code OTP a expiré.'))
         code = (code or '').strip()
-        if not code or not code.isdigit() or len(code) != 6:
-            raise ValidationError(_('Le code OTP doit contenir exactement 6 chiffres.'))
+        expected_length = self._otp_code_length()
+        if not code or not code.isdigit() or len(code) != expected_length:
+            raise ValidationError(
+                _('Le code OTP doit contenir exactement %s chiffres.') % expected_length
+            )
         if self._hash_otp(code, self.salt) != self.otp_hash:
             attempt_count = self.attempt_count + 1
             vals = {'attempt_count': attempt_count}

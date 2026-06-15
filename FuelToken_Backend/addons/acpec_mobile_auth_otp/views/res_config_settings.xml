@@ -16,6 +16,14 @@
                             <field name="sms_default_lang"/>
                         </group>
                     </setting>
+                    <setting string="OTP rate limits" help="Protect public OTP/SMS endpoints from abuse. Set a value to 0 to disable a limit.">
+                        <group>
+                            <field name="otp_limit_identifier_per_minute"/>
+                            <field name="otp_limit_identifier_per_day"/>
+                            <field name="otp_limit_ip_per_hour"/>
+                            <field name="otp_limit_register_ip_per_day"/>
+                        </group>
+                    </setting>
                 </block>
             </xpath>
         </field>

@@ -29,12 +29,35 @@ class ResConfigSettings(models.TransientModel):
         default='fr',
         config_parameter='SMS_DEFAULT_LANG',
     )
-    # Compatibility field referenced by an inherited settings view loaded in Odoo.
+
+    # Compatibility fields referenced by inherited settings views loaded in Odoo.
+    # Do not use muk_web config keys: muk_web is no longer used in this project.
     color_brand_light = fields.Char(
         string='Brand Light Color',
-        config_parameter='muk_web_colors.color_brand_light',
+        config_parameter='acpec_mobile_auth.color_brand_light',
     )
     color_primary_light = fields.Char(
         string='Primary Light Color',
-        config_parameter='muk_web_colors.color_primary_light',
+        config_parameter='acpec_mobile_auth.color_primary_light',
+    )
+
+    otp_limit_identifier_per_minute = fields.Integer(
+        string='OTP limit per number / minute',
+        default=1,
+        config_parameter='acpec_mobile_auth.otp_limit_identifier_per_minute',
+    )
+    otp_limit_identifier_per_day = fields.Integer(
+        string='OTP limit per number / day',
+        default=10,
+        config_parameter='acpec_mobile_auth.otp_limit_identifier_per_day',
+    )
+    otp_limit_ip_per_hour = fields.Integer(
+        string='OTP limit per IP / hour',
+        default=30,
+        config_parameter='acpec_mobile_auth.otp_limit_ip_per_hour',
+    )
+    otp_limit_register_ip_per_day = fields.Integer(
+        string='Registration OTP limit per IP / day',
+        default=100,
+        config_parameter='acpec_mobile_auth.otp_limit_register_ip_per_day',
     )

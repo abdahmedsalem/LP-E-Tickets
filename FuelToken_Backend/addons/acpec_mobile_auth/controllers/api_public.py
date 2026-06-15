@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 from odoo import http, _, fields
 from odoo.http import request
@@ -56,6 +56,13 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             self._validate_secret_code(secret_code)
             company = self._get_company(company_id)
 
+            if identifier_vals['signup_identifier_type'] == 'phone':
+                request.env['acpec.mobile.auth.otp'].sudo()._check_request_rate_limits(
+                    identifier_vals['phone'],
+                    purpose='register',
+                    request_ip=self._request_ip(),
+                )
+
             user_domain = [('login', '=', identifier_vals['login'])]
             if identifier_vals['signup_identifier_type'] == 'phone':
                 user_domain = ['|', ('login', '=', identifier_vals['login']), ('mobile_phone', '=', identifier_vals['phone'])]
@@ -82,6 +89,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                 challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
                     identifier_vals['phone'],
                     purpose='register',
+                    request_ip=self._request_ip(),
                 )
                 data.update({
                     'otp_challenge_id': challenge.id,
@@ -112,7 +120,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             if not self._get_config_bool('acpec_mobile_auth.allow_password_login', default=False):
                 return self._error_response(
                     'PASSWORD_LOGIN_DISABLED',
-                    _('Lâ€™authentification par mot de passe est dÃ©sactivÃ©e.')
+                    _('L’authentification par mot de passe est désactivée.')
                 )
 
             self._require_keys(kwargs, ['identifier', 'secret_code'])
