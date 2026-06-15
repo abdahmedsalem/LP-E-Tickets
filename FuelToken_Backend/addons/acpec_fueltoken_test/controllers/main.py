@@ -1,9 +1,11 @@
 import json
+
 from markupsafe import Markup
 
 from odoo import http
 from odoo.http import request
 
+from ..tools import is_fueltoken_test_mode_enabled
 from .catalog_mobile_auth import API_CATALOG_MOBILE_AUTH
 from .catalog_fueltoken import API_CATALOG_FUELTOKEN
 
@@ -15,6 +17,9 @@ class AcpecFuelTokenTestController(http.Controller):
 
     @http.route('/acpec/fueltoken/test', type='http', auth='public', methods=['GET'], csrf=False)
     def fueltoken_test_page(self, **kwargs):
+        if not is_fueltoken_test_mode_enabled():
+            return request.not_found()
+
         values = {
             'api_catalog_json': Markup(json.dumps(API_CATALOG, ensure_ascii=False)),
             'page_title': 'ACPEC FuelToken API Test',

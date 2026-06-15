@@ -23,6 +23,25 @@ Ce module ne fait pas partie du métier FuelToken. Il sert uniquement de console
 - La console capture automatiquement `access_token` et `refresh_token` après `/login`, `/password-login` ou `/verify-otp`.
 - `/login` est conservé comme alias propre de `/password-login` pour compatibilité Flutter, mais il retourne la même session mobile tokenisée.
 - Le login mot de passe est désactivé par défaut et nécessite `acpec_mobile_auth.allow_password_login=True`.
-- Le mode OTP dev peut exposer le code avec `acpec_mobile_auth.otp_dev_mode=True`.
+- Le mode OTP dev local n’est activé par ce module que si `ACPEC_FUELTOKEN_TEST_MODE=1` est défini.
 - Les achats créés par API sont soumis, mais doivent être validés dans le backend pour générer les faces disponibles.
 - La consommation station nécessite un utilisateur lié à une station active (`acpec.fuel.station`).
+
+## Sécurité / production
+
+Ce module est strictement réservé au développement local.
+
+Même si le module est installé, les comportements dangereux de test sont inertes sauf si la variable d’environnement suivante est explicitement activée :
+
+    ACPEC_FUELTOKEN_TEST_MODE=1
+
+Sans cette variable :
+
+- l’OTP local fixe `000000` n’est pas utilisé ;
+- l’envoi SMS réel n’est pas remplacé ;
+- la validation OTP réelle reste active ;
+- `otp_dev_mode` n’est pas activé par le hook ;
+- la page publique `/acpec/fueltoken/test` retourne 404.
+
+Ce module ne doit pas être présent dans l’`addons_path` de production.
+

@@ -3,6 +3,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import _, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
+from ..tools import is_fueltoken_test_mode_enabled
+
 
 LOCAL_TEST_OTP_CODE = '000000'
 
@@ -11,9 +13,14 @@ class AcpecMobileAuthOtp(models.Model):
     _inherit = 'acpec.mobile.auth.otp'
 
     def _new_code(self):
+        if not is_fueltoken_test_mode_enabled():
+            return super()._new_code()
         return LOCAL_TEST_OTP_CODE
 
     def _send_otp_code(self, code):
+        if not is_fueltoken_test_mode_enabled():
+            return super()._send_otp_code(code)
+
         for challenge in self:
             phone = challenge._sms_recipient_phone()
             challenge.message_post(
@@ -25,6 +32,9 @@ class AcpecMobileAuthOtp(models.Model):
         return True
 
     def verify(self, code):
+        if not is_fueltoken_test_mode_enabled():
+            return super().verify(code)
+
         # Module de test uniquement : accepter l'OTP local a 6 chiffres 000000.
         # Les endpoints appeles restent les endpoints reels de production.
         self.ensure_one()
@@ -42,8 +52,6 @@ class AcpecMobileAuthOtp(models.Model):
             raise ValidationError(_('Le code OTP doit contenir uniquement des chiffres.'))
 
         if code != LOCAL_TEST_OTP_CODE:
-            # En mode test local, seul 000000 est accepte. On conserve la logique
-            # de tentatives/blocage du modele reel.
             attempt_count = self.attempt_count + 1
             vals = {'attempt_count': attempt_count}
             if attempt_count >= self.max_attempts:
