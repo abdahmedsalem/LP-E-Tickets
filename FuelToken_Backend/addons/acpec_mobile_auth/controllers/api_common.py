@@ -307,7 +307,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         mobile_group_ids = self._mobile_signup_group_ids()
 
-        now = fields.Datetime.now()
         user_vals = {
             'name': name,
             'login': identifier_vals['login'],
@@ -316,8 +315,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'company_ids': [(6, 0, [company.id])],
             'active': True,
             'mobile_state': 'approved',
-            'mobile_pin_set_at': now,
-            'password': secret_code,
+            'password': user_model._acpec_mobile_unusable_password(),
         }
         if mobile_group_ids:
             user_vals['group_ids'] = [(6, 0, mobile_group_ids)]
@@ -327,6 +325,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             user_vals['email'] = email_value
 
         user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
+        user.set_mobile_pin(secret_code)
         return False, user, identifier_vals
 
     def _get_signup_companies(self):
@@ -425,6 +424,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'mobile_phone': user.mobile_phone,
             'email': user.email,
             'mobile_state': user.mobile_state,
+            'mobile_pin_set': bool(user.mobile_pin_set),
+            'mobile_pin_required': bool(user.mobile_pin_required),
             'profile': self._get_mobile_profile(user),
             'company_id': user.company_id.id,
             'company_name': user.company_id.name,

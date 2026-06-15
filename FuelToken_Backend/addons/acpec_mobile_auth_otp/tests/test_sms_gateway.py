@@ -2,7 +2,7 @@ import hashlib
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.acpec_mobile_auth.controllers.api_public import AcpecMobileAuthApiPublic
 from odoo.addons.acpec_mobile_auth_otp.controllers.api_otp import AcpecMobileAuthOtpApi
@@ -51,6 +51,13 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(code)
         self.assertTrue(str(code).isdigit())
         self.assertEqual(len(str(code)), 6)
+
+
+    def test_password_login_is_disabled_and_secret_code_is_not_login_password(self):
+        controller = AcpecMobileAuthApiPublic()
+        result = controller.password_login(identifier='32520000', secret_code='1234')
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'PASSWORD_LOGIN_DISABLED')
 
     def test_otp_sms_default_is_six_and_secret_code_is_four(self):
         icp = self.env['ir.config_parameter'].sudo()
@@ -251,6 +258,11 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(user)
         self.assertTrue(user.active)
         self.assertEqual(user.mobile_state, 'approved')
+        self.assertTrue(user.mobile_pin_set)
+        self.assertFalse(user.mobile_pin_required)
+        self.assertTrue(user.mobile_pin_hash)
+        self.assertTrue(user.mobile_pin_salt)
+        user.check_mobile_pin('1234')
 
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
             ('user_id', '=', user.id),
@@ -371,6 +383,13 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(user.active)
         self.assertEqual(user.mobile_state, 'approved')
         self.assertTrue(user.mobile_pin_set_at)
+        self.assertTrue(user.mobile_pin_set)
+        self.assertFalse(user.mobile_pin_required)
+        self.assertTrue(session_data['mobile_pin_set'])
+        self.assertFalse(session_data['mobile_pin_required'])
+        user.check_mobile_pin('1234')
+        with self.assertRaises(AccessError):
+            user.check_mobile_pin('9999')
 
     def test_signup_then_verify_register_otp_e2e_without_sms_provider(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
@@ -432,6 +451,11 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(user.active)
         self.assertEqual(user.mobile_state, 'approved')
         self.assertTrue(user.mobile_pin_set_at)
+        self.assertTrue(user.mobile_pin_set)
+        self.assertFalse(user.mobile_pin_required)
+        self.assertTrue(session_data['mobile_pin_set'])
+        self.assertFalse(session_data['mobile_pin_required'])
+        user.check_mobile_pin('1234')
 
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
             ('user_id', '=', user.id),
@@ -439,6 +463,45 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         # The OTP registration flow creates the mobile account directly after
         # successful verification; it does not leave an account.request record.
         self.assertFalse(account_request)
+
+
+    def test_legacy_mobile_user_migration_requires_new_pin_without_touching_internal_users(self):
+        mobile_partner = self.env['res.partner'].create({'name': 'Legacy Mobile'})
+        mobile_group = self.env.ref('acpec_mobile_auth.group_mobile_auth_user')
+        mobile_user = self.env['res.users'].sudo().with_context(no_reset_password=True).create({
+            'name': 'Legacy Mobile',
+            'login': 'legacy.mobile@example.com',
+            'password': '1234',
+            'partner_id': mobile_partner.id,
+            'company_id': self.env.company.id,
+            'company_ids': [(6, 0, [self.env.company.id])],
+            'group_ids': [(6, 0, [mobile_group.id])],
+            'mobile_phone': '32524001',
+            'mobile_state': 'approved',
+        })
+
+        internal_partner = self.env['res.partner'].create({'name': 'Internal User'})
+        internal_user = self.env['res.users'].sudo().with_context(no_reset_password=True).create({
+            'name': 'Internal User',
+            'login': 'internal.pin@example.com',
+            'password': '1234',
+            'partner_id': internal_partner.id,
+            'company_id': self.env.company.id,
+            'company_ids': [(6, 0, [self.env.company.id])],
+            'group_ids': [(6, 0, [self.env.ref('base.group_user').id])],
+        })
+
+        migrated = self.env['res.users'].sudo()._acpec_migrate_legacy_mobile_pin_credentials()
+
+        self.assertGreaterEqual(migrated, 1)
+        mobile_user.invalidate_recordset(['mobile_pin_set', 'mobile_pin_required', 'mobile_pin_hash', 'mobile_pin_salt'])
+        internal_user.invalidate_recordset(['mobile_pin_required'])
+        self.assertFalse(mobile_user.mobile_pin_set)
+        self.assertTrue(mobile_user.mobile_pin_required)
+        self.assertFalse(mobile_user.mobile_pin_hash)
+        self.assertFalse(mobile_user.mobile_pin_salt)
+        self.assertFalse(internal_user.mobile_pin_required)
+
 
 
     def test_rate_limit_rejects_same_identifier_per_minute(self):

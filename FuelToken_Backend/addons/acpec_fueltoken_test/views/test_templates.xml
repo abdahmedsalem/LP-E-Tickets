@@ -55,7 +55,7 @@
                                 </div>
                                 <div class="acpec-card-body">
                                     <div class="acpec-warning">
-                                        Cette console appelle les endpoints réels. Le module de test local force uniquement l’OTP à 000000 et désactive l’envoi SMS. Après /login, /password-login ou /verify-otp, le token Bearer est capturé automatiquement.
+                                        Cette console appelle les endpoints réels. Le module de test local force uniquement l’OTP à 000000 et désactive l’envoi SMS. Après /verify-otp, le token Bearer est capturé automatiquement. /login et /password-login restent des routes legacy/dev ; le secret_code est un PIN de confirmation, pas le mot de passe Odoo.
                                     </div>
 
                                     <div class="acpec-field">

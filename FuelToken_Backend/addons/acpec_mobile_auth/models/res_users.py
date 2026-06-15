@@ -1,5 +1,11 @@
+import hashlib
+import hmac
+import secrets
+
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class ResUsers(models.Model):
@@ -11,6 +17,12 @@ class ResUsers(models.Model):
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
     ], string='Mobile State', default='pending',)
+    mobile_pin_hash = fields.Char(string='Mobile PIN Hash', copy=False, groups='base.group_system')
+    mobile_pin_salt = fields.Char(string='Mobile PIN Salt', copy=False, groups='base.group_system')
+    mobile_pin_set = fields.Boolean(string='Mobile PIN Set', default=False, copy=False, readonly=True)
+    mobile_pin_required = fields.Boolean(string='Mobile PIN Required', default=False, copy=False)
+    mobile_pin_failed_count = fields.Integer(string='Mobile PIN Failed Count', default=0, copy=False, groups='base.group_system')
+    mobile_pin_locked_until = fields.Datetime(string='Mobile PIN Locked Until', copy=False, groups='base.group_system')
     mobile_pin_set_at = fields.Datetime(string='Mobile PIN Set At', readonly=True)
 
     def _acpec_group(self, xmlid):
@@ -49,6 +61,182 @@ class ResUsers(models.Model):
             'acpec_fueltoken_base.group_fuel_admin',
         )
 
+    @api.model
+    def _acpec_mobile_unusable_password(self):
+        """Return a long random password for mobile-only Odoo users.
+
+        The mobile PIN must never be usable as an Odoo password.  Mobile
+        authentication is OTP -> Bearer tokens; this password exists only to
+        make Odoo's generic password login route unusable for 4-digit PINs.
+        """
+        return secrets.token_urlsafe(64)
+
+    @api.model
+    def _validate_mobile_pin(self, pin):
+        pin = (str(pin) if pin not in (False, None) else '').strip()
+        if not pin.isdigit() or len(pin) != 4:
+            raise ValidationError(_('Le PIN mobile doit contenir exactement 4 chiffres.'))
+        return pin
+
+    @api.model
+    def _new_mobile_pin_salt(self):
+        return secrets.token_urlsafe(24)
+
+    @api.model
+    def _hash_mobile_pin(self, pin, salt):
+        pin = self._validate_mobile_pin(pin)
+        if not salt:
+            raise ValidationError(_('Sel de PIN mobile manquant.'))
+        return hashlib.pbkdf2_hmac(
+            'sha256',
+            pin.encode('utf-8'),
+            salt.encode('utf-8'),
+            200000,
+            dklen=32,
+        ).hex()
+
+    @api.model
+    def _mobile_pin_lock_seconds(self):
+        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.mobile_pin_lock_seconds')
+        try:
+            return max(0, int(value or 60))
+        except Exception:
+            return 60
+
+    @api.model
+    def _mobile_pin_max_attempts(self):
+        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.mobile_pin_max_attempts')
+        try:
+            return max(1, int(value or 5))
+        except Exception:
+            return 5
+
+    def set_mobile_pin(self, pin):
+        """Set the mobile confirmation PIN without touching res.users.password."""
+        pin = self._validate_mobile_pin(pin)
+        now = fields.Datetime.now()
+        for user in self.sudo():
+            salt = user._new_mobile_pin_salt()
+            user.write({
+                'mobile_pin_salt': salt,
+                'mobile_pin_hash': user._hash_mobile_pin(pin, salt),
+                'mobile_pin_set': True,
+                'mobile_pin_required': False,
+                'mobile_pin_failed_count': 0,
+                'mobile_pin_locked_until': False,
+                'mobile_pin_set_at': now,
+            })
+        return True
+
+    def check_mobile_pin(self, pin, purpose=False):
+        """Validate a mobile PIN for an authenticated mobile user.
+
+        Patch 7.0 only provides this primitive. It must be called later from
+        concrete sensitive actions after _require_mobile_auth(), never from a
+        public generic /verify-pin endpoint.
+        """
+        pin = self._validate_mobile_pin(pin)
+        now = fields.Datetime.now()
+        for user in self.sudo():
+            if not user.id:
+                raise AccessError(_('Utilisateur mobile invalide.'))
+
+            # Count concurrent failures correctly for the same user.
+            self.env.cr.execute('SELECT id FROM res_users WHERE id = %s FOR UPDATE', (user.id,))
+            user.invalidate_recordset([
+                'mobile_pin_hash',
+                'mobile_pin_salt',
+                'mobile_pin_set',
+                'mobile_pin_required',
+                'mobile_pin_failed_count',
+                'mobile_pin_locked_until',
+            ])
+
+            if user.mobile_pin_required or not user.mobile_pin_set or not user.mobile_pin_hash or not user.mobile_pin_salt:
+                raise AccessError(_('Le PIN mobile doit être défini avant cette opération.'))
+            if user.mobile_pin_locked_until and user.mobile_pin_locked_until > now:
+                raise AccessError(_('Trop de tentatives PIN. Veuillez réessayer plus tard.'))
+
+            candidate = user._hash_mobile_pin(pin, user.mobile_pin_salt)
+            if hmac.compare_digest(candidate or '', user.mobile_pin_hash or ''):
+                if user.mobile_pin_failed_count or user.mobile_pin_locked_until:
+                    user.write({
+                        'mobile_pin_failed_count': 0,
+                        'mobile_pin_locked_until': False,
+                    })
+                continue
+
+            failed_count = (user.mobile_pin_failed_count or 0) + 1
+            vals = {'mobile_pin_failed_count': failed_count}
+            if failed_count >= user._mobile_pin_max_attempts():
+                vals.update({
+                    'mobile_pin_failed_count': 0,
+                    'mobile_pin_locked_until': now + relativedelta(seconds=user._mobile_pin_lock_seconds()),
+                })
+            user.write(vals)
+            raise AccessError(_('PIN mobile invalide.'))
+        return True
+
+    @api.model
+    def _acpec_legacy_mobile_pin_users(self):
+        """Return mobile-only users that still need PIN/password migration.
+
+        Do not use a domain on groups_id here. In Odoo 19 migrations this field
+        may not be available for domain optimization on res.users. Use the
+        relation table directly and keep the migration narrowly scoped.
+        """
+        Users = self.sudo().with_context(active_test=False)
+
+        candidates = Users.search([
+            ('mobile_pin_set', '=', False),
+            ('mobile_pin_required', '=', False),
+            ('mobile_phone', '!=', False),
+        ])
+
+        mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
+        if mobile_group_ids:
+            self.env.cr.execute(
+                """
+                SELECT DISTINCT uid
+                  FROM res_groups_users_rel
+                 WHERE gid = ANY(%s)
+                """,
+                (list(mobile_group_ids),),
+            )
+            group_user_ids = [row[0] for row in self.env.cr.fetchall()]
+            if group_user_ids:
+                candidates |= Users.browse(group_user_ids).filtered(
+                    lambda user: not user.mobile_pin_set and not user.mobile_pin_required
+                )
+
+        forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
+        if forbidden_group_ids and candidates:
+            candidates -= candidates._acpec_users_with_group_ids(forbidden_group_ids)
+
+        return candidates
+
+    @api.model
+    def _acpec_migrate_legacy_mobile_pin_credentials(self):
+        """Disable legacy PIN-as-Odoo-password for existing mobile-only users.
+
+        Existing 4-digit PINs cannot be migrated because they only exist as
+        Odoo password hashes. Mark users as requiring a new mobile PIN after
+        OTP, and replace their Odoo password with a long random value.
+        """
+        users = self._acpec_legacy_mobile_pin_users()
+        for user in users:
+            user.write({
+                'password': user._acpec_mobile_unusable_password(),
+                'mobile_pin_hash': False,
+                'mobile_pin_salt': False,
+                'mobile_pin_set': False,
+                'mobile_pin_required': True,
+                'mobile_pin_failed_count': 0,
+                'mobile_pin_locked_until': False,
+                'mobile_pin_set_at': False,
+            })
+        return len(users)
+
     def _check_acpec_mobile_user_separation(self):
         mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
         forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
@@ -63,7 +251,10 @@ class ResUsers(models.Model):
 
         invalid_users = mobile_users._acpec_users_with_group_ids(forbidden_group_ids)
         if invalid_users:
-            names = ', '.join(invalid_users.mapped('display_name')[:5])
+            names = ', '.join(
+            str(user.display_name or user.name or user.login or user.id)
+            for user in invalid_users[:5]
+        )
             raise ValidationError(_(
                 "Un utilisateur mobile FuelToken doit rester mobile-only : "
                 "pas d'accès portail, pas d'accès interne Odoo et pas de groupe back-office FuelToken. "

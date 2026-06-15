@@ -106,11 +106,9 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         )
                         challenge.sudo().write({'user_id': user.id})
 
-                now = fields.Datetime.now()
                 user.sudo().write({
                     'active': True,
                     'mobile_state': 'approved',
-                    'mobile_pin_set_at': user.mobile_pin_set_at or now,
                 })
 
                 payload = self._create_mobile_session_payload(user, kwargs)

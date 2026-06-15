@@ -76,7 +76,7 @@ class AcpecMobileAuthOtp(models.Model):
         value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_code_length')
         try:
             # OTP SMS codes are 6 digits for the Chinguisoft validation API.
-            # Do not confuse this with the signup/password secret_code,
+            # Do not confuse this with the signup confirmation secret_code,
             # which remains exactly 4 digits in acpec_mobile_auth.
             return min(
                 OTP_SMS_CODE_LENGTH_MAX,

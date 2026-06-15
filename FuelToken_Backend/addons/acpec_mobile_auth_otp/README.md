@@ -6,14 +6,14 @@ This module adds OTP challenge creation and verification for the ACPEC mobile au
 ## OTP code length vs signup secret code
 
 SMS OTP codes are 6 digits for the Chinguisoft validation API. When the hidden system parameter `acpec_mobile_auth.otp_code_length` is absent, the backend generates 6 digits.
-This is intentionally separate from the signup/password `secret_code`, which remains exactly 4 digits and is validated by the base `acpec_mobile_auth` module.
+This is intentionally separate from the signup confirmation `secret_code`, which remains exactly 4 digits and is validated by the base `acpec_mobile_auth` module.
 
 Contract rule:
 
 - `code` = SMS OTP received from Chinguisoft, exactly 6 digits.
-- `secret_code` = mobile password/PIN chosen by the user, exactly 4 digits.
+- `secret_code` = mobile confirmation PIN chosen by the user, exactly 4 digits. It is stored as a dedicated mobile PIN hash and must never be used as `res.users.password`.
 
-Do not validate the SMS OTP with the `secret_code` rule, and do not relax `secret_code` to 6 digits.
+Do not validate the SMS OTP with the `secret_code` rule, and do not relax `secret_code` to 6 digits. The Odoo user password is generated as a long random unusable value; mobile login remains OTP -> Bearer tokens.
 
 ## OTP rate limits
 

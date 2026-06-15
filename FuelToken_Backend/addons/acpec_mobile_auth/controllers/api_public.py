@@ -116,52 +116,10 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
         '/api/acpec/mobile_auth/v1/password-login',
     ], type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def password_login(self, **kwargs):
-        try:
-            if not self._get_config_bool('acpec_mobile_auth.allow_password_login', default=False):
-                return self._error_response(
-                    'PASSWORD_LOGIN_DISABLED',
-                    _('L’authentification par mot de passe est désactivée.')
-                )
-
-            self._require_keys(kwargs, ['identifier', 'secret_code'])
-
-            identifier = self._get_clean_str(kwargs, 'identifier')
-            secret_code = self._get_clean_str(kwargs, 'secret_code')
-
-            if not identifier:
-                return self._error_response('IDENTIFIER_REQUIRED', _('Identifier is required.'))
-
-            self._validate_secret_code(secret_code)
-
-            credential = {
-                'login': identifier,
-                'password': secret_code,
-                'type': 'password'
-            }
-
-            try:
-                auth_info = request.session.authenticate(request.env, credential)
-                uid = auth_info.get('uid')
-            except Exception:
-                uid = False
-
-            if not uid:
-                return self._error_response('INVALID_CREDENTIALS', _('Invalid identifier or secret code.'))
-
-            user = request.env['res.users'].sudo().browse(uid)
-
-            with request.env.cr.savepoint():
-                user.write({
-                    'mobile_pin_set_at': user.mobile_pin_set_at or fields.Datetime.now()
-                })
-                payload = self._create_mobile_session_payload(user, kwargs)
-                payload['auth_method'] = 'password_dev'
-
-            # The mobile API must not rely on the Odoo web session.
-            # /login is kept only as a compatibility alias for the mobile password login.
-            request.session.logout(keep_db=True)
-            return self._json_response(payload)
-        except Exception as exc:
-            _logger.exception("Password Login API Error")
-            return self._handle_exception_response(exc)
-
+        # Password/PIN login is intentionally disabled.  Mobile login is OTP ->
+        # Bearer tokens only; secret_code is a confirmation PIN stored separately
+        # from res.users.password.
+        return self._error_response(
+            'PASSWORD_LOGIN_DISABLED',
+            'L’authentification par mot de passe est désactivée. Utilisez l’OTP.',
+        )

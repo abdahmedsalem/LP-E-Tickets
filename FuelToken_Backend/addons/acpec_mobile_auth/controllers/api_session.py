@@ -12,9 +12,6 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
             session = self._get_mobile_session(required=False)
             if session:
                 return self._json_response(self._session_payload(session))
-            user = request.env.user
-            if not user._is_public():
-                return self._json_response(self._mobile_profile_payload(user))
             return self._error_response('AUTH_REQUIRED', _('Authentification mobile requise.'))
         except Exception as exc:
             return self._handle_exception_response(exc)

@@ -32,7 +32,7 @@ API_CATALOG_MOBILE_AUTH = [
             'email': 'client.test@example.com',
             'note': 'Inscription mobile locale.',
         },
-        'note': 'Appelle le vrai endpoint signup. En local, le module test force l OTP à 000000 et retourne otp_dev_code.',
+        'note': 'Appelle le vrai endpoint signup. secret_code définit le PIN de confirmation mobile, pas le mot de passe Odoo. En local, le module test force l OTP à 000000 et retourne otp_dev_code.',
     },
     {
         'group': 'Mobile Auth',
@@ -47,7 +47,7 @@ API_CATALOG_MOBILE_AUTH = [
             'platform': 'web',
             'app_version': 'dev',
         },
-        'note': 'Login de développement. Nécessite le paramètre acpec_mobile_auth.allow_password_login=True. Retourne access_token et refresh_token.',
+        'note': 'Route legacy/dev désactivée par défaut. Le secret_code est un PIN de confirmation, pas le mot de passe Odoo. Utiliser request-otp puis verify-otp.',
     },
     {
         'group': 'Mobile Auth',
@@ -62,7 +62,7 @@ API_CATALOG_MOBILE_AUTH = [
             'platform': 'web',
             'app_version': 'dev',
         },
-        'note': 'Alias propre de /password-login, gardé pour compatibilité Flutter. Même réponse tokenisée, pas de dépendance au cookie session_id.',
+        'note': 'Alias legacy de /password-login. La voie normale mobile est OTP -> Bearer tokens ; ne pas utiliser le PIN comme mot de passe.',
     },
     {
         'group': 'Mobile Auth OTP',
@@ -95,7 +95,7 @@ API_CATALOG_MOBILE_AUTH = [
             'platform': 'web',
             'app_version': 'dev',
         },
-        'note': 'Valide l’OTP via le vrai endpoint. La console reprend automatiquement signup_identifier, otp_challenge_id, otp_dev_code et les informations du dernier signup pour appeler le vrai endpoint strict.',
+        'note': 'Valide l’OTP via le vrai endpoint. secret_code est stocké comme PIN de confirmation hashé côté serveur. La console reprend automatiquement les informations du dernier signup.',
     },
     {
         'group': 'Mobile Auth',
