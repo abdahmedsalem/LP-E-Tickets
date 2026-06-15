@@ -223,11 +223,16 @@ class AcpecFuelPurchase(models.Model):
             })
 
     def _create_face_lines_after_approval(self):
-        """Hook intentionally left empty in acpec_fueltoken_purchase.
+        """Extension hook called after a purchase is approved.
 
-        This module owns the purchase workflow only. The actual fuel value
-        creation is implemented by acpec_fueltoken_core, which depends on this
-        module and overrides this hook after approval.
+        This implementation is intentionally empty. The purchase module owns
+        only the commercial workflow: draft, submission, approval/rejection and
+        payment proof handling. It must not create fuel value by itself.
+
+        The real ticket/fuel-value creation is implemented in
+        ``acpec_fueltoken_core``, which depends on this module and overrides
+        this hook. Keep this method as a stable extension point and do not
+        inline the core logic here.
         """
         return True
 

@@ -37,6 +37,18 @@ class AcpecFuelPurchaseCore(models.Model):
         return res
 
     def _create_face_lines_after_approval(self):
+        """Create the real fuel value after purchase approval.
+
+        This is the concrete override of the extension hook declared in
+        ``acpec_fueltoken_purchase``. It is deliberately kept in core because
+        core owns wallets, ticket face lines and transaction audit records.
+
+        Idempotence is mandatory: approving or replaying the hook must never
+        create duplicate ticket balances or duplicate ``purchase_approved``
+        audit transactions. The purchase row is locked, ``fuel_value_created``
+        is the primary guard, and the audit transaction is also checked by
+        ``purchase_id`` + ``transaction_type``.
+        """
         super()._create_face_lines_after_approval()
         face_model = self.env['acpec.fuel.face.line'].sudo()
         tx_model = self.env['acpec.fuel.transaction'].sudo()
@@ -48,6 +60,8 @@ class AcpecFuelPurchaseCore(models.Model):
             )
             purchase.invalidate_recordset(['fuel_value_created'])
             if purchase.fuel_value_created:
+                # The fuel value was already materialized by a previous
+                # approval pass. Do not create ticket lines twice.
                 continue
 
             with self.env.cr.savepoint():
@@ -82,6 +96,9 @@ class AcpecFuelPurchaseCore(models.Model):
                     ('purchase_id', '=', purchase.id),
                     ('transaction_type', '=', 'purchase_approved'),
                 ], limit=1):
+                    # Audit idempotence is separate from fuel-value idempotence:
+                    # a purchase may have a submitted event and must still get
+                    # exactly one approved event after ticket creation.
                     tx_model.log(
                         'purchase_approved',
                         purchase.company_id,
