@@ -12,9 +12,9 @@ from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
 
 _logger = logging.getLogger(__name__)
 
-OTP_SMS_CODE_LENGTH_DEFAULT = 4
-OTP_SMS_CODE_LENGTH_MIN = 4
-OTP_SMS_CODE_LENGTH_MAX = 10
+OTP_SMS_CODE_LENGTH_DEFAULT = 6
+OTP_SMS_CODE_LENGTH_MIN = 6
+OTP_SMS_CODE_LENGTH_MAX = 6
 
 
 class AcpecMobileAuthOtp(models.Model):
@@ -74,9 +74,9 @@ class AcpecMobileAuthOtp(models.Model):
     def _otp_code_length(self):
         value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_code_length')
         try:
-            # OTP SMS codes are intentionally short: 4 digits by default.
+            # OTP SMS codes are 6 digits for the Chinguisoft validation API.
             # Do not confuse this with the signup/password secret_code,
-            # which remains exactly 6 digits in acpec_mobile_auth.
+            # which remains exactly 4 digits in acpec_mobile_auth.
             return min(
                 OTP_SMS_CODE_LENGTH_MAX,
                 max(OTP_SMS_CODE_LENGTH_MIN, int(value or OTP_SMS_CODE_LENGTH_DEFAULT)),

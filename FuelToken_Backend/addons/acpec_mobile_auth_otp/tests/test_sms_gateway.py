@@ -20,7 +20,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
         icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '0')
         icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
-        icp.set_param('acpec_mobile_auth.otp_code_length', '4')
+        icp.set_param('acpec_mobile_auth.otp_code_length', '6')
         icp.set_param('acpec_mobile_auth.otp_dev_mode', '0')
 
     def _create_mobile_user(
@@ -50,25 +50,25 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
     def _assert_otp_code_shape(self, code):
         self.assertTrue(code)
         self.assertTrue(str(code).isdigit())
-        self.assertEqual(len(str(code)), 4)
+        self.assertEqual(len(str(code)), 6)
 
-    def test_otp_sms_default_is_four_and_secret_code_is_six(self):
+    def test_otp_sms_default_is_six_and_secret_code_is_four(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.search([('key', '=', 'acpec_mobile_auth.otp_code_length')]).unlink()
 
         otp_model = self.env['acpec.mobile.auth.otp'].sudo()
-        self.assertEqual(otp_model._otp_code_length(), 4)
+        self.assertEqual(otp_model._otp_code_length(), 6)
         self._assert_otp_code_shape(otp_model._new_code())
 
         controller = AcpecMobileAuthApiPublic()
-        controller._validate_secret_code('123456')
+        controller._validate_secret_code('1234')
         # The helper is normally executed in an HTTP/Odoo request context.
         # Patch the module-level translator for this direct unit call so the
-        # assertion checks the business rule (secret_code = 6 digits) instead
+        # assertion checks the business rule (secret_code = 4 digits) instead
         # of failing on request-bound translation lookup.
         with patch('odoo.addons.acpec_mobile_auth.controllers.api_common._', lambda message: message):
             with self.assertRaises(ValidationError):
-                controller._validate_secret_code('1234')
+                controller._validate_secret_code('123456')
 
     def test_sms_gateway_posts_validation_sms_to_chinguisoft(self):
         # Keep the provider payload test focused on the gateway itself.
@@ -91,7 +91,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         with patch('odoo.addons.acpec_mobile_auth_otp.models.sms_gateway.requests.post', return_value=FakeResponse()) as mocked_post:
             result = self.env['acpec.sms.gateway'].sudo().send_validation_sms(
                 '32524658',
-                code='1234',
+                code='123456',
                 lang='fr',
             )
 
@@ -104,7 +104,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(kwargs['headers']['Content-Type'], 'application/json')
         self.assertEqual(kwargs['json']['phone'], '32524658')
         self.assertEqual(kwargs['json']['lang'], 'fr')
-        self.assertEqual(kwargs['json']['code'], '1234')
+        self.assertEqual(kwargs['json']['code'], '123456')
         self.assertEqual(kwargs['timeout'], 15)
 
     def test_request_otp_creates_configured_provider_challenge(self):
@@ -177,7 +177,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
     def test_hash_otp_uses_sha256(self):
         salt = 'test-salt'
-        code = '1234'
+        code = '123456'
         expected = hashlib.scrypt(
             code.encode('utf-8'),
             salt=salt.encode('utf-8'),
@@ -237,7 +237,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 identifier='32524655',
                 code=request_data['otp_dev_code'],
                 name='Client OTP',
-                secret_code='123456',
+                secret_code='1234',
                 company_id=self.env.company.id,
             )
 
@@ -269,10 +269,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         class FakeResponse:
             status_code = 200
-            text = '{"code": 123456}'
+            text = '{"status": "ok", "message_id": "sms-test-1"}'
 
             def json(self):
-                return {'code': 123456}
+                return {'status': 'ok', 'message_id': 'sms-test-1'}
 
         controller = AcpecMobileAuthApiPublic()
         controller._require_keys = lambda params, keys: None
@@ -292,7 +292,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             result = controller.signup(
                 name='Client OTP',
                 signup_identifier='32524758',
-                secret_code='123456',
+                secret_code='1234',
                 company_id=self.env.company.id,
                 email='client@example.com',
             )
@@ -316,10 +316,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         class FakeResponse:
             status_code = 200
-            text = '{"code": 123456}'
+            text = '{"status": "ok", "message_id": "sms-test-1"}'
 
             def json(self):
-                return {'code': 123456}
+                return {'status': 'ok', 'message_id': 'sms-test-1'}
 
         controller = AcpecMobileAuthApiPublic()
         otp_controller = AcpecMobileAuthOtpApi()
@@ -341,7 +341,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             signup_result = controller.signup(
                 name='Client OTP',
                 signup_identifier='32524657',
-                secret_code='123456',
+                secret_code='1234',
                 company_id=self.env.company.id,
                 email='client2@example.com',
             )
@@ -357,7 +357,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 identifier='32524657',
                 code=otp_code,
                 name='Client OTP',
-                secret_code='123456',
+                secret_code='1234',
                 company_id=self.env.company.id,
                 email='client2@example.com',
             )
@@ -400,7 +400,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             signup_result = controller.signup(
                 name='Client OTP E2E',
                 signup_identifier='32524656',
-                secret_code='123456',
+                secret_code='1234',
                 company_id=self.env.company.id,
                 email='client-e2e@example.com',
             )
@@ -417,7 +417,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 identifier='32524656',
                 code=signup_data['otp_dev_code'],
                 name='Client OTP E2E',
-                secret_code='123456',
+                secret_code='1234',
                 company_id=self.env.company.id,
                 email='client-e2e@example.com',
             )

@@ -154,8 +154,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return company
 
     def _validate_secret_code(self, secret_code):
-        if not secret_code or not secret_code.isdigit() or len(secret_code) != 6:
-            raise ValidationError(_('The secret code must contain exactly 6 digits.'))
+        if not secret_code or not secret_code.isdigit() or len(secret_code) != 4:
+            raise ValidationError(_('The secret code must contain exactly 4 digits.'))
 
     def _get_account_request_or_404(self, request_id):
         rec = request.env['acpec.mobile.auth.account.request'].sudo().browse(request_id).exists()
