@@ -18,17 +18,19 @@ Le module ne modifie pas les APIs mobile, ne crée pas de contrôleur mobile et 
 
 Le modèle principal est :
 
-```text
-acpec.fuel.distributor
-```
+::
+
+    acpec.fuel.distributor
+
 
 Il représente la relation suivante :
 
-```text
-Compte Société
-= partner société avec accès portail Odoo standard
-+ membres partenaires individuels
-```
+::
+
+    Compte Société
+    = partner société avec accès portail Odoo standard
+    + membres partenaires individuels
+
 
 Champs principaux :
 
@@ -79,13 +81,14 @@ Un membre peut être ajouté au roster d’un Compte Société même s’il n’
 
 Mais une distribution vers ce membre est refusée tant que le membre n’a pas un utilisateur mobile FuelToken actif et approuvé :
 
-```text
-res.users.active = True
-res.users.partner_id = membre
-res.users.company_ids contient company_id du Compte Société
-appartenance au groupe acpec_fueltoken_base.group_fuel_user vérifiée via res_groups_users_rel
-res.users.mobile_state = approved
-```
+::
+
+    res.users.active = True
+    res.users.partner_id = membre
+    res.users.company_ids contient company_id du Compte Société
+    appartenance au groupe acpec_fueltoken_base.group_fuel_user vérifiée via res_groups_users_rel
+    res.users.mobile_state = approved
+
 
 La distribution société ne valide jamais automatiquement un compte mobile, ne change jamais `mobile_state` et n’ajoute jamais de groupe mobile.
 
@@ -95,11 +98,12 @@ Le module porte maintenant les méthodes backend de distribution société. Le f
 
 Méthodes principales sur `acpec.fuel.distributor` :
 
-```python
-action_prepare_member_wallets()
-action_distribute_to_member(member_partner, lines, note=False, idempotency_key=False, confirm=True)
-action_distribute_bulk(distribution_lines, idempotency_key=False)
-```
+::
+
+    action_prepare_member_wallets()
+    action_distribute_to_member(member_partner, lines, note=False, idempotency_key=False, confirm=True)
+    action_distribute_bulk(distribution_lines, idempotency_key=False)
+
 
 ### Préparation wallets membres
 
@@ -111,16 +115,17 @@ Elle ne valide pas les utilisateurs mobiles. Les membres non prêts sont signal�
 
 `action_distribute_to_member(...)` crée et confirme un `acpec.fuel.carnet.transfer` standard :
 
-```python
-transfer = distributor.action_distribute_to_member(
-    member_partner,
-    [
-        {'face_line_id': 10, 'carnet_qty': 2},
-    ],
-    note='Distribution mensuelle',
-    idempotency_key='WEB-123',
-)
-```
+::
+
+    transfer = distributor.action_distribute_to_member(
+        member_partner,
+        [
+            {'face_line_id': 10, 'carnet_qty': 2},
+        ],
+        note='Distribution mensuelle',
+        idempotency_key='WEB-123',
+    )
+
 
 La méthode vérifie :
 
@@ -143,16 +148,18 @@ Le moteur de transfert reste celui du core : `acpec.fuel.carnet.transfer.action_
 Les listes opérationnelles back-office peuvent rester en **no create** conformément à la doctrine.
 Pour créer une demande d’achat pour un Compte Société, utiliser le bouton dédié sur la fiche :
 
-```text
-Compte Société actif > Créer achat société
-```
+::
+
+    Compte Société actif > Créer achat société
+
 
 Ce bouton crée un `acpec.fuel.purchase` en brouillon avec :
 
-```text
-partner_id = partner société du Compte Société
-company_id = company_id du Compte Société
-```
+::
+
+    partner_id = partner société du Compte Société
+    company_id = company_id du Compte Société
+
 
 Il ouvre ensuite le formulaire achat standard pour que l’agent ACPEC ajoute les lignes de carnets,
 la preuve de paiement et soumette/valide via le workflow existant.
@@ -177,9 +184,10 @@ Ces garde-fous ne modifient pas les APIs mobile.
 
 Le menu est ajouté sous :
 
-```text
-FuelToken > Comptes Sociétés > Comptes Sociétés
-```
+::
+
+    FuelToken > Comptes Sociétés > Comptes Sociétés
+
 
 La création est autorisée car il s’agit d’un objet d’onboarding.
 
@@ -214,23 +222,25 @@ Il ne doit pas dupliquer les règles de distribution. Il doit appeler les métho
 
 Installation :
 
-```powershell
-docker compose -f .\docker-compose19.yml run --rm -T odoo19_svc odoo `
-  -c /etc/odoo/odoo.conf `
-  -d fueltoken `
-  -i acpec_fueltoken_company `
-  --stop-after-init
-```
+::
+
+    docker compose -f .\docker-compose19.yml run --rm -T odoo19_svc odoo `
+      -c /etc/odoo/odoo.conf `
+      -d fueltoken `
+      -i acpec_fueltoken_company `
+      --stop-after-init
+
 
 Mise à jour :
 
-```powershell
-docker compose -f .\docker-compose19.yml run --rm -T odoo19_svc odoo `
-  -c /etc/odoo/odoo.conf `
-  -d fueltoken `
-  -u acpec_fueltoken_company `
-  --stop-after-init
-```
+::
+
+    docker compose -f .\docker-compose19.yml run --rm -T odoo19_svc odoo `
+      -c /etc/odoo/odoo.conf `
+      -d fueltoken `
+      -u acpec_fueltoken_company `
+      --stop-after-init
+
 
 ## Tests recommandés
 

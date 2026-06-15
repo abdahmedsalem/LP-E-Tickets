@@ -11,11 +11,11 @@ Toutes les requÃªtes POST utilisent l'enveloppe JSON-RPC :
   "id": 1
 }
 
-Les routes protÃ©gÃ©es utilisent maintenant la session mobile tokenisÃ©e :
+Les routes protÃ©gÃ©es utilisent maintenant la session mobile tokenisée :
 
 Authorization: Bearer VOTRE_ACCESS_TOKEN
 
-Le cookie Odoo session_id ne doit plus Ãªtre utilisÃ© comme mÃ©canisme principal
+Le cookie Odoo session_id ne doit plus être utilisÃ© comme mÃ©canisme principal
 pour l'application mobile.
 
 URL de base exemple : http://localhost:8069
@@ -67,16 +67,16 @@ Params:
   "app_version": "dev"
 }
 
-RÃ©ponse utile :
+Réponse utile :
 result.data.access_token
 result.data.refresh_token
 
 1.5 Login alias compatible
 POST /api/acpec/mobile_auth/v1/login
 
-MÃªme payload que /password-login.
-Cette route est conservÃ©e comme alias propre pour Flutter existant.
-Elle retourne la mÃªme session mobile tokenisÃ©e et ne doit pas Ãªtre utilisÃ©e
+Même payload que /password-login.
+Cette route est conservée comme alias propre pour Flutter existant.
+Elle retourne la même session mobile tokenisée et ne doit pas être utilisÃ©e
 comme dÃ©pendance au cookie session_id.
 
 1.6 Request OTP
@@ -88,7 +88,9 @@ Params:
   "purpose": "login"
 }
 
-En dev, si acpec_mobile_auth.otp_dev_mode=True, la rÃ©ponse contient :
+En dev local uniquement, l’exposition du code OTP de test doit rester contrôlée.
+Le module acpec_fueltoken_test n’active ses comportements dangereux que si ACPEC_FUELTOKEN_TEST_MODE=1.
+La réponse peut alors contenir :
 result.data.dev_otp_code
 
 1.7 Verify OTP
@@ -104,7 +106,7 @@ Params:
   "app_version": "dev"
 }
 
-RÃ©ponse utile :
+Réponse utile :
 result.data.access_token
 result.data.refresh_token
 
