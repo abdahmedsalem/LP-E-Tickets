@@ -1,0 +1,18 @@
+<odoo>
+    <!--
+        Safety defaults loaded on install/update.
+
+        The FuelToken test module must never leave OTP dev mode enabled by
+        default. Explicit local test behavior is controlled by the environment
+        variable ACPEC_FUELTOKEN_TEST_MODE=1.
+    -->
+    <function model="ir.config_parameter" name="set_param">
+        <value eval="'acpec_mobile_auth.otp_dev_mode'"/>
+        <value eval="'False'"/>
+    </function>
+
+    <function model="ir.config_parameter" name="set_param">
+        <value eval="'acpec_mobile_auth.otp_request_cooldown_seconds'"/>
+        <value eval="'60'"/>
+    </function>
+</odoo>

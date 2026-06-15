@@ -9,6 +9,7 @@
     'license': 'OPL-1',
     'depends': ['web', 'acpec_mobile_auth_otp', 'acpec_fueltoken_api'],
     'data': [
+        'data/safe_defaults.xml',
         'views/test_templates.xml',
     ],
     'application': False,
