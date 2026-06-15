@@ -1,6 +1,6 @@
-/// URL de base d’un service REST **optionnel** pour OTP / inscription (`API_BASE_URL`).
+/// URL de base d’un service REST **legacy** éventuellement conservé pour d’autres intégrations.
 ///
-/// **Rétrocompat :** si `API_BASE_URL` est vide, lecture de `OTP_API_BASE_URL`.
+/// Le flux de récupération de mot de passe n’utilise plus ce service.
 class AppApiConfig {
   AppApiConfig._();
 

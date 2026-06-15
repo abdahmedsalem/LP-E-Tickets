@@ -20,13 +20,13 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
-import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const _retirerHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _retirerHeaderGap = 10.0;
-const _retirerHeaderTitleSize = 26.0;
+const _retirerHeaderGap = 18.0;
+const _retirerHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
 class RetirerQrScreen extends StatefulWidget {
   const RetirerQrScreen({super.key, required this.qrId});
@@ -42,7 +42,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
   bool _loading = false;
   bool _submitting = false;
   String? _error;
-  final Map<String, int> _selectedQty = <String, int>{};
+  final Set<String> _selectedLineIds = <String>{};
 
   @override
   void initState() {
@@ -88,21 +88,19 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         setState(() {
           _parent = qr;
           _loading = false;
-          _error = 'Seuls les QR actifs peuvent Ãªtre retirÃ©s.';
+          _error = 'Seuls les QR actifs peuvent être retirés.';
         });
         return;
       }
-      if (qr.totalQty <= 1) {
+      if (qr.lines.length <= 1) {
         setState(() {
           _parent = qr;
           _loading = false;
-          _error = 'Un QR contenant un seul ticket ne peut pas Ãªtre retirÃ©.';
+          _error = 'Un QR contenant une seule ligne ne peut pas être retiré.';
         });
         return;
       }
-      _selectedQty
-        ..clear()
-        ..addEntries(qr.lines.map((line) => MapEntry(line.id, 0)));
+      _selectedLineIds.clear();
       setState(() {
         _parent = qr;
         _loading = false;
@@ -114,7 +112,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         _parent = null;
         _loading = false;
         _error = e.isOdooSessionExpired
-            ? 'Session expirÃ©e. Reconnectez-vous.'
+            ? 'Session expirée. Reconnectez-vous.'
             : e.message;
       });
     } catch (e) {
@@ -127,29 +125,31 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
     }
   }
 
-  void _setQty(String lineId, int value, int max) {
-    final clamped = value.clamp(0, max).toInt();
-    setState(() => _selectedQty[lineId] = clamped);
+  void _toggleLineSelection(String lineId) {
+    setState(() {
+      if (_selectedLineIds.contains(lineId)) {
+        _selectedLineIds.remove(lineId);
+      } else {
+        _selectedLineIds.add(lineId);
+      }
+    });
   }
 
-  int _selectedTickets(QrToken parent) {
-    var total = 0;
-    for (final line in parent.lines) {
-      total += (_selectedQty[line.id] ?? 0);
-    }
-    return total;
+  List<QrLine> _selectedLines(QrToken parent) {
+    return parent.lines
+        .where((line) => _selectedLineIds.contains(line.id))
+        .toList(growable: false);
   }
 
   int _selectedAmount(QrToken parent) {
     var total = 0;
-    for (final line in parent.lines) {
-      final qty = _selectedQty[line.id] ?? 0;
-      total += qty * line.faceValue;
+    for (final line in _selectedLines(parent)) {
+      total += line.qty * line.faceValue;
     }
     return total;
   }
 
-  /// Retourne l'identifiant entier de la ligne QR Ã  envoyer Ã  l'API.
+  /// Retourne l'identifiant entier de la ligne QR à envoyer à l'API.
   int? _qrLineIdForApi(QrLine line) {
     for (final raw in [line.id, line.faceLineId]) {
       final n = int.tryParse(raw.trim());
@@ -162,16 +162,14 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
     final parent = _parent;
     if (parent == null ||
         parent.state != QrState.active ||
-        parent.totalQty <= 1) {
+        parent.lines.length <= 1) {
       return;
     }
     final user = context.read<AuthBloc>().state.user;
     if (user == null) throw Exception('Session requise.');
 
     final picks = <Map<String, dynamic>>[];
-    for (final line in parent.lines) {
-      final qty = _selectedQty[line.id] ?? 0;
-      if (qty <= 0) continue;
+    for (final line in _selectedLines(parent)) {
       final qrLineId = _qrLineIdForApi(line);
       if (qrLineId == null) {
         AppMessage.error(
@@ -180,14 +178,11 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         );
         return;
       }
-      picks.add({'qr_line_id': qrLineId, 'qty': qty});
+      picks.add({'qr_line_id': qrLineId, 'qty': line.qty});
     }
 
     if (picks.isEmpty) {
-      AppMessage.warning(
-        context,
-        'SÃ©lectionnez au moins une ligne Ã  retirer.',
-      );
+      AppMessage.warning(context, 'Sélectionnez au moins une ligne à retirer.');
       return;
     }
 
@@ -198,16 +193,14 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
     final parent = _parent;
     if (parent == null ||
         parent.state != QrState.active ||
-        parent.totalQty <= 1) {
+        parent.lines.length <= 1) {
       return;
     }
     final user = context.read<AuthBloc>().state.user;
     if (user == null) throw Exception('Session requise.');
 
     final picks = <Map<String, dynamic>>[];
-    for (final line in parent.lines) {
-      final qty = _selectedQty[line.id] ?? 0;
-      if (qty <= 0) continue;
+    for (final line in _selectedLines(parent)) {
       final qrLineId = _qrLineIdForApi(line);
       if (qrLineId == null) {
         AppMessage.error(
@@ -216,14 +209,11 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         );
         return;
       }
-      picks.add({'qr_line_id': qrLineId, 'qty': qty});
+      picks.add({'qr_line_id': qrLineId, 'qty': line.qty});
     }
 
     if (picks.isEmpty) {
-      AppMessage.warning(
-        context,
-        'SÃ©lectionnez au moins une ligne Ã  retirer.',
-      );
+      AppMessage.warning(context, 'Sélectionnez au moins une ligne à retirer.');
       return;
     }
 
@@ -235,7 +225,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         'idempotency_key': 'ft-qr-retirer-${const Uuid().v4()}',
       });
       if (raw is! Map) {
-        throw Exception('RÃ©ponse QR invalide.');
+        throw Exception('Réponse QR invalide.');
       }
       final payload = raw['data'] is Map
           ? Map<String, dynamic>.from(raw['data'] as Map)
@@ -267,7 +257,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         OdooFueltokenRpcConfig.qrList,
       );
       if (!mounted) return;
-      AppMessage.success(context, 'QR retirÃ© avec succÃ¨s.');
+      AppMessage.success(context, 'QR retiré avec succès.');
       QrRefreshBus.instance.bump();
       WalletRefreshBus.instance.bump();
       FacesRefreshBus.instance.bump();
@@ -280,7 +270,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       AppMessage.error(
         context,
         e.isOdooSessionExpired
-            ? 'Session expirÃ©e. Reconnectez-vous.'
+            ? 'Session expirée. Reconnectez-vous.'
             : e.message,
       );
     } catch (e) {
@@ -300,14 +290,22 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
           child: Column(
             children: [
               AppBarHeader(
-                title: 'Retirer du QR',
+                title: 'Retirer',
                 onBack: () => context.pop(),
                 plainBackButton: true,
                 largeTitle: true,
                 largeTitlePadding: _retirerHeaderPadding,
                 largeTitleGap: _retirerHeaderGap,
                 largeTitleFontSize: _retirerHeaderTitleSize,
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
+              const SizedBox(height: 18),
               const Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -337,7 +335,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                   onPressed: _parent == null
                       ? _loadParent
                       : () => context.pop(),
-                  child: Text(_parent == null ? 'RÃ©essayer' : 'Retour'),
+                  child: Text(_parent == null ? 'Réessayer' : 'Retour'),
                 ),
               ],
             ),
@@ -351,7 +349,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       return const Scaffold(body: Center(child: Text('QR introuvable.')));
     }
 
-    final selectedTickets = _selectedTickets(parent);
+    final selectedLineCount = _selectedLines(parent).length;
     final selectedAmount = _selectedAmount(parent);
 
     return Scaffold(
@@ -376,7 +374,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              onPressed: _submitting || selectedTickets <= 0 ? null : _submit,
+              onPressed: _submitting || selectedLineCount <= 0 ? null : _submit,
               icon: _submitting
                   ? const SizedBox(
                       width: 18,
@@ -384,7 +382,13 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.call_split_rounded, size: 18),
-              label: Text(_submitting ? 'Retrait...' : 'Retirer'),
+              label: Text(
+                _submitting
+                    ? 'Retrait...'
+                    : selectedLineCount > 0
+                    ? 'Retirer ($selectedLineCount)'
+                    : 'Retirer',
+              ),
             ),
           ),
         ),
@@ -393,57 +397,116 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         child: Column(
           children: [
             AppBarHeader(
-              title: 'Retirer du QR',
+              title: 'Retirer',
               onBack: () => context.pop(),
               plainBackButton: true,
               largeTitle: true,
               largeTitlePadding: _retirerHeaderPadding,
               largeTitleGap: _retirerHeaderGap,
               largeTitleFontSize: _retirerHeaderTitleSize,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _headerNavy,
+                letterSpacing: -0.4,
+                height: 1.05,
+              ),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 children: [
-                  const SectionLabel('Lignes Ã  retirer'),
-                  const SizedBox(height: 8),
+                  Text(
+                    'Sélectionnez les lignes à retirer.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.muted,
+                      height: 1.25,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   for (final line in parent.lines) ...[
                     _RetirerLineCard(
                       line: line,
-                      qty: _selectedQty[line.id] ?? 0,
-                      onDecrement: () => _setQty(
-                        line.id,
-                        (_selectedQty[line.id] ?? 0) - 1,
-                        line.qty,
-                      ),
-                      onIncrement: () => _setQty(
-                        line.id,
-                        (_selectedQty[line.id] ?? 0) + 1,
-                        line.qty,
-                      ),
+                      selected: _selectedLineIds.contains(line.id),
+                      onTap: () => _toggleLineSelection(line.id),
                     ),
                     const SizedBox(height: 10),
                   ],
                   AppCard(
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
-                          child: Text(
-                            'SÃ©lection',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.muted,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sélection',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$selectedLineCount ligne${selectedLineCount > 1 ? 's' : ''} sélectionnée${selectedLineCount > 1 ? 's' : ''}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          '$selectedTickets ticket${selectedTickets > 1 ? 's' : ''} Â· ${Formatters.numberFr(selectedAmount)} MRU',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              Formatters.numberFr(selectedAmount),
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'MRU',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.successSurface,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '$selectedLineCount',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.leaderGreenDark,
+                            ),
                           ),
                         ),
                       ],
@@ -463,44 +526,71 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
 class _RetirerLineCard extends StatelessWidget {
   const _RetirerLineCard({
     required this.line,
-    required this.qty,
-    required this.onDecrement,
-    required this.onIncrement,
+    required this.selected,
+    required this.onTap,
   });
 
   final QrLine line;
-  final int qty;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-
-  int get _max => line.qty;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final borderColor = selected
+        ? AppColors.leaderGreen.withValues(alpha: 0.42)
+        : const Color(0xFFE8EAED);
+    final bgColor = selected ? AppColors.successSurface : Colors.white;
+    final lineTitle =
+        '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''} '
+        'de carnet ${Formatters.numberFr(line.carnetSize > 0 ? line.carnetSize : line.qty)} × '
+        '${Formatters.numberFr(line.faceValue)}';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''} '
-                      'de carnet de ${Formatters.numberFr(line.carnetSize > 0 ? line.carnetSize : line.qty)} Ã— '
-                      '${Formatters.numberFr(line.faceValue)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        height: 1.08,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            lineTitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                              height: 1.08,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Icon(
+                          selected
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          size: 20,
+                          color: selected
+                              ? AppColors.leaderGreen
+                              : AppColors.muted,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -517,86 +607,10 @@ class _RetirerLineCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
             ],
           ),
-          const SizedBox(height: 5),
-          Container(height: 1, color: const Color(0xFFEAECEF)),
-          const SizedBox(height: 1),
-          Row(
-            children: [
-              Text(
-                'QuantitÃ©',
-                style: GoogleFonts.inter(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.muted,
-                ),
-              ),
-              const Spacer(),
-              _StepperButton(
-                icon: Icons.remove,
-                onPressed: qty > 0 ? onDecrement : null,
-                isPositive: false,
-              ),
-              const SizedBox(width: 4),
-              SizedBox(
-                width: 30,
-                child: Text(
-                  '$qty',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    height: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              _StepperButton(
-                icon: Icons.add,
-                onPressed: qty < _max ? onIncrement : null,
-                isPositive: true,
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
-    );
-  }
-}
-
-class _StepperButton extends StatelessWidget {
-  const _StepperButton({
-    required this.icon,
-    required this.onPressed,
-    required this.isPositive,
-  });
-
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool isPositive;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    return IconButton.filledTonal(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      style: IconButton.styleFrom(
-        backgroundColor: enabled
-            ? (isPositive ? const Color(0xFF43A047) : const Color(0xFFF2F4F7))
-            : const Color(0xFFF3F4F6),
-        foregroundColor: enabled
-            ? (isPositive ? Colors.white : const Color(0xFF344054))
-            : const Color(0xFFB8BEC7),
-        disabledBackgroundColor: const Color(0xFFF3F4F6),
-        disabledForegroundColor: const Color(0xFFB8BEC7),
-      ),
-      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
     );
   }
 }

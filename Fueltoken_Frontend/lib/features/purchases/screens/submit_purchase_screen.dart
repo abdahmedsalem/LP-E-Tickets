@@ -28,9 +28,9 @@ import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const int _kMaxTicketsPerPurchase = 500;
-const _submitPurchaseHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
-const _submitPurchaseHeaderGap = 4.0;
-const _submitPurchaseHeaderTitleSize = 24.0;
+const _submitPurchaseHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
+const _submitPurchaseHeaderGap = 18.0;
+const _submitPurchaseHeaderTitleSize = 32.0;
 
 class SubmitPurchaseScreen extends StatefulWidget {
   const SubmitPurchaseScreen({super.key});
@@ -309,12 +309,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
           result: res.result,
           confirmedAt: confirmedAt,
           lines: res.lines,
-          onHome: () {
-            if (mounted) {
-              context.go('/home');
-            }
-          },
         );
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.go('/home');
+          }
+        });
         return;
       }
     } finally {
@@ -347,8 +348,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         child: Column(
           children: [
             AppBarHeader(
-              title: 'Nouvel achat',
-              subtitle: 'Sélectionnez les carnets et indiquez la quantité',
+              title: 'Commander',
               showBack: true,
               largeTitle: true,
               largeTitlePadding: _submitPurchaseHeaderPadding,
@@ -356,10 +356,22 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               largeTitleFontSize: _submitPurchaseHeaderTitleSize,
               onBack: () => context.pop(),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
                 children: [
+                  Text(
+                    'Sélectionnez les carnets et indiquez la quantité.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.muted,
+                      height: 1.35,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   if (_loadingOffers)
                     const _PurchaseOffersSkeleton()
                   else if (_offerLoadError != null)
@@ -466,7 +478,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                   
+
                     const SizedBox(height: 8),
                     _ProofPicker(path: _proofPath, onTap: _pickProof),
                   ],
@@ -514,7 +526,7 @@ class _PurchaseOfferSkeletonCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(17),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFEAECEF)),
         boxShadow: const [
           BoxShadow(
@@ -952,70 +964,120 @@ class _ProofPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasFile = path != null;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: hasFile ? AppColors.primary : AppColors.line,
-            width: hasFile ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: hasFile ? Colors.white : AppColors.lineSoft,
-                borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: hasFile
+                  ? [const Color(0xFFF5FBF7), Colors.white]
+                  : [const Color(0xFFF8FAFC), Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: hasFile
+                  ? AppColors.leaderGreen.withValues(alpha: 0.32)
+                  : const Color(0xFFD9E0E8),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: hasFile
+                    ? AppColors.leaderGreen.withValues(alpha: 0.10)
+                    : const Color(0x0A000000),
+                blurRadius: 22,
+                spreadRadius: -8,
+                offset: const Offset(0, 10),
               ),
-              child: Icon(
-                hasFile ? Icons.check_circle : Icons.upload_file_outlined,
-                color: hasFile ? AppColors.primary : AppColors.body,
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: hasFile
+                      ? AppColors.leaderGreen.withValues(alpha: 0.12)
+                      : const Color(0xFFEFF3F8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  hasFile ? Icons.verified_rounded : Icons.upload_file_outlined,
+                  color: hasFile ? AppColors.leaderGreen : AppColors.body,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: hasFile
+                            ? AppColors.leaderGreen.withValues(alpha: 0.10)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        hasFile ? 'Prête' : 'Pièce requise',
+                        style: GoogleFonts.poppins(
+                          color: hasFile ? AppColors.leaderGreen : AppColors.muted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      hasFile
+                          ? 'Preuve sélectionnée'
+                          : 'Ajouter la preuve de paiement',
+                      style: GoogleFonts.poppins(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasFile
+                          ? path!.split(RegExp(r'[/\\]')).last
+                          : 'PDF ou image, comme un reçu ou un virement.',
+                      style: GoogleFonts.poppins(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        height: 1.25,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                hasFile ? Icons.refresh_rounded : Icons.chevron_right,
+                color: hasFile ? AppColors.leaderGreen : AppColors.muted,
                 size: 22,
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hasFile ? 'Preuve sélectionnée' : 'Choisir un fichier',
-                    style: TextStyle(
-                      color: hasFile ? AppColors.primaryDark : AppColors.ink,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hasFile
-                        ? path!.split(RegExp(r'[/\\]')).last
-                        : 'PDF ou image (virement, reçu, etc.)',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              hasFile ? Icons.refresh : Icons.chevron_right,
-              color: hasFile ? AppColors.primaryDark : AppColors.muted,
-              size: 20,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

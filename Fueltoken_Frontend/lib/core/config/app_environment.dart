@@ -27,9 +27,7 @@ class AppEnvironment {
 
   /// Bloque l’app en release si Odoo n’est pas configuré, sauf démo hors-ligne.
   static bool get blockReleaseWithoutApi =>
-      kReleaseMode &&
-      !allowOfflineDemoInRelease &&
-      !OdooApiConfig.isConfigured;
+      kReleaseMode && !allowOfflineDemoInRelease && !OdooApiConfig.isConfigured;
 
   /// Builds store / Play : toutes les bases API doivent être en **HTTPS**.
   static bool get releaseRequiresHttps =>

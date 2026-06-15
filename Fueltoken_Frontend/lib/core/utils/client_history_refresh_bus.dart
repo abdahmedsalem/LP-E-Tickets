@@ -4,8 +4,7 @@ import 'package:flutter/foundation.dart';
 class ClientHistoryRefreshBus {
   ClientHistoryRefreshBus._();
 
-  static final ClientHistoryRefreshBus instance =
-      ClientHistoryRefreshBus._();
+  static final ClientHistoryRefreshBus instance = ClientHistoryRefreshBus._();
 
   final ValueNotifier<int> revision = ValueNotifier<int>(0);
 

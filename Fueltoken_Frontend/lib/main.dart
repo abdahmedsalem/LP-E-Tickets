@@ -21,6 +21,7 @@ import 'core/router/app_router.dart';
 import 'core/settings/app_preferences.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'core/notifications/purchase_validation_notification_service.dart';
 import 'core/utils/client_history_refresh_bus.dart';
 import 'core/utils/faces_refresh_bus.dart';
 import 'core/utils/purchases_refresh_bus.dart';
@@ -99,12 +100,14 @@ class FuelTokenApp extends StatefulWidget {
 class FuelTokenAppState extends State<FuelTokenApp>
     with WidgetsBindingObserver {
   static const Duration _idleLogoutDelay = Duration(seconds: 30);
+  static const Duration _purchaseNotificationPollDelay = Duration(seconds: 2);
 
   late final AuthBloc _authBloc;
   late final GoRouter _router;
   String _localeCode = AppPreferences.defaultLocaleCode;
   ThemeMode _themeMode = ThemeMode.light;
   Timer? _idleLogoutTimer;
+  Timer? _notificationPollTimer;
   StreamSubscription<AuthState>? _authSubscription;
 
   @override
@@ -124,8 +127,15 @@ class FuelTokenAppState extends State<FuelTokenApp>
         }
         // Charger le store pour CET utilisateur.
         unawaited(NotificationsStore.instance.loadForUser(state.user!.id));
+        unawaited(
+          PurchaseValidationNotificationService.instance.syncForUser(
+            state.user!,
+          ),
+        );
+        _scheduleNotificationPolling();
       } else if (state.status == AuthStatus.unauthenticated) {
         _cancelIdleLogout();
+        _cancelNotificationPolling();
         // Déconnexion : purger la mémoire pour ne pas exposer les données
         // de l'ancien utilisateur au prochain login
         unawaited(NotificationsStore.instance.clearAndReset());
@@ -151,6 +161,31 @@ class FuelTokenAppState extends State<FuelTokenApp>
   void _cancelIdleLogout() {
     _idleLogoutTimer?.cancel();
     _idleLogoutTimer = null;
+  }
+
+  void _scheduleNotificationPolling() {
+    final user = _authBloc.state.user;
+    if (user == null || user.role != UserRole.user) return;
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = Timer.periodic(
+      _purchaseNotificationPollDelay,
+      (_) {
+        final currentUser = _authBloc.state.user;
+        if (!mounted || currentUser == null || currentUser.role != UserRole.user) {
+          return;
+        }
+        unawaited(
+          PurchaseValidationNotificationService.instance.syncForUser(
+            currentUser,
+          ),
+        );
+      },
+    );
+  }
+
+  void _cancelNotificationPolling() {
+    _notificationPollTimer?.cancel();
+    _notificationPollTimer = null;
   }
 
   void _recordUserActivity() {
@@ -207,6 +242,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cancelIdleLogout();
+    _cancelNotificationPolling();
     _authSubscription?.cancel();
     AuthSessionHost.instance.detach();
     _authBloc.close();

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -166,9 +166,7 @@ class _AdminStationsScreenState extends State<AdminStationsScreen> {
     if (AppEnvironment.useAcpecLiveData) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Stations'),
-        ),
+        appBar: AppBar(title: const Text('Stations')),
         body: _buildAcpecBody(),
         bottomNavigationBar: AdminBottomTabsBar(
           selectedIndex: 2,
@@ -191,9 +189,7 @@ class _AdminStationsScreenState extends State<AdminStationsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Stations'),
-      ),
+      appBar: AppBar(title: const Text('Stations')),
       body: const ApiRequiredView(),
       bottomNavigationBar: AdminBottomTabsBar(
         selectedIndex: 2,

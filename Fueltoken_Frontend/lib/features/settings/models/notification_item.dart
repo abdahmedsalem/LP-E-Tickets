@@ -47,18 +47,55 @@ class NotificationPurchaseLineItem {
   }
 }
 
+class NotificationQrExpirationLineItem {
+  const NotificationQrExpirationLineItem({
+    required this.faceValue,
+    required this.quantityLabel,
+    this.expirationLabel,
+    this.lotLabel,
+  });
+
+  final int faceValue;
+  final String quantityLabel;
+  final String? expirationLabel;
+  final String? lotLabel;
+
+  factory NotificationQrExpirationLineItem.fromJson(Map<String, dynamic> json) {
+    return NotificationQrExpirationLineItem(
+      faceValue: (json['faceValue'] as num?)?.toInt() ?? 0,
+      quantityLabel: json['quantityLabel']?.toString() ?? '',
+      expirationLabel: json['expirationLabel']?.toString(),
+      lotLabel: json['lotLabel']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'faceValue': faceValue,
+      'quantityLabel': quantityLabel,
+      'expirationLabel': expirationLabel,
+      'lotLabel': lotLabel,
+    };
+  }
+}
+
 class NotificationItem {
   NotificationItem({
     required this.id,
     required this.title,
     required this.body,
     required this.timeLabel,
+    this.notificationDateLabel,
     this.category,
     this.purchaseStatus,
     this.amountLabel,
     this.validationDateLabel,
     this.rejectionReason,
     this.purchaseLines = const [],
+    this.transferLines = const [],
+    this.transferPartyPhone,
+    this.qrExpirationLines = const [],
+    this.qrPublicCode,
     this.actionLabel,
     this.actionRoute,
     this.read = false,
@@ -68,12 +105,17 @@ class NotificationItem {
   final String title;
   final String body;
   final String timeLabel;
+  final String? notificationDateLabel;
   final String? category;
   final String? purchaseStatus;
   final String? amountLabel;
   final String? validationDateLabel;
   final String? rejectionReason;
   final List<NotificationPurchaseLineItem> purchaseLines;
+  final List<NotificationPurchaseLineItem> transferLines;
+  final String? transferPartyPhone;
+  final List<NotificationQrExpirationLineItem> qrExpirationLines;
+  final String? qrPublicCode;
   final String? actionLabel;
   final String? actionRoute;
   bool read;
@@ -84,6 +126,7 @@ class NotificationItem {
       title: json['title']?.toString() ?? '',
       body: json['body']?.toString() ?? '',
       timeLabel: json['timeLabel']?.toString() ?? '',
+      notificationDateLabel: json['notificationDateLabel']?.toString(),
       category: json['category']?.toString(),
       purchaseStatus: json['purchaseStatus']?.toString(),
       amountLabel: json['amountLabel']?.toString(),
@@ -94,6 +137,28 @@ class NotificationItem {
               ?.whereType<Map>()
               .map(
                 (e) => NotificationPurchaseLineItem.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
+              .toList() ??
+          const [],
+      transferLines:
+          (json['transferLines'] as List?)
+              ?.whereType<Map>()
+              .map(
+                (e) => NotificationPurchaseLineItem.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
+              .toList() ??
+          const [],
+      transferPartyPhone: json['transferPartyPhone']?.toString(),
+      qrPublicCode: json['qrPublicCode']?.toString(),
+      qrExpirationLines:
+          (json['qrExpirationLines'] as List?)
+              ?.whereType<Map>()
+              .map(
+                (e) => NotificationQrExpirationLineItem.fromJson(
                   Map<String, dynamic>.from(e),
                 ),
               )
@@ -111,12 +176,17 @@ class NotificationItem {
       'title': title,
       'body': body,
       'timeLabel': timeLabel,
+      'notificationDateLabel': notificationDateLabel,
       'category': category,
       'purchaseStatus': purchaseStatus,
       'amountLabel': amountLabel,
       'validationDateLabel': validationDateLabel,
       'rejectionReason': rejectionReason,
       'purchaseLines': purchaseLines.map((e) => e.toJson()).toList(),
+      'transferLines': transferLines.map((e) => e.toJson()).toList(),
+      'transferPartyPhone': transferPartyPhone,
+      'qrExpirationLines': qrExpirationLines.map((e) => e.toJson()).toList(),
+      'qrPublicCode': qrPublicCode,
       'actionLabel': actionLabel,
       'actionRoute': actionRoute,
       'read': read,

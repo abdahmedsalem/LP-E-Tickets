@@ -9,9 +9,7 @@ class _CacheEntry {
 
 /// Déduplication des appels identiques et cache mémoire à TTL court pour les lectures.
 class AcpecFueltokenRpcCoordinator {
-  AcpecFueltokenRpcCoordinator({
-    this.cacheTtl = const Duration(seconds: 30),
-  });
+  AcpecFueltokenRpcCoordinator({this.cacheTtl = const Duration(seconds: 30)});
 
   /// Partagée par défaut pour éviter des requêtes doublées entre écrans.
   static final AcpecFueltokenRpcCoordinator shared =
@@ -98,8 +96,7 @@ class AcpecFueltokenRpcCoordinator {
 
     if (isRouteCacheable(route)) {
       final hit = _cache[key];
-      if (hit != null &&
-          DateTime.now().difference(hit.storedAt) < cacheTtl) {
+      if (hit != null && DateTime.now().difference(hit.storedAt) < cacheTtl) {
         return hit.value;
       }
     }

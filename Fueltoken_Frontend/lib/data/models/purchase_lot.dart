@@ -75,7 +75,8 @@ class PurchaseProofSummary extends Equatable {
   final Uint8List? bytes;
 
   bool get hasImagePreview {
-    final imageLike = isImageMimeType(mimeType, filename: filename) ||
+    final imageLike =
+        isImageMimeType(mimeType, filename: filename) ||
         looksLikeImageFilename(filename);
     if (bytes != null && bytes!.isNotEmpty) {
       return mimeType == null || imageLike;
@@ -108,7 +109,14 @@ class PurchaseProofSummary extends Equatable {
   }
 
   @override
-  List<Object?> get props => [label, filename, url, mimeType, uploadedAt, bytes];
+  List<Object?> get props => [
+    label,
+    filename,
+    url,
+    mimeType,
+    uploadedAt,
+    bytes,
+  ];
 }
 
 /// acpec.fuel.purchase
@@ -199,6 +207,13 @@ class PurchaseLot extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, internalRef, publicCode, state, lines, proofs, rejectionReason];
+  List<Object?> get props => [
+    id,
+    internalRef,
+    publicCode,
+    state,
+    lines,
+    proofs,
+    rejectionReason,
+  ];
 }

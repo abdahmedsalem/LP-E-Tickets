@@ -46,7 +46,10 @@ class AppFilterChip extends StatelessWidget {
               Container(
                 width: compact ? 5 : 6,
                 height: compact ? 5 : 6,
-                decoration: BoxDecoration(color: leadingDotColor, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: leadingDotColor,
+                  shape: BoxShape.circle,
+                ),
               ),
               SizedBox(width: compact ? 5 : 6),
             ],

@@ -11,6 +11,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -300,8 +301,8 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                           ),
                           const SizedBox(height: 14),
                           Text(
-                            'Les tickets bloqués QR avec des lignes expirées.',
-                            style: GoogleFonts.inter(
+                            'Les tickets bloqués ne sont plus utilisables.',
+                            style: GoogleFonts.poppins(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: scheme.onSurfaceVariant,
@@ -310,7 +311,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Répartition des tickets',
+                            'Détail des tickets',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
@@ -350,8 +351,16 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             physics: AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              const _LeftAlignedHeader(title: 'Mes carnets'),
-              SizedBox(height: 20),
+              const _HistoryAlignedPageHeader(title: 'Mes carnets'),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _CarnetFilterChips(
+                  selected: _quickFilter,
+                  onSelected: _setQuickFilter,
+                ),
+              ),
+              const SizedBox(height: 16),
               AppLoadingSkeleton(
                 style: AppLoadingSkeletonStyle.ticketGroups,
                 itemCount: 3,
@@ -368,8 +377,16 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              const _LeftAlignedHeader(title: 'Mes carnets'),
-              const SizedBox(height: 28),
+              const _HistoryAlignedPageHeader(title: 'Mes carnets'),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _CarnetFilterChips(
+                  selected: _quickFilter,
+                  onSelected: _setQuickFilter,
+                ),
+              ),
+              const SizedBox(height: 16),
               const Expanded(child: ApiRequiredView()),
             ],
           ),
@@ -390,16 +407,16 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              const _LeftAlignedHeader(title: 'Mes carnets'),
+              const _HistoryAlignedPageHeader(title: 'Mes carnets'),
               const SizedBox(height: 18),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _CarnetFilterChips(
                   selected: _quickFilter,
                   onSelected: _setQuickFilter,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               ...(_liveLoading && allLines.isEmpty
                   ? [
                       const Padding(
@@ -449,28 +466,26 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 
 enum _CarnetQuickFilter { all, active, expired }
 
-class _LeftAlignedHeader extends StatelessWidget {
-  const _LeftAlignedHeader({required this.title});
+class _HistoryAlignedPageHeader extends StatelessWidget {
+  const _HistoryAlignedPageHeader({required this.title});
 
   final String title;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            height: 1.2,
-            letterSpacing: -0.2,
-            color: AppColors.ink,
-          ),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.left,
+        style: GoogleFonts.poppins(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+          letterSpacing: -0.2,
+          color: AppColors.ink,
         ),
       ),
     );
@@ -537,7 +552,7 @@ class _CarnetFilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: fg,
@@ -584,34 +599,37 @@ class _CarnetDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Détail carnet',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                ],
+            AppBarHeader(
+              title: 'Détail Carnet',
+              onBack: () => Navigator.of(context).pop(),
+              largeTitle: true,
+              largeTitlePadding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              largeTitleGap: 18,
+              largeTitleFontSize: 32,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F2747),
+                letterSpacing: -0.4,
+                height: 1.05,
               ),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
+                padding: EdgeInsets.fromLTRB(16, 20, 16, 20 + bottom),
                 children: [
+                  Text(
+                    'Détail des tickets de ce carnet.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: scheme.onSurfaceVariant,
+                      height: 1.35,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _CarnetDetailOverviewCard(
                     title: title,
                     expirationDate: expirationDate,
@@ -621,8 +639,8 @@ class _CarnetDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Les tickets bloqués QR avec des lignes expirées.',
-                    style: GoogleFonts.inter(
+                    'Les tickets bloqués ne sont plus utilisables.',
+                    style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: scheme.onSurfaceVariant,
@@ -631,7 +649,7 @@ class _CarnetDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Répartition des tickets',
+                    'Détail des tickets',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -686,26 +704,28 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: AppColors.primaryTint,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(Icons.layers_outlined, color: AppColors.primaryDeep),
+            child: Icon(Icons.layers_outlined, size: 20, color: AppColors.primaryDeep),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
-                    height: 1.1,
+                    height: 1.15,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -738,7 +758,7 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
                 Text(
                   '${Formatters.numberFr(displayQty)} tickets',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: stateColor,
@@ -780,11 +800,11 @@ class _CarnetDetailStatsGrid extends StatelessWidget {
           value: Formatters.numberFr(availableQty),
         ),
         _CarnetDetailMetric(
-          label: 'Actifs QR',
+          label: 'QR actifs',
           value: Formatters.numberFr(activeQty),
         ),
         _CarnetDetailMetric(
-          label: 'Bloqués QR',
+          label: 'QR bloqués',
           value: Formatters.numberFr(blockedQty),
         ),
         _CarnetDetailMetric(
@@ -830,7 +850,7 @@ class _CarnetDetailMetric extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -853,17 +873,17 @@ class _CarnetLineCard extends StatelessWidget {
   final String carnetTypeLabel;
   final VoidCallback onTap;
 
+  String _displayTitle() {
+    final restants = '${Formatters.numberFr(line.availableQty)} restants';
+    return '$carnetTypeLabel • $restants';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final availableColor = line.isExpired
-        ? AppColors.danger
-        : AppColors.leaderGreen;
-    final availableLabel = line.isExpired ? 'Expiré' : 'Disponibles';
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,41 +893,16 @@ class _CarnetLineCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    carnetTypeLabel,
+                    _displayTitle(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 15.5,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink,
-                      height: 1.08,
+                      height: 1.15,
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 140),
-                      child: Text(
-                        '${Formatters.numberFr(line.availableQty)} tickets ${availableLabel.toLowerCase()}',
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: line.isExpired
-                              ? availableColor
-                              : AppColors.muted.withValues(alpha: 0.95),
-                          height: 1.08,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),

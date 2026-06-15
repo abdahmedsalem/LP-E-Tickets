@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../purchases/screens/purchase_detail_screen.dart';
 
@@ -10,9 +10,6 @@ class AdminPurchaseDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PurchaseDetailScreen(
-      lotId: purchaseId,
-      adminMode: true,
-    );
+    return PurchaseDetailScreen(lotId: purchaseId, adminMode: true);
   }
 }

@@ -41,11 +41,7 @@ class AppLoadingLottie extends StatelessWidget {
 
 /// Lottie « erreur / échec ».
 class AppErrorLottie extends StatelessWidget {
-  const AppErrorLottie({
-    super.key,
-    this.size = 140,
-    this.fit = BoxFit.contain,
-  });
+  const AppErrorLottie({super.key, this.size = 140, this.fit = BoxFit.contain});
 
   final double size;
   final BoxFit fit;

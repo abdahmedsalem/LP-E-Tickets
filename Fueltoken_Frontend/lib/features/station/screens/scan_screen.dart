@@ -1,4 +1,4 @@
-ï»¿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -82,7 +82,7 @@ class _ScanScreenState extends State<ScanScreen> {
           result: const StationQrCheckResult(
             canConsume: false,
             reason:
-                'Ce QR vient dâ€™Ãªtre consommÃ© sur cette session et ne peut plus Ãªtre scannÃ©.',
+                'Ce QR vient d’être consommé sur cette session et ne peut plus être scanné.',
           ),
         ),
       );
@@ -119,7 +119,7 @@ class _ScanScreenState extends State<ScanScreen> {
       if (mounted) {
         await _showError(
           e.isOdooSessionExpired
-              ? 'Session expirÃ©e. Reconnectez-vous.'
+              ? 'Session expirée. Reconnectez-vous.'
               : e.message,
         );
       }
@@ -229,9 +229,9 @@ class _ScanScreenState extends State<ScanScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Consommation validÃ©e',
+                  'Consommation validée',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
@@ -273,7 +273,7 @@ class _ScanScreenState extends State<ScanScreen> {
                         children: [
                           Text(
                             Formatters.numberFr(qr.totalAmount),
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.poppins(
                               fontSize: 28,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primaryDeep,
@@ -379,7 +379,7 @@ class _ScanHeader extends StatelessWidget {
         children: [
           Text(
             'Scanner QR Client',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 30,
               fontWeight: FontWeight.w800,
               height: 1.04,
@@ -392,7 +392,7 @@ class _ScanHeader extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 330),
             child: Text(
               'Scannez n\'importe quel code QR compatible et payez plus rapidement et facilement',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 fontSize: 13.8,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
@@ -560,9 +560,9 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'VÃ©rification QR',
+                    'Vérification QR',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: scheme.onSurface,
@@ -571,7 +571,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'ContrÃ´le serveur avant consommation',
+                    'Contrôle serveur avant consommation',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
@@ -591,21 +591,21 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                     label: 'Montant total',
                     value: result.totalAmount != null
                         ? '${Formatters.numberFr(result.totalAmount!)} MRU'
-                        : 'Non renseignÃ©',
+                        : 'Non renseigné',
                     highlighted: true,
                   ),
                   const SizedBox(height: 8),
                   _InfoLine(
                     label: 'Client',
-                    value: result.clientName ?? 'Non renseignÃ©',
+                    value: result.clientName ?? 'Non renseigné',
                   ),
                   const SizedBox(height: 12),
                   _QrStatePill(
-                    label: result.canConsume ? 'Consommation autorisÃ©e' : 'Consommation bloquÃ©e',
+                    label: result.canConsume ? 'Consommation autorisée' : 'Consommation bloquée',
                     color: result.canConsume ? AppColors.success : AppColors.danger,
                     subtitle: result.canConsume
                         ? 'Vous pouvez enregistrer la consommation sur ce QR.'
-                        : 'Ce QR ne peut pas Ãªtre consommÃ© dans son Ã©tat actuel.',
+                        : 'Ce QR ne peut pas être consommé dans son état actuel.',
                   ),
                   const SizedBox(height: 18),
                   SizedBox(
@@ -629,7 +629,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                             },
                       child: Text(
                         _confirming
-                            ? 'Validationâ€¦'
+                            ? 'Validation…'
                             : (widget.onConfirmConsume == null ? 'Fermer' : 'Envoyer'),
                       ),
                     ),

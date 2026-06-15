@@ -303,9 +303,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.fingerprint_rounded,
-                      title: 'Authentification biométrique',
-                      subtitle:
-                          'Déverrouillage rapide après une connexion réussie.',
+                      title: 'Déverrouillage rapide',
+                      subtitle: 'Débloquez l’accès plus vite sur cet appareil.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       trailing: Switch.adaptive(
@@ -367,8 +366,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.verified_user_outlined,
-                      title: 'Connexion ACPEC',
-                      subtitle: 'Vérifier la disponibilité du service.',
+                      title: 'Connexion au service',
+                      subtitle: 'Vérifier si le service est disponible.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       onTap: () => context.push('/settings/acpec-step1'),
@@ -376,8 +375,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.how_to_reg_outlined,
-                      title: 'Inscription OTP',
-                      subtitle: 'Créer un compte avec OTP SMS.',
+                      title: 'Créer un compte',
+                      subtitle: 'Créer un compte avec le code reçu par SMS.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       onTap: () => context.push('/register'),
@@ -443,7 +442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 10, top: 4),
       child: Text(
         text,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.poppins(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.85,
@@ -498,7 +497,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                           color: scheme.onSurface,
@@ -507,7 +506,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: scheme.onSurfaceVariant,
                           height: 1.25,
@@ -583,7 +582,7 @@ class _CompanyHeaderCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     color: AppColors.ink,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -692,7 +691,7 @@ class _StatsRow extends StatelessWidget {
         children: [
           Text(
             value,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontWeight: FontWeight.w800,
               fontSize: 18,
               letterSpacing: -0.3,
@@ -703,7 +702,7 @@ class _StatsRow extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: labelColor,
@@ -758,7 +757,7 @@ class _LogoutTile extends StatelessWidget {
                     children: [
                       Text(
                         'Se déconnecter',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: cs.onSurface,
@@ -767,7 +766,7 @@ class _LogoutTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         'Fin de session sur cet appareil',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: cs.onSurfaceVariant,
                           height: 1.2,

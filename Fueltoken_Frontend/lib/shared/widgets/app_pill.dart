@@ -26,19 +26,47 @@ class AppPill extends StatelessWidget {
   ({Color bg, Color fg, Color dotColor}) get _palette {
     switch (tone) {
       case PillTone.green:
-        return (bg: AppColors.primarySoft, fg: AppColors.primaryDark, dotColor: AppColors.primary);
+        return (
+          bg: AppColors.primarySoft,
+          fg: AppColors.primaryDark,
+          dotColor: AppColors.primary,
+        );
       case PillTone.red:
-        return (bg: AppColors.dangerSurface, fg: AppColors.danger, dotColor: AppColors.danger);
+        return (
+          bg: AppColors.dangerSurface,
+          fg: AppColors.danger,
+          dotColor: AppColors.danger,
+        );
       case PillTone.amber:
-        return (bg: AppColors.warningSurface, fg: const Color(0xFF92400E), dotColor: AppColors.warning);
+        return (
+          bg: AppColors.warningSurface,
+          fg: const Color(0xFF92400E),
+          dotColor: AppColors.warning,
+        );
       case PillTone.blue:
-        return (bg: AppColors.infoSurface, fg: const Color(0xFF1D4ED8), dotColor: AppColors.info);
+        return (
+          bg: AppColors.infoSurface,
+          fg: const Color(0xFF1D4ED8),
+          dotColor: AppColors.info,
+        );
       case PillTone.gray:
-        return (bg: AppColors.lineSoft, fg: AppColors.body, dotColor: AppColors.muted);
+        return (
+          bg: AppColors.lineSoft,
+          fg: AppColors.body,
+          dotColor: AppColors.muted,
+        );
       case PillTone.yellow:
-        return (bg: AppColors.brandYellowSoft, fg: const Color(0xFF92580E), dotColor: AppColors.brandYellow);
+        return (
+          bg: AppColors.brandYellowSoft,
+          fg: const Color(0xFF92580E),
+          dotColor: AppColors.brandYellow,
+        );
       case PillTone.dark:
-        return (bg: AppColors.ink, fg: Colors.white, dotColor: AppColors.primary);
+        return (
+          bg: AppColors.ink,
+          fg: Colors.white,
+          dotColor: AppColors.primary,
+        );
     }
   }
 
@@ -49,7 +77,10 @@ class AppPill extends StatelessWidget {
     final fg = foreground ?? p.fg;
     final isLg = size == AppPillSize.lg;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isLg ? 10 : 8, vertical: isLg ? 5 : 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: isLg ? 10 : 8,
+        vertical: isLg ? 5 : 3,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
@@ -61,7 +92,10 @@ class AppPill extends StatelessWidget {
             Container(
               width: 6,
               height: 6,
-              decoration: BoxDecoration(color: p.dotColor, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: p.dotColor,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 5),
           ],

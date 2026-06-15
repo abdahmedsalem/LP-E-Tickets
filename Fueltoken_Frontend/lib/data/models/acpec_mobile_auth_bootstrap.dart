@@ -17,7 +17,8 @@ Map<String, dynamic> acpecParseEnvelope(dynamic result) {
   final map = Map<String, dynamic>.from(result);
   final ok = map['ok'];
   if (ok != true) {
-    final msg = map['message']?.toString() ??
+    final msg =
+        map['message']?.toString() ??
         map['error']?.toString() ??
         'Serveur ACPEC : ok != true';
     throw AcpecBootstrapException(msg);
@@ -82,7 +83,9 @@ class AcpecSignupCompany {
       } else if (id != null) {
         final parsed = int.tryParse('$id');
         if (parsed != null) {
-          out.add(AcpecSignupCompany(id: parsed, name: name.isEmpty ? '—' : name));
+          out.add(
+            AcpecSignupCompany(id: parsed, name: name.isEmpty ? '—' : name),
+          );
         }
       }
     }

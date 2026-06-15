@@ -15,7 +15,10 @@ class AppBarHeader extends StatelessWidget {
     this.largeTitle = false,
     this.largeTitlePadding,
     this.largeTitleGap,
+    this.largeTitleSubtitleGap,
     this.largeTitleFontSize,
+    this.largeTitleTextStyle,
+    this.titleTextStyle,
     this.plainBackButton = false,
 
     /// Si vrai, la flèche n’apparaît que lorsque [Navigator.canPop] (ex. racine d’onglet shell).
@@ -30,7 +33,10 @@ class AppBarHeader extends StatelessWidget {
   final bool largeTitle;
   final EdgeInsetsGeometry? largeTitlePadding;
   final double? largeTitleGap;
+  final double? largeTitleSubtitleGap;
   final double? largeTitleFontSize;
+  final TextStyle? largeTitleTextStyle;
+  final TextStyle? titleTextStyle;
   final bool plainBackButton;
   final bool leadingOnlyWhenNavigatorCanPop;
 
@@ -64,21 +70,23 @@ class AppBarHeader extends StatelessWidget {
               title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: largeTitleFontSize ?? 26,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF111827),
-                letterSpacing: -0.6,
-                height: 1.08,
-              ),
+              style:
+                  largeTitleTextStyle ??
+                  GoogleFonts.poppins(
+                    fontSize: largeTitleFontSize ?? 32,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F2747),
+                    letterSpacing: -0.4,
+                    height: 1.05,
+                  ),
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: largeTitleSubtitleGap ?? 8),
               Text(
                 subtitle!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   fontSize: 13,
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
@@ -111,13 +119,15 @@ class AppBarHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurface,
-                    letterSpacing: -0.2,
-                    height: 1.2,
-                  ),
+                  style:
+                      titleTextStyle ??
+                      GoogleFonts.poppins(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                        letterSpacing: -0.2,
+                        height: 1.2,
+                      ),
                 ),
                 if (subtitle != null)
                   Padding(
@@ -126,7 +136,7 @@ class AppBarHeader extends StatelessWidget {
                       subtitle!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 11,
                         color: scheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,

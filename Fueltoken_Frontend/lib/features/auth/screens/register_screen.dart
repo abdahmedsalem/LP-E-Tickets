@@ -70,15 +70,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final response = await OdooAuthService.instance.requestSignupOtp(
         phoneFull: _phoneFull,
       );
-      final data = response['data'];
-      final challengeId = data is Map
-          ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')
-          : null;
+      final challengeId = _extractChallengeId(response);
       if (!mounted) return;
       AppMessage.info(context, 'Code OTP envoyé par SMS.');
-      if (challengeId == null) {
-        throw Exception('Challenge OTP introuvable dans la réponse serveur.');
-      }
       context.push(
         '/register/verify-otp',
         extra: RegisterOtpRouteArgs(
@@ -95,6 +89,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } finally {
       if (mounted) setState(() => _sendingOtp = false);
     }
+  }
+
+  int? _extractChallengeId(Map<String, dynamic> response) {
+    dynamic candidate;
+    final data = response['data'];
+    if (data is Map) {
+      candidate =
+          data['otp_challenge_id'] ??
+          data['challenge_id'] ??
+          data['otpChallengeId'] ??
+          data['otp_challenge_ref'] ??
+          data['challenge_ref'];
+    }
+    candidate ??=
+        response['otp_challenge_id'] ??
+        response['challenge_id'] ??
+        response['otp_challenge_ref'] ??
+        response['challenge_ref'];
+    final raw = candidate?.toString().trim() ?? '';
+    if (raw.isEmpty) return null;
+    return int.tryParse(raw);
   }
 
   @override
@@ -141,6 +156,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
+                          Center(
+                            child: Image.asset(
+                              'designs/lplogo.jfif',
+                              height: 128,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
                           const _RegisterWelcomeCopy(),
                           const SizedBox(height: 34),
                           const _RegisterSectionTitle(title: 'Inscription'),
@@ -297,10 +320,10 @@ class _RegisterWelcomeCopy extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Créez votre',
+          'Bienvenue dans votre',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 18,
             height: 1.18,
             color: Color(0xFF1E293B),
             fontWeight: FontWeight.w400,
@@ -309,10 +332,10 @@ class _RegisterWelcomeCopy extends StatelessWidget {
         ),
         SizedBox(height: 4),
         Text(
-          'espace wallet',
+          'espace de tickets carburant.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 18,
             height: 1.18,
             color: Color(0xFF1E293B),
             fontWeight: FontWeight.w400,
@@ -334,7 +357,7 @@ class _RegisterSectionTitle extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 22,
+        fontSize: 16,
         color: Color(0xFF203A73),
         fontWeight: FontWeight.w800,
         letterSpacing: -0.4,

@@ -48,11 +48,7 @@ class EmptyState extends StatelessWidget {
                         color: AppColors.leaderGreen.withOpacity(0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        icon,
-                        size: 34,
-                        color: AppColors.leaderGreen,
-                      ),
+                      child: Icon(icon, size: 34, color: AppColors.leaderGreen),
                     ),
                     SizedBox(height: compact ? 12 : 18),
                     Text(

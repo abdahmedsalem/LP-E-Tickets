@@ -45,7 +45,8 @@ class OdooJsonRpcException implements Exception {
     if (m.contains('unauthorized')) return true;
     if (m.contains('session_closed')) return true;
     if (m.contains('token expired')) return true;
-    if (m.contains('jwt')) return m.contains('expired') || m.contains('invalid');
+    if (m.contains('jwt'))
+      return m.contains('expired') || m.contains('invalid');
     final d = data;
     if (d is Map) {
       final c = d['code']?.toString().toLowerCase() ?? '';
@@ -61,7 +62,10 @@ class OdooJsonRpcException implements Exception {
       'OdooJsonRpcException($code): $message${data != null ? ' | $data' : ''}';
 }
 
-String _sanitizeServerMessage(String raw, {String fallback = 'Une erreur est survenue. Réessayez.'}) {
+String _sanitizeServerMessage(
+  String raw, {
+  String fallback = 'Une erreur est survenue. Réessayez.',
+}) {
   var msg = raw.trim();
   if (msg.isEmpty) return fallback;
 
@@ -198,9 +202,7 @@ class OdooJsonRpcClient {
         omitSessionHeaders: omitSessionHeaders,
       );
     } on OdooJsonRpcException catch (e) {
-      if (suppressAuthRecovery ||
-          omitSessionHeaders ||
-          !e.requiresReLogin) {
+      if (suppressAuthRecovery || omitSessionHeaders || !e.requiresReLogin) {
         rethrow;
       }
       final refreshed = await _trySilentRefresh();
@@ -253,12 +255,15 @@ class OdooJsonRpcClient {
       'params': params ?? <String, dynamic>{},
       'id': id,
     };
-    final cookie =
-        omitSessionHeaders ? null : await OdooSessionStore.cookieHeader();
-    final sid =
-        omitSessionHeaders ? null : await OdooSessionStore.readSessionId();
-    final bearer =
-        omitSessionHeaders ? null : await OdooSessionStore.readAccessToken();
+    final cookie = omitSessionHeaders
+        ? null
+        : await OdooSessionStore.cookieHeader();
+    final sid = omitSessionHeaders
+        ? null
+        : await OdooSessionStore.readSessionId();
+    final bearer = omitSessionHeaders
+        ? null
+        : await OdooSessionStore.readAccessToken();
     final db = OdooApiConfig.databaseNameTrimmed;
     final cookiePresent = cookie != null && cookie.isNotEmpty;
     try {
@@ -266,12 +271,10 @@ class OdooJsonRpcClient {
         Headers.contentTypeHeader: Headers.jsonContentType,
         Headers.acceptHeader: Headers.jsonContentType,
         if (!omitSessionHeaders && cookiePresent) 'Cookie': cookie,
-        if (!omitSessionHeaders &&
-            sid != null &&
-            sid.isNotEmpty) 'X-Acpec-Session': sid,
-        if (!omitSessionHeaders &&
-            bearer != null &&
-            bearer.isNotEmpty) 'Authorization': 'Bearer $bearer',
+        if (!omitSessionHeaders && sid != null && sid.isNotEmpty)
+          'X-Acpec-Session': sid,
+        if (!omitSessionHeaders && bearer != null && bearer.isNotEmpty)
+          'Authorization': 'Bearer $bearer',
         if (db.isNotEmpty) 'X-Odoo-Database': db,
         ...?extraHeaders,
       };

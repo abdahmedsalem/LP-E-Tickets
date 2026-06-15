@@ -5,10 +5,7 @@ import 'filter_chip.dart';
 
 /// Section de filtres pour une bottom sheet (valeurs, types, expiration, etc.).
 class ListFilterSection {
-  const ListFilterSection({
-    required this.title,
-    required this.options,
-  });
+  const ListFilterSection({required this.title, required this.options});
 
   final String title;
   final List<ListFilterOption> options;

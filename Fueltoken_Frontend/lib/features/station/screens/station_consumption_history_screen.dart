@@ -222,7 +222,7 @@ class _StationConsumptionHistoryScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   'Historique des consommations',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: _cPrimaryText,
@@ -235,7 +235,7 @@ class _StationConsumptionHistoryScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   'Vos dernières consommations apparaîtront ici',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 13,
                     color: _cSecondaryText,
                     fontWeight: FontWeight.w500,
@@ -544,7 +544,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                       _AmountInline(
                         amount: amount,
                         textAlign: TextAlign.right,
-                        valueStyle: GoogleFonts.inter(
+                        valueStyle: GoogleFonts.poppins(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w800,
                           color: _StationConsumptionHistoryScreenState._cDanger,
@@ -632,7 +632,7 @@ class _StationHistoryDetailBody extends StatelessWidget {
                     ),
                     Text(
                       '${Formatters.numberFr(line.amount)} MRU',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: scheme.onSurface,
@@ -695,7 +695,7 @@ class _ConsumptionDetailSummary extends StatelessWidget {
                   clientName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
@@ -722,7 +722,7 @@ class _ConsumptionDetailSummary extends StatelessWidget {
             children: [
               Text(
                 '-${Formatters.number(amount)}',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
                   color: AppColors.danger,
@@ -799,7 +799,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                           'Consommation station',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.poppins(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: scheme.onSurface,
@@ -885,7 +885,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                             ),
                             Text(
                               '${Formatters.numberFr(line.amount)} MRU',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
                                 color: scheme.onSurface,

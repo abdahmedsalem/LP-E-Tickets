@@ -14,8 +14,7 @@ extension FuelThemeContext on BuildContext {
 
   Color get fuelOnSurface => Theme.of(this).colorScheme.onSurface;
 
-  Color get fuelOnSurfaceMuted =>
-      Theme.of(this).colorScheme.onSurfaceVariant;
+  Color get fuelOnSurfaceMuted => Theme.of(this).colorScheme.onSurfaceVariant;
 
   Color get fuelOutline => Theme.of(this).colorScheme.outline;
 

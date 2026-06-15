@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -37,7 +37,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
   String _briefError(Object e) {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirÃ©e. Reconnectez-vous.';
+      return 'Session expirée. Reconnectez-vous.';
     }
     return e.toString().replaceFirst('Exception: ', '').trim();
   }
@@ -149,7 +149,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               FilledButton.icon(
                 onPressed: _loadAcpecSummary,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('RÃ©essayer'),
+                label: const Text('Réessayer'),
               ),
             ],
           ),
@@ -159,7 +159,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
     final s = _summary;
     if (s == null) {
-      return const Center(child: Text('Aucune donnÃ©e.'));
+      return const Center(child: Text('Aucune donnée.'));
     }
 
     return RefreshIndicator(
@@ -208,7 +208,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       const SizedBox(height: 3),
                       Text(
                         '${Formatters.numberFr(s.transactions)} transactions',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -238,7 +238,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _MetricTile(
-                  label: 'ValidÃ©s',
+                  label: 'Validés',
                   value: s.purchasesApproved,
                   color: AppColors.success,
                   icon: Icons.verified_outlined,
@@ -262,7 +262,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricTile(
-                  label: 'BloquÃ©s',
+                  label: 'Bloqués',
                   value: s.qrBlocked,
                   color: AppColors.danger,
                   icon: Icons.block_flipped,
@@ -275,7 +275,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
             children: [
               Expanded(
                 child: _MetricTile(
-                  label: 'ConsommÃ©s',
+                  label: 'Consommés',
                   value: s.qrConsumed,
                   color: AppColors.accent,
                   icon: Icons.done_all_outlined,
@@ -284,7 +284,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricTile(
-                  label: 'ExpirÃ©s',
+                  label: 'Expirés',
                   value: s.qrExpired,
                   color: AppColors.muted,
                   icon: Icons.timer_off_outlined,
@@ -353,7 +353,7 @@ class _InfoBanner extends StatelessWidget {
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
-              'Compteurs globaux synchronisÃ©s avec le serveur ACPEC.',
+              'Compteurs globaux synchronisés avec le serveur ACPEC.',
               style: TextStyle(
                 fontSize: 12,
                 height: 1.35,

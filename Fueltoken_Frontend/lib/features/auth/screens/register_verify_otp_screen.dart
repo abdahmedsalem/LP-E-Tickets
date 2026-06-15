@@ -16,13 +16,13 @@ class RegisterOtpRouteArgs {
     required this.name,
     required this.phoneFull,
     required this.password,
-    required this.challengeId,
+    this.challengeId,
   });
 
   final String name;
   final String phoneFull;
   final String password;
-  final int challengeId;
+  final int? challengeId;
 }
 
 class RegisterVerifyOtpScreen extends StatefulWidget {
@@ -39,6 +39,13 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
   final _otp = TextEditingController();
   bool _busy = false;
   bool _resendBusy = false;
+  int? _challengeId;
+
+  @override
+  void initState() {
+    super.initState();
+    _challengeId = widget.args.challengeId;
+  }
 
   @override
   void dispose() {
@@ -59,7 +66,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         code: clean,
         name: widget.args.name,
         password: widget.args.password,
-        challengeId: widget.args.challengeId,
+        challengeId: _challengeId,
       );
       final payload = body['data'] is Map
           ? Map<String, dynamic>.from(body['data'] as Map)
@@ -67,14 +74,9 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       final user = AppUser.fromOdooProfileMap(payload, envelope: body);
       if (!mounted) return;
       context.read<AuthBloc>().add(AuthSessionEstablished(user));
-      if (!mounted) return;
-      final path = switch (user.role) {
-        UserRole.admin => '/admin',
-        UserRole.station => '/station',
-        UserRole.user => '/home',
-      };
-      context.go(path);
-    } catch (e) {
+      return;
+    } catch (e, st) {
+      debugPrint('OTP verification failed: $e\n$st');
       if (mounted) {
         AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
       }
@@ -86,13 +88,26 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
   Future<void> _resend() async {
     setState(() => _resendBusy = true);
     try {
-      await OdooAuthService.instance.requestSignupOtpResend(
+      final response = await OdooAuthService.instance.requestSignupOtpResend(
         identifier: widget.args.phoneFull,
       );
+      final data = response['data'];
+      if (data is Map) {
+        final raw =
+            data['otp_challenge_id'] ??
+            data['challenge_id'] ??
+            response['otp_challenge_id'] ??
+            response['challenge_id'];
+        final parsed = int.tryParse(raw?.toString() ?? '');
+        if (parsed != null && parsed > 0) {
+          _challengeId = parsed;
+        }
+      }
       if (mounted) {
         AppMessage.info(context, 'Un nouveau code a été demandé.');
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('OTP resend failed: $e\n$st');
       if (mounted) {
         AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
       }
@@ -122,7 +137,10 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                 UserRole.station => '/station',
                 UserRole.user => '/home',
               };
-              context.go(path);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                context.go(path);
+              });
             }
           },
           builder: (ctx, state) {

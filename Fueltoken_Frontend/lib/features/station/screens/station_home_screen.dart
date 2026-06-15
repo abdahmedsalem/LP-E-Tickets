@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,8 +35,8 @@ class StationHomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Bonjour $firstName 👋',
-                          style: GoogleFonts.inter(
+                          'Bonjour $firstName ??',
+                          style: GoogleFonts.poppins(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF111827),
@@ -174,5 +174,3 @@ class StationHomeScreen extends StatelessWidget {
     );
   }
 }
-
-

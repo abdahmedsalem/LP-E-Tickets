@@ -21,15 +21,15 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
-import '../../../shared/widgets/app_pill.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
-const _detailHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
-const _detailHeaderGap = 4.0;
-const _detailHeaderTitleSize = 24.0;
+const _detailHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
+const _detailHeaderGap = 18.0;
+const _detailHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
 class QrDetailScreen extends StatefulWidget {
   final String qrId;
@@ -48,12 +48,25 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
   bool _loading = false;
   bool _separating = false;
   String? _error;
+  late final VoidCallback _qrBusListener;
 
   @override
   void initState() {
     super.initState();
     _loading = AppEnvironment.useAcpecLiveData;
+    _qrBusListener = () {
+      if (!mounted || !AppEnvironment.useAcpecLiveData) return;
+      if (_loading) return;
+      _refresh();
+    };
+    QrRefreshBus.instance.revision.addListener(_qrBusListener);
     WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    QrRefreshBus.instance.revision.removeListener(_qrBusListener);
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -187,16 +200,16 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
     }
   }
 
-  ({String label, PillTone tone}) _statePill(QrState s) {
+  ({String label, Color color}) _statePill(QrState s) {
     switch (s) {
       case QrState.active:
-        return (label: 'Actif', tone: PillTone.green);
+        return (label: 'Actif', color: AppColors.leaderGreen);
       case QrState.blocked:
-        return (label: 'Bloqué', tone: PillTone.amber);
+        return (label: 'BLOQUÉ', color: const Color(0xFFF59E0B));
       case QrState.consumed:
-        return (label: 'Consommé', tone: PillTone.gray);
+        return (label: 'CONSOMMÉ', color: AppColors.muted);
       case QrState.expired:
-        return (label: 'Expiré', tone: PillTone.red);
+        return (label: 'EXPIRÉ', color: AppColors.brandRed);
     }
   }
 
@@ -209,12 +222,19 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
           child: Column(
             children: [
               AppBarHeader(
-                title: 'Détail du QR',
+                title: 'Détails du QR',
                 onBack: () => context.pop(),
                 largeTitle: true,
                 largeTitlePadding: _detailHeaderPadding,
                 largeTitleGap: _detailHeaderGap,
                 largeTitleFontSize: _detailHeaderTitleSize,
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
               const Expanded(
                 child: Padding(
@@ -237,12 +257,19 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
           child: Column(
             children: [
               AppBarHeader(
-                title: 'Détail du QR',
+                title: 'Détails du QR',
                 onBack: () => context.pop(),
                 largeTitle: true,
                 largeTitlePadding: _detailHeaderPadding,
                 largeTitleGap: _detailHeaderGap,
                 largeTitleFontSize: _detailHeaderTitleSize,
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
               Expanded(
                 child: ListView(
@@ -290,7 +317,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         isOwner &&
         qr.state == QrState.active &&
         qr.lines.isNotEmpty &&
-        qr.totalQty > 1;
+        qr.lines.length > 1;
     final canSeparer = isOwner && qr.state == QrState.blocked;
     final pill = _statePill(qr.state);
     final scheme = Theme.of(context).colorScheme;
@@ -307,67 +334,67 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (!canRetirer && !canSeparer)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          qr.state == QrState.active
-                              ? 'Un QR contenant un seul ticket ne peut pas être retiré.'
-                              : qr.state == QrState.blocked
-                              ? 'Séparation disponible pour les QR bloqués.'
-                              : 'Aucune action disponible pour ce QR (${qr.state.label}).',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B7280),
-                            fontWeight: FontWeight.w500,
+                    if (canRetirer)
+                      SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1B8F3A),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: const Color(
+                              0xFF1B8F3A,
+                            ).withValues(alpha: 0.35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
+                          icon: const Icon(Icons.call_split, size: 18),
+                          label: const Text('Retirer'),
+                          onPressed: () async {
+                            final router = GoRouter.of(context);
+                            final nextCode = await router.push<String>(
+                              '/qr/$qrSeg/retirer',
+                            );
+                            if (!context.mounted) return;
+                            if (nextCode != null && nextCode.isNotEmpty) {
+                              router.go(
+                                '/qr/${Uri.encodeComponent(nextCode)}',
+                              );
+                            } else {
+                              await _refresh();
+                            }
+                          },
+                        ),
+                      )
+                    else if (canSeparer)
+                      SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1B8F3A),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: const Color(
+                              0xFF1B8F3A,
+                            ).withValues(alpha: 0.35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          icon: const Icon(Icons.call_split, size: 18),
+                          label: const Text(
+                            'Séparer la partie active dans un nouveau QR',
+                          ),
+                          onPressed: _separating ? null : () => _separateBlockedQr(qr),
                         ),
                       ),
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1B8F3A),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: const Color(
-                            0xFF1B8F3A,
-                          ).withValues(alpha: 0.35),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        icon: Icon(
-                          canRetirer ? Icons.call_split : Icons.unfold_more,
-                          size: 18,
-                        ),
-                        label: Text(canRetirer ? 'Retirer' : 'Séparer'),
-                        onPressed: canRetirer
-                            ? () async {
-                                final router = GoRouter.of(context);
-                                final nextCode = await router.push<String>(
-                                  '/qr/$qrSeg/retirer',
-                                );
-                                if (!context.mounted) return;
-                                if (nextCode != null && nextCode.isNotEmpty) {
-                                  router.go(
-                                    '/qr/${Uri.encodeComponent(nextCode)}',
-                                  );
-                                } else {
-                                  await _refresh();
-                                }
-                              }
-                            : canSeparer
-                            ? (_separating
-                                  ? null
-                                  : () => _separateBlockedQr(qr))
-                            : null,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -377,18 +404,21 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         child: Column(
           children: [
             AppBarHeader(
-              title: 'Détail du QR',
-              subtitle: qr.state == QrState.active
-                  ? 'Retirez une partie des tickets pour créer un nouveau QR'
-                  : qr.state == QrState.blocked
-                  ? 'Séparez les tickets valides des tickets expirés'
-                  : null,
+              title: 'Détail QR Code',
               onBack: () => context.pop(),
               largeTitle: true,
               largeTitlePadding: _detailHeaderPadding,
               largeTitleGap: _detailHeaderGap,
               largeTitleFontSize: _detailHeaderTitleSize,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _headerNavy,
+                letterSpacing: -0.4,
+                height: 1.05,
+              ),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: RefreshIndicator(
                 color: scheme.primary,
@@ -397,10 +427,23 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   children: [
+                    if (qr.state == QrState.blocked) ...[
+                      Text(
+                        'Séparez les tickets utilisables des tickets expirés.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.muted,
+                          height: 1.35,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     // Hero QR card
                     _HeroQrCard(qr: qr, pill: pill),
                     const SizedBox(height: 22),
-                    const SectionLabel('Composition'),
+                    const SectionLabel('Contenu'),
                     const SizedBox(height: 8),
                     _CompositionCard(qr: qr),
                     const SizedBox(height: 24),
@@ -420,134 +463,110 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
 class _HeroQrCard extends StatelessWidget {
   const _HeroQrCard({required this.qr, required this.pill});
   final QrToken qr;
-  final ({String label, PillTone tone}) pill;
+  final ({String label, Color color}) pill;
 
   @override
   Widget build(BuildContext context) {
     final isActive = qr.state == QrState.active;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
-        boxShadow: AppColors.softShadow,
-      ),
+    final showBadge = qr.state != QrState.active;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Text(
-                'Généré le ${Formatters.dateTime(qr.generatedAt)}',
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.muted,
-                ),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.line),
               ),
-              const Spacer(),
-              AppPill(
-                label: pill.label,
-                tone: pill.tone,
-                dot: true,
-                size: AppPillSize.lg,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // QR with corner brackets
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: ColorFiltered(
-                  colorFilter: isActive
-                      ? const ColorFilter.mode(
-                          Colors.transparent,
-                          BlendMode.dst,
-                        )
-                      : ColorFilter.matrix(_grayscale),
-                  child: QrImageView(
-                    data: qr.publicCode,
-                    version: QrVersions.auto,
-                    size: 172,
-                    backgroundColor: Colors.white,
-                    eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: AppColors.ink,
-                    ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ),
-              ),
-              if (qr.state == QrState.consumed)
-                Transform.rotate(
-                  angle: -0.12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.muted.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'CONSOMMÉ',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        letterSpacing: 1.4,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  ColorFiltered(
+                    colorFilter: isActive
+                        ? const ColorFilter.mode(
+                            Colors.transparent,
+                            BlendMode.dst,
+                          )
+                        : ColorFilter.matrix(_grayscale),
+                    child: QrImageView(
+                      data: qr.publicCode,
+                      version: QrVersions.auto,
+                      size: 172,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: AppColors.ink,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: AppColors.ink,
                       ),
                     ),
                   ),
-                ),
-            ],
+                  if (showBadge)
+                    Positioned(
+                      bottom: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: pill.color.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x22000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          pill.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            margin: const EdgeInsets.only(top: 14),
             decoration: BoxDecoration(
-              color: AppColors.primaryTint,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primarySoft),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.line),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                const Text(
-                  'Montant',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryDark,
-                  ),
+                _DetailInfoRow(
+                  label: 'Date d\'expiration',
+                  value: qr.expiresAt != null
+                      ? Formatters.dateTimeDash(qr.expiresAt!)
+                      : 'Non disponible',
                 ),
-                AmountInline(
-                  amount: qr.totalAmount,
-                  valueStyle: GoogleFonts.inter(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryDeep,
-                    letterSpacing: -0.2,
-                  ),
-                  unitStyle: const TextStyle(color: AppColors.primaryDeep),
+                const Divider(height: 1, thickness: 1, color: AppColors.line),
+                _DetailInfoRow(
+                  label: 'Montant',
+                  value: Formatters.money(qr.totalAmount),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
@@ -669,63 +688,118 @@ class _CompositionLineRow extends StatelessWidget {
     return '$qtyLabel de carnet $cleanLabel';
   }
 
+  String _dateLabel() => line.isExpired ? 'Expirée le' : 'Expire le';
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  _title(),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14.2,
+    final isExpired = line.isExpired;
+    return Container(
+      color: isExpired ? const Color(0xFFF3F4F6) : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    _title(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14.2,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      height: 1.18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                AmountInline(
+                  amount: line.amount,
+                  textAlign: TextAlign.right,
+                  valueStyle: GoogleFonts.poppins(
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
-                    height: 1.18,
+                  ),
+                  unitStyle: const TextStyle(color: AppColors.ink),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_dateLabel()} ${Formatters.dateTimeDash(line.expirationDate)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.muted,
+                      height: 1.2,
+                    ),
                   ),
                 ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailInfoRow extends StatelessWidget {
+  const _DetailInfoRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
               ),
-              const SizedBox(width: 12),
-              AmountInline(
-                amount: line.amount,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 7,
+              child: Text(
+                value,
                 textAlign: TextAlign.right,
-                valueStyle: GoogleFonts.inter(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.ink,
-                ),
-                unitStyle: const TextStyle(color: AppColors.ink),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.muted,
-                    height: 1.2,
-                  ),
+                  height: 1.3,
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

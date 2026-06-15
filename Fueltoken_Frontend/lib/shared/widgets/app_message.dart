@@ -31,11 +31,7 @@ class AppMessage {
   static OverlayEntry? _current;
   static Timer? _dismissTimer;
 
-  static void _show(
-    BuildContext context,
-    String message,
-    _MessageType type,
-  ) {
+  static void _show(BuildContext context, String message, _MessageType type) {
     if (message.trim().isEmpty) return;
 
     // Fermer l'éventuel message précédent
@@ -45,11 +41,8 @@ class AppMessage {
 
     late OverlayEntry entry;
     entry = OverlayEntry(
-      builder: (ctx) => _AppMessageWidget(
-        message: message,
-        type: type,
-        onDismiss: _dismiss,
-      ),
+      builder: (ctx) =>
+          _AppMessageWidget(message: message, type: type, onDismiss: _dismiss),
     );
 
     _current = entry;
@@ -115,13 +108,13 @@ class _AppMessageWidgetState extends State<_AppMessageWidget>
   Color get _bg {
     switch (widget.type) {
       case _MessageType.error:
-        return const Color(0xFFDC2626);   // rouge
+        return const Color(0xFFDC2626); // rouge
       case _MessageType.success:
-        return const Color(0xFF16A34A);   // vert
+        return const Color(0xFF16A34A); // vert
       case _MessageType.warning:
-        return const Color(0xFFD97706);   // ambre
+        return const Color(0xFFD97706); // ambre
       case _MessageType.info:
-        return const Color(0xFF2563EB);   // bleu
+        return const Color(0xFF2563EB); // bleu
     }
   }
 

@@ -47,11 +47,10 @@ class AppBrandConfig {
 
   static String get resolvedLoginIdentifierHint =>
       loginIdentifierHint.isNotEmpty
-          ? loginIdentifierHint
-          : 'ex. contact@exemple.mr, +222 …';
+      ? loginIdentifierHint
+      : 'ex. contact@exemple.mr, +222 …';
 
-  static String get resolvedLoginFooterNote =>
-      loginFooterNote.isNotEmpty
-          ? loginFooterNote
-          : 'Utilisez l’identifiant enregistré pour votre compte FuelToken.';
+  static String get resolvedLoginFooterNote => loginFooterNote.isNotEmpty
+      ? loginFooterNote
+      : 'Utilisez l’identifiant enregistré pour votre compte FuelToken.';
 }

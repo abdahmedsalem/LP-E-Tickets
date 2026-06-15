@@ -59,18 +59,17 @@ class AcpecStationProfileData extends Equatable {
     ]);
 
     final sid = _stringFrom(station, const ['id', 'station_id']) ?? '';
-    final sname = _stringFrom(station, const [
-          'name',
-          'station_name',
-          'display_name',
-        ]) ??
+    final sname =
+        _stringFrom(station, const ['name', 'station_name', 'display_name']) ??
         'Station';
-    final scode = _stringFrom(station, const ['code', 'ref', 'reference']) ?? '';
+    final scode =
+        _stringFrom(station, const ['code', 'ref', 'reference']) ?? '';
     final saddr = _addressFrom(station);
     final sactive = _boolFrom(station, const ['active'], defaultValue: true);
 
     final oid = _stringFrom(user, const ['id', 'user_id', 'partner_id']) ?? '';
-    final oname = _stringFrom(user, const [
+    final oname =
+        _stringFrom(user, const [
           'name',
           'display_name',
           'full_name',
@@ -163,14 +162,14 @@ class AcpecStationProfileData extends Equatable {
 
   @override
   List<Object?> get props => [
-        stationId,
-        stationName,
-        stationCode,
-        stationAddress,
-        stationActive,
-        operatorName,
-        operatorEmail,
-        operatorPhone,
-        operatorId,
-      ];
+    stationId,
+    stationName,
+    stationCode,
+    stationAddress,
+    stationActive,
+    operatorName,
+    operatorEmail,
+    operatorPhone,
+    operatorId,
+  ];
 }

@@ -26,15 +26,15 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
-import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const _emitQrHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _emitQrHeaderGap = 10.0;
-const _emitQrHeaderTitleSize = 26.0;
+const _emitQrHeaderGap = 18.0;
+const _emitQrHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
 class EmitQrScreen extends StatefulWidget {
   const EmitQrScreen({super.key});
@@ -181,18 +181,37 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'Générer un QR',
+                title: 'Générer QR Code',
                 showBack: true,
                 largeTitle: true,
                 largeTitlePadding: _emitQrHeaderPadding,
                 largeTitleGap: _emitQrHeaderGap,
                 largeTitleFontSize: _emitQrHeaderTitleSize,
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
+              const SizedBox(height: 18),
               Expanded(
                 child: ListView(
                   physics: AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, 4, 16, 120),
+                  padding: EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
+                    Text(
+                      'Sélectionnez les carnets à inclure dans le QR.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     AppLoadingSkeleton(
                       style: AppLoadingSkeletonStyle.qrGeneration,
                       itemCount: 4,
@@ -213,15 +232,42 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'Générer un QR',
+                title: 'Générer QR Code',
                 showBack: true,
                 largeTitle: true,
                 largeTitlePadding: _emitQrHeaderPadding,
                 largeTitleGap: _emitQrHeaderGap,
                 largeTitleFontSize: _emitQrHeaderTitleSize,
                 onBack: () => popOrGoClientHome(context),
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
-              const Expanded(child: ApiRequiredView()),
+              const SizedBox(height: 18),
+              Expanded(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+                  children: [
+                    Text(
+                      'Sélectionnez les carnets à inclure dans le QR Code.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const ApiRequiredView(),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -235,18 +281,37 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'Générer un QR',
+                title: 'Générer QR Code',
                 showBack: true,
                 largeTitle: true,
                 largeTitlePadding: _emitQrHeaderPadding,
                 largeTitleGap: _emitQrHeaderGap,
                 largeTitleFontSize: _emitQrHeaderTitleSize,
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
+              const SizedBox(height: 18),
               Expanded(
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
+                    Text(
+                      'Sélectionnez les carnets à inclure dans le QR Code.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     AppLoadingSkeleton(
                       style: AppLoadingSkeletonStyle.qrGeneration,
                       itemCount: 4,
@@ -267,13 +332,21 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'Générer un QR',
+                title: 'Générer QR Code',
                 showBack: true,
                 largeTitle: true,
                 largeTitlePadding: _emitQrHeaderPadding,
                 largeTitleGap: _emitQrHeaderGap,
                 largeTitleFontSize: _emitQrHeaderTitleSize,
+                largeTitleTextStyle: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: _headerNavy,
+                  letterSpacing: -0.4,
+                  height: 1.05,
+                ),
               ),
+              const SizedBox(height: 18),
               Expanded(
                 child: Center(
                   child: Padding(
@@ -325,20 +398,36 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppBarHeader(
-              title: 'Générer un QR',
+              title: 'Générer QR Code',
               showBack: true,
               largeTitle: true,
               largeTitlePadding: _emitQrHeaderPadding,
               largeTitleGap: _emitQrHeaderGap,
               largeTitleFontSize: _emitQrHeaderTitleSize,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _headerNavy,
+                letterSpacing: -0.4,
+                height: 1.05,
+              ),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: hasEntries
                   ? ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 130),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 130),
                       children: [
-                        const SizedBox(height: 8),
-                        const _SectionTitle('CARNETS DISPONIBLES'),
+                        Text(
+                          'Sélectionnez les carnets  à inclure dans le QR Code avec quantité de tickets souhaitée.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.muted,
+                            height: 1.35,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         ...availableLines.map((line) {
                           final selected = _request[line.id] ?? 0;
@@ -402,7 +491,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
             title: 'Confirmer la génération',
-            subtitle: 'Génération d’un nouveau QR',
             confirmLabel: 'Générer le QR',
             showHero: false,
             hero: _EmitConfirmationHero(
@@ -413,7 +501,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const _ConfirmationSectionHeader(title: 'Tickets à émettre'),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
                 _EmitConfirmationLinesSection(
                   lines: selectedLines,
                   request: _request,
@@ -435,13 +523,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     );
 
     if (confirmed == true) {
-      if (!context.mounted) return;
-      final authConfirmed = await showSensitiveActionPasswordDialog(
-        context,
-        title: 'Confirmer la génération',
-        description: 'Saisissez votre mot de passe pour générer le QR.',
-      );
-      if (!authConfirmed) return;
       await _performEmit(
         totalQty: totalQty,
         totalAmount: totalAmount,
@@ -504,12 +585,13 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
           lines: successLines,
-          onHome: () {
-            if (mounted) {
-              context.go('/home');
-            }
-          },
         );
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.go('/home');
+          }
+        });
         return;
       } else {
         throw Exception('Connexion serveur ACPEC requise pour générer un QR.');
@@ -574,17 +656,15 @@ class _BottomBar extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: _AmountInline(
                     amount: totalAmount,
-                    valueStyle: GoogleFonts.jetBrainsMono(
-                      fontSize: 22,
+                    valueStyle: GoogleFonts.poppins(
+                      fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      height: 1,
+                      color: const Color(0xFF2E7D32),
                     ),
                     unitStyle: const TextStyle(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.muted,
-                      height: 1,
+                      color: Color(0xFF2E7D32),
                     ),
                   ),
                 ),
@@ -644,6 +724,11 @@ class _CompositionRow extends StatelessWidget {
     required this.onChange,
   });
 
+  String _displayTitle() {
+    final restants = '${Formatters.numberFr(available)} restants';
+    return '$title • $restants';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isSelected = selected > 0;
@@ -659,41 +744,24 @@ class _CompositionRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
+                    _displayTitle(),
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.ink,
-                      height: 1.08,
+                      height: 1.15,
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${Formatters.numberFr(available)} tickets disponibles',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.muted.withValues(alpha: 0.95),
-                        height: 1.08,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Text(
-              'Expire le ',
+              'Expire le ${Formatters.dateTime(expirationDate ?? DateTime.now())}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -710,10 +778,12 @@ class _CompositionRow extends StatelessWidget {
               children: [
                 Text(
                   'Quantité',
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.muted,
+                    height: 1.2,
+                    letterSpacing: 0,
                   ),
                 ),
                 const Spacer(),
@@ -754,7 +824,7 @@ class _Stepper extends StatelessWidget {
           child: Text(
             '$value',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -808,25 +878,6 @@ class _StepBtn extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 10.5,
-        fontWeight: FontWeight.w800,
-        color: AppColors.muted,
-        letterSpacing: 0.8,
-      ),
-    );
-  }
-}
-
 class _EmitConfirmationHero extends StatelessWidget {
   const _EmitConfirmationHero({
     required this.totalQty,
@@ -862,24 +913,22 @@ class _EmitConfirmationHero extends StatelessWidget {
                 'Montant total QR',
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w400,
                   color: AppColors.muted,
                 ),
               ),
               const SizedBox(height: 2),
               _AmountInline(
                 amount: totalAmount,
-                valueStyle: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
+                valueStyle: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                   color: const Color(0xFF2E7D32),
-                  height: 1,
                 ),
                 unitStyle: const TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF2E7D32),
-                  height: 1,
                 ),
               ),
               const SizedBox(height: 3),
@@ -956,7 +1005,7 @@ class _ConfirmationSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: GoogleFonts.inter(
+      style: GoogleFonts.poppins(
         fontSize: 16.5,
         fontWeight: FontWeight.w800,
         color: AppColors.ink,
@@ -1002,7 +1051,7 @@ class _EmitConfirmationLineRow extends StatelessWidget {
             children: [
               Text(
                 _title(),
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
@@ -1010,7 +1059,7 @@ class _EmitConfirmationLineRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Expire le ${Formatters.date(expirationDate)}',
+                'Expire le ${Formatters.dateTime(expirationDate)}',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1024,8 +1073,8 @@ class _EmitConfirmationLineRow extends StatelessWidget {
         _AmountInline(
           amount: amount,
           textAlign: TextAlign.right,
-          valueStyle: GoogleFonts.inter(
-            fontSize: 14,
+          valueStyle: GoogleFonts.poppins(
+            fontSize: 15,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF2E7D32),
           ),

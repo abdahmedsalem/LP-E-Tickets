@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -6,7 +6,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/wallet_breakdown_extras.dart';
 import 'face_value_chip.dart';
 
-/// Corps défilable : héros solde + répartitions (écran détail portefeuille).
+/// Corps d�filable : h�ros solde + r�partitions (�cran d�tail portefeuille).
 class WalletBreakdownBody extends StatelessWidget {
   const WalletBreakdownBody({
     super.key,
@@ -52,8 +52,8 @@ class WalletBreakdownBody extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                'Répartition et suivi',
-                style: GoogleFonts.inter(
+                'R�partition et suivi',
+                style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: scheme.onSurface,
@@ -83,7 +83,7 @@ class WalletBreakdownBody extends StatelessWidget {
                   _Section(
                     title: 'Par valeur de face',
                     subtitle:
-                        'Disponible, QR actif, bloqué, consommé, expiré',
+                        'Disponible, QR actif, bloqu�, consomm�, expir�',
                     child: _BreakdownBlock(
                       value: e.breakdownByFaceValue,
                       mode: _BreakdownDisplayMode.faceValue,
@@ -91,19 +91,19 @@ class WalletBreakdownBody extends StatelessWidget {
                   ),
                   _Section(
                     title: 'Par type de carnet',
-                    subtitle: 'Répartition par carnet',
+                    subtitle: 'R�partition par carnet',
                     child: _BreakdownBlock(
                       value: e.breakdownByCarnetType,
                       mode: _BreakdownDisplayMode.carnetType,
                     ),
                   ),
                   _Section(
-                    title: 'Faces proches de l’expiration',
-                    subtitle: 'À surveiller',
+                    title: 'Faces proches de l�expiration',
+                    subtitle: '� surveiller',
                     child: _FaceExpiryList(items: e.nearExpirationFaces),
                   ),
                   _Section(
-                    title: 'Faces expirées',
+                    title: 'Faces expir�es',
                     subtitle: 'Non utilisables',
                     child: _FaceExpiryList(items: e.expiredFaces),
                   ),
@@ -160,7 +160,7 @@ class _WalletBreakdownHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Vue d’ensemble',
+                  'Vue d�ensemble',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.88),
                     fontSize: 12,
@@ -178,7 +178,7 @@ class _WalletBreakdownHero extends StatelessWidget {
                     children: [
                       Text(
                         Formatters.numberFr(walletAmountMru),
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 36,
                           fontWeight: FontWeight.w800,
@@ -268,9 +268,9 @@ class _WalletBreakdownEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            'Pas encore de détail à afficher',
+            'Pas encore de d�tail � afficher',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: scheme.onSurface,
@@ -278,8 +278,8 @@ class _WalletBreakdownEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Lorsque votre portefeuille contiendra plusieurs répartitions, '
-            'elles apparaîtront ici de façon claire et structurée.',
+            'Lorsque votre portefeuille contiendra plusieurs r�partitions, '
+            'elles appara�tront ici de fa�on claire et structur�e.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -372,7 +372,7 @@ class _BreakdownBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value == null) {
-      return _emptyHint(context, '—');
+      return _emptyHint(context, '�');
     }
 
     if (mode == _BreakdownDisplayMode.faceValue) {
@@ -436,7 +436,7 @@ class _BreakdownBlock extends StatelessWidget {
   }
 }
 
-// ─── Parsers (tolère plusieurs formes API) ─────────────────────────────
+// --- Parsers (tol�re plusieurs formes API) -----------------------------
 
 class _WalletBreakdownParsers {
   _WalletBreakdownParsers._();
@@ -495,7 +495,7 @@ class _WalletBreakdownParsers {
     return null;
   }
 
-  /// Map simple valeur → quantité (tickets disponibles seulement).
+  /// Map simple valeur ? quantit� (tickets disponibles seulement).
   static Map<int, int>? simpleFaceQtyMap(dynamic raw) {
     if (raw is! Map) return null;
     final out = <int, int>{};
@@ -543,7 +543,7 @@ class _WalletBreakdownParsers {
   }
 }
 
-// ─── Carte « par valeur de face » ──────────────────────────────────────
+// --- Carte � par valeur de face � --------------------------------------
 
 class _FaceBreakdownCard extends StatelessWidget {
   const _FaceBreakdownCard({required this.row});
@@ -590,21 +590,21 @@ class _FaceBreakdownCard extends StatelessWidget {
       _StatEntry(
         Icons.lock_outline_rounded,
         AppColors.warning,
-        'Bloqué',
+        'Bloqu�',
         qBlk,
         aBlk,
       ),
       _StatEntry(
         Icons.local_gas_station_outlined,
         AppColors.body,
-        'Consommé',
+        'Consomm�',
         qCons,
         aCons,
       ),
       _StatEntry(
         Icons.schedule_outlined,
         AppColors.muted,
-        'Expiré',
+        'Expir�',
         qExp,
         aExp,
       ),
@@ -653,8 +653,8 @@ class _FaceBreakdownCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Billets à $fv MRU',
-                        style: GoogleFonts.inter(
+                        'Billets � $fv MRU',
+                        style: GoogleFonts.poppins(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: AppColors.ink,
@@ -663,7 +663,7 @@ class _FaceBreakdownCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${Formatters.numberFr(qAvail + qQr)} utilisables · '
+                        '${Formatters.numberFr(qAvail + qQr)} utilisables � '
                         '${Formatters.numberFr(aAvail + aQr)} MRU',
                         style: TextStyle(
                           fontSize: 12,
@@ -828,7 +828,7 @@ class _TicketMixBar extends StatelessWidget {
   }
 }
 
-// ─── Grille simple (map valeur → qty) ──────────────────────────────────
+// --- Grille simple (map valeur ? qty) ----------------------------------
 
 class _SimpleFaceQtyGrid extends StatelessWidget {
   const _SimpleFaceQtyGrid({required this.map});
@@ -890,7 +890,7 @@ class _SimpleFaceQtyGrid extends StatelessWidget {
   }
 }
 
-// ─── Carte « par type de carnet » ─────────────────────────────────────
+// --- Carte � par type de carnet � -------------------------------------
 
 class _CarnetBreakdownCard extends StatelessWidget {
   const _CarnetBreakdownCard({required this.row});
@@ -950,7 +950,7 @@ class _CarnetBreakdownCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -977,8 +977,8 @@ class _CarnetBreakdownCard extends StatelessWidget {
             children: [
               if (qAvail > 0) _MiniPill('Dispo', qAvail, AppColors.success),
               if (qQr > 0) _MiniPill('QR', qQr, AppColors.primary),
-              if (qCons > 0) _MiniPill('Consommé', qCons, AppColors.body),
-              if (qExp > 0) _MiniPill('Expiré', qExp, AppColors.muted),
+              if (qCons > 0) _MiniPill('Consomm�', qCons, AppColors.body),
+              if (qExp > 0) _MiniPill('Expir�', qExp, AppColors.muted),
             ],
           ),
         ],
@@ -1004,7 +1004,7 @@ class _MiniPill extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Text(
-        '$label · ${Formatters.numberFr(qty)}',
+        '$label � ${Formatters.numberFr(qty)}',
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
@@ -1015,7 +1015,7 @@ class _MiniPill extends StatelessWidget {
   }
 }
 
-// ─── Faces expiration / expirées ───────────────────────────────────────
+// --- Faces expiration / expir�es ---------------------------------------
 
 class _FaceExpiryList extends StatelessWidget {
   const _FaceExpiryList({required this.items});
@@ -1025,7 +1025,7 @@ class _FaceExpiryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return _emptyHint(context, 'Aucun élément');
+      return _emptyHint(context, 'Aucun �l�ment');
     }
     return Column(
       children: [
@@ -1096,7 +1096,7 @@ class _FaceExpiryTile extends StatelessWidget {
                   ),
                 if (exp != null && exp.isNotEmpty)
                   Text(
-                    'Échéance : $exp',
+                    '�ch�ance : $exp',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.body,
@@ -1119,7 +1119,7 @@ class _FaceExpiryTile extends StatelessWidget {
   }
 }
 
-// ─── Fallback lisible (sans JSON brut) ─────────────────────────────────
+// --- Fallback lisible (sans JSON brut) ---------------------------------
 
 class _GenericKeyValueCard extends StatelessWidget {
   const _GenericKeyValueCard({required this.entries});
@@ -1161,7 +1161,7 @@ class _GenericKeyValueCard extends StatelessWidget {
                     child: Text(
                       _humanValue(e.value),
                       textAlign: TextAlign.end,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppColors.ink,
@@ -1184,7 +1184,7 @@ class _GenericKeyValueCard extends StatelessWidget {
   }
 
   static String _humanValue(dynamic v) {
-    if (v == null) return '—';
+    if (v == null) return '�';
     if (v is Map) {
       final parts = <String>[];
       for (final e in v.entries) {
@@ -1225,7 +1225,7 @@ Widget _monoCard(BuildContext context, String body) {
     ),
     child: Text(
       body,
-      style: GoogleFonts.inter(
+      style: GoogleFonts.poppins(
         fontSize: 12,
         height: 1.45,
         color: scheme.onSurface,

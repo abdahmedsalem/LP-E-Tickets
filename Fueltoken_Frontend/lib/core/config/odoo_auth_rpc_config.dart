@@ -125,7 +125,7 @@ class OdooAuthRpcConfig {
   }
 
   /// Inscription mobile ACPEC (`/api/acpec/mobile_auth/v1/signup`), sur l’hôte Odoo.
-  /// Disponible dès que [OdooApiConfig] est renseigné (OTP REST optionnel côté `API_BASE_URL`).
+  /// Disponible dès que [OdooApiConfig] est renseigné.
   static String get signupRoute {
     final leg = _legacyComplete.trim();
     if (leg.startsWith('/') &&

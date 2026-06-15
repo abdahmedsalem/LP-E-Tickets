@@ -59,9 +59,7 @@ class AcpecCarnetCatalogLoadResult {
   /// Aucun type affichable et la ou les sources utilisées ont échoué.
   bool get bothRpcFailed {
     if (facesOnlyQuery) {
-      return types.isEmpty &&
-          facesError != null &&
-          carnetTypesError != null;
+      return types.isEmpty && facesError != null && carnetTypesError != null;
     }
     return types.isEmpty &&
         facesError != null &&
@@ -102,9 +100,7 @@ class AcpecCarnetCatalogLoadResult {
         ..writeln(
           '• Types carnets (RPC dédié) : ${carnetTypesError == null ? "OK ou inférence" : "erreur"}',
         )
-        ..writeln(
-          '• Faces (mobile) : ${facesError == null ? "OK" : "erreur"}',
-        );
+        ..writeln('• Faces (mobile) : ${facesError == null ? "OK" : "erreur"}');
       if (facesOnlyQuery) {
         b.writeln(
           '• Solde / liste achats : non interrogés (écran admin types : faces uniquement).',
@@ -114,9 +110,7 @@ class AcpecCarnetCatalogLoadResult {
         }
       } else {
         b
-          ..writeln(
-            '• Solde : ${walletError == null ? "OK" : "erreur"}',
-          )
+          ..writeln('• Solde : ${walletError == null ? "OK" : "erreur"}')
           ..writeln(
             '• Commandes : ${purchasesError == null ? "OK" : "erreur"}',
           );
@@ -157,9 +151,7 @@ class AcpecCarnetCatalogLoadResult {
       )
       ..writeln()
       ..writeln('— Faces disponibles (mobile) —')
-      ..writeln(
-        facesError != null ? 'Erreur: ${_sanitize(facesError!)}' : 'OK',
-      )
+      ..writeln(facesError != null ? 'Erreur: ${_sanitize(facesError!)}' : 'OK')
       ..writeln(
         facesResponsePreview != null && facesResponsePreview!.isNotEmpty
             ? facesResponsePreview!
@@ -204,7 +196,8 @@ class AcpecCarnetCatalogLoadResult {
 class AcpecCarnetCatalogService {
   AcpecCarnetCatalogService._();
 
-  static final AcpecCarnetCatalogService instance = AcpecCarnetCatalogService._();
+  static final AcpecCarnetCatalogService instance =
+      AcpecCarnetCatalogService._();
 
   /// Dernier chargement (écrans admin / debug).
   static AcpecCarnetCatalogLoadResult? lastLoadResult;
@@ -253,8 +246,8 @@ class AcpecCarnetCatalogService {
     final code = row['carnet_type_code']?.toString().trim().isNotEmpty == true
         ? row['carnet_type_code'].toString()
         : (row['code']?.toString().trim().isNotEmpty == true
-            ? row['code'].toString()
-            : 'T$idStr');
+              ? row['code'].toString()
+              : 'T$idStr');
     final faceValue = _int(
       row['face_value'] ??
           row['nominal'] ??
@@ -279,9 +272,8 @@ class AcpecCarnetCatalogService {
       1,
       _int(row['validity_days'] ?? row['validity_after_validation_days'], 365),
     );
-    final name = row['carnet_type_name']?.toString() ??
-        row['name']?.toString() ??
-        '';
+    final name =
+        row['carnet_type_name']?.toString() ?? row['name']?.toString() ?? '';
 
     final prev = acc[idStr];
     if (prev == null) {
@@ -301,8 +293,7 @@ class AcpecCarnetCatalogService {
       name: name.isNotEmpty ? name : prev.name,
       faceValue: faceValue,
       size: size > 1 ? size : prev.size,
-      validityDays:
-          validityDays != 365 ? validityDays : prev.validityDays,
+      validityDays: validityDays != 365 ? validityDays : prev.validityDays,
     );
   }
 
@@ -323,21 +314,22 @@ class AcpecCarnetCatalogService {
   }
 
   List<CarnetType> _toTypes(Map<String, _CarnetAgg> acc, String companyId) {
-    final out = acc.values
-        .map(
-          (a) => CarnetType(
-            id: a.idStr,
-            code: a.code,
-            name: a.displayName,
-            size: a.size,
-            faceValue: a.faceValue,
-            companyId: companyId,
-            active: true,
-            validityDays: a.validityDays,
-          ),
-        )
-        .toList()
-      ..sort((x, y) => x.faceValue.compareTo(y.faceValue));
+    final out =
+        acc.values
+            .map(
+              (a) => CarnetType(
+                id: a.idStr,
+                code: a.code,
+                name: a.displayName,
+                size: a.size,
+                faceValue: a.faceValue,
+                companyId: companyId,
+                active: true,
+                validityDays: a.validityDays,
+              ),
+            )
+            .toList()
+          ..sort((x, y) => x.faceValue.compareTo(y.faceValue));
     return out;
   }
 
@@ -356,20 +348,19 @@ class AcpecCarnetCatalogService {
     if (!DiagnosticConfig.showTechnicalDiagnostics) {
       return;
     }
-    developer.log(
-      _jsonPreview(payload),
-      name: 'AcpecCarnetCatalog.$tag',
-    );
+    developer.log(_jsonPreview(payload), name: 'AcpecCarnetCatalog.$tag');
   }
 
   /// Types carnets : route admin list en priorité si [preferAdminList], sinon mobile.
   Future<
-      ({
-        List<CarnetType>? list,
-        String? err,
-        String? preview,
-        bool usedAdminRoute,
-      })> _tryFetchCarnetTypesRpc(
+    ({
+      List<CarnetType>? list,
+      String? err,
+      String? preview,
+      bool usedAdminRoute,
+    })
+  >
+  _tryFetchCarnetTypesRpc(
     String companyId, {
     bool preferAdminList = false,
   }) async {
@@ -377,8 +368,9 @@ class AcpecCarnetCatalogService {
 
     if (preferAdminList) {
       try {
-        final raw = await OdooFueltokenFacade()
-            .adminCarnetTypesList(const <String, dynamic>{});
+        final raw = await OdooFueltokenFacade().adminCarnetTypesList(
+          const <String, dynamic>{},
+        );
         _logRpc('adminCarnetTypesList.response', raw);
         preview = _jsonPreview(raw);
         final list = AcpecCarnetTypesMapper.tryListFromRpc(
@@ -412,24 +404,19 @@ class AcpecCarnetCatalogService {
     }
 
     try {
-      final raw =
-          await OdooFueltokenFacade().carnetTypes(const <String, dynamic>{});
+      final raw = await OdooFueltokenFacade().carnetTypes(
+        const <String, dynamic>{},
+      );
       _logRpc('carnetTypes.response', raw);
       preview = _jsonPreview(raw);
-      final list =
-          AcpecCarnetTypesMapper.tryListFromRpc(raw, companyId: companyId);
-      return (
-        list: list,
-        err: null,
-        preview: preview,
-        usedAdminRoute: false,
+      final list = AcpecCarnetTypesMapper.tryListFromRpc(
+        raw,
+        companyId: companyId,
       );
+      return (list: list, err: null, preview: preview, usedAdminRoute: false);
     } on OdooJsonRpcException catch (e, st) {
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.carnetTypes',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.carnetTypes');
       }
       return (
         list: null,
@@ -439,10 +426,7 @@ class AcpecCarnetCatalogService {
       );
     } catch (e, st) {
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.carnetTypes',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.carnetTypes');
       }
       return (
         list: null,
@@ -487,24 +471,20 @@ class AcpecCarnetCatalogService {
     } on OdooJsonRpcException catch (e, st) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.faces',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
       }
     } catch (e, st) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.faces',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
       }
     }
 
     try {
       final wRaw = await OdooFueltokenFacade().walletCurrent(
-        Map<String, dynamic>.from(OdooFueltokenRpcConfig.walletCurrentDefaultParams),
+        Map<String, dynamic>.from(
+          OdooFueltokenRpcConfig.walletCurrentDefaultParams,
+        ),
       );
       _logRpc('walletCurrent.response', wRaw);
       wPreview = _jsonPreview(wRaw);
@@ -512,49 +492,38 @@ class AcpecCarnetCatalogService {
     } on OdooJsonRpcException catch (e, st) {
       wErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.walletCurrent',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.walletCurrent');
       }
     } catch (e, st) {
       wErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.walletCurrent',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.walletCurrent');
       }
     }
 
     try {
-      final pRaw = await OdooFueltokenFacade()
-          .purchasesList(const <String, dynamic>{});
+      final pRaw = await OdooFueltokenFacade().purchasesList(
+        const <String, dynamic>{},
+      );
       _logRpc('purchasesList.response', pRaw);
       pPreview = _jsonPreview(pRaw);
       _walk(_unwrapAcpec(pRaw), agg);
     } on OdooJsonRpcException catch (e, st) {
       pErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.purchasesList',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.purchasesList');
       }
     } catch (e, st) {
       pErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.purchasesList',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.purchasesList');
       }
     }
 
     final inferred = _toTypes(agg, companyId);
     final types = apiTypes != null
         ? (List<CarnetType>.from(apiTypes)
-          ..sort((a, b) => a.faceValue.compareTo(b.faceValue)))
+            ..sort((a, b) => a.faceValue.compareTo(b.faceValue)))
         : inferred;
     final result = AcpecCarnetCatalogLoadResult(
       types: types,
@@ -593,8 +562,10 @@ class AcpecCarnetCatalogService {
     final agg = <String, _CarnetAgg>{};
     String? ctErr;
     String? ctPreview;
-    final ctRpc =
-        await _tryFetchCarnetTypesRpc(companyId, preferAdminList: true);
+    final ctRpc = await _tryFetchCarnetTypesRpc(
+      companyId,
+      preferAdminList: true,
+    );
     ctPreview = ctRpc.preview;
     ctErr = ctRpc.err;
     final apiTypes = ctRpc.list;
@@ -610,25 +581,19 @@ class AcpecCarnetCatalogService {
     } on OdooJsonRpcException catch (e, st) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.faces',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
       }
     } catch (e, st) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          '$e\n$st',
-          name: 'AcpecCarnetCatalog.faces',
-        );
+        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
       }
     }
 
     final inferred = _toTypes(agg, companyId);
     final types = apiTypes != null
         ? (List<CarnetType>.from(apiTypes)
-          ..sort((a, b) => a.faceValue.compareTo(b.faceValue)))
+            ..sort((a, b) => a.faceValue.compareTo(b.faceValue)))
         : inferred;
     final result = AcpecCarnetCatalogLoadResult(
       types: types,

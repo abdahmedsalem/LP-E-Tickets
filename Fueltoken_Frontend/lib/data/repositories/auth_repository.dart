@@ -82,8 +82,7 @@ class AuthRepository {
     if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasSessionMe) {
       final sid = await OdooSessionStore.readSessionId();
       final bearer = await OdooSessionStore.readAccessToken();
-      if ((sid == null || sid.isEmpty) &&
-          (bearer == null || bearer.isEmpty)) {
+      if ((sid == null || sid.isEmpty) && (bearer == null || bearer.isEmpty)) {
         return null;
       }
       try {
@@ -149,8 +148,9 @@ class AuthRepository {
     if (idxId >= 0) {
       _users[idxId] = resolved;
     } else {
-      final idxEmail =
-          _users.indexWhere((u) => u.email.toLowerCase() == resolved.email.toLowerCase());
+      final idxEmail = _users.indexWhere(
+        (u) => u.email.toLowerCase() == resolved.email.toLowerCase(),
+      );
       if (idxEmail >= 0) {
         _users[idxEmail] = resolved;
       } else {
@@ -174,7 +174,8 @@ class AuthRepository {
         : normalizePhoneIdentifierForLookup(raw);
     for (final u in _users) {
       final idMatch = u.email.toLowerCase() == normalized;
-      final phoneMatch = u.phone.replaceAll(' ', '').toLowerCase() ==
+      final phoneMatch =
+          u.phone.replaceAll(' ', '').toLowerCase() ==
           normalized.replaceAll(' ', '').toLowerCase();
       if (idMatch || phoneMatch) {
         _passwordByUserId[u.id] = newPassword;
@@ -199,7 +200,8 @@ class AuthRepository {
     AppUser? user;
     for (final u in _users) {
       final idMatch = u.email.toLowerCase() == normalized;
-      final phoneMatch = u.phone.replaceAll(' ', '').toLowerCase() ==
+      final phoneMatch =
+          u.phone.replaceAll(' ', '').toLowerCase() ==
           normalized.replaceAll(' ', '').toLowerCase();
       if (idMatch || phoneMatch) {
         user = u;
@@ -217,9 +219,9 @@ class AuthRepository {
     await AuthTokenStore.clear();
     if (OdooApiConfig.isConfigured) {
       try {
-        await OdooAuthService.instance
-            .logout()
-            .timeout(const Duration(seconds: 2));
+        await OdooAuthService.instance.logout().timeout(
+          const Duration(seconds: 2),
+        );
       } on TimeoutException {
         await OdooSessionStore.clear();
       } catch (_) {
@@ -236,7 +238,11 @@ class AuthRepository {
   }
 
   /// Admin-only: change a user's role.
-  Future<AppUser> changeRole(String userId, UserRole newRole, {String? stationId}) async {
+  Future<AppUser> changeRole(
+    String userId,
+    UserRole newRole, {
+    String? stationId,
+  }) async {
     final idx = _users.indexWhere((u) => u.id == userId);
     if (idx < 0) throw Exception('Utilisateur introuvable.');
     final updated = _users[idx].copyWith(

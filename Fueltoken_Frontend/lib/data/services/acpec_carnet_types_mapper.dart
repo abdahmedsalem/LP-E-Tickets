@@ -101,11 +101,13 @@ class AcpecCarnetTypesMapper {
     var idStr = rawId?.toString().trim() ?? '';
     if (idStr.isEmpty || idStr == '0') return null;
 
-    final codeRaw = row['carnet_type_code'] ?? row['code'] ?? row['technical_code'];
+    final codeRaw =
+        row['carnet_type_code'] ?? row['code'] ?? row['technical_code'];
     var code = codeRaw?.toString().trim() ?? '';
     if (code.isEmpty) code = 'T$idStr';
 
-    final nameRaw = row['carnet_type_name'] ??
+    final nameRaw =
+        row['carnet_type_name'] ??
         row['name'] ??
         row['display_name'] ??
         row['label'];

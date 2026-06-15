@@ -26,6 +26,14 @@ class CarnetType extends Equatable {
   int get totalAmount => size * faceValue;
 
   @override
-  List<Object?> get props =>
-      [id, code, name, size, faceValue, companyId, active, validityDays];
+  List<Object?> get props => [
+    id,
+    code,
+    name,
+    size,
+    faceValue,
+    companyId,
+    active,
+    validityDays,
+  ];
 }

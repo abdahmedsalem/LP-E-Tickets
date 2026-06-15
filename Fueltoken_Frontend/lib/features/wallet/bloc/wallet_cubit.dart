@@ -1,4 +1,4 @@
-﻿import 'package:equatable/equatable.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -36,20 +36,26 @@ class WalletState extends Equatable {
     String? loadError,
     bool clearError = false,
     bool clearBreakdown = false,
-  }) =>
-      WalletState(
-        amount: amount ?? this.amount,
-        byFaceValue: byFaceValue ?? this.byFaceValue,
-        faceLines: faceLines ?? this.faceLines,
-        breakdownExtras:
-            clearBreakdown ? null : (breakdownExtras ?? this.breakdownExtras),
-        loading: loading ?? this.loading,
-        loadError: clearError ? null : (loadError ?? this.loadError),
-      );
+  }) => WalletState(
+    amount: amount ?? this.amount,
+    byFaceValue: byFaceValue ?? this.byFaceValue,
+    faceLines: faceLines ?? this.faceLines,
+    breakdownExtras: clearBreakdown
+        ? null
+        : (breakdownExtras ?? this.breakdownExtras),
+    loading: loading ?? this.loading,
+    loadError: clearError ? null : (loadError ?? this.loadError),
+  );
 
   @override
-  List<Object?> get props =>
-      [amount, byFaceValue, faceLines, breakdownExtras, loading, loadError];
+  List<Object?> get props => [
+    amount,
+    byFaceValue,
+    faceLines,
+    breakdownExtras,
+    loading,
+    loadError,
+  ];
 }
 
 class WalletCubit extends Cubit<WalletState> {
@@ -77,35 +83,34 @@ class WalletCubit extends Cubit<WalletState> {
           OdooFueltokenRpcConfig.walletCurrent,
           params,
         );
-        final raw = await OdooFueltokenFacade().walletCurrent(
-          params,
+        final raw = await OdooFueltokenFacade().walletCurrent(params);
+        final mapped = AcpecWalletMapper.fromRpcResult(raw, ownerId: ownerId);
+        emit(
+          WalletState(
+            amount: mapped.amount,
+            byFaceValue: mapped.byFaceValue,
+            faceLines: mapped.faceLines,
+            breakdownExtras: mapped.extras,
+            loading: false,
+          ),
         );
-        final mapped =
-            AcpecWalletMapper.fromRpcResult(raw, ownerId: ownerId);
-        emit(WalletState(
-          amount: mapped.amount,
-          byFaceValue: mapped.byFaceValue,
-          faceLines: mapped.faceLines,
-          breakdownExtras: mapped.extras,
-          loading: false,
-        ));
       } on OdooJsonRpcException catch (e) {
         if (e.requiresReLogin) {
           emit(state.copyWith(loading: false, clearError: true));
           return;
         }
-        emit(state.copyWith(
-          loading: false,
-          clearError: true,
-          clearBreakdown: true,
-        ));
+        emit(
+          state.copyWith(
+            loading: false,
+            clearError: true,
+            clearBreakdown: true,
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(
-        loading: false,
-        clearError: true,
-        clearBreakdown: true,
-      ));
+      emit(
+        state.copyWith(loading: false, clearError: true, clearBreakdown: true),
+      );
     }
   }
 }

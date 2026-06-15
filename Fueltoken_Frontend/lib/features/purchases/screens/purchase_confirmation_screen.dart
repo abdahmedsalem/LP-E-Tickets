@@ -12,8 +12,9 @@ import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _purchaseConfirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _purchaseConfirmationHeaderGap = 10.0;
-const _purchaseConfirmationHeaderTitleSize = 26.0;
+const _purchaseConfirmationHeaderGap = 18.0;
+const _purchaseConfirmationHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
 class PurchaseConfirmationArgs {
   const PurchaseConfirmationArgs({
@@ -55,21 +56,15 @@ class _PurchaseConfirmationScreenState
 
   Future<void> _onConfirm() async {
     var completed = false;
-    bool confirmed;
-    try {
-      confirmed = await showSensitiveActionPasswordDialog(
-        context,
-        title: "Confirmer l'achat",
-        description: 'Saisissez votre mot de passe pour valider cet achat.',
-      );
-    } catch (e) {
-      return;
-    }
-
-    if (!confirmed) return;
-
     setState(() => _confirming = true);
     try {
+      final ok = await showSensitiveActionPasswordDialog(
+        context,
+        title: 'Vérification du mot de passe',
+        description:
+            'Saisissez votre mot de passe pour confirmer cette opération.',
+      );
+      if (!ok) return;
       await widget.args.onConfirm();
       if (mounted) {
         completed = true;
@@ -175,12 +170,30 @@ class _PurchaseConfirmationScreenState
               largeTitlePadding: _purchaseConfirmationHeaderPadding,
               largeTitleGap: _purchaseConfirmationHeaderGap,
               largeTitleFontSize: _purchaseConfirmationHeaderTitleSize,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _headerNavy,
+                letterSpacing: -0.4,
+                height: 1.05,
+              ),
             ),
+            const SizedBox(height: 14),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 children: [
-                  const SizedBox(height: 4),
+                  Text(
+                    'Vérifiez les carnets avant de confirmer.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.muted,
+                      height: 1.35,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   const _SectionHeader(title: 'Carnets achetés'),
                   const SizedBox(height: 14),
                   _PurchaseLinesCard(lines: lines),
@@ -221,7 +234,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: GoogleFonts.inter(
+      style: GoogleFonts.poppins(
         fontSize: 16.5,
         fontWeight: FontWeight.w800,
         color: AppColors.ink,
@@ -307,7 +320,7 @@ class _PurchaseLineRow extends StatelessWidget {
           flex: 7,
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -321,7 +334,7 @@ class _PurchaseLineRow extends StatelessWidget {
           child: Text(
             Formatters.numberFr(qty),
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
@@ -334,12 +347,12 @@ class _PurchaseLineRow extends StatelessWidget {
           child: _AmountInline(
             amount: amount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.inter(
+            valueStyle: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF2E7D32),
             ),
-            unitStyle: GoogleFonts.inter(
+            unitStyle: GoogleFonts.poppins(
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
@@ -363,7 +376,7 @@ class _TotalRow extends StatelessWidget {
         Expanded(
           child: Text(
             'Montant total',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.body,
@@ -372,12 +385,12 @@ class _TotalRow extends StatelessWidget {
         ),
         _AmountInline(
           amount: totalAmount,
-          valueStyle: GoogleFonts.inter(
+          valueStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF2E7D32),
           ),
-          unitStyle: GoogleFonts.inter(
+          unitStyle: GoogleFonts.poppins(
             fontSize: 9.5,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
@@ -449,7 +462,7 @@ class _PaymentProofSummaryCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Montant total',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.body,
@@ -458,7 +471,7 @@ class _PaymentProofSummaryCard extends StatelessWidget {
                 ),
                 Text(
                   Formatters.money(totalAmount),
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF2E7D32),
@@ -473,7 +486,7 @@ class _PaymentProofSummaryCard extends StatelessWidget {
             child: Text(
               'La génération créera un QR à partir des carnets sélectionnés.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppColors.muted,

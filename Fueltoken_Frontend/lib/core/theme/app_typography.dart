@@ -4,12 +4,12 @@ import 'app_colors.dart';
 
 /// FuelToken typography helpers.
 ///
-/// We use **Inter** for the main UI (Latin/French), **Noto Sans Arabic** when
+/// We use **Poppins** for the main UI (Latin/French), **Noto Sans Arabic** when
 /// the locale is Arabic, and **JetBrains Mono** for codes / monetary values.
 class AppTypography {
   AppTypography._();
 
-  /// Inter base text style. Use this for body / heading text.
+  /// Poppins base text style. Use this for body / heading text.
   static TextStyle inter({
     double size = 14,
     FontWeight weight = FontWeight.w500,
@@ -17,7 +17,7 @@ class AppTypography {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.inter(
+    return GoogleFonts.poppins(
       fontSize: size,
       fontWeight: weight,
       color: color ?? AppColors.ink,
@@ -58,9 +58,9 @@ class AppTypography {
 
   /// Title eyebrow (uppercase 11px, muted, tracked).
   static TextStyle eyebrow({Color? color}) => inter(
-        size: 11,
-        weight: FontWeight.w700,
-        color: color ?? AppColors.muted,
-        letterSpacing: 0.6,
-      );
+    size: 11,
+    weight: FontWeight.w700,
+    color: color ?? AppColors.muted,
+    letterSpacing: 0.6,
+  );
 }

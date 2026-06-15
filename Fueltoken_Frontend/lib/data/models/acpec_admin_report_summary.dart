@@ -17,6 +17,7 @@ class AcpecAdminReportSummary extends Equatable {
 
   final int purchasesSubmitted;
   final int purchasesApproved;
+
   /// Volume consommé (MRU) agrégé côté serveur.
   final int consumptionVolumeMru;
   final int wallets;
@@ -59,48 +60,80 @@ class AcpecAdminReportSummary extends Equatable {
     }
 
     return AcpecAdminReportSummary(
-      purchasesSubmitted: _intAny(counterMap, const [
-        'purchases_submitted',
-        'purchasesSubmitted',
-        'purchase_submitted',
-        'purchases_pending',
-        'pending_purchases',
-      ], fallbackMaps: [m]),
-      purchasesApproved: _intAny(counterMap, const [
-        'purchases_approved',
-        'purchasesApproved',
-        'purchase_approved',
-        'purchases_validated',
-      ], fallbackMaps: [m]),
-      consumptionVolumeMru: _intAny(counterMap, const [
-        'consumption_volume_mru',
-        'consumption_total_mru',
-        'consumed_volume_mru',
-        'volume_consumed_mru',
-        'volume_consumed',
-        'consumption_total',
-        'consumed_amount',
-        'total_consumed',
-        'total_consumed_mru',
-        'station_consumption_total',
-        'transactions_amount_total',
-        'consumption_amount',
-      ], fallbackMaps: [m]),
-      wallets: _intAny(counterMap, const ['wallets', 'wallet_count', 'walletCount'], fallbackMaps: [m]),
-      stationsActive: _intAny(counterMap, const [
-        'stations_active',
-        'stationsActive',
-        'active_stations',
-      ], fallbackMaps: [m]),
-      qrActive: _intAny(counterMap, const ['qr_active', 'qrActive'], fallbackMaps: [m]),
-      qrBlocked: _intAny(counterMap, const ['qr_blocked', 'qrBlocked'], fallbackMaps: [m]),
-      qrConsumed: _intAny(counterMap, const ['qr_consumed', 'qrConsumed'], fallbackMaps: [m]),
-      qrExpired: _intAny(counterMap, const ['qr_expired', 'qrExpired'], fallbackMaps: [m]),
-      transactions: _intAny(counterMap, const [
-        'transactions',
-        'transaction_count',
-        'transactionCount',
-      ], fallbackMaps: [m]),
+      purchasesSubmitted: _intAny(
+        counterMap,
+        const [
+          'purchases_submitted',
+          'purchasesSubmitted',
+          'purchase_submitted',
+          'purchases_pending',
+          'pending_purchases',
+        ],
+        fallbackMaps: [m],
+      ),
+      purchasesApproved: _intAny(
+        counterMap,
+        const [
+          'purchases_approved',
+          'purchasesApproved',
+          'purchase_approved',
+          'purchases_validated',
+        ],
+        fallbackMaps: [m],
+      ),
+      consumptionVolumeMru: _intAny(
+        counterMap,
+        const [
+          'consumption_volume_mru',
+          'consumption_total_mru',
+          'consumed_volume_mru',
+          'volume_consumed_mru',
+          'volume_consumed',
+          'consumption_total',
+          'consumed_amount',
+          'total_consumed',
+          'total_consumed_mru',
+          'station_consumption_total',
+          'transactions_amount_total',
+          'consumption_amount',
+        ],
+        fallbackMaps: [m],
+      ),
+      wallets: _intAny(
+        counterMap,
+        const ['wallets', 'wallet_count', 'walletCount'],
+        fallbackMaps: [m],
+      ),
+      stationsActive: _intAny(
+        counterMap,
+        const ['stations_active', 'stationsActive', 'active_stations'],
+        fallbackMaps: [m],
+      ),
+      qrActive: _intAny(
+        counterMap,
+        const ['qr_active', 'qrActive'],
+        fallbackMaps: [m],
+      ),
+      qrBlocked: _intAny(
+        counterMap,
+        const ['qr_blocked', 'qrBlocked'],
+        fallbackMaps: [m],
+      ),
+      qrConsumed: _intAny(
+        counterMap,
+        const ['qr_consumed', 'qrConsumed'],
+        fallbackMaps: [m],
+      ),
+      qrExpired: _intAny(
+        counterMap,
+        const ['qr_expired', 'qrExpired'],
+        fallbackMaps: [m],
+      ),
+      transactions: _intAny(
+        counterMap,
+        const ['transactions', 'transaction_count', 'transactionCount'],
+        fallbackMaps: [m],
+      ),
     );
   }
 
@@ -126,15 +159,15 @@ class AcpecAdminReportSummary extends Equatable {
 
   @override
   List<Object?> get props => [
-        purchasesSubmitted,
-        purchasesApproved,
-        consumptionVolumeMru,
-        wallets,
-        stationsActive,
-        qrActive,
-        qrBlocked,
-        qrConsumed,
-        qrExpired,
-        transactions,
-      ];
+    purchasesSubmitted,
+    purchasesApproved,
+    consumptionVolumeMru,
+    wallets,
+    stationsActive,
+    qrActive,
+    qrBlocked,
+    qrConsumed,
+    qrExpired,
+    transactions,
+  ];
 }
