@@ -11,7 +11,7 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
     @http.route('/api/acpec/mobile_auth/v1/admin/account-requests', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_account_requests(self, **kwargs):
         try:
-            self._admin_guard()
+            self._mobile_manager_guard()
 
             state = self._get_clean_str(kwargs, 'state')
             limit = self._get_optional_int(kwargs, 'limit', 20)
@@ -51,7 +51,7 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
     @http.route('/api/acpec/mobile_auth/v1/admin/account-requests/<int:request_id>/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_approve_account_request(self, request_id, **kwargs):
         try:
-            self._admin_guard()
+            self._mobile_manager_guard()
             rec = self._get_account_request_or_404(request_id)
             if not rec:
                 return self._error_response('ACCOUNT_REQUEST_NOT_FOUND', _('Account request not found.'))
@@ -72,7 +72,7 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
     @http.route('/api/acpec/mobile_auth/v1/admin/account-requests/<int:request_id>/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_reject_account_request(self, request_id, **kwargs):
         try:
-            self._admin_guard()
+            self._mobile_manager_guard()
             self._require_keys(kwargs, ['reason'])
 
             reason = self._get_clean_str(kwargs, 'reason')

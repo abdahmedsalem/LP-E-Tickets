@@ -134,14 +134,28 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 )
             )
 
-    def _admin_guard(self):
-        session = self._get_mobile_session(required=False)
-        user = session.user_id if session else request.env.user
-        if not user or user._is_public():
-            raise AccessError(_('Administrator rights are required.'))
-        if not user.has_group('acpec_mobile_auth.group_mobile_auth_admin') and not user.has_group('base.group_system'):
-            raise AccessError(_('Administrator rights are required.'))
+    def _mobile_manager_guard(self):
+        """Guard for JSON-RPC mobile admin/manager routes.
+
+        Mobile API routes must authenticate exclusively with a mobile Bearer
+        token from Authorization or X-ACPEC-Mobile-Token. They must never fall
+        back to request.env.user: an Odoo backend cookie must not grant access
+        to auth='public' mobile endpoints.
+
+        Back-office Odoo routes must use auth='user' and their own explicit
+        internal-user group checks instead of this mobile API guard.
+        """
+        user = self._require_mobile_auth()
+        self._require_fuel_group(user, 'manager')
         return user.sudo()
+
+    def _admin_guard(self):
+        """Backward-compatible alias for mobile admin routes.
+
+        Kept only to avoid reintroducing the former hybrid cookie/Bearer
+        behavior. New mobile API code should call _mobile_manager_guard().
+        """
+        return self._mobile_manager_guard()
 
     def _get_company(self, company_id=False):
         company = request.env['res.company'].sudo().browse(
