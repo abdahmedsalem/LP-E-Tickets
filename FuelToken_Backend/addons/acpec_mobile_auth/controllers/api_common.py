@@ -15,6 +15,13 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
+
+    def _api_env(self):
+        test_env = getattr(self, '_test_env', None)
+        if test_env:
+            return test_env
+        return request.env
+
     def _json_response(self, data=None, ok=True):
         """Backward compatible API response.
 
@@ -148,6 +155,45 @@ class AcpecMobileAuthApiCommon(http.Controller):
         user = self._require_mobile_auth()
         self._require_fuel_group(user, 'manager')
         return user.sudo()
+
+
+    def _allowed_company_ids_for_user(self, user):
+        """Return company ids explicitly allowed for a mobile API user."""
+        company_ids = user.company_ids.ids
+        if not company_ids and user.company_id:
+            company_ids = [user.company_id.id]
+        return company_ids
+
+    def _company_domain_for_user(self, user, field_name='company_id'):
+        """Return a domain restricting records to the user's allowed companies."""
+        return [(field_name, 'in', self._allowed_company_ids_for_user(user))]
+
+    def _require_allowed_company(self, user, company_id=False):
+        """Return a company only if it belongs to the mobile user's scope."""
+        target_company_id = company_id or (user.company_id.id if user.company_id else False)
+        company = self._api_env()['res.company'].sudo().browse(target_company_id).exists()
+        if not company:
+            raise ValidationError(_('Société introuvable.'))
+        if company.id not in self._allowed_company_ids_for_user(user):
+            raise AccessError('Société non autorisée pour cet utilisateur mobile.')
+        return company
+
+    def _check_record_company_allowed(self, user, record, field_name='company_id'):
+        """Raise if a sudo-browsed record is outside the mobile user's company scope."""
+        if not record:
+            return record
+        company = record[field_name]
+        if company and company.id not in self._allowed_company_ids_for_user(user):
+            raise AccessError('Accès refusé : société non autorisée.')
+        return record
+
+    def _require_user_company_membership(self, target_user, company):
+        """Ensure a target user can be linked to a record of the given company."""
+        if not target_user:
+            raise ValidationError(_('Utilisateur introuvable.'))
+        if company not in target_user.company_ids:
+            raise ValidationError('L’utilisateur doit appartenir à la société sélectionnée.')
+        return target_user
 
     def _admin_guard(self):
         """Backward-compatible alias for mobile admin routes.

@@ -87,10 +87,12 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     def carnet_type_list(self, **kwargs):
         try:
             user = self._admin_user()
-            domain = []
             company_id = self._get_optional_int(kwargs, 'company_id', 0)
             if company_id:
-                domain.append(('company_id', '=', company_id))
+                company = self._require_allowed_company(user, company_id)
+                domain = [('company_id', '=', company.id)]
+            else:
+                domain = self._company_domain_for_user(user)
             active = kwargs.get('active')
             if active not in (None, False, ''):
                 domain.append(('active', '=', self._get_bool_param(active)))
@@ -105,9 +107,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             user = self._admin_user()
             self._require_keys(kwargs, ['face_count', 'face_value'])
             company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
-            company = request.env['res.company'].sudo().browse(company_id).exists()
-            if not company:
-                raise ValidationError(_('Société introuvable.'))
+            company = self._require_allowed_company(user, company_id)
             rec = request.env['acpec.fuel.carnet.type'].sudo().create({
                 'face_count': self._get_optional_int(kwargs, 'face_count', 0),
                 'face_value': self._get_optional_float(kwargs, 'face_value', 0),
@@ -131,6 +131,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
             if not rec:
                 raise ValidationError(_('Type de carnet introuvable.'))
+            self._check_record_company_allowed(user, rec)
             vals = {}
             for key in ('name', 'code'):
                 if key in kwargs:
@@ -156,6 +157,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
             if not rec:
                 raise ValidationError(_('Type de carnet introuvable.'))
+            self._check_record_company_allowed(user, rec)
             rec.write({'active': False})
             return self._json_response({'id': rec.id, 'active': rec.active})
         except Exception as exc:
@@ -169,7 +171,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             include_meta = self._include_pagination_meta(kwargs)
             date_from, date_to = self._date_range_params(kwargs)
             state = kwargs.get('state') or 'submitted'
-            domain = [('company_id', 'in', user.company_ids.ids)]
+            domain = self._company_domain_for_user(user)
             if state != 'all':
                 domain.append(('state', '=', state))
             self._add_date_range_domain(domain, date_from, date_to, field_name='submitted_at')
@@ -193,6 +195,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
+            self._check_record_company_allowed(user, purchase)
             return self._json_response(self._purchase_payload(purchase, detail=True))
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -205,6 +208,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
+            self._check_record_company_allowed(user, purchase)
             purchase.with_user(user).action_approve()
             return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:
@@ -218,6 +222,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
+            self._check_record_company_allowed(user, purchase)
             purchase.with_user(user).action_reject()
             if kwargs.get('rejection_reason'):
                 purchase.sudo().write({'rejection_reason': kwargs.get('rejection_reason')})
@@ -229,7 +234,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     def stations_list(self, **kwargs):
         try:
             user = self._admin_user()
-            domain = [('company_id', 'in', user.company_ids.ids)]
+            domain = self._company_domain_for_user(user)
             if kwargs.get('active') not in (None, False, ''):
                 domain.append(('active', '=', self._get_bool_param(kwargs.get('active'))))
             records = request.env['acpec.fuel.station'].sudo().search(domain, order='name')
@@ -243,11 +248,14 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             user = self._admin_user()
             self._require_keys(kwargs, ['name', 'user_id'])
             company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
+            company = self._require_allowed_company(user, company_id)
+            station_user = request.env['res.users'].sudo().browse(self._get_optional_int(kwargs, 'user_id', 0)).exists()
+            self._require_user_company_membership(station_user, company)
             rec = request.env['acpec.fuel.station'].sudo().create({
                 'name': kwargs.get('name'),
                 'code': kwargs.get('code') or False,
-                'user_id': self._get_optional_int(kwargs, 'user_id', 0),
-                'company_id': company_id,
+                'user_id': station_user.id,
+                'company_id': company.id,
                 'active': self._get_bool_param(kwargs.get('active'), default=True),
             })
             return self._json_response(self._station_payload(rec))
@@ -262,14 +270,24 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
             if not rec:
                 raise ValidationError(_('Station introuvable.'))
+            self._check_record_company_allowed(user, rec)
+
+            target_company = rec.company_id
+            if 'company_id' in kwargs:
+                target_company = self._require_allowed_company(user, self._get_optional_int(kwargs, 'company_id', 0))
+
             vals = {}
             for key in ('name', 'code'):
                 if key in kwargs:
                     vals[key] = kwargs.get(key) or False
             if 'user_id' in kwargs:
-                vals['user_id'] = self._get_optional_int(kwargs, 'user_id', 0)
+                station_user = request.env['res.users'].sudo().browse(self._get_optional_int(kwargs, 'user_id', 0)).exists()
+                self._require_user_company_membership(station_user, target_company)
+                vals['user_id'] = station_user.id
+            elif 'company_id' in kwargs:
+                self._require_user_company_membership(rec.user_id, target_company)
             if 'company_id' in kwargs:
-                vals['company_id'] = self._get_optional_int(kwargs, 'company_id', 0)
+                vals['company_id'] = target_company.id
             if 'active' in kwargs:
                 vals['active'] = self._get_bool_param(kwargs.get('active'))
             if vals:
@@ -286,6 +304,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
             if not rec:
                 raise ValidationError(_('Station introuvable.'))
+            self._check_record_company_allowed(user, rec)
             rec.write({'active': False})
             return self._json_response(self._station_payload(rec))
         except Exception as exc:
@@ -295,21 +314,22 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     def reports_summary(self, **kwargs):
         try:
             user = self._admin_user()
+            company_domain = self._company_domain_for_user(user)
             Purchase = request.env['acpec.fuel.purchase'].sudo()
             Wallet = request.env['acpec.fuel.wallet'].sudo()
             Qr = request.env['acpec.fuel.qr'].sudo()
             Station = request.env['acpec.fuel.station'].sudo()
             Transaction = request.env['acpec.fuel.transaction'].sudo()
             return self._json_response({
-                'purchases_submitted': Purchase.search_count([('state', '=', 'submitted')]),
-                'purchases_approved': Purchase.search_count([('state', '=', 'approved')]),
-                'wallets': Wallet.search_count([]),
-                'stations_active': Station.search_count([('active', '=', True)]),
-                'qr_active': Qr.search_count([('state', '=', 'active')]),
-                'qr_blocked': Qr.search_count([('state', '=', 'blocked')]),
-                'qr_consumed': Qr.search_count([('state', '=', 'consumed')]),
-                'qr_expired': Qr.search_count([('state', '=', 'expired')]),
-                'transactions': Transaction.search_count([]),
+                'purchases_submitted': Purchase.search_count(company_domain + [('state', '=', 'submitted')]),
+                'purchases_approved': Purchase.search_count(company_domain + [('state', '=', 'approved')]),
+                'wallets': Wallet.search_count(company_domain),
+                'stations_active': Station.search_count(company_domain + [('active', '=', True)]),
+                'qr_active': Qr.search_count(company_domain + [('state', '=', 'active')]),
+                'qr_blocked': Qr.search_count(company_domain + [('state', '=', 'blocked')]),
+                'qr_consumed': Qr.search_count(company_domain + [('state', '=', 'consumed')]),
+                'qr_expired': Qr.search_count(company_domain + [('state', '=', 'expired')]),
+                'transactions': Transaction.search_count(company_domain),
             })
         except Exception as exc:
             return self._handle_exception_response(exc)
