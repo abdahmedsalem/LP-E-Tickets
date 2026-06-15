@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -74,10 +75,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length < 4 || clean.length > 6) {
       if (mounted) {
-        AppMessage.error(
-          context,
-          'Saisissez le code a 4 a 6 chiffres.',
-        );
+        AppMessage.error(context, 'Saisissez le code a 4 a 6 chiffres.');
       }
       return;
     }
@@ -165,13 +163,16 @@ class _ResetPasswordAfterOtpScreenState
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (AppEnvironment.useAcpecLiveData) {
+      AppMessage.error(
+        context,
+        "La réinitialisation du mot de passe n'est pas encore disponible en mode connecté.",
+      );
+      return;
+    }
     setState(() => _busy = true);
     try {
       await AuthRepository.instance.resetPasswordForIdentifier(
-        identifier: widget.args.identifier,
-        newPassword: _pass.text,
-      );
-      await AuthRepository.instance.syncLocalPasswordIfExists(
         identifier: widget.args.identifier,
         newPassword: _pass.text,
       );
@@ -389,11 +390,7 @@ class _PrimaryActionButton extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF065F46),
-              Color(0xFF2EA043),
-              Color(0xFF34D399),
-            ],
+            colors: [Color(0xFF065F46), Color(0xFF2EA043), Color(0xFF34D399)],
             stops: [0.0, 0.48, 1.0],
           ),
         ),
@@ -452,9 +449,7 @@ class _OtpField extends StatelessWidget {
         counterText: '',
         filled: true,
         fillColor: AppColors.background,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       ),
       onSubmitted: (_) {},
     );

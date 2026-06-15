@@ -29,3 +29,8 @@ class ResConfigSettings(models.TransientModel):
         default='fr',
         config_parameter='SMS_DEFAULT_LANG',
     )
+    # Compatibility field referenced by an inherited settings view loaded in Odoo.
+    color_brand_light = fields.Char(
+        string='Brand Light Color',
+        config_parameter='muk_web_colors.color_brand_light',
+    )

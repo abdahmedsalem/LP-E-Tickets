@@ -47,6 +47,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   @override
   void dispose() {
+    _walletCubit?.close();
     super.dispose();
   }
 
@@ -79,12 +80,12 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
   void initState() {
     super.initState();
     _walletBusListener = () {
-      if (!mounted) return;
+      if (!mounted || context.read<WalletCubit>().isClosed) return;
       context.read<WalletCubit>().refresh();
     };
     WalletRefreshBus.instance.revision.addListener(_walletBusListener);
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (!mounted) return;
+      if (!mounted || context.read<WalletCubit>().isClosed) return;
       context.read<WalletCubit>().refresh();
     });
   }
@@ -265,7 +266,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                             Expanded(
                               child: AspectRatio(
                                 aspectRatio: 0.82,
-                              child: _QuickActionCard(
+                                child: _QuickActionCard(
                                   title: 'Créer un QR',
                                   icon: Icons.qr_code_scanner_rounded,
                                   highlighted: true,
@@ -277,7 +278,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                             Expanded(
                               child: AspectRatio(
                                 aspectRatio: 0.82,
-                              child: _QuickActionCard(
+                                child: _QuickActionCard(
                                   title: 'Envoyer des carnets',
                                   icon: Icons.account_tree_outlined,
                                   onTap: () =>

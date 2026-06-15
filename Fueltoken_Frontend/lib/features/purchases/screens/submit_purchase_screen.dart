@@ -302,7 +302,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         ClientHistoryRefreshBus.instance.bump();
         PurchasesRefreshBus.instance.bump();
         final confirmedAt = DateTime.now();
-        await Future<void>.delayed(Duration.zero);
         if (!mounted) return;
         await showPurchaseSubmitSuccessDialog(
           context,
@@ -1034,7 +1033,9 @@ class _ProofPicker extends StatelessWidget {
                       child: Text(
                         hasFile ? 'Prête' : 'Pièce requise',
                         style: GoogleFonts.poppins(
-                          color: hasFile ? AppColors.leaderGreen : AppColors.muted,
+                          color: hasFile
+                              ? AppColors.leaderGreen
+                              : AppColors.muted,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           height: 1.0,

@@ -578,7 +578,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           _request.clear();
           _emitting = false;
         });
-        await Future<void>.delayed(Duration.zero);
         if (!mounted) return;
         await showQrGenerationSuccessDialog(
           context,

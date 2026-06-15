@@ -363,9 +363,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       FacesRefreshBus.instance.bump();
       ClientHistoryRefreshBus.instance.bump();
       setState(() => _selectedQtyByLineId.clear());
-      await _loadData();
-      if (!mounted) return;
-      await Future<void>.delayed(Duration.zero);
       if (!mounted) return;
       await showTransferSuccessDialog(
         context,

@@ -14,7 +14,7 @@ Future<void> showPurchaseSubmitSuccessDialog(
   required DateTime confirmedAt,
   List<PurchaseConfirmationLine> lines = const [],
 }) {
-  return Navigator.of(context).push<void>(
+  return Navigator.of(context, rootNavigator: true).push<void>(
     MaterialPageRoute(
       builder: (_) => PurchaseSubmitSuccessScreen(
         result: result,
@@ -33,7 +33,7 @@ Future<void> showTransferSuccessDialog(
   required String recipientPhone,
   List<TransferConfirmationLine> lines = const [],
 }) {
-  return Navigator.of(context).push<void>(
+  return Navigator.of(context, rootNavigator: true).push<void>(
     MaterialPageRoute(
       builder: (_) => TransferSuccessScreen(
         totalAmount: totalAmount,
@@ -52,7 +52,7 @@ Future<void> showQrGenerationSuccessDialog(
   required DateTime confirmedAt,
   List<QrGenerationSuccessLine> lines = const [],
 }) {
-  return Navigator.of(context).push<void>(
+  return Navigator.of(context, rootNavigator: true).push<void>(
     MaterialPageRoute(
       builder: (_) => QrGenerationSuccessScreen(
         totalAmount: totalAmount,
@@ -602,7 +602,10 @@ class _PurchasedLineRow extends StatelessWidget {
         ),
         Expanded(
           flex: 4,
-          child: AmountInline(amount: line.totalAmount, textAlign: TextAlign.right),
+          child: AmountInline(
+            amount: line.totalAmount,
+            textAlign: TextAlign.right,
+          ),
         ),
       ],
     );

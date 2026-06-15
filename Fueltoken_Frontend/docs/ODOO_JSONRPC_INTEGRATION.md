@@ -4,7 +4,7 @@
 
 | Couche | Rôle aujourd’hui | Données |
 | --- | --- | --- |
-| **Application Flutter** (`lib/`) | UI, navigation, BLoC | `FuelRepository.instance` : **mémoire locale** + graine démo ; `AuthRepository.instance` : **mock** ; OTP : **REST externe** si `API_BASE_URL` |
+| **Application Flutter** (`lib/`) | UI, navigation, BLoC | `FuelRepository.instance` : **mémoire locale** + graine démo ; `AuthRepository.instance` : **mock** ; OTP / auth mobile : routes Odoo JSON-RPC dans le code courant |
 | **Odoo (bundles `acpec_mobile_auth`, `acpec_fueltoken_api`)** | Contrôleurs métier **JSON-RPC** côté ERP | Source de vérité opérationnelle côté ACPEC |
 
 La console de test navigateur fournie par votre déploiement Odoo envoie des requêtes **POST** avec enveloppe **JSON-RPC 2.0** vers des routes (`type='jsonrpc'`). Elle sert de **référence** pour les noms de méthodes et les payloads `params`.
@@ -15,7 +15,7 @@ La console de test navigateur fournie par votre déploiement Odoo envoie des req
 
 ## Stratégie d’architecture
 
-Ce dépôt cible **Mobile → Odoo** (JSON-RPC). Un service REST séparé pour OTP/inscription est **optionnel** (`API_BASE_URL` + `OtpRemoteService`).
+Ce dépôt cible **Mobile → Odoo** (JSON-RPC). Le flux OTP/inscription actuellement utilisé par l'app passe par les routes Odoo documentées dans `lib/core/config/odoo_auth_rpc_config.dart`.
 
 - **Avantages :** un saut réseau pour le métier, même enveloppe que la console de test Odoo.
 - **Points d’attention :** session Odoo sur l’app, TLS, pare-feu, évolution des routes côté module.
@@ -78,9 +78,10 @@ Les **noms exacts** de `method` et la forme de `params` doivent être repris **d
 
 Les **écrans métier** continuent d’utiliser `FuelRepository` jusqu’à migration : l’étape suivante consiste à introduire un **port** `FuelDataPort` (ou repository async) qui délègue soit au mock local, soit à `AcpecFueltokenJsonRpcApi` + mappers `Map → modèles` Dart existants (`PurchaseLot`, `FaceLine`, etc.).
 
-### Auth : Odoo (session) + REST OTP optionnel
+### Auth : Odoo (session) + OTP mobile JSON-RPC
 
-- **OTP / inscription** (`register-otp-*`, `verify-otp`, `complete-registration`, …) : service REST externe si `API_BASE_URL` (ou `OTP_API_BASE_URL`) est défini — voir `lib/data/services/otp_remote_service.dart`.
+- **OTP / inscription** : routes Odoo JSON-RPC configurées par `ODOO_RPC_REQUEST_OTP_PATH` et `ODOO_RPC_VERIFY_OTP_PATH`.
+- **Récupération de mot de passe** : même couple de routes OTP, avec `purpose = forgot_password`.
 - Enveloppe JSON-RPC : `method` = `"call"`, contenu métier dans `params`, **une route HTTP par opération** (ex. `/api/acpec/mobile_auth/v1/login`). Catalogue : `docs/odoo_acpec_api_catalog.json`.
 - **Login ACPEC** : activer `--dart-define=ODOO_USE_ACPEC_AUTH=true`. Corps : `identifier` + `secret_code` (pas `password`). Routes = module ACPEC sur votre instance Odoo.
 - **Cold start** : si `ODOO_RPC_SESSION_PATH` (ou legacy `ODOO_RPC_SESSION_ME_METHOD` commençant par `/`) est actif et qu’un `session_id` est stocké, appel session pour valider la session Odoo.
@@ -115,7 +116,7 @@ Les **écrans métier** continuent d’utiliser `FuelRepository` jusqu’à migr
 
 Les valeurs par défaut des routes `ODOO_RPC_FUEL_*` et `ODOO_ACPEC_*` correspondent au catalogue extrait de la console ACPEC.
 
-**Build release** : `ODOO_JSONRPC_BASE_URL` requis, sauf `ALLOW_OFFLINE_DEMO=true`. `API_BASE_URL` uniquement si vous utilisez le flux REST OTP.
+**Build release** : `ODOO_JSONRPC_BASE_URL` requis, sauf `ALLOW_OFFLINE_DEMO=true`. `API_BASE_URL` / `OTP_API_BASE_URL` ne sont conservés qu'à titre legacy et ne sont pas nécessaires pour le flux OTP actuel.
 
 ## Variables de compilation (`--dart-define`)
 

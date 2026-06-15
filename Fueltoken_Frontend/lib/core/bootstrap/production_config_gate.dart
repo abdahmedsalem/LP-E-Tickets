@@ -32,8 +32,10 @@ class ProductionConfigGateApp extends StatelessWidget {
             '  --dart-define=ODOO_JSONRPC_BASE_URL=https://votre-hôte \\\n'
             '  --dart-define=ODOO_USE_ACPEC_AUTH=true \\\n'
             '  --dart-define=ODOO_FUEL_ENABLED=true\n\n'
-            'REST OTP / inscription externe : '
-            '`--dart-define=API_BASE_URL=https://…` si nécessaire.\n\n'
+            'OTP legacy : `API_BASE_URL` / `OTP_API_BASE_URL` ne sont pas '
+            'nécessaires pour le flux OTP actuel, qui utilise les routes '
+            'Odoo JSON-RPC configurées dans `ODOO_RPC_REQUEST_OTP_PATH` et '
+            '`ODOO_RPC_VERIFY_OTP_PATH`.\n\n'
             'Build interne sans serveur : '
             '--dart-define=ALLOW_OFFLINE_DEMO=true',
       ),
@@ -41,7 +43,8 @@ class ProductionConfigGateApp extends StatelessWidget {
         'HTTPS requis (stores)',
         'Les builds release destinés à l’App Store et Google Play '
             'n’acceptent pas les URL API en **http://**.\n\n'
-            'Corrigez `ODOO_JSONRPC_BASE_URL` (et `API_BASE_URL` si défini) '
+            'Corrigez `ODOO_JSONRPC_BASE_URL` (et seulement les variables OTP '
+            'legacy si vous les utilisez encore) '
             'dans `scripts/env/flutter.mobile.env` ou vos `--dart-define`, '
             'puis reconstruisez :\n\n'
             'ODOO_JSONRPC_BASE_URL=https://votre-odoo.example\n\n'

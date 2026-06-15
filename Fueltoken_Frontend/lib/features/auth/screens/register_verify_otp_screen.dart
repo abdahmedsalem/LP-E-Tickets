@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_environment.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/models/user_role.dart';
@@ -73,7 +74,18 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
           : Map<String, dynamic>.from(body as Map);
       final user = AppUser.fromOdooProfileMap(payload, envelope: body);
       if (!mounted) return;
-      context.read<AuthBloc>().add(AuthSessionEstablished(user));
+      final tokens = _extractTokens(body);
+      if (tokens != null || AppEnvironment.useAcpecLiveData) {
+        context.read<AuthBloc>().add(
+          AuthRemoteRegistrationCompleted(
+            user: user,
+            password: widget.args.password,
+            tokens: tokens,
+          ),
+        );
+      } else {
+        context.read<AuthBloc>().add(AuthSessionEstablished(user));
+      }
       return;
     } catch (e, st) {
       debugPrint('OTP verification failed: $e\n$st');
@@ -114,6 +126,37 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     } finally {
       if (mounted) setState(() => _resendBusy = false);
     }
+  }
+
+  Map<String, dynamic>? _extractTokens(Map<String, dynamic> body) {
+    final candidates = <Map<String, dynamic>>[];
+    if (body['tokens'] is Map) {
+      candidates.add(Map<String, dynamic>.from(body['tokens'] as Map));
+    }
+    final data = body['data'];
+    if (data is Map && data['tokens'] is Map) {
+      candidates.add(Map<String, dynamic>.from(data['tokens'] as Map));
+    }
+    if (body['data'] is Map) {
+      candidates.add(Map<String, dynamic>.from(body['data'] as Map));
+    }
+    candidates.add(body);
+
+    for (final src in candidates) {
+      final access = src['access']?.toString().trim() ?? '';
+      final refresh = src['refresh']?.toString().trim() ?? '';
+      if (access.isNotEmpty && refresh.isNotEmpty) {
+        return <String, dynamic>{
+          'access': access,
+          'refresh': refresh,
+        };
+      }
+      final token = src['token']?.toString().trim() ?? '';
+      if (token.isNotEmpty) {
+        return <String, dynamic>{'access': token};
+      }
+    }
+    return null;
   }
 
   @override

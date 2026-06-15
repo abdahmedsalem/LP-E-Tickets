@@ -45,13 +45,45 @@ class QrActionSummaryRow {
   final Color valueColor;
 }
 
-class QrActionConfirmationScreen extends StatelessWidget {
+class QrActionConfirmationScreen extends StatefulWidget {
   const QrActionConfirmationScreen({super.key, required this.args});
 
   final QrActionConfirmationArgs args;
 
   @override
+  State<QrActionConfirmationScreen> createState() =>
+      _QrActionConfirmationScreenState();
+}
+
+class _QrActionConfirmationScreenState
+    extends State<QrActionConfirmationScreen> {
+  bool _confirming = false;
+
+  Future<void> _confirm() async {
+    if (_confirming) return;
+    setState(() => _confirming = true);
+    try {
+      final ok = await showSensitiveActionPasswordDialog(
+        context,
+        title: 'Vérification du mot de passe',
+        description:
+            'Saisissez votre mot de passe pour confirmer cette opération.',
+      );
+      if (!ok || !mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _confirming = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final args = widget.args;
+
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: SafeArea(
@@ -64,16 +96,7 @@ class QrActionConfirmationScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    final ok = await showSensitiveActionPasswordDialog(
-                      context,
-                      title: 'Vérification du mot de passe',
-                      description:
-                          'Saisissez votre mot de passe pour confirmer cette opération.',
-                    );
-                    if (!ok || !context.mounted) return;
-                    Navigator.of(context).pop(true);
-                  },
+                  onPressed: _confirming ? null : _confirm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF43A047),
                     foregroundColor: Colors.white,
@@ -82,13 +105,19 @@ class QrActionConfirmationScreen extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    args.confirmLabel,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                  child: _confirming
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          args.confirmLabel,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -96,7 +125,9 @@ class QrActionConfirmationScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 44,
                 child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: _confirming
+                      ? null
+                      : () => Navigator.of(context).pop(false),
                   child: const Text(
                     'Annuler',
                     style: TextStyle(
@@ -116,7 +147,9 @@ class QrActionConfirmationScreen extends StatelessWidget {
           children: [
             AppBarHeader(
               title: args.title,
-              onBack: () => Navigator.of(context).pop(false),
+              onBack: _confirming
+                  ? null
+                  : () => Navigator.of(context).pop(false),
               largeTitle: true,
               largeTitlePadding: _confirmationHeaderPadding,
               largeTitleGap: _confirmationHeaderGap,

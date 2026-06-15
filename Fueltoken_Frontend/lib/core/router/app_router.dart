@@ -18,7 +18,6 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
-import '../../features/auth/screens/splash_screen.dart';
 import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/client_shell_scaffold.dart';
 import '../../features/home/screens/user_home_screen.dart';
@@ -44,7 +43,7 @@ import '../../features/transactions/screens/transactions_screen.dart';
 class AppRouter {
   static GoRouter build(AuthBloc authBloc) {
     return GoRouter(
-      initialLocation: '/splash',
+      initialLocation: '/login',
       refreshListenable: _AuthListenable(authBloc),
       redirect: (ctx, state) {
         final auth = authBloc.state;
@@ -54,7 +53,6 @@ class AppRouter {
           '/login',
           '/register',
           '/register/verify-otp',
-          '/splash',
           '/forgot-password',
           '/forgot-password/verify-otp',
           '/forgot-password/reset',
@@ -104,7 +102,6 @@ class AppRouter {
         return null;
       },
       routes: [
-        GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
         GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
         GoRoute(
           path: '/forgot-password',
@@ -240,7 +237,8 @@ class AppRouter {
         ),
         GoRoute(
           path: '/purchases/:id',
-          builder: (_, st) => PurchaseDetailScreen(lotId: st.pathParameters['id']!),
+          builder: (_, st) =>
+              PurchaseDetailScreen(lotId: st.pathParameters['id']!),
         ),
         GoRoute(path: '/qr/emit', builder: (_, _) => const EmitQrScreen()),
         GoRoute(
@@ -363,7 +361,8 @@ class AppRouter {
         ),
         GoRoute(
           path: '/admin/purchases/:id',
-          builder: (_, st) => AdminPurchaseDetailScreen(purchaseId: st.pathParameters['id']!),
+          builder: (_, st) =>
+              AdminPurchaseDetailScreen(purchaseId: st.pathParameters['id']!),
         ),
         GoRoute(
           path: '/admin/accounts/:id',

@@ -66,10 +66,12 @@ class WalletCubit extends Cubit<WalletState> {
   final String ownerId;
 
   Future<void> refresh() async {
+    if (isClosed) return;
     if (state.loading) return;
     emit(state.copyWith(loading: true, clearError: true, clearBreakdown: true));
     try {
       if (!AppEnvironment.useAcpecLiveData) {
+        if (isClosed) return;
         emit(state.copyWith(loading: false, clearError: true));
         return;
       }
@@ -84,7 +86,9 @@ class WalletCubit extends Cubit<WalletState> {
           params,
         );
         final raw = await OdooFueltokenFacade().walletCurrent(params);
+        if (isClosed) return;
         final mapped = AcpecWalletMapper.fromRpcResult(raw, ownerId: ownerId);
+        if (isClosed) return;
         emit(
           WalletState(
             amount: mapped.amount,
@@ -96,9 +100,11 @@ class WalletCubit extends Cubit<WalletState> {
         );
       } on OdooJsonRpcException catch (e) {
         if (e.requiresReLogin) {
+          if (isClosed) return;
           emit(state.copyWith(loading: false, clearError: true));
           return;
         }
+        if (isClosed) return;
         emit(
           state.copyWith(
             loading: false,
@@ -108,6 +114,7 @@ class WalletCubit extends Cubit<WalletState> {
         );
       }
     } catch (e) {
+      if (isClosed) return;
       emit(
         state.copyWith(loading: false, clearError: true, clearBreakdown: true),
       );

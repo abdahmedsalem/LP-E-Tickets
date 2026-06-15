@@ -25,7 +25,7 @@ cp scripts/env/flutter.mobile.example.env scripts/env/flutter.mobile.env
 
 ## Registration → logout → login
 
-1. Complete signup in ACPEC/Odoo (and/or external REST OTP + Odoo signup, depending on your `API_BASE_URL` setup).
+1. Complete signup in ACPEC/Odoo using the OTP flow configured by `ODOO_RPC_REQUEST_OTP_PATH` / `ODOO_RPC_VERIFY_OTP_PATH`.
 2. **Logout** clears the stored Odoo session and JWT.
 3. **Login** again with the same identifier and password to obtain a new session.
 

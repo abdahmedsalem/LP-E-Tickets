@@ -55,21 +55,25 @@ class _PurchaseConfirmationScreenState
   bool _confirming = false;
 
   Future<void> _onConfirm() async {
+    if (_confirming) return;
     var completed = false;
     setState(() => _confirming = true);
     try {
       final ok = await showSensitiveActionPasswordDialog(
         context,
-        title: 'Vérification du mot de passe',
+        title: 'Vérification du mot des passe',
         description:
             'Saisissez votre mot de passe pour confirmer cette opération.',
       );
-      if (!ok) return;
+      if (!ok || !mounted) return;
       await widget.args.onConfirm();
-      if (mounted) {
-        completed = true;
-        Navigator.of(context).pop(true);
-      }
+      if (!mounted) return;
+      completed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
+      });
     } on OdooJsonRpcException {
       return;
     } catch (e) {

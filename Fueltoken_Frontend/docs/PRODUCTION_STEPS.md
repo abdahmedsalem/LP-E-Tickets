@@ -27,10 +27,11 @@
    --dart-define=ODOO_FUEL_ENABLED=true
    ```
 
-   **REST OTP / inscription (optionnel)** — si vous maintenez un service compatible avec `OtpRemoteService` :
+   **OTP legacy** — `API_BASE_URL` / `OTP_API_BASE_URL` sont conservés seulement pour compatibilité historique ; le flux OTP actif passe par les routes Odoo JSON-RPC :
 
    ```bash
-   --dart-define=API_BASE_URL=https://votre-api.example
+   --dart-define=ODOO_RPC_REQUEST_OTP_PATH=/api/acpec/mobile_auth/v1/request-otp
+   --dart-define=ODOO_RPC_VERIFY_OTP_PATH=/api/acpec/mobile_auth/v1/verify-otp
    ```
 
    Voir `./scripts/run.sh` pour les `dart-define` optionnels (chemins RPC personnalisés, etc.).
