@@ -10,6 +10,7 @@ import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/utils/error_presenter.dart';
 import '../../core/validation/contact_validators.dart';
+import '../../core/validation/password_validators.dart';
 import '../models/app_user.dart';
 import '../models/user_role.dart';
 import '../services/odoo_auth_service.dart';
@@ -66,7 +67,7 @@ class AuthRepository {
               normalized.replaceAll(' ', ''),
       orElse: () => throw Exception('Compte introuvable.'),
     );
-    if (password.length < 4) {
+    if (password.length != kSecretCodeLength) {
       throw Exception('Mot de passe incorrect.');
     }
     final stored = _passwordByUserId[user.id];
@@ -140,8 +141,8 @@ class AuthRepository {
       // Inscription / session Odoo : conserver session_id stockée.
     }
     await Future.delayed(const Duration(milliseconds: 100));
-    if (password.length < 4) {
-      throw Exception('Mot de passe trop court.');
+    if (password.length != kSecretCodeLength) {
+      throw Exception('Le mot de passe doit avoir 4 chiffres.');
     }
     final resolved = AcpecRoleOverrides.apply(user);
     final idxId = _users.indexWhere((u) => u.id == resolved.id);
@@ -167,7 +168,7 @@ class AuthRepository {
     required String identifier,
     required String newPassword,
   }) async {
-    if (newPassword.length < 4) return;
+    if (newPassword.length != kSecretCodeLength) return;
     final raw = identifier.trim();
     final normalized = raw.contains('@')
         ? raw.toLowerCase()
@@ -190,8 +191,8 @@ class AuthRepository {
     required String newPassword,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    if (newPassword.length < 4) {
-      throw Exception('Le mot de passe doit avoir au moins 4 caractères.');
+    if (newPassword.length != kSecretCodeLength) {
+      throw Exception('Le mot de passe doit avoir 4 chiffres.');
     }
     final raw = identifier.trim();
     final normalized = raw.contains('@')

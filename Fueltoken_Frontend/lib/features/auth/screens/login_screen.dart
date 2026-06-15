@@ -246,14 +246,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               controller: _password,
                               hint: 'Mot de passe',
                               obscure: _obscure,
-                              validator: validateSixDigitNumericPassword,
+                              validator: validateFourDigitNumericPassword,
                               keyboardType: TextInputType.number,
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(6),
+                                LengthLimitingTextInputFormatter(kSecretCodeLength),
                               ],
                               borderColor: const Color(0xFFC7CEDA),
-                              counterLabel: '${_password.text.trim().length}/6',
+                              counterLabel: '${_password.text.trim().length}/$kSecretCodeLength',
                               trailing: IconButton(
                                 splashRadius: 20,
                                 iconSize: 20,

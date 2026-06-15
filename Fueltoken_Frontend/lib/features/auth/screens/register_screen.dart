@@ -194,12 +194,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             hint: 'Mot de passe',
                             obscure: _obscure,
                             keyboardType: TextInputType.number,
-                            maxLength: 6,
+                            maxLength: kSecretCodeLength,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
-                            validator: validateSixDigitNumericPassword,
-                            counterLabel: '${_password.text.trim().length}/6',
+                            validator: validateFourDigitNumericPassword,
+                            counterLabel: '${_password.text.trim().length}/$kSecretCodeLength',
                             trailing: IconButton(
                               splashRadius: 20,
                               iconSize: 20,

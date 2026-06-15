@@ -1,14 +1,27 @@
-/// Mot de passe inscription / réinitialisation : **exactement 6 chiffres**.
-final RegExp kSixDigitNumericPasswordRegExp = RegExp(r'^\d{6}$');
+/// Mot de passe / code secret mobile : **exactement 4 chiffres**.
+///
+/// Ne pas confondre avec l'OTP SMS Chinguisoft, qui est un code de
+/// verification a 6 chiffres.
+const int kSecretCodeLength = 4;
+const int kOtpSmsCodeLength = 6;
 
-String? validateSixDigitNumericPassword(String? raw) {
+final RegExp kFourDigitNumericPasswordRegExp = RegExp(r'^\d{4}$');
+
+String? validateFourDigitNumericPassword(String? raw) {
   if (raw == null || raw.isEmpty) {
     return 'Saisissez votre mot de passe';
   }
-  if (!kSixDigitNumericPasswordRegExp.hasMatch(raw)) {
-    return 'Le mot de passe doit être composé de 6 chiffres uniquement.';
+  if (!kFourDigitNumericPasswordRegExp.hasMatch(raw)) {
+    return 'Le mot de passe doit être composé de 4 chiffres uniquement.';
   }
   return null;
+}
+
+/// Alias temporaire de compatibilite : les ecrans doivent utiliser
+/// validateFourDigitNumericPassword.
+@Deprecated('Use validateFourDigitNumericPassword instead.')
+String? validateSixDigitNumericPassword(String? raw) {
+  return validateFourDigitNumericPassword(raw);
 }
 
 /// Connexion et autres écrans : longueur minimale (lettres, chiffres, symboles).
