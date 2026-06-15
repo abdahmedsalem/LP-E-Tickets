@@ -105,7 +105,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 Expanded(
                   child: Text(
                     'Administration',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       height: 1.05,
@@ -166,7 +166,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 children: [
                   Text(
                     'Bonjour',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       color: Colors.white.withValues(alpha: 0.88),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -177,7 +177,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     user.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -494,7 +494,7 @@ class _ActionCard extends StatelessWidget {
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           fontSize: math.min(
                             14.5,
                             math.max(12.5, cardWidth * 0.13),

@@ -1,33 +1,25 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/repositories/auth_repository.dart';
-import '../../../data/services/otp_remote_service.dart';
-import '../../../shared/widgets/app_status_lottie.dart';
+import '../../../data/services/odoo_auth_service.dart';
+import '../../../shared/widgets/app_message.dart';
 
 class ForgotOtpRouteArgs {
-  const ForgotOtpRouteArgs({
-    required this.identifier,
-    required this.channel,
-  });
+  const ForgotOtpRouteArgs({required this.identifier, this.challengeId});
 
-  /// Email ou téléphone complet +222xxxxxxxx
+  /// Telephone complet: +222xxxxxxxx.
   final String identifier;
-  final OtpChannel channel;
+  final int? challengeId;
 }
 
-/// Après vérification OTP : identifiant et code pour la réinitialisation du mot de passe.
 class ForgotResetRouteArgs {
-  const ForgotResetRouteArgs({
-    required this.identifier,
-    required this.otpCode,
-  });
+  const ForgotResetRouteArgs({required this.identifier});
 
   final String identifier;
-  final String otpCode;
 }
 
 class ForgotVerifyOtpScreen extends StatefulWidget {
@@ -41,8 +33,14 @@ class ForgotVerifyOtpScreen extends StatefulWidget {
 
 class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
   final _otp = TextEditingController();
-  final _otpService = OtpRemoteService();
   bool _busy = false;
+  int? _challengeId;
+
+  @override
+  void initState() {
+    super.initState();
+    _challengeId = widget.args.challengeId;
+  }
 
   @override
   void dispose() {
@@ -50,37 +48,55 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
     super.dispose();
   }
 
+  Future<void> _resend() async {
+    setState(() => _busy = true);
+    try {
+      final response = await OdooAuthService.instance.requestPasswordResetOtp(
+        phoneFull: widget.args.identifier,
+      );
+      final data = response['data'];
+      if (data is Map) {
+        _challengeId = int.tryParse(data['otp_challenge_id']?.toString() ?? '');
+      }
+      if (mounted) {
+        AppMessage.info(context, 'Code renvoye par SMS.');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _submit() async {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length < 4 || clean.length > 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Saisissez le code (4 à 6 chiffres selon le canal).'),
-        ),
-      );
+      if (mounted) {
+        AppMessage.error(
+          context,
+          'Saisissez le code a 4 a 6 chiffres.',
+        );
+      }
       return;
     }
+
     setState(() => _busy = true);
     try {
-      await _otpService.verifyOtp(
+      await OdooAuthService.instance.verifyPasswordResetOtp(
         identifier: widget.args.identifier,
         code: clean,
+        challengeId: _challengeId,
       );
       if (!mounted) return;
       context.push(
         '/forgot-password/reset',
-        extra: ForgotResetRouteArgs(
-          identifier: widget.args.identifier,
-          otpCode: clean,
-        ),
+        extra: ForgotResetRouteArgs(identifier: widget.args.identifier),
       );
-    } on OtpException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -89,62 +105,33 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Code de vérification',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+    return _ForgotFlowScaffold(
+      onBack: () => context.pop(),
+      title: 'Verification du code',
+      subtitle: 'Saisissez le code recu par SMS.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FlowCard(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
-                  controller: _otp,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 6,
-                  ),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: '••••••',
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onSubmitted: (_) => _submit(),
+                _OtpField(controller: _otp),
+                const SizedBox(height: 18),
+                _PrimaryActionButton(
+                  label: 'Continuer',
+                  busy: _busy,
+                  onTap: _submit,
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const AppInlineLoading(size: 22)
-                        : const Text('Continuer'),
-                  ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _busy ? null : _resend,
+                  child: const Text('Renvoyer le code'),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -160,11 +147,12 @@ class ResetPasswordAfterOtpScreen extends StatefulWidget {
       _ResetPasswordAfterOtpScreenState();
 }
 
-class _ResetPasswordAfterOtpScreenState extends State<ResetPasswordAfterOtpScreen> {
+class _ResetPasswordAfterOtpScreenState
+    extends State<ResetPasswordAfterOtpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pass = TextEditingController();
   final _pass2 = TextEditingController();
-  final _otpService = OtpRemoteService();
+
   bool _obscure = true;
   bool _busy = false;
 
@@ -176,14 +164,11 @@ class _ResetPasswordAfterOtpScreenState extends State<ResetPasswordAfterOtpScree
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
-      await _otpService.resetPassword(
+      await AuthRepository.instance.resetPasswordForIdentifier(
         identifier: widget.args.identifier,
-        otpCode: widget.args.otpCode,
         newPassword: _pass.text,
       );
       await AuthRepository.instance.syncLocalPasswordIfExists(
@@ -191,15 +176,11 @@ class _ResetPasswordAfterOtpScreenState extends State<ResetPasswordAfterOtpScree
         newPassword: _pass.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mot de passe mis à jour. Connectez-vous.')),
-      );
+      AppMessage.info(context, 'Mot de passe mis a jour. Connectez-vous.');
       context.go('/login');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -208,63 +189,43 @@ class _ResetPasswordAfterOtpScreenState extends State<ResetPasswordAfterOtpScree
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Nouveau mot de passe',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Form(
-              key: _formKey,
+    return _ForgotFlowScaffold(
+      onBack: () => context.pop(),
+      title: 'Nouveau mot de passe',
+      subtitle: 'Choisissez un mot de passe numerique a 6 chiffres.',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FlowCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextFormField(
+                  _PasswordField(
                     controller: _pass,
-                    obscureText: _obscure,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    decoration: InputDecoration(
-                      labelText: 'Mot de passe (6 chiffres)',
-                      counterText: '',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                        ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                    obscure: _obscure,
+                    label: 'Mot de passe',
+                    hint: '6 chiffres',
+                    trailing: IconButton(
+                      splashRadius: 20,
+                      iconSize: 20,
+                      color: const Color(0xFF7A8798),
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                       ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                     validator: validateSixDigitNumericPassword,
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
+                  const SizedBox(height: 14),
+                  _PasswordField(
                     controller: _pass2,
-                    obscureText: _obscure,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    decoration: const InputDecoration(
-                      labelText: 'Confirmer (6 chiffres)',
-                      counterText: '',
-                    ),
+                    obscure: _obscure,
+                    label: 'Confirmer',
+                    hint: 'Ressaisir le mot de passe',
                     validator: (v) {
                       final err = validateSixDigitNumericPassword(v);
                       if (err != null) return err;
@@ -274,22 +235,264 @@ class _ResetPasswordAfterOtpScreenState extends State<ResetPasswordAfterOtpScree
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _busy ? null : _submit,
-                      child: _busy
-                          ? const AppInlineLoading(size: 22)
-                          : const Text('Enregistrer'),
-                    ),
+                  const SizedBox(height: 20),
+                  _PrimaryActionButton(
+                    label: 'Enregistrer',
+                    busy: _busy,
+                    onTap: _submit,
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ForgotFlowScaffold extends StatelessWidget {
+  const _ForgotFlowScaffold({
+    required this.onBack,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final VoidCallback onBack;
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(999),
+                            onTap: onBack,
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.arrow_back_rounded,
+                                size: 22,
+                                color: Color(0xFF203A73),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: Image.asset(
+                          'designs/lplogo.jfif',
+                          height: 128,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E293B),
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      child,
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FlowCard extends StatelessWidget {
+  const _FlowCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.line),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F0B1220),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _PrimaryActionButton extends StatelessWidget {
+  const _PrimaryActionButton({
+    required this.label,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF065F46),
+              Color(0xFF2EA043),
+              Color(0xFF34D399),
+            ],
+            stops: [0.0, 0.48, 1.0],
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: busy ? null : onTap,
+            child: Center(
+              child: busy
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OtpField extends StatelessWidget {
+  const _OtpField({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      maxLength: 6,
+      textAlign: TextAlign.center,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      style: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 6,
+      ),
+      decoration: InputDecoration(
+        labelText: 'Code OTP',
+        hintText: '------',
+        counterText: '',
+        filled: true,
+        fillColor: AppColors.background,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      onSubmitted: (_) {},
+    );
+  }
+}
+
+class _PasswordField extends StatelessWidget {
+  const _PasswordField({
+    required this.controller,
+    required this.obscure,
+    required this.label,
+    required this.hint,
+    this.trailing,
+    required this.validator,
+  });
+
+  final TextEditingController controller;
+  final bool obscure;
+  final String label;
+  final String hint;
+  final Widget? trailing;
+  final String? Function(String?) validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      keyboardType: TextInputType.number,
+      maxLength: 6,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        counterText: '',
+        suffixIcon: trailing,
+      ),
+      validator: validator,
     );
   }
 }

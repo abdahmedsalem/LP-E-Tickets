@@ -10,8 +10,10 @@ import '../models/acpec_purchase_create_result.dart';
 class AcpecPurchasesMapper {
   AcpecPurchasesMapper._();
 
-  static final DateTime _fallbackDate =
-      DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  static final DateTime _fallbackDate = DateTime.fromMillisecondsSinceEpoch(
+    0,
+    isUtc: true,
+  );
 
   /// Réponse de création de commande (`purchase_id`, `public_code`, `state`).
   static AcpecPurchaseCreateResult parseCreateResult(dynamic raw) {
@@ -34,22 +36,25 @@ class AcpecPurchasesMapper {
       m = d;
     }
 
-    final pid = (m['purchase_id'] ?? m['id'] ?? m['order_id'])?.toString().trim();
+    final pid = (m['purchase_id'] ?? m['id'] ?? m['order_id'])
+        ?.toString()
+        .trim();
     if (pid == null || pid.isEmpty) {
       throw Exception(
         'Réponse incomplète : identifiant de commande (purchase_id) manquant.',
       );
     }
     final pub =
-        (m['public_code'] ?? m['publicCode'] ?? m['public_reference'])?.toString().trim() ??
-            '';
+        (m['public_code'] ?? m['publicCode'] ?? m['public_reference'])
+            ?.toString()
+            .trim() ??
+        '';
     if (pub.isEmpty) {
       throw Exception(
         'Réponse incomplète : code public (public_code) manquant.',
       );
     }
-    final st =
-        (m['state'] ?? m['status'] ?? 'submitted').toString().trim();
+    final st = (m['state'] ?? m['status'] ?? 'submitted').toString().trim();
     final payRef = m['payment_reference']?.toString().trim();
     return AcpecPurchaseCreateResult(
       purchaseId: pid,
@@ -340,7 +345,10 @@ class AcpecPurchasesMapper {
     required String companyId,
     int? requestedPurchaseId,
   }) {
-    final payload = _unwrapDetailPayload(raw, requestedPurchaseId: requestedPurchaseId);
+    final payload = _unwrapDetailPayload(
+      raw,
+      requestedPurchaseId: requestedPurchaseId,
+    );
     var lot = _mapLot(
       payload,
       clientId: clientId,
@@ -654,10 +662,9 @@ class AcpecPurchasesMapper {
     num id, {
     required int index,
   }) {
-    return _proofFromMap(
-      {'id': id},
-      fallbackLabel: 'Pièce jointe ${index + 1}',
-    );
+    return _proofFromMap({
+      'id': id,
+    }, fallbackLabel: 'Pièce jointe ${index + 1}');
   }
 
   static PurchaseProofSummary? _proofFromMap(
@@ -665,13 +672,14 @@ class AcpecPurchasesMapper {
     required String fallbackLabel,
   }) {
     final filename = _resolveProofFilename(p);
-    final mime = (p['mimetype'] ??
-            p['mime_type'] ??
-            p['type_mime'] ??
-            p['proof_mimetype'] ??
-            p['proof_mime_type'])
-        ?.toString()
-        .trim();
+    final mime =
+        (p['mimetype'] ??
+                p['mime_type'] ??
+                p['type_mime'] ??
+                p['proof_mimetype'] ??
+                p['proof_mime_type'])
+            ?.toString()
+            .trim();
     final resolvedMime = (mime != null && mime.isNotEmpty)
         ? mime
         : mimeTypeFromFilename(filename);
@@ -700,13 +708,14 @@ class AcpecPurchasesMapper {
           p['attachment_data'],
     );
 
-    var url = (p['url'] ??
-            p['download_url'] ??
-            p['href'] ??
-            p['link'] ??
-            p['public_url'])
-        ?.toString()
-        .trim();
+    var url =
+        (p['url'] ??
+                p['download_url'] ??
+                p['href'] ??
+                p['link'] ??
+                p['public_url'])
+            ?.toString()
+            .trim();
     final attachId = _scalarId(
       p['id'] ?? p['attachment_id'] ?? p['ir_attachment_id'],
     );
@@ -720,12 +729,14 @@ class AcpecPurchasesMapper {
     }
     final hasUrl = url != null && url.isNotEmpty && url != 'false';
     final hasBytes = bytes != null && bytes.isNotEmpty;
-    final hasName = filename != null && filename.isNotEmpty && filename != 'false';
+    final hasName =
+        filename != null && filename.isNotEmpty && filename != 'false';
 
     if (!hasBytes && !hasUrl && !hasName) return null;
 
     final title = p['title'] ?? p['type'];
-    final label = (title?.toString().trim().isNotEmpty == true
+    final label =
+        (title?.toString().trim().isNotEmpty == true
             ? title!.toString().trim()
             : null) ??
         (hasName ? filename : null) ??
@@ -745,7 +756,8 @@ class AcpecPurchasesMapper {
 
   static List<PurchaseProofSummary> _proofsFromRow(Map<String, dynamic> row) {
     final out = <PurchaseProofSummary>[];
-    final raw = row['preuves'] ??
+    final raw =
+        row['preuves'] ??
         row['proofs'] ??
         row['attachments'] ??
         row['payment_proofs'] ??
@@ -800,12 +812,7 @@ class AcpecPurchasesMapper {
       }
     }
 
-    for (final key in [
-      'payment_proof',
-      'proof',
-      'preuve_paiement',
-      'preuve',
-    ]) {
+    for (final key in ['payment_proof', 'proof', 'preuve_paiement', 'preuve']) {
       final nested = row[key];
       if (nested is Map) {
         final proof = _proofFromMap(
@@ -820,10 +827,7 @@ class AcpecPurchasesMapper {
 
     PurchaseProofSummary? embedded;
     if (_mapHasProofPayload(row)) {
-      embedded = _proofFromMap(
-        row,
-        fallbackLabel: 'Preuve de paiement',
-      );
+      embedded = _proofFromMap(row, fallbackLabel: 'Preuve de paiement');
       if (embedded != null && _isMeaningfulProof(embedded)) {
         final dup = out.any(
           (p) =>
@@ -871,16 +875,13 @@ class AcpecPurchasesMapper {
     ]) {
       final id = _scalarId(row[key]);
       if (id == null || id == '0') continue;
-      final proof = _proofFromMap(
-        {
-          'id': id,
-          if (sharedFilename != null &&
-              sharedFilename.isNotEmpty &&
-              sharedFilename != 'false')
-            'filename': sharedFilename,
-        },
-        fallbackLabel: 'Preuve de paiement',
-      );
+      final proof = _proofFromMap({
+        'id': id,
+        if (sharedFilename != null &&
+            sharedFilename.isNotEmpty &&
+            sharedFilename != 'false')
+          'filename': sharedFilename,
+      }, fallbackLabel: 'Preuve de paiement');
       if (proof != null && _isMeaningfulProof(proof)) {
         out.add(proof);
         index++;
@@ -976,7 +977,12 @@ class AcpecPurchasesMapper {
     } else if (partner != null && partner.toString().trim().isNotEmpty) {
       resClientId = partner.toString().trim();
     }
-    for (final k in ['client_name', 'partner_name', 'buyer_name', 'customer_name']) {
+    for (final k in [
+      'client_name',
+      'partner_name',
+      'buyer_name',
+      'customer_name',
+    ]) {
       final v = row[k]?.toString().trim();
       if (v != null && v.isNotEmpty) {
         resClientName = v;
@@ -986,9 +992,8 @@ class AcpecPurchasesMapper {
 
     final internalRef =
         row['name']?.toString() ?? row['internal_ref']?.toString() ?? 'Lot $id';
-    final publicCode = row['public_code']?.toString() ??
-        row['publicCode']?.toString() ??
-        '';
+    final publicCode =
+        row['public_code']?.toString() ?? row['publicCode']?.toString() ?? '';
     final state = _parseState(
       (row['state'] ?? row['status'])?.toString() ?? '',
     );
@@ -998,22 +1003,27 @@ class AcpecPurchasesMapper {
 
     final proofs = _proofsFromRow(row);
     final paymentRef = row['payment_reference']?.toString().trim();
-    final String? paymentProofPath = row['payment_proof_path']?.toString() ??
-        row['proof_path']?.toString();
+    final String? paymentProofPath =
+        row['payment_proof_path']?.toString() ?? row['proof_path']?.toString();
 
-    final lines = _mapLines(row['lines']) ??
+    final lines =
+        _mapLines(row['lines']) ??
         _mapLines(row['lignes']) ??
         _mapLines(row['purchase_lines']) ??
         _syntheticLinesFromTotals(row);
 
-    final createdAt = _parseDate(row['create_date'] ??
-            row['created_at'] ??
-            row['date_order'] ??
-            row['created'] ??
-            row['date']) ??
+    final createdAt =
+        _parseDate(
+          row['create_date'] ??
+              row['created_at'] ??
+              row['date_order'] ??
+              row['created'] ??
+              row['date'],
+        ) ??
         _fallbackDate;
 
-    final exp = _parseDate(row['expiration_date'] ?? row['expiry_date']) ??
+    final exp =
+        _parseDate(row['expiration_date'] ?? row['expiry_date']) ??
         createdAt.add(const Duration(days: 365));
 
     return PurchaseLot(
@@ -1023,10 +1033,12 @@ class AcpecPurchasesMapper {
       clientId: resClientId,
       clientName: resClientName,
       companyId: companyId,
-      paymentProofPath: paymentProofPath ??
+      paymentProofPath:
+          paymentProofPath ??
           (proofs.isNotEmpty ? proofs.first.filename : null),
-      paymentReference:
-          (paymentRef != null && paymentRef.isNotEmpty) ? paymentRef : null,
+      paymentReference: (paymentRef != null && paymentRef.isNotEmpty)
+          ? paymentRef
+          : null,
       proofs: proofs,
       lines: lines,
       state: state,
@@ -1050,21 +1062,25 @@ class AcpecPurchasesMapper {
       if (e is! Map) continue;
       final m = Map<String, dynamic>.from(e);
       final lineId = (m['id'] ?? i).toString();
-      final ctId =
-          (m['carnet_type_id'] ?? m['type_id'] ?? m['product_id'] ?? 0).toString();
-      final code = m['carnet_type_code']?.toString() ??
+      final ctId = (m['carnet_type_id'] ?? m['type_id'] ?? m['product_id'] ?? 0)
+          .toString();
+      final code =
+          m['carnet_type_code']?.toString() ??
           m['carnet_code']?.toString() ??
           m['code']?.toString() ??
           (m['carnet_type_name']?.toString().isNotEmpty == true
               ? m['carnet_type_name'].toString()
               : null) ??
           'T$ctId';
-      final name = m['carnet_type_name']?.toString().trim() ??
+      final name =
+          m['carnet_type_name']?.toString().trim() ??
           m['name']?.toString().trim() ??
           '';
       final carnetQty = _int(m['carnet_qty'] ?? m['qty'] ?? m['quantity'], 0);
-      final size = _int(m['carnet_size'] ?? m['size'] ?? m['face_count'], 1)
-          .clamp(1, 9999);
+      final size = _int(
+        m['carnet_size'] ?? m['size'] ?? m['face_count'],
+        1,
+      ).clamp(1, 9999);
       final fv = _int(
         m['face_value'] ?? m['nominal'] ?? m['price_unit'] ?? m['unit_price'],
         0,
@@ -1087,8 +1103,13 @@ class AcpecPurchasesMapper {
   }
 
   /// Quand le serveur ne renvoie que des totaux (`amount_total`, `face_qty_total`).
-  static List<PurchaseLine> _syntheticLinesFromTotals(Map<String, dynamic> row) {
-    final faceQty = _int(row['face_qty_total'] ?? row['face_qty'] ?? row['total_faces'], 0);
+  static List<PurchaseLine> _syntheticLinesFromTotals(
+    Map<String, dynamic> row,
+  ) {
+    final faceQty = _int(
+      row['face_qty_total'] ?? row['face_qty'] ?? row['total_faces'],
+      0,
+    );
     final amount = _double(row['amount_total'] ?? row['total_amount']);
     if (faceQty <= 0 && amount <= 0) {
       return const [];
@@ -1168,8 +1189,10 @@ class AcpecPurchasesMapper {
     if (s.isEmpty) return null;
     return DateTime.tryParse(s) ??
         (int.tryParse(s) != null
-            ? DateTime.fromMillisecondsSinceEpoch(int.parse(s) * 1000,
-                isUtc: true)
+            ? DateTime.fromMillisecondsSinceEpoch(
+                int.parse(s) * 1000,
+                isUtc: true,
+              )
             : null);
   }
 }

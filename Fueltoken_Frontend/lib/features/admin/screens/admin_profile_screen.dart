@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,7 +12,7 @@ import '../../../main.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// Profil administrateur : identitÃ©, affichage, dÃ©connexion.
+/// Profil administrateur : identité, affichage, déconnexion.
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
@@ -53,18 +53,18 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       if (user.phone.trim().isNotEmpty)
         _InfoTile(
           icon: Icons.phone_outlined,
-          label: 'TÃ©lÃ©phone',
+          label: 'Téléphone',
           value: user.phone,
         ),
       _InfoTile(
         icon: Icons.badge_outlined,
-        label: 'RÃ´le',
+        label: 'Rôle',
         value: user.role.label,
       ),
       if ((user.companyId ?? '').trim().isNotEmpty)
         _InfoTile(
           icon: Icons.business_outlined,
-          label: 'SociÃ©tÃ©',
+          label: 'Société',
           value: user.companyId!,
           mono: true,
         ),
@@ -97,7 +97,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         elevation: 0,
         title: Text(
           'Profil',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.poppins(
             fontWeight: FontWeight.w800,
             fontSize: 18,
             color: scheme.onSurface,
@@ -141,7 +141,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   alignment: Alignment.center,
                   child: Text(
                     _initials(user.name),
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 22,
@@ -157,7 +157,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         user.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 19,
                           fontWeight: FontWeight.w800,
@@ -177,7 +177,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         ),
                         child: Text(
                           user.role.label,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -193,8 +193,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
           const SizedBox(height: 22),
           Text(
-            'IDENTITÃ‰',
-            style: GoogleFonts.inter(
+            'IDENTITÉ',
+            style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.85,
@@ -217,7 +217,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           const SizedBox(height: 22),
           Text(
             'AFFICHAGE',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.85,
@@ -240,14 +240,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               tileColor: Colors.white,
               title: Text(
                 'Mode sombre',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurface,
                 ),
               ),
               subtitle: Text(
-                'AppliquÃ© Ã  toute lâ€™app sur cet appareil.',
-                style: GoogleFonts.inter(
+                'Appliqué à toute l’app sur cet appareil.',
+                style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -264,7 +264,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('DÃ©connexion'),
+                  title: const Text('Déconnexion'),
                   content: const Text(
                     'Quitter la session administrateur sur cet appareil ?',
                   ),
@@ -278,7 +278,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.danger,
                       ),
-                      child: const Text('Se dÃ©connecter'),
+                      child: const Text('Se déconnecter'),
                     ),
                   ],
                 ),
@@ -289,7 +289,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               }
             },
             icon: const Icon(Icons.logout_rounded),
-            label: const Text('Se dÃ©connecter'),
+            label: const Text('Se déconnecter'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
@@ -382,7 +382,7 @@ class _InfoTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurfaceVariant,
@@ -391,7 +391,7 @@ class _InfoTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: scheme.onSurface,

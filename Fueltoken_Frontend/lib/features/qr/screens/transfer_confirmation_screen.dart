@@ -5,14 +5,15 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
-import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _transferConfirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _transferConfirmationHeaderGap = 10.0;
-const _transferConfirmationHeaderTitleSize = 26.0;
+const _transferConfirmationHeaderGap = 18.0;
+const _transferConfirmationHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
-/// Arguments passÃ©s Ã  [TransferConfirmationScreen].
+/// Arguments passés à [TransferConfirmationScreen].
 class TransferConfirmationArgs {
   const TransferConfirmationArgs({
     required this.recipientPhone,
@@ -22,19 +23,19 @@ class TransferConfirmationArgs {
     required this.onConfirm,
   });
 
-  /// NumÃ©ro de tÃ©lÃ©phone du destinataire (tel que saisi).
+  /// Numéro de téléphone du destinataire (tel que saisi).
   final String recipientPhone;
 
-  /// Nom rÃ©solu du destinataire (retournÃ© par le backend lors de la vÃ©rification).
+  /// Nom résolu du destinataire (retourné par le backend lors de la vérification).
   final String recipientName;
 
-  /// Lignes de transfert sÃ©lectionnÃ©es.
+  /// Lignes de transfert sélectionnées.
   final List<TransferConfirmationLine> lines;
 
   /// Note optionnelle.
   final String? note;
 
-  /// Callback appelÃ© quand l'utilisateur confirme.
+  /// Callback appelé quand l'utilisateur confirme.
   final Future<void> Function() onConfirm;
 }
 
@@ -71,19 +72,15 @@ class _TransferConfirmationScreenState
 
   Future<void> _onConfirm() async {
     var completed = false;
-    bool confirmed;
-    try {
-      confirmed = await showSensitiveActionPasswordDialog(
-        context,
-        title: 'Confirmer le transfert',
-        description: 'Saisissez votre mot de passe pour valider ce transfert.',
-      );
-    } catch (e) {
-      return;
-    }
-    if (!confirmed) return;
     setState(() => _confirming = true);
     try {
+      final ok = await showSensitiveActionPasswordDialog(
+        context,
+        title: 'Vérification du mot de passe',
+        description:
+            'Saisissez votre mot de passe pour confirmer cette opération.',
+      );
+      if (!ok) return;
       await widget.args.onConfirm();
       if (mounted) {
         completed = true;
@@ -143,7 +140,7 @@ class _TransferConfirmationScreenState
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    'Confirmer le transfert',
+                                    'Confirmer l\'envoi',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 15,
@@ -183,18 +180,37 @@ class _TransferConfirmationScreenState
         child: Column(
           children: [
             AppBarHeader(
-              title: 'Confirmer le transfert',
+              title: 'Confirmer l\'envoi',
               onBack: () => Navigator.of(context).pop(false),
               largeTitle: true,
               largeTitlePadding: _transferConfirmationHeaderPadding,
               largeTitleGap: _transferConfirmationHeaderGap,
               largeTitleFontSize: _transferConfirmationHeaderTitleSize,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _headerNavy,
+                letterSpacing: -0.4,
+                height: 1.05,
+              ),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 children: [
                   // â”€â”€ Hero destinataire + montant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                  Text(
+                    'Vérifiez les carnets avant de confirmer.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.muted,
+                      height: 1.35,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _TransferHeroCard(
                     recipientName: args.recipientName,
                     recipientPhone: args.recipientPhone,
@@ -202,7 +218,7 @@ class _TransferConfirmationScreenState
                   const SizedBox(height: 20),
 
                   // â”€â”€ Carnets transférés â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                  _SectionHeader(label: 'Carnets transférés'),
+                  _SectionHeader(label: 'Carnets envoyés'),
                   const SizedBox(height: 8),
                   _TransferLinesList(lines: args.lines),
                   const SizedBox(height: 16),
@@ -211,7 +227,7 @@ class _TransferConfirmationScreenState
                   // â”€â”€ Note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   if (args.note != null && args.note!.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    _SectionHeader(label: 'Note'),
+                    _SectionHeader(label: 'Message'),
                     const SizedBox(height: 8),
                     _NoteCard(note: args.note!),
                   ],
@@ -252,15 +268,15 @@ class _TransferHeroCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // FlÃ¨che de transfert
+          // Flèche de transfert
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [_RecipientAvatar(name: recipientName)],
           ),
           const SizedBox(height: 10),
           Text(
-            'Client receveur',
-            style: GoogleFonts.inter(
+            'Destinataire',
+            style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: AppColors.muted,
@@ -269,7 +285,7 @@ class _TransferHeroCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             recipientName,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -318,7 +334,7 @@ class _RecipientAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           _initials,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: Colors.white,
@@ -337,7 +353,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label.toUpperCase(),
-      style: GoogleFonts.inter(
+      style: GoogleFonts.poppins(
         fontSize: 10.5,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.8,
@@ -418,7 +434,7 @@ class _TransferLineRow extends StatelessWidget {
                 if (line.faceLine.expirationDate.year < 9999) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Expire le ${Formatters.date(line.faceLine.expirationDate)}',
+                    'Expire le ${Formatters.dateTimeDash(line.faceLine.expirationDate)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -433,15 +449,15 @@ class _TransferLineRow extends StatelessWidget {
           _AmountInline(
             amount: line.totalAmount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.inter(
-              fontSize: 14,
+            valueStyle: GoogleFonts.poppins(
+              fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: AppColors.ink,
+              color: const Color(0xFF2E7D32),
             ),
             unitStyle: const TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+              color: Color(0xFF2E7D32),
             ),
           ),
         ],
@@ -469,7 +485,7 @@ class _TransferSummaryAmount extends StatelessWidget {
       child: Row(
         children: [
           const Text(
-            'Montant total',
+            'Total',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
@@ -480,11 +496,10 @@ class _TransferSummaryAmount extends StatelessWidget {
           _AmountInline(
             amount: totalAmount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+            valueStyle: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF2E7D32),
-              letterSpacing: -0.3,
             ),
             unitStyle: const TextStyle(
               fontSize: 9.5,

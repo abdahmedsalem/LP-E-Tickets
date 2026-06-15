@@ -36,21 +36,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
   _HistoryQuickFilter _quickFilter = _HistoryQuickFilter.all;
 
-  /// Types retirés de l'UI (ex. portefeuille) se comportent comme tous les filtres.
+  /// Types retirÃ©s de l'UI (ex. portefeuille) se comportent comme tous les filtres.
   TxType? get _effectiveFilter =>
       _filter == TxType.walletLedger ? null : _filter;
 
   static const int _pageSize = 20;
 
-  /// Limite de sécurité pour charger tout l'historique sur une période (filtre type).
+  /// Limite de sÃ©curitÃ© pour charger tout l'historique sur une pÃ©riode (filtre type).
   static const int _maxPagesFullRange = 80;
 
   final ScrollController _scroll = ScrollController();
-
-  DateTime _draftFrom = DateTime.fromMillisecondsSinceEpoch(0);
-  DateTime _draftTo = DateTime.fromMillisecondsSinceEpoch(0);
-  DateTime _activeFrom = DateTime.fromMillisecondsSinceEpoch(0);
-  DateTime _activeTo = DateTime.fromMillisecondsSinceEpoch(0);
 
   List<BusinessTransaction> _acpecItems = [];
   bool _acpecLoading = true;
@@ -64,11 +59,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _draftFrom = DateTime(now.year, 1, 1);
-    _draftTo = DateTime(now.year, 12, 31, 23, 59, 59);
-    _activeFrom = _draftFrom;
-    _activeTo = _draftTo;
     _scroll.addListener(_onAcpecScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -100,18 +90,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     super.dispose();
   }
 
-  /// Route 5.6 : uniquement date_from, date_to, limit, offset (pas de filtre type côté API).
+  /// Route 5.6 : limit, offset (pas de filtre date côté API).
   Map<String, dynamic> _clientTxParams({
     required int limit,
     required int offset,
   }) {
-    final df = DateFormat('yyyy-MM-dd HH:mm:ss');
-    return {
-      'date_from': df.format(_activeFrom),
-      'date_to': df.format(_activeTo),
-      'limit': limit,
-      'offset': offset,
-    };
+    return {'limit': limit, 'offset': offset};
   }
 
   Map<String, dynamic> _stationTxParams({
@@ -150,6 +134,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void _setQuickFilter(_HistoryQuickFilter next) {
     if (_quickFilter == next) return;
     setState(() => _quickFilter = next);
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  Future<void> _refreshCurrentHistory() async {
+    if (!AppEnvironment.useAcpecLiveData) {
+      setState(() {});
+      return;
+    }
+    await _reloadAcpecForCurrentFilter();
   }
 
   void _onAcpecScroll() {
@@ -278,7 +277,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecLoading = false;
         _acpecLoadingMore = false;
         _acpecError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
+            ? 'Session expirÃ©e. Reconnectez-vous.'
             : e.message;
         if (reset) _acpecItems = [];
       });
@@ -293,7 +292,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  /// Charge toutes les pages de la période (nécessaire pour un filtre type correct côté client).
+  /// Charge toutes les pages de la pÃ©riode (nÃ©cessaire pour un filtre type correct cÃ´tÃ© client).
   Future<void> _loadAcpecFullRange() async {
     if (!AppEnvironment.useAcpecLiveData) return;
     final user = context.read<AuthBloc>().state.user;
@@ -358,7 +357,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       setState(() {
         _acpecLoading = false;
         _acpecError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
+            ? 'Session expirÃ©e. Reconnectez-vous.'
             : e.message;
         _acpecItems = [];
       });
@@ -381,187 +380,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  Future<void> pickFrom() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _draftFrom,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && mounted) {
-      setState(() => _draftFrom = picked);
-    }
-  }
-
-  Future<void> pickTo() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _draftTo,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && mounted) {
-      setState(() => _draftTo = picked);
-    }
-  }
-
-  void _applyDateFilter() {
-    final from = DateTime(_draftFrom.year, _draftFrom.month, _draftFrom.day);
-    final to = DateTime(
-      _draftTo.year,
-      _draftTo.month,
-      _draftTo.day,
-      23,
-      59,
-      59,
-    );
-    setState(() {
-      _activeFrom = from;
-      _activeTo = to;
-    });
-    unawaited(_reloadAcpecForCurrentFilter());
-  }
-
-  Future<void> _openAdvancedFilters() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            Future<void> pickFrom() async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _draftFrom,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
-              );
-              if (picked != null && mounted) {
-                setSheetState(() => _draftFrom = picked);
-              }
-            }
-
-            Future<void> pickTo() async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _draftTo,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
-              );
-              if (picked != null && mounted) {
-                setSheetState(() => _draftTo = picked);
-              }
-            }
-
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 42,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD1D5DB),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Filtres avancés',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Affinez la période affichée dans l'historique.",
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      _DateFilterChip(
-                        label: 'Du',
-                        value: _compactDate(_draftFrom),
-                        onTap: pickFrom,
-                      ),
-                      const SizedBox(height: 12),
-                      _DateFilterChip(
-                        label: 'Au',
-                        value: _compactDate(_draftTo),
-                        onTap: pickTo,
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                setSheetState(() {
-                                  final now = DateTime.now();
-                                  _draftFrom = DateTime(now.year, 1, 1);
-                                  _draftTo = DateTime(
-                                    now.year,
-                                    12,
-                                    31,
-                                    23,
-                                    59,
-                                    59,
-                                  );
-                                });
-                              },
-                              child: const Text('Réinitialiser'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                                _applyDateFilter();
-                              },
-                              child: const Text('Appliquer'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   static String _titleForRole(UserRole role) {
     switch (role) {
       case UserRole.user:
-        return 'Historique des transactions';
+        return 'Historique';
       case UserRole.station:
-        return 'Journal station';
+        return 'Historique station';
       case UserRole.admin:
-        return "Journal d'activité";
+        return 'Historique global';
     }
   }
 
@@ -572,18 +398,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       case UserRole.station:
         return 'Aucune activité enregistrée';
       case UserRole.admin:
-        return 'Journal vide';
+        return 'Historique vide';
     }
   }
 
   static String _emptyMessage(UserRole role) {
     switch (role) {
       case UserRole.user:
-        return 'Vos achats, \u00e9missions QR, partages et consommations appara\u00eetront ici d\u00e8s qu\u0027ils existeront.';
+        return 'Vos achats, QR préparés, envois et utilisations apparaîtront ici.';
       case UserRole.station:
-        return 'Les scans et consommations trait\u00e9s pour cette station s\u0027afficheront ici.';
+        return 'Les contrôles et utilisations traités pour cette station s\u0027afficheront ici.';
       case UserRole.admin:
-        return 'Synchronisez ou ajoutez des donn\u00e9es : le journal global se remplira automatiquement.';
+        return 'Synchronisez ou ajoutez des données : l\u0027historique global se remplira automatiquement.';
     }
   }
 
@@ -742,7 +568,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           _titleForRole(user.role),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.poppins(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             height: 1.2,
@@ -763,48 +589,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 26),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Période active:  - ',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          TextButton.icon(
-                            onPressed: _openAdvancedFilters,
-                            icon: const Icon(Icons.tune_rounded, size: 18),
-                            label: const Text('Filtres avancés'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
                 Expanded(
                   child: txs.isEmpty
                       ? RefreshIndicator(
-                          onRefresh: () async {
-                            if (acpec) {
-                              await _reloadAcpecForCurrentFilter();
-                            } else {
-                              setState(() {});
-                            }
-                          },
+                          onRefresh: _refreshCurrentHistory,
                           child: ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(24),
@@ -822,13 +610,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           ),
                         )
                       : RefreshIndicator(
-                          onRefresh: () async {
-                            if (acpec) {
-                              await _reloadAcpecForCurrentFilter();
-                            } else {
-                              setState(() {});
-                            }
-                          },
+                          onRefresh: _refreshCurrentHistory,
                           child: ListView.builder(
                             controller: acpec ? _scroll : null,
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -883,7 +665,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                                 ),
                                               )
                                             : Text(
-                                                "Fin de l'historique pour cette période",
+                                                "Fin de l'historique pour cette pÃ©riode",
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: AppColors.muted
@@ -1015,13 +797,13 @@ class _TxCardState extends State<_TxCard> {
               headerBuilder: (context, isExpanded) {
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1031,34 +813,34 @@ class _TxCardState extends State<_TxCard> {
                                 color: AppColors.ink,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$dateLabel $hourLabel',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.muted,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          ),
+                          const SizedBox(width: 12),
+                          _AmountInline(
+                            amount: tx.totalAmount.abs(),
+                            textAlign: TextAlign.right,
+                            valueStyle: GoogleFonts.poppins(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: amountColor,
+                              height: 1,
+                              letterSpacing: -0.2,
                             ),
-                          ],
-                        ),
+                            unitStyle: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: amountColor.withValues(alpha: 0.82),
+                              height: 1,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      _AmountInline(
-                        amount: tx.totalAmount.abs(),
-                        textAlign: TextAlign.right,
-                        valueStyle: GoogleFonts.inter(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: amountColor,
-                          height: 1,
-                          letterSpacing: -0.2,
-                        ),
-                        unitStyle: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: amountColor.withValues(alpha: 0.82),
-                          height: 1,
+                      const SizedBox(height: 4),
+                      Text(
+                        '$dateLabel $hourLabel',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -1097,7 +879,7 @@ class _TxDetailBody extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Lignes',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
               color: AppColors.muted,
@@ -1138,7 +920,7 @@ class _TxDetailRowWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               row.label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.muted,
@@ -1154,7 +936,7 @@ class _TxDetailRowWidget extends StatelessWidget {
             child: Text(
               row.value,
               textAlign: TextAlign.right,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink,
@@ -1228,7 +1010,7 @@ class _TxLineRow extends StatelessWidget {
     final ticketLabel =
         '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
     final carnetLabel = line.carnetSize > 0 && line.faceValue > 0
-        ? 'carnet ${Formatters.numberFr(line.carnetSize)} ×${line.faceValue}'
+        ? 'carnet ${Formatters.numberFr(line.carnetSize)} x ${line.faceValue}'
         : line.carnetTypeName.trim().isNotEmpty
         ? line.carnetTypeName.trim().replaceFirst('Carnet', 'carnet')
         : line.faceValue > 0
@@ -1238,17 +1020,27 @@ class _TxLineRow extends StatelessWidget {
   }
 
   String? _subtitle() {
+    if (txType == TxType.purchaseSubmitted) return null;
     if (line.expirationDate == null) return null;
     return 'Date d\'expiration : ${DateFormat('dd-MM-yyyy').format(line.expirationDate!)}';
   }
 
-  Color _amountColor() {
-    if (_isPurchaseStyle) {
-      if (txType == TxType.purchaseRejected) return AppColors.danger;
-      if (txType == TxType.purchaseSubmitted) return AppColors.danger;
-      return AppColors.leaderGreen;
-    }
-    return AppColors.ink;
+  TextStyle _titleStyle(BuildContext context, {required double fontSize}) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w800,
+      color: AppColors.ink,
+      height: 1.15,
+    );
+  }
+
+  TextStyle _dateStyle() {
+    return const TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      color: AppColors.muted,
+      height: 1.25,
+    );
   }
 
   Widget _purchaseBody(BuildContext context) {
@@ -1269,25 +1061,15 @@ class _TxLineRow extends StatelessWidget {
               children: [
                 Text(
                   _lineTypeLabel(),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    height: 1.15,
-                  ),
+                  style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                      height: 1.2,
-                    ),
+                    style: _dateStyle(),
                   ),
                 ],
               ],
@@ -1297,16 +1079,16 @@ class _TxLineRow extends StatelessWidget {
           _AmountInline(
             amount: line.amount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.inter(
+            valueStyle: GoogleFonts.poppins(
               fontSize: 14.5,
-              fontWeight: FontWeight.w900,
-              color: _amountColor(),
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
               height: 1.1,
             ),
             unitStyle: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: _amountColor().withValues(alpha: 0.82),
+              color: Colors.black.withValues(alpha: 0.82),
               height: 1.1,
             ),
           ),
@@ -1320,7 +1102,7 @@ class _TxLineRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE8EAED)),
       ),
@@ -1333,25 +1115,15 @@ class _TxLineRow extends StatelessWidget {
               children: [
                 Text(
                   _qrTitle(),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    height: 1.2,
-                  ),
+                  style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                      height: 1.2,
-                    ),
+                    style: _dateStyle(),
                   ),
                 ],
               ],
@@ -1361,16 +1133,16 @@ class _TxLineRow extends StatelessWidget {
           _AmountInline(
             amount: line.amount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.inter(
+            valueStyle: GoogleFonts.poppins(
               fontSize: 14,
-              fontWeight: FontWeight.w900,
-              color: AppColors.ink,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
               height: 1.1,
             ),
             unitStyle: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink.withValues(alpha: 0.72),
+              color: Colors.black.withValues(alpha: 0.72),
               height: 1.1,
             ),
           ),
@@ -1388,7 +1160,6 @@ class _TxLineRow extends StatelessWidget {
 }
 
 List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
-  final amount = '${Formatters.numberFr(tx.totalAmount.abs())} MRU';
   final lotRef = tx.lotInternalRef ?? tx.lotId;
   final qrRef = tx.qrPublicCode ?? tx.qrId;
   final station = tx.stationName ?? tx.stationId;
@@ -1400,77 +1171,82 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
     case TxType.purchaseRejected:
       return [
         if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Commande', value: lotRef),
-        _TxDetailRow(label: 'Client', value: tx.userName),
-        _TxDetailRow(label: 'Statut', value: historyTxTitle(tx.type)),
-        _TxDetailRow(label: 'Montant', value: amount),
-        if ((tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Carnet', value: lotRef),
+        _TxDetailRow(label: 'Acheteur', value: tx.userName),
+        if (tx.type == TxType.purchaseSubmitted &&
+            (tx.note ?? '').trim().isNotEmpty)
           _TxDetailRow(label: 'Note', value: tx.note!.trim()),
+        if (tx.type == TxType.purchaseRejected &&
+            (tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Message', value: tx.note!.trim()),
       ];
     case TxType.qrEmission:
       return [
         if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'QR', value: qrRef),
-        _TxDetailRow(label: 'Montant', value: amount),
+          _TxDetailRow(label: 'Code QR', value: qrRef),
         if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Lot', value: lotRef),
+          _TxDetailRow(label: 'Carnet', value: lotRef),
       ];
     case TxType.qrSeparer:
       return [
         if (qrRef != null && qrRef.isNotEmpty)
           _TxDetailRow(label: 'QR', value: qrRef),
         _TxDetailRow(label: 'Tickets', value: '$totalQty'),
-        _TxDetailRow(label: 'Montant', value: amount),
-        if ((tx.note ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Note', value: tx.note!.trim()),
       ];
     case TxType.qrRetirer:
       return [
         if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'QR', value: qrRef),
+          _TxDetailRow(label: 'Code QR', value: qrRef),
         _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
-        _TxDetailRow(label: 'Montant', value: amount),
       ];
     case TxType.carnetTransfer:
       return [
         if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Référence', value: lotRef),
+          _TxDetailRow(label: 'Carnet', value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Bénéficiaire', value: tx.transferParty!.trim()),
-        _TxDetailRow(label: 'Montant', value: amount),
+          _TxDetailRow(label: 'Receveur', value: tx.transferParty!.trim()),
+        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
+          _TxDetailRow(
+            label: 'Téléphone receveur',
+            value: tx.transferPartyPhone!.trim(),
+          ),
       ];
     case TxType.carnetReceived:
       return [
         if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Référence', value: lotRef),
+          _TxDetailRow(label: 'Carnet', value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Expéditeur', value: tx.transferParty!.trim()),
-        _TxDetailRow(label: 'Montant', value: amount),
+          _TxDetailRow(label: 'Envoyeur', value: tx.transferParty!.trim()),
+        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
+          _TxDetailRow(
+            label: 'Téléphone envoyeur',
+            value: tx.transferPartyPhone!.trim(),
+          ),
       ];
     case TxType.stationConsumption:
       return [
         if (station != null && station.isNotEmpty)
           _TxDetailRow(label: 'Station', value: station),
         if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'QR', value: qrRef),
-        _TxDetailRow(label: 'Tickets', value: '$totalQty'),
-        _TxDetailRow(label: 'Montant', value: amount),
+          _TxDetailRow(label: 'Code QR', value: qrRef),
       ];
     case TxType.expiration:
       return [
         if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'QR', value: qrRef),
-        _TxDetailRow(label: 'Tickets expirés', value: '$totalQty'),
-        _TxDetailRow(label: 'Montant', value: amount),
+          _TxDetailRow(label: 'Code QR', value: qrRef),
       ];
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return [
         if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'Référence', value: qrRef),
-        _TxDetailRow(label: 'Montant', value: amount),
-        if ((tx.note ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Note', value: tx.note!.trim()),
+          _TxDetailRow(label: 'Code QR', value: qrRef),
+        if (tx.type == TxType.qrBlocked)
+          const _TxDetailRow(
+            label: 'Message',
+            value: 'QR bloqué a cause des tickets expirés',
+          )
+        else if ((tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: 'Message', value: tx.note!.trim()),
       ];
   }
 }
@@ -1484,33 +1260,24 @@ String historyTxTitle(TxType type) {
     case TxType.purchaseRejected:
       return 'Achat rejeté';
     case TxType.qrEmission:
-      return 'Génération QR';
+      return 'QR prêt';
     case TxType.qrSeparer:
-      return 'Séparation QR';
+      return 'Partage du QR';
     case TxType.qrRetirer:
-      return 'Retrait de tickets';
+      return 'Retrait du QR';
     case TxType.carnetTransfer:
-      return 'Transfert de carnets';
+      return 'Carnets envoyés';
     case TxType.carnetReceived:
-      return 'Réception de carnets';
+      return 'Carnets reçus';
     case TxType.qrBlocked:
-      return 'QR bloqu\u00e9';
+      return 'QR bloqué';
     case TxType.stationConsumption:
-      return 'Consommation station';
+      return 'Utilisation en station';
     case TxType.expiration:
-      return 'Expiration de tickets';
+      return 'Fin de validité';
     case TxType.walletLedger:
-      return 'Op\u00e9ration';
+      return 'Mouvement';
   }
-}
-
-String _compactDate(DateTime date) {
-  return DateFormat('dd-MM-yyyy').format(date);
-}
-
-String _popupDetailTitle(BusinessTransaction tx) {
-  if (tx.type == TxType.walletLedger) return 'Mouvement';
-  return tx.displayTitle;
 }
 
 Color _historyAmountColor(TxType type) {
@@ -1535,62 +1302,6 @@ Color _historyAmountColor(TxType type) {
   }
 }
 
-class _DateFilterChip extends StatelessWidget {
-  const _DateFilterChip({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Row(
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6B7280),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(width: 1, height: 18, color: const Color(0xFFE5E7EB)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF111827),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _HistoryFilterChips extends StatelessWidget {
   const _HistoryFilterChips({required this.selected, required this.onSelected});
 
@@ -1602,7 +1313,7 @@ class _HistoryFilterChips extends StatelessWidget {
     final items = [
       (_HistoryQuickFilter.all, 'Tous'),
       (_HistoryQuickFilter.purchases, 'Achats'),
-      (_HistoryQuickFilter.transfer, 'Transfert/Reçu'),
+      (_HistoryQuickFilter.transfer, 'Envoi / reçu'),
       (_HistoryQuickFilter.consumption, 'Consommation'),
       (_HistoryQuickFilter.qr, 'QR'),
     ];
@@ -1653,7 +1364,7 @@ class _HistoryFilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: fg,
@@ -1665,307 +1376,8 @@ class _HistoryFilterChip extends StatelessWidget {
   }
 }
 
-// ignore: unused_element
-class _TransactionDetailLoadingDialog extends StatelessWidget {
-  const _TransactionDetailLoadingDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: 320,
-        constraints: const BoxConstraints(maxWidth: 360),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-        child: const AppLoadingSkeleton(
-          style: AppLoadingSkeletonStyle.historyRows,
-          itemCount: 4,
-        ),
-      ),
-    );
-  }
-}
-
-// ignore: unused_element
-class _TransactionDetailScreen extends StatelessWidget {
-  const _TransactionDetailScreen({required this.tx, required this.facts});
-
-  final BusinessTransaction tx;
-  final List<_TransactionFact> facts;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final bottom = MediaQuery.paddingOf(context).bottom;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Détail transaction',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 12, 16, 20 + bottom),
-                children: [
-                  _TransactionOverviewCard(tx: tx),
-                  const SizedBox(height: 14),
-                  _TransactionFactsGrid(facts: facts),
-                  if (tx.lines.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Détail des lignes',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...tx.lines.map((l) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _TxLineRow(txType: tx.type, line: l),
-                      );
-                    }),
-                  ],
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryTint,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.primarySoft),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDark,
-                          ),
-                        ),
-                        Text(
-                          '${Formatters.numberFr(tx.totalAmount)} MRU',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDeep,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 String _historyCarnetTypeLabel(int size, int faceValue) {
-  return 'Carnet ${Formatters.numberFr(size)} ×$faceValue';
-}
-
-class _TransactionOverviewCard extends StatelessWidget {
-  const _TransactionOverviewCard({required this.tx});
-
-  final BusinessTransaction tx;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final amountColor = _historyAmountColor(tx.type);
-    final amountLabel = tx.totalAmount < 0 ? 'Débit' : 'Crédit';
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: amountColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.receipt_long_rounded, color: amountColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _popupDetailTitle(tx),
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                if ((tx.note ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    tx.note!.trim(),
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.35,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          _AmountInline(
-            amount: tx.totalAmount.abs(),
-            semanticsLabel: amountLabel,
-            valueStyle: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: amountColor,
-              height: 1,
-            ),
-            unitStyle: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: amountColor.withValues(alpha: 0.82),
-              height: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TransactionFactsGrid extends StatelessWidget {
-  const _TransactionFactsGrid({required this.facts});
-
-  final List<_TransactionFact> facts;
-
-  @override
-  Widget build(BuildContext context) {
-    if (facts.isEmpty) return const SizedBox.shrink();
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [for (final fact in facts) _TransactionFactCard(fact: fact)],
-    );
-  }
-}
-
-class _TransactionFactCard extends StatelessWidget {
-  const _TransactionFactCard({required this.fact});
-
-  final _TransactionFact fact;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: (MediaQuery.sizeOf(context).width - 42) / 2,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(fact.icon, size: 16, color: fact.color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  fact.label,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            fact.value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: scheme.onSurface,
-              height: 1.25,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  return 'Carnet ${Formatters.numberFr(size)} x $faceValue';
 }
 
 class _TransactionFact {
@@ -1988,18 +1400,16 @@ class _AmountInline extends StatelessWidget {
     required this.valueStyle,
     required this.unitStyle,
     this.textAlign = TextAlign.left,
-    this.semanticsLabel,
   });
 
   final int amount;
   final TextStyle valueStyle;
   final TextStyle unitStyle;
   final TextAlign textAlign;
-  final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
-    final label = semanticsLabel ?? '${Formatters.numberFr(amount)} MRU';
+    final label = '${Formatters.numberFr(amount)} MRU';
     return Semantics(
       label: label,
       child: Text.rich(
@@ -2038,13 +1448,13 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.purchaseRejected:
       return [
         _TransactionFact(
-          label: 'Commande',
+          label: 'Carnet',
           value: lotRef ?? '—',
           icon: Icons.shopping_bag_outlined,
           color: green,
         ),
         _TransactionFact(
-          label: 'Client',
+          label: 'Acheteur',
           value: client,
           icon: Icons.person_outline_rounded,
           color: blue,
@@ -2059,26 +1469,26 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.qrEmission:
       return [
         _TransactionFact(
-          label: 'QR généré',
+          label: 'Code QR',
           value: qr ?? '—',
-          icon: Icons.qr_code_2_rounded,
-          color: blue,
+          icon: Icons.qr_code_2_outlined,
+          color: green,
         ),
         _TransactionFact(
           label: 'Tickets',
           value: '$totalQty',
           icon: Icons.confirmation_number_outlined,
-          color: green,
+          color: amber,
         ),
         _TransactionFact(
           label: 'Montant',
           value: amount,
           icon: Icons.payments_outlined,
-          color: green,
+          color: blue,
         ),
         if (lotRef != null)
           _TransactionFact(
-            label: 'Lot',
+            label: 'Carnet',
             value: lotRef,
             icon: Icons.receipt_long_outlined,
             color: gray,
@@ -2093,7 +1503,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: violet,
         ),
         _TransactionFact(
-          label: 'Lignes',
+          label: 'Parties',
           value: '$lineCount',
           icon: Icons.view_list_rounded,
           color: gray,
@@ -2114,7 +1524,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: amber,
         ),
         _TransactionFact(
-          label: 'Lignes',
+          label: 'Parties',
           value: '$lineCount',
           icon: Icons.view_list_rounded,
           color: gray,
@@ -2129,7 +1539,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.carnetTransfer:
       return [
         _TransactionFact(
-          label: 'Référence',
+          label: 'Carnet',
           value: lotRef ?? '—',
           icon: Icons.swap_horiz_rounded,
           color: blue,
@@ -2147,16 +1557,23 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: green,
         ),
         _TransactionFact(
-          label: 'Client',
+          label: 'Receveur',
           value: client,
           icon: Icons.person_outline_rounded,
           color: gray,
         ),
+        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
+          _TransactionFact(
+            label: 'Téléphone receveur',
+            value: tx.transferPartyPhone!.trim(),
+            icon: Icons.phone_outlined,
+            color: gray,
+          ),
       ];
     case TxType.carnetReceived:
       return [
         _TransactionFact(
-          label: 'Reference',
+          label: 'Carnet',
           value: lotRef ?? '—',
           icon: Icons.swap_horiz_rounded,
           color: blue,
@@ -2174,13 +1591,20 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: green,
         ),
         _TransactionFact(
-          label: 'Expediteur',
+          label: 'Envoyeur',
           value: tx.transferParty?.trim().isNotEmpty == true
               ? tx.transferParty!.trim()
               : client,
           icon: Icons.person_outline_rounded,
           color: gray,
         ),
+        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
+          _TransactionFact(
+            label: 'Téléphone envoyeur',
+            value: tx.transferPartyPhone!.trim(),
+            icon: Icons.phone_outlined,
+            color: gray,
+          ),
       ];
     case TxType.qrBlocked:
       return [
@@ -2191,18 +1615,11 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: gray,
         ),
         _TransactionFact(
-          label: 'Montant',
-          value: amount,
-          icon: Icons.payments_outlined,
-          color: green,
+          label: 'Message',
+          value: 'QR bloqué a cause des tickets expirés',
+          icon: Icons.info_outline_rounded,
+          color: blue,
         ),
-        if (tx.note != null && tx.note!.trim().isNotEmpty)
-          _TransactionFact(
-            label: 'Note',
-            value: tx.note!.trim(),
-            icon: Icons.info_outline_rounded,
-            color: blue,
-          ),
       ];
     case TxType.stationConsumption:
       return [
@@ -2228,15 +1645,15 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.expiration:
       return [
         _TransactionFact(
-          label: 'Référence',
-          value: lotRef ?? '—',
-          icon: Icons.event_busy_outlined,
+          label: 'Code QR',
+          value: qr ?? '—',
+          icon: Icons.hourglass_bottom_rounded,
           color: amber,
         ),
         _TransactionFact(
           label: 'Tickets expirés',
           value: '$totalQty',
-          icon: Icons.hourglass_bottom_rounded,
+          icon: Icons.block_outlined,
           color: gray,
         ),
         _TransactionFact(
@@ -2247,6 +1664,19 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
         ),
       ];
     case TxType.walletLedger:
-      return const [];
+      return [
+        _TransactionFact(
+          label: 'Carnet',
+          value: lotRef ?? '—',
+          icon: Icons.receipt_long_rounded,
+          color: gray,
+        ),
+        _TransactionFact(
+          label: 'Montant',
+          value: amount,
+          icon: Icons.payments_outlined,
+          color: green,
+        ),
+      ];
   }
 }

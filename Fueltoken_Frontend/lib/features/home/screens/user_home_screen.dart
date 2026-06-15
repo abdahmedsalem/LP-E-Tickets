@@ -14,8 +14,41 @@ import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../wallet/bloc/wallet_cubit.dart';
 
-class UserHomeScreen extends StatelessWidget {
+class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
+
+  @override
+  State<UserHomeScreen> createState() => _UserHomeScreenState();
+}
+
+class _UserHomeScreenState extends State<UserHomeScreen> {
+  WalletCubit? _walletCubit;
+  String? _walletOwnerId;
+
+  void _syncWalletCubit() {
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) {
+      _walletCubit = null;
+      _walletOwnerId = null;
+      return;
+    }
+    if (_walletCubit != null && _walletOwnerId == user.id) {
+      return;
+    }
+    _walletCubit = WalletCubit(ownerId: user.id);
+    _walletOwnerId = user.id;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncWalletCubit();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +56,9 @@ class UserHomeScreen extends StatelessWidget {
     if (user == null) {
       return const Scaffold(body: _HomeLoadingSkeleton());
     }
-    return BlocProvider(
-      create: (_) => WalletCubit(ownerId: user.id),
+    _syncWalletCubit();
+    return BlocProvider.value(
+      value: _walletCubit!,
       child: const _UserHomeBody(),
     );
   }
@@ -144,7 +178,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                     user.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.poppins(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: -0.35,
@@ -205,7 +239,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
                           'Actions rapides',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.2,
@@ -231,8 +265,8 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                             Expanded(
                               child: AspectRatio(
                                 aspectRatio: 0.82,
-                                child: _QuickActionCard(
-                                  title: 'Générer un QR',
+                              child: _QuickActionCard(
+                                  title: 'Créer un QR',
                                   icon: Icons.qr_code_scanner_rounded,
                                   highlighted: true,
                                   onTap: () => context.push('/qr/emit'),
@@ -243,8 +277,8 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                             Expanded(
                               child: AspectRatio(
                                 aspectRatio: 0.82,
-                                child: _QuickActionCard(
-                                  title: 'Transférer des carnets',
+                              child: _QuickActionCard(
+                                  title: 'Envoyer des carnets',
                                   icon: Icons.account_tree_outlined,
                                   onTap: () =>
                                       context.push('/transfer-carnets'),
@@ -379,7 +413,7 @@ class _QuickActionCard extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: math.min(
                           12.0,
                           math.max(10.8, cardWidth * 0.102),
@@ -401,11 +435,7 @@ class _QuickActionCard extends StatelessWidget {
 }
 
 class _HomeTopAction extends StatelessWidget {
-  const _HomeTopAction({
-    required this.icon,
-    required this.onTap,
-    this.badge,
-  });
+  const _HomeTopAction({required this.icon, required this.onTap, this.badge});
 
   final IconData icon;
   final VoidCallback onTap;
@@ -454,8 +484,10 @@ class _HomeTopAction extends StatelessWidget {
                     top: 4,
                     right: 4,
                     child: Container(
-                      constraints:
-                          const BoxConstraints(minWidth: 14, minHeight: 14),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
                         color: AppColors.brandRed,
@@ -481,4 +513,3 @@ class _HomeTopAction extends StatelessWidget {
     );
   }
 }
-

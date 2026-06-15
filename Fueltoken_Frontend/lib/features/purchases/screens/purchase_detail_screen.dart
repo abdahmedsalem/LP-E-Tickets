@@ -725,7 +725,7 @@ class _PurchaseHeroCard extends StatelessWidget {
                       lot.clientName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -797,14 +797,14 @@ class _MetaCard extends StatelessWidget {
           ),
           _InfoRow(
             icon: Icons.person_outline,
-            label: 'Client',
+            label: 'Acheteur',
             value: lot.clientName,
           ),
           if (lot.paymentReference != null &&
               lot.paymentReference!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.tag_outlined,
-              label: 'R?f?rence paiement',
+              label: 'Référence de paiement',
               value: lot.paymentReference!.trim(),
             ),
           _InfoRow(
@@ -1026,12 +1026,14 @@ class _LinesCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   AmountInline(
                     amount: lot.lines[i].lineAmount,
-                    valueStyle: GoogleFonts.inter(
+                    valueStyle: GoogleFonts.poppins(
                       fontWeight: FontWeight.w800,
                       color: _purchaseAmountColor(lot.state),
                       fontSize: 14,
                     ),
-                    unitStyle: TextStyle(color: _purchaseAmountColor(lot.state)),
+                    unitStyle: TextStyle(
+                      color: _purchaseAmountColor(lot.state),
+                    ),
                   ),
                 ],
               ),
@@ -1061,7 +1063,7 @@ class _LinesCard extends StatelessWidget {
                 const Spacer(),
                 AmountInline(
                   amount: lot.totalAmount,
-                  valueStyle: GoogleFonts.inter(
+                  valueStyle: GoogleFonts.poppins(
                     fontWeight: FontWeight.w800,
                     color: _purchaseAmountColor(lot.state),
                     fontSize: 16,

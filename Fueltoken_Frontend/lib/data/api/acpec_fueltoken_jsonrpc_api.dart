@@ -7,17 +7,14 @@ class AcpecFueltokenJsonRpcApi {
   AcpecFueltokenJsonRpcApi({
     OdooJsonRpcClient? client,
     AcpecFueltokenRpcCoordinator? coordinator,
-  })  : _client = client ?? OdooJsonRpcClient(),
-        _coordinator = coordinator ?? AcpecFueltokenRpcCoordinator.shared;
+  }) : _client = client ?? OdooJsonRpcClient(),
+       _coordinator = coordinator ?? AcpecFueltokenRpcCoordinator.shared;
 
   final OdooJsonRpcClient _client;
   final AcpecFueltokenRpcCoordinator _coordinator;
 
   /// [route] : chemin absolu serveur (ex. `/api/acpec/...`).
-  Future<dynamic> callRoute(
-    String route, {
-    Map<String, dynamic>? params,
-  }) {
+  Future<dynamic> callRoute(String route, {Map<String, dynamic>? params}) {
     var r = route.trim();
     if (r.isEmpty) {
       throw StateError('route ACPEC vide.');
@@ -28,10 +25,7 @@ class AcpecFueltokenJsonRpcApi {
     return _coordinator.execute(
       route: r,
       params: params,
-      request: () => _client.postJsonRpc(
-        path: r,
-        params: params,
-      ),
+      request: () => _client.postJsonRpc(path: r, params: params),
     );
   }
 

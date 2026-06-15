@@ -4,10 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _confirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _confirmationHeaderGap = 10.0;
-const _confirmationHeaderTitleSize = 26.0;
+const _confirmationHeaderGap = 14.0;
+const _confirmationHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
 class QrActionConfirmationArgs {
   const QrActionConfirmationArgs({
@@ -62,7 +64,16 @@ class QrActionConfirmationScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: () async {
+                    final ok = await showSensitiveActionPasswordDialog(
+                      context,
+                      title: 'Vérification du mot de passe',
+                      description:
+                          'Saisissez votre mot de passe pour confirmer cette opération.',
+                    );
+                    if (!ok || !context.mounted) return;
+                    Navigator.of(context).pop(true);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF43A047),
                     foregroundColor: Colors.white,
@@ -110,11 +121,32 @@ class QrActionConfirmationScreen extends StatelessWidget {
               largeTitlePadding: _confirmationHeaderPadding,
               largeTitleGap: _confirmationHeaderGap,
               largeTitleFontSize: _confirmationHeaderTitleSize,
+              largeTitleTextStyle: GoogleFonts.poppins(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: _headerNavy,
+                letterSpacing: -0.4,
+                height: 1.05,
+              ),
             ),
+            const SizedBox(height: 18),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                 children: [
+                  if (args.subtitle != null) ...[
+                    Text(
+                      args.subtitle!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (args.showHero) ...[
                     Container(
                       width: double.infinity,
@@ -124,23 +156,7 @@ class QrActionConfirmationScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: const Color(0xFFCFE8D1)),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (args.subtitle != null) ...[
-                            Text(
-                              args.subtitle!,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          args.hero,
-                        ],
-                      ),
+                      child: args.hero,
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -226,21 +242,21 @@ class _SummaryRow extends StatelessWidget {
           _AmountInline(
             amount: int.parse(value.replaceAll(RegExp(r'[^0-9]'), '').trim()),
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.inter(
-              fontSize: 14,
+            valueStyle: GoogleFonts.poppins(
+              fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: valueColor,
+              color: const Color(0xFF2E7D32),
             ),
             unitStyle: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
-              color: valueColor.withValues(alpha: 0.82),
+              color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
             ),
           )
         else
           Text(
             value,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: valueColor,

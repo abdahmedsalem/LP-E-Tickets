@@ -14,7 +14,8 @@ class ErrorPresenter {
       }
       return _sanitize(error.message);
     }
-    final raw = error.toString()
+    final raw = error
+        .toString()
         .replaceFirst('Exception: ', '')
         .replaceFirst('OdooJsonRpcException: ', '')
         .trim();

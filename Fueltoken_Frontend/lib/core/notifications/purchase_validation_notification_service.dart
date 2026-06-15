@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -7,9 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/app_environment.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/app_user.dart';
+import '../../data/models/business_transaction.dart';
 import '../../data/models/purchase_lot.dart';
 import '../../data/models/user_role.dart';
+import '../../data/models/qr_token.dart';
 import '../../data/services/acpec_purchases_mapper.dart';
+import '../../data/services/acpec_qr_mapper.dart';
+import '../../data/services/acpec_transactions_mapper.dart';
 import '../../data/services/odoo_fueltoken_facade.dart';
 import '../../features/settings/data/notifications_store.dart';
 import '../../features/settings/models/notification_item.dart';
@@ -22,8 +26,9 @@ class PurchaseValidationNotificationService {
   static const _channelId = 'purchase_validation';
   static const _channelName = 'Validation de commandes';
   static const _channelDescription =
-      'Notifications pour les commandes de carnets validées ou rejetées';
+      'Notifications pour les commandes de carnets validÃ©es ou rejetÃ©es';
   static const _prefsPrefix = 'ft_purchase_validation_notified_';
+  static const _qrPrefsPrefix = 'ft_qr_expiration_notified_';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -79,34 +84,100 @@ class PurchaseValidationNotificationService {
       await initialize();
       await NotificationsStore.instance.loadForUser(user.id);
 
-      final raw = await OdooFueltokenFacade().purchasesList(
-        const <String, dynamic>{'state': 'terminal'},
-      );
-      final lots = AcpecPurchasesMapper.fromRpcResult(
-        raw,
-        clientId: user.id,
-        clientName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
-      );
-      final terminalLots = lots.where(
-        (lot) =>
-            lot.state == PurchaseLotState.approved ||
-            lot.state == PurchaseLotState.rejected,
-      );
-      if (terminalLots.isEmpty) return;
-
       final notifiedIds = await _loadNotifiedIds(user.id);
-      for (final lot in terminalLots) {
-        if (notifiedIds.contains(lot.id)) {
-          await _refreshStoredNotificationIfNeeded(lot);
-          continue;
-        }
-        notifiedIds.add(lot.id);
-        await _emitStatusNotification(lot);
-      }
+      await _syncPurchaseNotifications(user, notifiedIds);
+      await _syncTransferNotifications(user, notifiedIds);
       await _saveNotifiedIds(user.id, notifiedIds);
+
+      final qrNotifiedIds = await _loadNotifiedIds(
+        user.id,
+        prefix: _qrPrefsPrefix,
+      );
+      await _syncQrExpirationNotifications(user, qrNotifiedIds);
+      await _saveNotifiedIds(
+        user.id,
+        qrNotifiedIds,
+        prefix: _qrPrefsPrefix,
+      );
     } finally {
       _syncingUserIds.remove(user.id);
+    }
+  }
+
+  Future<void> _syncPurchaseNotifications(
+    AppUser user,
+    Set<String> notifiedIds,
+  ) async {
+    final raw = await OdooFueltokenFacade().purchasesList(
+      const <String, dynamic>{'state': 'terminal'},
+    );
+    final lots = AcpecPurchasesMapper.fromRpcResult(
+      raw,
+      clientId: user.id,
+      clientName: user.name,
+      companyId: AppEnvironment.companyIdForUser(user),
+    );
+    final terminalLots = lots.where(
+      (lot) =>
+          lot.state == PurchaseLotState.approved ||
+          lot.state == PurchaseLotState.rejected,
+    );
+
+    for (final lot in terminalLots) {
+      final key = 'purchase-${lot.id}';
+      if (notifiedIds.contains(key)) {
+        await _refreshStoredPurchaseNotificationIfNeeded(lot);
+        continue;
+      }
+      notifiedIds.add(key);
+      await _emitStatusNotification(lot);
+    }
+  }
+
+  Future<void> _syncTransferNotifications(
+    AppUser user,
+    Set<String> notifiedIds,
+  ) async {
+    final transfers = await _loadReceivedTransfers(user);
+    for (final tx in transfers) {
+      final key = 'transfer-${tx.id}';
+      if (notifiedIds.contains(key)) {
+        await _refreshStoredTransferNotificationIfNeeded(tx);
+        continue;
+      }
+      notifiedIds.add(key);
+      await _emitTransferNotification(tx);
+    }
+  }
+
+  Future<void> _syncQrExpirationNotifications(
+    AppUser user,
+    Set<String> notifiedIds,
+  ) async {
+    final raw = await OdooFueltokenFacade().qrList(const <String, dynamic>{});
+    final qrs = AcpecQrMapper.listFromRpc(
+      raw,
+      ownerId: user.id,
+      ownerName: user.name,
+      companyId: AppEnvironment.companyIdForUser(user),
+    );
+
+    final now = DateTime.now().toLocal();
+    for (final qr in qrs) {
+      final expiration = _resolveQrExpiration(qr);
+      if (expiration == null) continue;
+      final expirationLocal = expiration.toLocal();
+      if (!now.isBefore(expirationLocal)) continue;
+
+      for (final threshold in const [_QrExpirationThreshold.days7, _QrExpirationThreshold.hours24]) {
+        if (!_isQrExpirationDue(now, expirationLocal, threshold)) {
+          continue;
+        }
+        final key = _qrExpirationKey(qr, threshold);
+        if (notifiedIds.contains(key)) continue;
+        notifiedIds.add(key);
+        await _emitQrExpirationNotification(qr, expirationLocal, threshold);
+      }
     }
   }
 
@@ -142,7 +213,9 @@ class PurchaseValidationNotificationService {
     await NotificationsStore.instance.add(item);
   }
 
-  Future<void> _refreshStoredNotificationIfNeeded(PurchaseLot lot) async {
+  Future<void> _refreshStoredPurchaseNotificationIfNeeded(
+    PurchaseLot lot,
+  ) async {
     final existing = NotificationsStore.instance.items.where(
       (item) => item.id == 'purchase-${lot.id}',
     );
@@ -165,6 +238,104 @@ class PurchaseValidationNotificationService {
     return true;
   }
 
+  Future<void> _emitTransferNotification(BusinessTransaction tx) async {
+    final item = _buildTransferNotification(tx);
+
+    const androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'FuelToken',
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    await _plugin.show(
+      id: _notificationIdForTransfer(tx),
+      title: item.title,
+      body: item.body,
+      notificationDetails: details,
+    );
+
+    await NotificationsStore.instance.add(item);
+  }
+
+  Future<void> _emitQrExpirationNotification(
+    QrToken qr,
+    DateTime expirationLocal,
+    _QrExpirationThreshold threshold,
+  ) async {
+    final item = _buildQrExpirationNotification(
+      qr,
+      expirationLocal,
+      threshold,
+    );
+
+    const androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'FuelToken',
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    await _plugin.show(
+      id: _notificationIdForQrExpiration(qr, threshold),
+      title: item.title,
+      body: item.body,
+      notificationDetails: details,
+    );
+
+    await NotificationsStore.instance.add(item);
+  }
+
+  Future<void> _refreshStoredTransferNotificationIfNeeded(
+    BusinessTransaction tx,
+  ) async {
+    final existing = NotificationsStore.instance.items.where(
+      (item) => item.id == 'transfer-${tx.id}',
+    );
+    final NotificationItem? current = existing.isEmpty ? null : existing.first;
+    if (current == null) return;
+    if (_hasCompleteTransferLines(current)) return;
+
+    await NotificationsStore.instance.add(
+      _buildTransferNotification(tx, read: current.read),
+    );
+  }
+
+  bool _hasCompleteTransferLines(NotificationItem item) {
+    if (item.transferLines.isEmpty) return false;
+    if ((item.transferPartyPhone ?? '').trim().isEmpty) return false;
+    for (final line in item.transferLines) {
+      if (line.label.trim().isEmpty) return false;
+      if (line.amountLabel.trim().isEmpty) return false;
+      if (line.carnetCount <= 0) return false;
+    }
+    return true;
+  }
+
   NotificationItem _buildStoredNotification(
     PurchaseLot lot, {
     bool read = false,
@@ -174,6 +345,7 @@ class PurchaseValidationNotificationService {
         : (lot.approvedAt ?? lot.validationDate ?? DateTime.now());
     final amountLabel = Formatters.money(lot.totalAmount);
     final dateLabel = Formatters.dateTime(effectiveDate);
+    final notificationDateLabel = Formatters.dateTime(DateTime.now());
     final lines = lot.lines
         .map(
           (line) => NotificationPurchaseLineItem(
@@ -189,23 +361,105 @@ class PurchaseValidationNotificationService {
         .toList(growable: false);
     final isRejected = lot.state == PurchaseLotState.rejected;
     final title = isRejected
-        ? 'Commande de carnets rejetée'
-        : 'Commande de carnets validée';
+        ? 'Commande carnet refusée'
+        : 'Commande carnet validée';
     final rejectionReason = isRejected ? lot.rejectionReason : null;
     final body = isRejected
         ? _rejectedBody(amountLabel, dateLabel, rejectionReason)
-        : '$amountLabel • Validée le $dateLabel';
+        : '$amountLabel â€¢ ValidÃ©e le $dateLabel';
 
     return NotificationItem(
       id: 'purchase-${lot.id}',
       title: title,
       body: body,
       timeLabel: dateLabel,
+      notificationDateLabel: notificationDateLabel,
       purchaseStatus: isRejected ? 'rejected' : 'approved',
       amountLabel: amountLabel,
       validationDateLabel: dateLabel,
       rejectionReason: rejectionReason,
       purchaseLines: lines,
+      read: read,
+    );
+  }
+
+  NotificationItem _buildTransferNotification(
+    BusinessTransaction tx, {
+    bool read = false,
+  }) {
+    final dateLabel = Formatters.dateTime(tx.date);
+    final notificationDateLabel = Formatters.dateTime(DateTime.now());
+    final amountLabel = Formatters.money(tx.totalAmount);
+    final party = (tx.transferParty ?? '').trim();
+    final lines = tx.lines
+        .map(
+          (line) => NotificationPurchaseLineItem(
+            label: _txLineLabel(line),
+            quantityLabel:
+                '${Formatters.numberFr(line.qty)} carnet${line.qty > 1 ? 's' : ''}',
+            amountLabel: Formatters.money(line.amount),
+            faceValue: line.faceValue,
+            carnetSize: line.carnetSize,
+            carnetCount: line.qty,
+          ),
+        )
+        .toList(growable: false);
+    final title = 'Reçu';
+    final body = party.isNotEmpty
+        ? '$amountLabel â€¢ Reçu de $party â€¢ $dateLabel'
+        : '$amountLabel â€¢ Reçu â€¢ $dateLabel';
+
+    return NotificationItem(
+      id: 'transfer-${tx.id}',
+      title: title,
+      body: body,
+      timeLabel: dateLabel,
+      notificationDateLabel: notificationDateLabel,
+      category: 'receipt',
+      amountLabel: amountLabel,
+      validationDateLabel: dateLabel,
+      transferLines: lines,
+      transferPartyPhone: tx.transferPartyPhone,
+      actionRoute: '/transactions',
+      actionLabel: 'Voir',
+      read: read,
+    );
+  }
+
+  NotificationItem _buildQrExpirationNotification(
+    QrToken qr,
+    DateTime expirationLocal,
+    _QrExpirationThreshold threshold, {
+    bool read = false,
+  }) {
+    final amountLabel = Formatters.money(qr.totalAmount);
+    final dateLabel = Formatters.dateTime(expirationLocal);
+    final notificationDateLabel = Formatters.dateTime(DateTime.now());
+    final qrCode = qr.publicCode.trim();
+    final title = threshold == _QrExpirationThreshold.hours24
+        ? 'QR expire dans 24 h'
+        : 'QR expire dans 7 jours';
+    final body =
+        '$amountLabel â€¢ Code $qrCode â€¢ Expire le $dateLabel â€¢ ${threshold.displayLabel}';
+
+    return NotificationItem(
+      id: _qrExpirationKey(qr, threshold),
+      title: title,
+      body: body,
+      timeLabel: dateLabel,
+      notificationDateLabel: notificationDateLabel,
+      category: 'qr_expiration',
+      amountLabel: amountLabel,
+      validationDateLabel: dateLabel,
+      qrPublicCode: qrCode.isEmpty ? null : qrCode,
+      qrExpirationLines: [
+        NotificationQrExpirationLineItem(
+          faceValue: qr.totalAmount,
+          quantityLabel: '${Formatters.numberFr(qr.totalQty)} ticket${qr.totalQty > 1 ? 's' : ''}',
+          expirationLabel: dateLabel,
+          lotLabel: threshold.displayLabel,
+        ),
+      ],
       read: read,
     );
   }
@@ -219,9 +473,31 @@ class PurchaseValidationNotificationService {
         ? null
         : rejectionReason.trim();
     if (reason == null) {
-      return '$amountLabel • Rejetée le $dateLabel';
+      return '$amountLabel â€¢ RejetÃ©e le $dateLabel';
     }
-    return '$amountLabel • Rejetée le $dateLabel • Motif: $reason';
+    return '$amountLabel â€¢ RejetÃ©e le $dateLabel â€¢ Motif: $reason';
+  }
+
+  bool _isQrExpirationDue(
+    DateTime nowLocal,
+    DateTime expirationLocal,
+    _QrExpirationThreshold threshold,
+  ) {
+    final start = expirationLocal.subtract(threshold.duration);
+    return !nowLocal.isBefore(start) && nowLocal.isBefore(expirationLocal);
+  }
+
+  DateTime? _resolveQrExpiration(QrToken qr) {
+    final direct = qr.expiresAt;
+    if (direct != null) return direct;
+    if (qr.lines.isEmpty) return null;
+    final dates = qr.lines
+        .map((line) => line.expirationDate)
+        .where((date) => date.year > 1970)
+        .toList(growable: false);
+    if (dates.isEmpty) return null;
+    dates.sort();
+    return dates.first;
   }
 
   String _lineLabel(PurchaseLine line) {
@@ -236,14 +512,98 @@ class PurchaseValidationNotificationService {
     return Formatters.carnetTypeLabel(line.carnetSize, line.faceValue);
   }
 
+  String _txLineLabel(TransactionLine line) {
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: line.carnetSize,
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+    final code = line.carnetTypeCode.trim();
+    if (code.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        code,
+        fallbackSize: line.carnetSize,
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+    return Formatters.carnetTypeLabel(line.carnetSize, line.faceValue);
+  }
+
+  Future<List<BusinessTransaction>> _loadReceivedTransfers(AppUser user) async {
+    final out = <BusinessTransaction>[];
+    final seen = <String>{};
+    final now = DateTime.now();
+    final dateFrom = DateTime(now.year, 1, 1);
+    const pageSize = 50;
+    const maxPages = 6;
+
+    for (var page = 0; page < maxPages; page++) {
+      final raw = await OdooFueltokenFacade().transactions({
+        'date_from': _apiDateTime(dateFrom),
+        'date_to': _apiDateTime(now),
+        'limit': pageSize,
+        'offset': page * pageSize,
+      });
+      final parsed = AcpecTransactionsMapper.parsePage(
+        raw,
+        userId: user.id,
+        userName: user.name,
+        requestedLimit: pageSize,
+        requestedOffset: page * pageSize,
+      );
+      final batch = parsed.items
+          .where((tx) => tx.type == TxType.carnetReceived)
+          .toList(growable: false);
+      for (final tx in batch) {
+        if (!seen.add(tx.id)) continue;
+        out.add(tx);
+      }
+      if (!parsed.hasMore || parsed.items.length < pageSize) {
+        break;
+      }
+    }
+
+    out.sort((a, b) => b.date.compareTo(a.date));
+    return out;
+  }
+
   int _notificationIdFor(PurchaseLot lot) {
     final raw = lot.id.hashCode ^ lot.publicCode.hashCode;
     return raw & 0x7fffffff;
   }
 
-  Future<Set<String>> _loadNotifiedIds(String userId) async {
+  int _notificationIdForTransfer(BusinessTransaction tx) {
+    final raw = tx.id.hashCode ^ tx.date.millisecondsSinceEpoch.hashCode;
+    return raw & 0x7fffffff;
+  }
+
+  int _notificationIdForQrExpiration(
+    QrToken qr,
+    _QrExpirationThreshold threshold,
+  ) {
+    final raw = qr.id.hashCode ^ threshold.id.hashCode;
+    return raw & 0x7fffffff;
+  }
+
+  String _qrExpirationKey(QrToken qr, _QrExpirationThreshold threshold) {
+    return 'qr-${qr.id}-${threshold.id}';
+  }
+
+  String _apiDateTime(DateTime dt) {
+    final d = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}:${two(d.second)}';
+  }
+
+  Future<Set<String>> _loadNotifiedIds(
+    String userId, {
+    String prefix = _prefsPrefix,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_prefsPrefix$userId');
+    final raw = prefs.getString('$prefix$userId');
     if (raw == null || raw.isEmpty) return <String>{};
     try {
       final decoded = jsonDecode(raw);
@@ -254,8 +614,48 @@ class PurchaseValidationNotificationService {
     }
   }
 
-  Future<void> _saveNotifiedIds(String userId, Set<String> ids) async {
+  Future<void> _saveNotifiedIds(
+    String userId,
+    Set<String> ids, {
+    String prefix = _prefsPrefix,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_prefsPrefix$userId', jsonEncode(ids.toList()));
+    await prefs.setString('$prefix$userId', jsonEncode(ids.toList()));
   }
 }
+
+enum _QrExpirationThreshold {
+  days7,
+  hours24;
+
+  Duration get duration {
+    switch (this) {
+      case _QrExpirationThreshold.days7:
+        return const Duration(days: 7);
+      case _QrExpirationThreshold.hours24:
+        return const Duration(hours: 24);
+    }
+  }
+
+  String get id {
+    switch (this) {
+      case _QrExpirationThreshold.days7:
+        return '7d';
+      case _QrExpirationThreshold.hours24:
+        return '24h';
+    }
+  }
+
+  String get displayLabel {
+    switch (this) {
+      case _QrExpirationThreshold.days7:
+        return 'Alerte 7 jours';
+      case _QrExpirationThreshold.hours24:
+        return 'Alerte 24 h';
+    }
+  }
+}
+
+
+
+

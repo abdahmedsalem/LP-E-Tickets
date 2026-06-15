@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/utils/formatters.dart';
 import '../models/notification_item.dart';
 
 /// Notifications utilisateur persistées localement, isolées par utilisateur.
@@ -103,8 +104,9 @@ class NotificationsStore extends ChangeNotifier {
       // Ne pas charger sans userId — sera fait dans loadForUser
       return;
     }
+    final dateFixed = _backfillNotificationDatesIfNeeded();
     final changed = await _migratePurchaseItemsIfNeeded();
-    if (changed) {
+    if (changed || dateFixed) {
       _recomputeUnread();
       await _persist();
       notifyListeners();
@@ -210,11 +212,15 @@ class NotificationsStore extends ChangeNotifier {
       title: item.title,
       body: body,
       timeLabel: item.timeLabel,
+      notificationDateLabel: item.notificationDateLabel,
       purchaseStatus: status,
       amountLabel: amount,
       validationDateLabel: date,
       rejectionReason: item.rejectionReason,
       purchaseLines: item.purchaseLines,
+      transferLines: item.transferLines,
+      transferPartyPhone: item.transferPartyPhone,
+      qrExpirationLines: item.qrExpirationLines,
       read: item.read,
     );
   }
@@ -271,6 +277,41 @@ class NotificationsStore extends ChangeNotifier {
         _items[i] = normalized;
         changed = true;
       }
+    }
+    return changed;
+  }
+
+  bool _backfillNotificationDatesIfNeeded() {
+    var changed = false;
+    for (var i = 0; i < _items.length; i++) {
+      final current = _items[i];
+      if (current.notificationDateLabel != null &&
+          current.notificationDateLabel!.trim().isNotEmpty) {
+        continue;
+      }
+      _items[i] = NotificationItem(
+        id: current.id,
+        title: current.title,
+        body: current.body,
+        timeLabel: current.timeLabel,
+        notificationDateLabel: current.timeLabel.trim().isNotEmpty
+            ? current.timeLabel.trim()
+            : Formatters.dateTime(DateTime.now()),
+        category: current.category,
+        purchaseStatus: current.purchaseStatus,
+        amountLabel: current.amountLabel,
+        validationDateLabel: current.validationDateLabel,
+        rejectionReason: current.rejectionReason,
+        purchaseLines: current.purchaseLines,
+        transferLines: current.transferLines,
+        transferPartyPhone: current.transferPartyPhone,
+        qrExpirationLines: current.qrExpirationLines,
+        qrPublicCode: current.qrPublicCode,
+        actionLabel: current.actionLabel,
+        actionRoute: current.actionRoute,
+        read: current.read,
+      );
+      changed = true;
     }
     return changed;
   }

@@ -77,10 +77,7 @@ class FuelBrandLottie extends StatelessWidget {
 
 /// Carte solde accueil client (vert + logo à droite).
 class ClientHomeWalletCard extends StatefulWidget {
-  const ClientHomeWalletCard({
-    super.key,
-    required this.amount,
-  });
+  const ClientHomeWalletCard({super.key, required this.amount});
 
   final int amount;
 
@@ -92,6 +89,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
   bool _showAmount = true;
 
   static const _r = 26.0;
+
   /// Logo lanceur (~46 px visuel) ×3, superposé à droite sans agrandir la carte.
   static const _logoSide = 74.0;
 
@@ -134,92 +132,94 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                 ),
               ),
             ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 64, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Leader petrolium wallet',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.88),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 64, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Leader petrolium wallet',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => setState(() => _showAmount = !_showAmount),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
                             ),
+                          ),
+                          child: Icon(
+                            _showAmount
+                                ? Icons.visibility_rounded
+                                : Icons.visibility_off_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.95),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          _showAmount
+                              ? Formatters.numberFr(widget.amount)
+                              : '••••',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1.0,
+                            height: 1,
+                            shadows: [
+                              Shadow(
+                                color: Color(0x33000000),
+                                blurRadius: 10,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () => setState(() => _showAmount = !_showAmount),
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.18),
-                              ),
-                            ),
-                            child: Icon(
-                              _showAmount
-                                  ? Icons.visibility_rounded
-                                  : Icons.visibility_off_rounded,
-                              size: 16,
-                              color: Colors.white.withValues(alpha: 0.95),
-                            ),
+                        Text(
+                          'MRU',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            _showAmount ? Formatters.numberFr(widget.amount) : '••••',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1.0,
-                              height: 1,
-                              shadows: [
-                                Shadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'MRU',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
             Positioned(
               right: 0,
               top: 0,

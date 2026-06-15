@@ -55,7 +55,9 @@ class OdooSessionStore {
     return 'session_id=$id';
   }
 
-  static Future<void> captureFromHttpResponse(Response<dynamic> response) async {
+  static Future<void> captureFromHttpResponse(
+    Response<dynamic> response,
+  ) async {
     final list = response.headers.map['set-cookie'];
     if (list == null || list.isEmpty) return;
     for (final line in list) {

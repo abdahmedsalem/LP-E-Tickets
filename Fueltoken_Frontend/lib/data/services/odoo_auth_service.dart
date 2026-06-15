@@ -164,8 +164,6 @@ class OdooAuthService {
     required String name,
     required String password,
     int? challengeId,
-    int? companyId,
-    String note = '',
   }) async {
     final route = OdooAuthRpcConfig.verifyOtpRoute;
     if (route.isEmpty) {
@@ -183,13 +181,6 @@ class OdooAuthService {
         'code': code.trim(),
         'name': name.trim(),
         'secret_code': password,
-        if ((companyId ?? OdooAuthRpcConfig.signupDefaultCompanyId) > 0)
-          'company_id': companyId ?? OdooAuthRpcConfig.signupDefaultCompanyId,
-        if (note.trim().isNotEmpty) 'note': note.trim(),
-        'device_uid': 'mobile-registration',
-        'device_name': 'FuelToken mobile',
-        'platform': 'web',
-        'app_version': 'dev',
       },
     );
     _ensureAcpecEnvelopeSuccess(result);
@@ -210,6 +201,63 @@ class OdooAuthService {
     final result = await _api.callRoute(
       route,
       params: {'identifier': idForRpc, 'purpose': 'register'},
+    );
+    _ensureAcpecEnvelopeSuccess(result);
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  /// Demande OTP pour la récupération de mot de passe via le backend ACPEC.
+  Future<Map<String, dynamic>> requestPasswordResetOtp({
+    required String phoneFull,
+  }) async {
+    final route = OdooAuthRpcConfig.requestOtpRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'OTP de récupération ACPEC indisponible : configurez ODOO_USE_ACPEC_AUTH=true.',
+      );
+    }
+    final idForRpc = localMrDigitsFromFull(phoneFull);
+    final result = await _api.callRoute(
+      route,
+      params: {'identifier': idForRpc, 'purpose': 'forgot_password'},
+    );
+    _ensureAcpecEnvelopeSuccess(result);
+    final top = Map<String, dynamic>.from(result as Map);
+    final data = top['data'];
+    if (data is Map) {
+      final dm = Map<String, dynamic>.from(data);
+      top['data'] = <String, dynamic>{
+        ...dm,
+        'otp_challenge_id': dm['otp_challenge_id'] ?? dm['challenge_id'],
+        'otp_challenge_ref': dm['otp_challenge_ref'] ?? dm['challenge_ref'],
+        'otp_expires_at': dm['otp_expires_at'] ?? dm['expires_at'],
+        'otp_delivery': dm['otp_delivery'] ?? dm['delivery'],
+      };
+    }
+    return top;
+  }
+
+  /// Vérifie l’OTP de récupération de mot de passe via le backend ACPEC.
+  Future<Map<String, dynamic>> verifyPasswordResetOtp({
+    required String identifier,
+    required String code,
+    int? challengeId,
+  }) async {
+    final route = OdooAuthRpcConfig.verifyOtpRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Vérification OTP de récupération ACPEC indisponible : configurez ODOO_USE_ACPEC_AUTH=true.',
+      );
+    }
+    final idForRpc = localMrDigitsFromFull(identifier);
+    final result = await _api.callRoute(
+      route,
+      params: {
+        if (challengeId != null && challengeId > 0) 'challenge_id': challengeId,
+        'identifier': idForRpc,
+        'code': code.trim(),
+        'purpose': 'forgot_password',
+      },
     );
     _ensureAcpecEnvelopeSuccess(result);
     return Map<String, dynamic>.from(result as Map);

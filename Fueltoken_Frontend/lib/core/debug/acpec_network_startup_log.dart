@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../config/app_api_config.dart';
 import '../config/odoo_api_config.dart';
 import '../config/odoo_auth_rpc_config.dart';
 
@@ -14,9 +13,13 @@ void debugPrintAcpecNetworkSummary() {
   final loginPath = OdooAuthRpcConfig.loginRoute;
 
   debugPrint('');
-  debugPrint('╔══════════════════════════════════════════════════════════════╗');
+  debugPrint(
+    '╔══════════════════════════════════════════════════════════════╗',
+  );
   debugPrint('║ ACPEC Odoo — API (ceci N’est PAS l’URL DevTools 127.0.0.1)  ║');
-  debugPrint('╚══════════════════════════════════════════════════════════════╝');
+  debugPrint(
+    '╚══════════════════════════════════════════════════════════════╝',
+  );
   debugPrint(
     'ODOO_JSONRPC_BASE_URL (dart-define) : '
     '${raw.isEmpty ? 'VIDE — ajoutez --dart-define=ODOO_JSONRPC_BASE_URL=https://votre-odoo.example' : raw}',
@@ -35,11 +38,6 @@ void debugPrintAcpecNetworkSummary() {
   }
   debugPrint(
     'Logs détail chaque POST JSON-RPC     : kDebug=$kDebugMode ou ODOO_DEBUG_RPC=true',
-  );
-  debugPrint(
-    'API_BASE_URL (REST OTP optionnel)   : '
-    '${AppApiConfig.isConfigured ? AppApiConfig.baseUrlTrimmed : 'VIDE'} '
-    '(inscription / OTP si vous exposez ces routes sur un service externe)',
   );
   debugPrint('');
 }

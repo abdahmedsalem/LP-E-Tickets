@@ -142,6 +142,9 @@ class BusinessTransaction extends Equatable {
   /// Pour les transferts : nom de l'autre partie (destinataire si sortant, expéditeur si entrant).
   final String? transferParty;
 
+  /// Pour les transferts : numéro de téléphone de l'autre partie.
+  final String? transferPartyPhone;
+
   const BusinessTransaction({
     required this.id,
     required this.type,
@@ -157,6 +160,7 @@ class BusinessTransaction extends Equatable {
     this.stationName,
     this.note,
     this.transferParty,
+    this.transferPartyPhone,
   });
 
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);

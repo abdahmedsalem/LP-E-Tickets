@@ -213,6 +213,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const SizedBox(height: 16),
+                            Center(
+                              child: Image.asset(
+                                'designs/lplogo.jfif',
+                                height: 128,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
                             const _LoginWelcomeCopy(),
                             const SizedBox(height: 34),
                             const _LoginSectionTitle(title: 'Connexion'),
@@ -408,12 +416,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             // Bouton biométrie relancable si disponible et non en cours
-                            if (_biometricAvailable && !_biometricUnlockStarted && !loading) ...[
+                            if (_biometricAvailable &&
+                                !_biometricUnlockStarted &&
+                                !loading) ...[
                               const SizedBox(height: 16),
                               Center(
                                 child: TextButton.icon(
                                   onPressed: () {
-                                    setState(() => _biometricUnlockStarted = false);
+                                    setState(
+                                      () => _biometricUnlockStarted = false,
+                                    );
                                     _tryUnlockWithBiometrics();
                                   },
                                   icon: const Icon(
@@ -508,7 +520,7 @@ class _LoginWelcomeCopy extends StatelessWidget {
           'Bienvenue dans votre',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 18,
             height: 1.18,
             color: Color(0xFF1E293B),
             fontWeight: FontWeight.w400,
@@ -517,10 +529,10 @@ class _LoginWelcomeCopy extends StatelessWidget {
         ),
         SizedBox(height: 4),
         Text(
-          'espace wallet',
+          'espace de tickets carburant.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 18,
             height: 1.18,
             color: Color(0xFF1E293B),
             fontWeight: FontWeight.w400,
@@ -542,7 +554,7 @@ class _LoginSectionTitle extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 22,
+        fontSize: 16,
         color: Color(0xFF203A73),
         fontWeight: FontWeight.w800,
         letterSpacing: -0.4,

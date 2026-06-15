@@ -3,19 +3,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
-import '../../../shared/widgets/api_required_view.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/history_aligned_page_header.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
-import '../../../shared/widgets/mini_qr.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class QrListScreen extends StatefulWidget {
@@ -122,16 +123,15 @@ class _QrListScreenState extends State<QrListScreen> {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
       return Scaffold(
+        backgroundColor: Colors.white,
         body: SafeArea(
-          child: ListView(
-            physics: AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-            children: [
-              AppLoadingSkeleton(
-                style: AppLoadingSkeletonStyle.qrCards,
-                itemCount: 4,
-              ),
-            ],
+          child: _QrListShell(
+            filterRow: _QrFilterRow(
+              selected: _filterState,
+              totalCount: 0,
+              onSelected: _onSelectTab,
+            ),
+            child: const _QrLoadingSkeleton(),
           ),
         ),
       );
@@ -140,13 +140,13 @@ class _QrListScreenState extends State<QrListScreen> {
       return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _HistoryTitleBar(title: 'Mes QR', showBack: false),
-              const SizedBox(height: 4),
-              const Expanded(child: ApiRequiredView()),
-            ],
+          child: _QrListShell(
+            filterRow: _QrFilterRow(
+              selected: _filterState,
+              totalCount: 0,
+              onSelected: _onSelectTab,
+            ),
+            child: const ApiRequiredView(),
           ),
         ),
       );
@@ -158,148 +158,112 @@ class _QrListScreenState extends State<QrListScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _HistoryTitleBar(title: 'Mes QR', showBack: false),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _QrFilterRow(
-                    selected: _filterState,
-                    totalCount: qrs.length,
-                    onSelected: _onSelectTab,
+        child: RefreshIndicator(
+          color: scheme.primary,
+          onRefresh: _refreshLive,
+          child: _QrListShell(
+            filterRow: _QrFilterRow(
+              selected: _filterState,
+              totalCount: qrs.length,
+              onSelected: _onSelectTab,
+            ),
+            child: _liveLoading && qrs.isEmpty
+                ? const _QrLoadingSkeleton()
+                : qrs.isEmpty
+                ? _QrEmptyState(
+                    message: _liveError != null
+                        ? _liveError!
+                        : 'Aucun QR ne correspond a ce filtre.',
+                    onRefresh: _refreshLive,
+                  )
+                : GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.84,
+                        ),
+                    itemCount: qrs.length,
+                    itemBuilder: (ctx, i) => _QRCard(qr: qrs[i]),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: RefreshIndicator(
-                color: scheme.primary,
-                onRefresh: () async => _refreshLive(),
-                child: _liveLoading && qrs.isEmpty
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                        children: const [
-                          AppLoadingSkeleton(
-                            style: AppLoadingSkeletonStyle.qrCards,
-                            itemCount: 4,
-                          ),
-                        ],
-                      )
-                    : qrs.isEmpty
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.sizeOf(context).height * 0.22,
-                            child: EmptyState(
-                              icon: Icons.qr_code_2,
-                              title: 'Aucun QR',
-                              message: _liveError != null
-                                  ? _liveError!
-                                  : 'Aucun QR ne correspond à ce filtre.',
-                              action: AppEnvironment.useAcpecLiveData
-                                  ? FilledButton.tonalIcon(
-                                      onPressed: _refreshLive,
-                                      icon: const Icon(Icons.refresh_rounded),
-                                      label: const Text('Actualiser'),
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ],
-                      )
-                    : ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                        itemCount: qrs.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (ctx, i) => _QRCard(qr: qrs[i]),
-                      ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _HistoryTitleBar extends StatelessWidget {
-  const _HistoryTitleBar({required this.title, this.showBack = true});
+class _QrListShell extends StatelessWidget {
+  const _QrListShell({required this.filterRow, required this.child});
 
-  final String title;
-  final bool showBack;
+  final Widget filterRow;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
-        children: [
-          if (showBack) ...[
-            _HeaderButton(icon: Icons.chevron_left_rounded, onTap: () {}),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-                letterSpacing: -0.2,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          if (showBack) const SizedBox(width: 40),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const HistoryAlignedPageHeader(title: 'Mes QR'),
+        const SizedBox(height: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 26),
+          child: filterRow,
+        ),
+        const SizedBox(height: 18),
+        Expanded(child: child),
+      ],
     );
   }
 }
 
-class _HeaderButton extends StatelessWidget {
-  const _HeaderButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
+class _QrLoadingSkeleton extends StatelessWidget {
+  const _QrLoadingSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.line.withValues(alpha: 0.95)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Icon(icon, size: 22, color: AppColors.ink),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      children: const [
+        AppLoadingSkeleton(
+          style: AppLoadingSkeletonStyle.qrCards,
+          itemCount: 4,
         ),
-      ),
+      ],
+    );
+  }
+}
+
+class _QrEmptyState extends StatelessWidget {
+  const _QrEmptyState({required this.message, required this.onRefresh});
+
+  final String message;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      children: [
+        SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.26,
+          child: EmptyState(
+            icon: Icons.qr_code_2,
+            title: 'Aucun QR',
+            message: message,
+            action: FilledButton.tonalIcon(
+              onPressed: onRefresh,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Actualiser'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -327,19 +291,6 @@ class _QRCard extends StatelessWidget {
     }
   }
 
-  Color get _amountColor {
-    switch (_displayState) {
-      case QrState.active:
-        return AppColors.leaderGreen;
-      case QrState.blocked:
-        return AppColors.warning;
-      case QrState.consumed:
-        return AppColors.muted;
-      case QrState.expired:
-        return AppColors.danger;
-    }
-  }
-
   DateTime? get _displayDate {
     final created = qr.createdAt;
     if (created.millisecondsSinceEpoch > 0) return created;
@@ -358,21 +309,34 @@ class _QRCard extends StatelessWidget {
 
   String get _amountLabel => Formatters.numberFr(qr.totalAmount);
 
+  Color get _amountColor {
+    switch (_displayState) {
+      case QrState.active:
+        return AppColors.leaderGreen;
+      case QrState.blocked:
+        return AppColors.warning;
+      case QrState.consumed:
+        return AppColors.muted;
+      case QrState.expired:
+        return AppColors.danger;
+    }
+  }
+
   bool get _hasQuantity => qr.totalQty > 0;
+  bool get _hasPublicCode => qr.publicCode.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final borderColor = _hasQuantity
-        ? AppColors.leaderGreen.withValues(alpha: 0.38)
-        : scheme.outline.withValues(alpha: 0.12);
+        ? AppColors.leaderGreen.withValues(alpha: 0.28)
+        : AppColors.line.withValues(alpha: 0.95);
     return Material(
-      color: Colors.white,
-      elevation: 0,
-      borderRadius: BorderRadius.circular(22),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         onTap: () {
+          if (!_hasPublicCode) return;
           final seg = AppEnvironment.useAcpecLiveData
               ? Uri.encodeComponent(qr.publicCode)
               : qr.id;
@@ -381,96 +345,130 @@ class _QRCard extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: borderColor,
-              width: _hasQuantity ? 1.3 : 1,
-            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: borderColor, width: 1.1),
             boxShadow: [
               BoxShadow(
-                color: _hasQuantity
-                    ? AppColors.leaderGreen.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.035),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 18,
-                offset: const Offset(0, 7),
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(13),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  MiniQR(data: qr.publicCode, state: _displayState, size: 58),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _QrStateBadge(state: _displayState, label: _stateLabel),
-                        Text(
-                          _dateLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.muted,
-                            height: 1,
-                          ),
-                        ),
-                        if (_displayState == QrState.blocked)
-                          Text(
-                            'Blocage lié à des tickets expirés.',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
-                              height: 1.25,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.center,
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _QrThumbnail(data: qr.publicCode, state: _displayState),
+                const SizedBox(height: 10),
+                _QrStateBadge(state: _displayState, label: _stateLabel),
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
                     children: [
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: _amountLabel,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: _amountColor,
-                                letterSpacing: -0.4,
-                              ),
-                            ),
-                            const TextSpan(
-                              text: ' MRU',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.muted,
-                                height: 1,
-                              ),
-                            ),
-                          ],
+                      TextSpan(
+                        text: _amountLabel,
+                        style: GoogleFonts.poppins(
+                          fontSize: 18.5,
+                          fontWeight: FontWeight.w800,
+                          color: _amountColor,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const TextSpan(
+                        text: ' MRU',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                          height: 1.1,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                  textAlign: TextAlign.center,
+                ),
+                const Spacer(),
+                Text(
+                  _dateLabel,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                    height: 1.25,
+                  ),
+                ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QrThumbnail extends StatelessWidget {
+  const _QrThumbnail({required this.data, required this.state});
+
+  final String data;
+  final QrState state;
+
+  Color get _color {
+    switch (state) {
+      case QrState.active:
+        return AppColors.ink;
+      case QrState.blocked:
+        return const Color(0xFF92400E);
+      case QrState.consumed:
+        return AppColors.muted;
+      case QrState.expired:
+        return AppColors.danger;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = data.trim();
+    if (trimmed.isEmpty) {
+      return Container(
+        width: 86,
+        height: 86,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: const Icon(
+          Icons.qr_code_2_rounded,
+          color: AppColors.muted,
+          size: 30,
+        ),
+      );
+    }
+    return Container(
+      width: 76,
+      height: 76,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: QrImageView(
+        data: trimmed,
+        version: QrVersions.auto,
+        backgroundColor: Colors.transparent,
+        gapless: true,
+        eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: _color),
+        dataModuleStyle: QrDataModuleStyle(
+          dataModuleShape: QrDataModuleShape.square,
+          color: _color,
         ),
       ),
     );
@@ -520,7 +518,7 @@ class _QrStateBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = _palette;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: palette.bg,
         borderRadius: BorderRadius.circular(999),
@@ -528,8 +526,8 @@ class _QrStateBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(palette.glyph, size: 14, color: palette.icon),
-          const SizedBox(width: 5),
+          Icon(palette.glyph, size: 13, color: palette.icon),
+          const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
@@ -610,7 +608,7 @@ class _QrFilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             count == null ? label : '$label $count',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: fg,

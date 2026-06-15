@@ -13,9 +13,7 @@ class FuelMark extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size * 1.05,
-      child: CustomPaint(
-        painter: _FuelMarkPainter(),
-      ),
+      child: CustomPaint(painter: _FuelMarkPainter()),
     );
   }
 }

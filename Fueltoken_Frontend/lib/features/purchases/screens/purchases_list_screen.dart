@@ -216,7 +216,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     const SizedBox(height: 18),
                     Text(
                       'Mes achats',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
@@ -447,7 +447,7 @@ class _PurchaseTile extends StatelessWidget {
                                   typeLabel,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.poppins(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w900,
                                     color: scheme.onSurface,
@@ -494,6 +494,7 @@ class _PurchaseTile extends StatelessWidget {
                         value: Formatters.money(lot.totalAmount),
                         icon: Icons.payments_outlined,
                         accent: amountColor,
+                        alignRight: true,
                       ),
                     ),
                   ],
@@ -578,6 +579,7 @@ class _MetricBlock extends StatelessWidget {
     required this.icon,
     required this.accent,
     this.fullWidth = false,
+    this.alignRight = false,
   });
 
   final String title;
@@ -585,6 +587,7 @@ class _MetricBlock extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final bool fullWidth;
+  final bool alignRight;
 
   @override
   Widget build(BuildContext context) {
@@ -610,7 +613,9 @@ class _MetricBlock extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: alignRight
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
@@ -626,7 +631,8 @@ class _MetricBlock extends StatelessWidget {
                   value,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
+                  textAlign: alignRight ? TextAlign.right : TextAlign.left,
+                  style: GoogleFonts.poppins(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF111827),
@@ -744,7 +750,7 @@ class _EmptyPanel extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w900,
               color: const Color(0xFF111827),

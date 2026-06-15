@@ -1,4 +1,4 @@
-﻿import 'dart:developer' as developer;
+import 'dart:developer' as developer;
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -78,18 +78,29 @@ class AuthRoleChanged extends AuthEvent {
   final UserRole role;
   final String? stationId;
   final String userId;
-  const AuthRoleChanged({required this.userId, required this.role, this.stationId});
+  const AuthRoleChanged({
+    required this.userId,
+    required this.role,
+    this.stationId,
+  });
   @override
   List<Object?> get props => [userId, role, stationId];
 }
 
 // ─────────── State
-enum AuthStatus { unknown, unauthenticated, authenticating, authenticated, failure }
+enum AuthStatus {
+  unknown,
+  unauthenticated,
+  authenticating,
+  authenticated,
+  failure,
+}
 
 class AuthState extends Equatable {
   final AuthStatus status;
   final AppUser? user;
   final String? errorMessage;
+
   /// Affiché sur l’écran de connexion après expiration de session (non technique).
   final String? loginInfoMessage;
 
@@ -127,8 +138,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repo;
 
   AuthBloc({AuthRepository? repo})
-      : _repo = repo ?? AuthRepository.instance,
-        super(const AuthState(status: AuthStatus.unauthenticated)) {
+    : _repo = repo ?? AuthRepository.instance,
+      super(const AuthState(status: AuthStatus.unauthenticated)) {
     on<AuthHydrateRequested>(_onHydrate);
     on<AuthLoginRequested>(_onLogin);
     on<AuthRegisterRequested>(_onRegister);
@@ -139,7 +150,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthRoleChanged>(_onRoleChanged);
   }
 
-  Future<void> _onHydrate(AuthHydrateRequested e, Emitter<AuthState> emit) async {
+  Future<void> _onHydrate(
+    AuthHydrateRequested e,
+    Emitter<AuthState> emit,
+  ) async {
     final user = await _repo.tryRestoreRemoteSession();
     if (user != null) {
       emit(AuthState(status: AuthStatus.authenticated, user: user));
@@ -150,23 +164,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSessionExpiredRequested e,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthState(
-      status: AuthStatus.unauthenticated,
-      loginInfoMessage:
-          'Pour des raisons de sécurité, votre session s’est terminée. '
-          'Reconnectez-vous pour continuer.',
-    ));
+    emit(
+      const AuthState(
+        status: AuthStatus.unauthenticated,
+        loginInfoMessage:
+            'Pour des raisons de sécurité, votre session s’est terminée. '
+            'Reconnectez-vous pour continuer.',
+      ),
+    );
     try {
       await _repo.logout();
     } catch (_) {}
   }
 
   Future<void> _onLogin(AuthLoginRequested e, Emitter<AuthState> emit) async {
-    emit(state.copyWith(
-      status: AuthStatus.authenticating,
-      clearError: true,
-      clearLoginInfo: true,
-    ));
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticating,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
     if (AcpecRpcDebug.enabled) {
       final id = e.identifier.trim();
       developer.log(
@@ -179,19 +197,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = await _repo.login(e.identifier, e.password);
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: ErrorPresenter.message(err),
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
     }
   }
 
-  Future<void> _onRegister(AuthRegisterRequested e, Emitter<AuthState> emit) async {
-    emit(state.copyWith(
-      status: AuthStatus.authenticating,
-      clearError: true,
-      clearLoginInfo: true,
-    ));
+  Future<void> _onRegister(
+    AuthRegisterRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticating,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
     try {
       final user = await _repo.register(
         email: e.email,
@@ -201,10 +226,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: ErrorPresenter.message(err),
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
     }
   }
 
@@ -212,11 +239,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRemoteRegistrationCompleted e,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(
-      status: AuthStatus.authenticating,
-      clearError: true,
-      clearLoginInfo: true,
-    ));
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticating,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
     try {
       final user = await _repo.adoptRemoteUser(
         user: e.user,
@@ -225,10 +254,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: ErrorPresenter.message(err),
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
     }
   }
 
@@ -248,12 +279,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onRoleChanged(AuthRoleChanged e, Emitter<AuthState> emit) async {
+  Future<void> _onRoleChanged(
+    AuthRoleChanged e,
+    Emitter<AuthState> emit,
+  ) async {
     try {
-      final updated = await _repo.changeRole(e.userId, e.role, stationId: e.stationId);
+      final updated = await _repo.changeRole(
+        e.userId,
+        e.role,
+        stationId: e.stationId,
+      );
       if (state.user?.id == updated.id) {
         emit(state.copyWith(user: updated));
       }
-    } catch (_) {/* swallow — admin screen handles errors */}
+    } catch (_) {
+      /* swallow — admin screen handles errors */
+    }
   }
 }

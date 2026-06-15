@@ -46,10 +46,10 @@ class AcpecUserRoleResolver {
 
   static UserRole _higherPrivilege(UserRole a, UserRole b) {
     int rank(UserRole x) => switch (x) {
-          UserRole.admin => 2,
-          UserRole.station => 1,
-          UserRole.user => 0,
-        };
+      UserRole.admin => 2,
+      UserRole.station => 1,
+      UserRole.user => 0,
+    };
     return rank(b) > rank(a) ? b : a;
   }
 
@@ -71,7 +71,8 @@ class AcpecUserRoleResolver {
       return UserRole.admin;
     }
 
-    final fromPerm = _roleFromStringList(m['permissions']) ??
+    final fromPerm =
+        _roleFromStringList(m['permissions']) ??
         _roleFromStringList(m['scopes']) ??
         _roleFromStringList(m['capabilities']);
     if (fromPerm != null) return fromPerm;
@@ -213,7 +214,8 @@ class AcpecUserRoleResolver {
     return false;
   }
 
-  static String _normString(dynamic v) => (v ?? '').toString().toLowerCase().trim();
+  static String _normString(dynamic v) =>
+      (v ?? '').toString().toLowerCase().trim();
 
   static bool _adminToken(String n) {
     if (n.isEmpty) return false;

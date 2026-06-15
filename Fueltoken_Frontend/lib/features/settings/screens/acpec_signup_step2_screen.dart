@@ -16,8 +16,8 @@ class AcpecSignupStep2Screen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
-          'Inscription OTP',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
+          'Créer un compte',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -43,8 +43,8 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    "L'inscription se fait désormais avec OTP SMS.",
-                    style: GoogleFonts.inter(
+                    "L'inscription se fait désormais avec le code reçu par SMS.",
+                    style: GoogleFonts.poppins(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.ink,
@@ -53,7 +53,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     "Renseignez vos informations sur l'ecran d'inscription, puis validez le code recu pour creer le compte.",
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.poppins(
                       fontSize: 13.5,
                       height: 1.45,
                       color: AppColors.body,

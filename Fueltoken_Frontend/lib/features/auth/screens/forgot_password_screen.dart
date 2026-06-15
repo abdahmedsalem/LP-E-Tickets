@@ -1,15 +1,14 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/odoo_auth_service.dart';
 import '../../../core/validation/contact_validators.dart';
-import '../../../data/services/otp_remote_service.dart';
-import '../../../shared/widgets/app_status_lottie.dart';
-import 'forgot_otp_flow_screens.dart';
 import '../../../shared/widgets/app_message.dart';
+import 'forgot_otp_flow_screens.dart';
 
-/// Récupération : envoi OTP → saisie code → nouveau mot de passe.
+/// Recuperation : envoi OTP -> saisie code -> nouveau mot de passe.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -19,38 +18,54 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController();
   final _phoneLocal = TextEditingController();
-  bool _usePhone = true;
+
   bool _busy = false;
-  final _otp = OtpRemoteService();
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneLocal.addListener(_onFieldChanged);
+  }
 
   @override
   void dispose() {
-    _email.dispose();
+    _phoneLocal.removeListener(_onFieldChanged);
     _phoneLocal.dispose();
     super.dispose();
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   String get _phoneFull =>
       fullMrPhoneFromLocal8(_phoneLocal.text.replaceAll(RegExp(r'\D'), ''));
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
-      final channel = _usePhone ? OtpChannel.sms : OtpChannel.email;
-      final identifier = _usePhone ? _phoneFull : _email.text.trim();
-      await _otp.sendForgotOtp(channel: channel, identifier: identifier);
+      final response = await OdooAuthService.instance.requestPasswordResetOtp(
+        phoneFull: _phoneFull,
+      );
+      final data = response['data'];
+      final challengeId = data is Map
+          ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')
+          : null;
       if (!mounted) return;
-      AppMessage.info(context, 'Code envoyé.');
+      AppMessage.info(context, 'Code envoye.');
       context.push(
         '/forgot-password/verify-otp',
         extra: ForgotOtpRouteArgs(
-          identifier: identifier,
-          channel: channel,
+          identifier: _phoneFull,
+          challengeId: challengeId,
         ),
       );
+    } on StateError catch (e) {
+      if (mounted) {
+        AppMessage.error(context, e.message);
+      }
     } catch (e) {
       if (mounted) {
         AppMessage.error(context, e.toString());
@@ -65,189 +80,154 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              elevation: 0,
-              surfaceTintColor: Colors.transparent,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => context.pop(),
-              ),
-              title: const Text(
-                'Mot de passe oublié',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
+        backgroundColor: AppColors.background,
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Form(
+                    key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.loginHeroGradient,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: AppColors.softShadow,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.lock_reset_rounded,
-                                  color: Colors.white.withValues(alpha: 0.95),
-                                  size: 28),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Réinitialisation sécurisée',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white.withValues(alpha: 0.98),
-                                  letterSpacing: -0.4,
+                        Row(
+                          children: [
+                            InkWell(
+                              borderRadius: BorderRadius.circular(999),
+                              onTap: () => context.go('/login'),
+                              child: const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 22,
+                                  color: Color(0xFF203A73),
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Nous envoyons un code à 6 chiffres, puis vous choisissez un nouveau mot de passe.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  height: 1.35,
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Image.asset(
+                            'designs/lplogo.jfif',
+                            height: 128,
+                            fit: BoxFit.contain,
                           ),
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Recuperation du mot de passe',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E293B),
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Entrez votre numero pour recevoir le code de verification.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF64748B),
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
                         DecoratedBox(
                           decoration: BoxDecoration(
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(26),
-                            border: Border.all(
-                              color: AppColors.line.withValues(alpha: 0.85),
-                            ),
-                            boxShadow: [
+                            border: Border.all(color: AppColors.line),
+                            boxShadow: const [
                               BoxShadow(
-                                color: AppColors.leaderGreen.withValues(alpha: 0.07),
-                                blurRadius: 32,
-                                offset: const Offset(0, 14),
-                                spreadRadius: -8,
-                              ),
-                              const BoxShadow(
-                                color: Color(0x120B1220),
+                                color: Color(0x0F0B1220),
                                 blurRadius: 18,
-                                offset: Offset(0, 8),
+                                offset: Offset(0, 10),
                               ),
                             ],
                           ),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _ChannelToggle(
-                                    usePhone: _usePhone,
-                                    onChanged: (v) {
-                                      setState(() {
-                                        _usePhone = v;
-                                        _email.clear();
-                                        _phoneLocal.clear();
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-                                  if (_usePhone)
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          height: 52,
-                                          alignment: Alignment.center,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            border: Border.all(
-                                                color: AppColors.line),
-                                          ),
-                                          child: const Text(
-                                            kMauritaniaPhonePrefix,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.ink,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: TextFormField(
-                                            controller: _phoneLocal,
-                                            keyboardType: TextInputType.number,
-                                            maxLength: 8,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly,
-                                            ],
-                                            decoration: InputDecoration(
-                                              labelText: 'Numéro',
-                                              hintText: 'XXXXXXXX',
-                                              counterText: '',
-                                            ),
-                                            validator: (v) =>
-                                                validateMrLocalPhone(v),
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  else
-                                    TextFormField(
-                                      controller: _email,
-                                      keyboardType:
-                                          TextInputType.emailAddress,
-                                      autocorrect: false,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Adresse email',
-                                        hintText: 'vous@exemple.com',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _AuthTextField(
+                                  controller: _phoneLocal,
+                                  label: 'Numero',
+                                  hint: 'XXXXXXXX',
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 8,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  validator: validateMrLocalPhone,
+                                  counterLabel:
+                                      '${_phoneLocal.text.trim().replaceAll(RegExp(r'\D'), '').length}/8',
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  height: 56,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Color(0xFF065F46),
+                                          Color(0xFF2EA043),
+                                          Color(0xFF34D399),
+                                        ],
+                                        stops: [0.0, 0.48, 1.0],
                                       ),
-                                      validator: validateAppEmail,
                                     ),
-                                  const SizedBox(height: 22),
-                                  SizedBox(
-                                    height: 52,
-                                    child: ElevatedButton(
-                                      onPressed: _busy ? null : _submit,
-                                      child: _busy
-                                          ? const AppInlineLoading(size: 22)
-                                          : const Text('Envoyer le code'),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: _busy ? null : _submit,
+                                        child: Center(
+                                          child: _busy
+                                              ? const SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2.4,
+                                                        color: Colors.white,
+                                                      ),
+                                                )
+                                              : const Text(
+                                                  'Envoyer le code',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 14),
-                                  TextButton(
-                                    onPressed: () => context.go('/login'),
-                                    child: const Text(
-                                      'Retour à la connexion',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w700),
-                                    ),
+                                ),
+                                const SizedBox(height: 14),
+                                const Text(
+                                  'Le code est envoye par SMS sur votre numero de telephone.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: Color(0xFF64748B),
+                                    height: 1.35,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -257,71 +237,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ChannelToggle extends StatelessWidget {
-  const _ChannelToggle({required this.usePhone, required this.onChanged});
+class _AuthTextField extends StatelessWidget {
+  const _AuthTextField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.keyboardType,
+    this.maxLength,
+    this.validator,
+    this.inputFormatters,
+    this.counterLabel,
+  });
 
-  final bool usePhone;
-  final ValueChanged<bool> onChanged;
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final TextInputType? keyboardType;
+  final int? maxLength;
+  final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? counterLabel;
 
   @override
   Widget build(BuildContext context) {
-    Widget chip(bool selected, IconData icon, String label, bool phone) {
-      return Expanded(
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onChanged(phone),
-            borderRadius: BorderRadius.circular(12),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.primarySoft : AppColors.lineSoft,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected ? AppColors.primary : Colors.transparent,
-                  width: 1.2,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icon,
-                    size: 18,
-                    color: selected ? AppColors.primary : AppColors.muted,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          selected ? AppColors.primaryDark : AppColors.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        chip(usePhone, Icons.sms_outlined, 'SMS / téléphone', true),
-        const SizedBox(width: 10),
-        chip(!usePhone, Icons.alternate_email_rounded, 'Email', false),
-      ],
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLength: maxLength,
+      inputFormatters: inputFormatters,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        counterText: counterLabel ?? '',
+      ),
+      validator: validator,
     );
   }
 }

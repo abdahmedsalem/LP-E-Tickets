@@ -6,13 +6,13 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/acpec_purchase_create_result.dart';
 import '../../features/purchases/screens/purchase_confirmation_screen.dart';
 import '../../features/qr/screens/transfer_confirmation_screen.dart';
+import 'amount_inline.dart';
 
 Future<void> showPurchaseSubmitSuccessDialog(
   BuildContext context, {
   required AcpecPurchaseCreateResult result,
   required DateTime confirmedAt,
   List<PurchaseConfirmationLine> lines = const [],
-  VoidCallback? onHome,
 }) {
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -20,7 +20,6 @@ Future<void> showPurchaseSubmitSuccessDialog(
         result: result,
         confirmedAt: confirmedAt,
         lines: lines,
-        onHome: onHome,
       ),
     ),
   );
@@ -31,8 +30,8 @@ Future<void> showTransferSuccessDialog(
   required int totalAmount,
   required DateTime confirmedAt,
   required String recipientName,
+  required String recipientPhone,
   List<TransferConfirmationLine> lines = const [],
-  VoidCallback? onHome,
 }) {
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -40,8 +39,8 @@ Future<void> showTransferSuccessDialog(
         totalAmount: totalAmount,
         confirmedAt: confirmedAt,
         recipientName: recipientName,
+        recipientPhone: recipientPhone,
         lines: lines,
-        onHome: onHome,
       ),
     ),
   );
@@ -52,7 +51,6 @@ Future<void> showQrGenerationSuccessDialog(
   required int totalAmount,
   required DateTime confirmedAt,
   List<QrGenerationSuccessLine> lines = const [],
-  VoidCallback? onHome,
 }) {
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -60,7 +58,6 @@ Future<void> showQrGenerationSuccessDialog(
         totalAmount: totalAmount,
         confirmedAt: confirmedAt,
         lines: lines,
-        onHome: onHome,
       ),
     ),
   );
@@ -88,13 +85,11 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
     required this.result,
     required this.confirmedAt,
     this.lines = const [],
-    this.onHome,
   });
 
   final AcpecPurchaseCreateResult result;
   final DateTime confirmedAt;
   final List<PurchaseConfirmationLine> lines;
-  final VoidCallback? onHome;
 
   int get _totalAmount => lines.fold(0, (s, l) => s + l.totalAmount);
 
@@ -109,16 +104,15 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
       rows: [
         _SuccessRowData(
           label: 'Montant total',
-          value: Formatters.money(_totalAmount),
+          value: _totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
         _SuccessRowData(
           label: 'Date',
-          value: Formatters.dateTime(confirmedAt),
+          value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
         ),
       ],
-      onHome: onHome,
     );
   }
 }
@@ -129,15 +123,15 @@ class TransferSuccessScreen extends StatelessWidget {
     required this.totalAmount,
     required this.confirmedAt,
     required this.recipientName,
+    required this.recipientPhone,
     this.lines = const [],
-    this.onHome,
   });
 
   final int totalAmount;
   final DateTime confirmedAt;
   final String recipientName;
+  final String recipientPhone;
   final List<TransferConfirmationLine> lines;
-  final VoidCallback? onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -153,17 +147,21 @@ class TransferSuccessScreen extends StatelessWidget {
           valueColor: AppColors.ink,
         ),
         _SuccessRowData(
+          label: 'Téléphone receveur',
+          value: recipientPhone,
+          valueColor: AppColors.ink,
+        ),
+        _SuccessRowData(
           label: 'Montant total',
-          value: Formatters.money(totalAmount),
+          value: totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
         _SuccessRowData(
           label: 'Date',
-          value: Formatters.dateTime(confirmedAt),
+          value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
         ),
       ],
-      onHome: onHome,
     );
   }
 }
@@ -174,13 +172,11 @@ class QrGenerationSuccessScreen extends StatelessWidget {
     required this.totalAmount,
     required this.confirmedAt,
     this.lines = const [],
-    this.onHome,
   });
 
   final int totalAmount;
   final DateTime confirmedAt;
   final List<QrGenerationSuccessLine> lines;
-  final VoidCallback? onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -193,16 +189,15 @@ class QrGenerationSuccessScreen extends StatelessWidget {
       rows: [
         _SuccessRowData(
           label: 'Montant total',
-          value: Formatters.money(totalAmount),
+          value: totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
         _SuccessRowData(
           label: 'Date',
-          value: Formatters.dateTime(confirmedAt),
+          value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
         ),
       ],
-      onHome: onHome,
     );
   }
 }
@@ -215,7 +210,6 @@ class _SuccessScaffold extends StatelessWidget {
     required this.rows,
     this.details,
     this.message,
-    this.onHome,
   });
 
   final String title;
@@ -224,7 +218,6 @@ class _SuccessScaffold extends StatelessWidget {
   final Color accentColor;
   final List<_SuccessRowData> rows;
   final Widget? details;
-  final VoidCallback? onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +244,7 @@ class _SuccessScaffold extends StatelessWidget {
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -262,7 +255,7 @@ class _SuccessScaffold extends StatelessWidget {
                       Text(
                         message!,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.muted,
@@ -304,13 +297,7 @@ class _SuccessScaffold extends StatelessWidget {
                 width: double.infinity,
                 height: 54,
                 child: FilledButton(
-                  onPressed: () {
-                    if (onHome == null) {
-                      Navigator.of(context).pop();
-                      return;
-                    }
-                    onHome!();
-                  },
+                  onPressed: () => Navigator.of(context).pop(true),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF43A047),
                     shape: RoundedRectangleBorder(
@@ -355,7 +342,7 @@ class _PurchasedLinesSection extends StatelessWidget {
         children: [
           Text(
             'Carnets achetés',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -400,7 +387,7 @@ class _TransferredLinesSection extends StatelessWidget {
         children: [
           Text(
             'Carnets transférés',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -451,7 +438,7 @@ class _TransferredLineRow extends StatelessWidget {
           flex: 5,
           child: Text(
             _carnetTypeLabel(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -460,16 +447,7 @@ class _TransferredLineRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text(
-          Formatters.money(line.totalAmount),
-          textAlign: TextAlign.right,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
-            height: 1.2,
-          ),
-        ),
+        AmountInline(amount: line.totalAmount, textAlign: TextAlign.right),
       ],
     );
   }
@@ -495,7 +473,7 @@ class _GeneratedQrLinesSection extends StatelessWidget {
         children: [
           Text(
             'Carnets utilisés',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -549,7 +527,7 @@ class _GeneratedQrLineRow extends StatelessWidget {
             children: [
               Text(
                 _title(),
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
@@ -558,8 +536,8 @@ class _GeneratedQrLineRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Expire le ${Formatters.date(line.expirationDate)}',
-                style: GoogleFonts.inter(
+                'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                style: GoogleFonts.poppins(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.muted,
@@ -569,14 +547,7 @@ class _GeneratedQrLineRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text(
-          Formatters.money(line.totalAmount),
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF2B8F3A),
-          ),
-        ),
+        AmountInline(amount: line.totalAmount),
       ],
     );
   }
@@ -609,7 +580,7 @@ class _PurchasedLineRow extends StatelessWidget {
           flex: 5,
           child: Text(
             _carnetTypeLabel(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -622,7 +593,7 @@ class _PurchasedLineRow extends StatelessWidget {
           child: Text(
             '${Formatters.numberFr(line.qty)} carnets',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
@@ -631,15 +602,7 @@ class _PurchasedLineRow extends StatelessWidget {
         ),
         Expanded(
           flex: 4,
-          child: Text(
-            Formatters.money(line.totalAmount),
-            textAlign: TextAlign.right,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2B8F3A),
-            ),
-          ),
+          child: AmountInline(amount: line.totalAmount, textAlign: TextAlign.right),
         ),
       ],
     );
@@ -669,6 +632,8 @@ class _SummaryRow extends StatelessWidget {
   final String value;
   final Color valueColor;
 
+  bool _isNumericAmount(String text) => RegExp(r'^\d+$').hasMatch(text);
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -677,7 +642,7 @@ class _SummaryRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
@@ -687,15 +652,20 @@ class _SummaryRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           flex: 2,
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: GoogleFonts.inter(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              color: valueColor,
-            ),
-          ),
+          child: _isNumericAmount(value)
+              ? AmountInline(
+                  amount: int.parse(value),
+                  textAlign: TextAlign.right,
+                )
+              : Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor,
+                  ),
+                ),
         ),
       ],
     );

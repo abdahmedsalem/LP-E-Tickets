@@ -42,13 +42,7 @@ class AcpecStationsMapper {
   }
 
   static List<dynamic> _itemsList(Map<String, dynamic> data) {
-    for (final key in [
-      'items',
-      'stations',
-      'records',
-      'results',
-      'rows',
-    ]) {
+    for (final key in ['items', 'stations', 'records', 'results', 'rows']) {
       final v = data[key];
       if (v is List) return v;
     }
@@ -79,19 +73,21 @@ class AcpecStationsMapper {
     final id = idRaw.toString().trim();
     if (id.isEmpty || id == '0') return null;
 
-    final code = (row['code'] ??
-            row['ref'] ??
-            row['reference'] ??
-            row['internal_ref'] ??
-            id)
-        .toString()
-        .trim();
-    final name = (row['name'] ??
-            row['station_name'] ??
-            row['display_name'] ??
-            'Station $id')
-        .toString()
-        .trim();
+    final code =
+        (row['code'] ??
+                row['ref'] ??
+                row['reference'] ??
+                row['internal_ref'] ??
+                id)
+            .toString()
+            .trim();
+    final name =
+        (row['name'] ??
+                row['station_name'] ??
+                row['display_name'] ??
+                'Station $id')
+            .toString()
+            .trim();
 
     var address = _addressFromRow(row);
     if (address.isEmpty) address = '—';
@@ -106,7 +102,8 @@ class AcpecStationsMapper {
       if (s != null && s.isNotEmpty) companyId = s;
     }
 
-    final active = row['active'] != false &&
+    final active =
+        row['active'] != false &&
         row['active'] != 0 &&
         row['state']?.toString().toLowerCase() != 'inactive' &&
         row['state']?.toString().toLowerCase() != 'disabled';

@@ -5,7 +5,12 @@ import '../../data/models/qr_token.dart';
 
 /// Small QR thumbnail used in QR list cards. Color reflects the state.
 class MiniQR extends StatelessWidget {
-  const MiniQR({super.key, required this.data, required this.state, this.size = 56});
+  const MiniQR({
+    super.key,
+    required this.data,
+    required this.state,
+    this.size = 56,
+  });
 
   final String data;
   final QrState state;

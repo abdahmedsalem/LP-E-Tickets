@@ -585,6 +585,7 @@ class AcpecTransactionsMapper {
 
     // Extraire l'autre partie pour les transferts de carnets
     String? transferParty;
+    String? transferPartyPhone;
     if (type == TxType.carnetTransfer || type == TxType.carnetReceived) {
       final fromField = row['transfer_other_party']?.toString().trim() ?? '';
       if (fromField.isNotEmpty && fromField != 'false') {
@@ -605,6 +606,16 @@ class AcpecTransactionsMapper {
         } else if (type == TxType.carnetReceived && inMatch != null) {
           transferParty = inMatch.group(1)?.trim();
         }
+      }
+
+      final phoneField =
+          row['transfer_other_party_phone']?.toString().trim() ??
+          row['transfer_other_party_mobile']?.toString().trim() ??
+          row['transfer_phone']?.toString().trim() ??
+          row['partner_phone']?.toString().trim() ??
+          '';
+      if (phoneField.isNotEmpty && phoneField != 'false') {
+        transferPartyPhone = phoneField;
       }
     }
 
@@ -637,6 +648,7 @@ class AcpecTransactionsMapper {
       stationName: _stringField(row, 'station_name'),
       note: _noteForRow(row),
       transferParty: transferParty,
+      transferPartyPhone: transferPartyPhone,
     );
   }
 

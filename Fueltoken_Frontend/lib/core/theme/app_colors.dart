@@ -51,6 +51,7 @@ class AppColors {
   static const Color hint = Color(0xFF94A3B8);
   static const Color line = Color(0xFFE2E8F0);
   static const Color lineSoft = Color(0xFFF1F5F9);
+
   /// Fond principal — teinte verte discrète (parcours client & coquilles).
   static const Color background = Color(0xFFFFFFFF);
   static const Color surface = Color(0xFFFFFFFF);
@@ -82,22 +83,14 @@ class AppColors {
   static const Gradient splashGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      leaderGreenDark,
-      leaderGreen,
-      Color(0xFF0B63B8),
-    ],
+    colors: [leaderGreenDark, leaderGreen, Color(0xFF0B63B8)],
     stops: [0.0, 0.52, 1.0],
   );
 
   static const Gradient loginHeroGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF14532D),
-      leaderGreen,
-      Color(0xFF34D399),
-    ],
+    colors: [Color(0xFF14532D), leaderGreen, Color(0xFF34D399)],
     stops: [0.0, 0.48, 1.0],
   );
 

@@ -12,6 +12,5 @@ class DiagnosticConfig {
   );
 
   /// `true` uniquement en `flutter run` debug, ou si le define est activé (support).
-  static bool get showTechnicalDiagnostics =>
-      kDebugMode || verboseFromDefine;
+  static bool get showTechnicalDiagnostics => kDebugMode || verboseFromDefine;
 }

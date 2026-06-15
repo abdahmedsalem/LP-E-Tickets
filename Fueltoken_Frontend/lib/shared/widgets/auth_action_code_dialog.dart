@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/auth/login_session_cache.dart';
 import '../../core/theme/app_colors.dart';
@@ -18,17 +19,32 @@ Future<bool> showSensitiveActionPasswordDialog(
     final state = context.read<AuthBloc>().state;
     final user = state.user;
     if (user == null) {
-      throw StateError('Session utilisateur introuvable.');
-    }
-    final storedPassword = await LoginSessionCache.lastPassword();
-    if (storedPassword == null || storedPassword.isEmpty) {
-      throw StateError(
-        'Mot de passe de validation introuvable. Reconnectez-vous.',
-      );
-    }
-    if (!context.mounted) {
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (_) => const AlertDialog(
+            title: Text('Session introuvable'),
+            content: Text('Reconnectez-vous pour continuer.'),
+          ),
+        );
+      }
       return false;
     }
+
+    final storedPassword = await LoginSessionCache.lastPassword();
+    if (storedPassword == null || storedPassword.isEmpty) {
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (_) => const AlertDialog(
+            title: Text('Mot de passe introuvable'),
+            content: Text('Reconnectez-vous pour continuer.'),
+          ),
+        );
+      }
+      return false;
+    }
+    if (!context.mounted) return false;
 
     bool busy = false;
     bool obscure = true;
@@ -45,9 +61,7 @@ Future<bool> showSensitiveActionPasswordDialog(
               final password = controller.text.trim();
               final validationError = validateSixDigitNumericPassword(password);
               if (validationError != null) {
-                setState(() {
-                  errorText = validationError;
-                });
+                setState(() => errorText = validationError);
                 return;
               }
               setState(() {
@@ -71,311 +85,112 @@ Future<bool> showSensitiveActionPasswordDialog(
 
             return Dialog(
               backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 18),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: AppColors.line.withValues(alpha: 0.9),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.16),
-                        blurRadius: 34,
-                        offset: const Offset(0, 16),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: AppColors.clientCtaGradient,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(27),
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: const Color(0xFFE8EAED)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.14),
+                            blurRadius: 30,
+                            offset: const Offset(0, 14),
                           ),
-                        ),
-                        padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              width: 46,
-                              height: 46,
+                              width: 74,
+                              height: 74,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(15),
+                                shape: BoxShape.circle,
+                                color: Colors.white,
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.18),
+                                  color: AppColors.leaderGreen,
+                                  width: 3,
                                 ),
                               ),
                               child: const Icon(
-                                Icons.lock_outline_rounded,
-                                color: Colors.white,
-                                size: 24,
+                                Icons.verified_user_rounded,
+                                color: AppColors.leaderGreen,
+                                size: 42,
                               ),
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.1,
-                                      letterSpacing: -0.4,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    description,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.9,
-                                      ),
-                                      fontSize: 13.5,
-                                      height: 1.45,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 18),
+                            Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink,
+                                height: 1.15,
                               ),
+                            ),
+                            const SizedBox(height: 18),
+                            _PinCodeBoxes(
+                              controller: controller,
+                              enabled: !busy,
+                              obscure: obscure,
+                              errorText: errorText,
+                              onChanged: () {
+                                if (busy) return;
+                                final current = controller.text.trim();
+                                setState(() {
+                                  if (errorText != null) errorText = null;
+                                });
+                                if (current.length == 6) {
+                                  submit();
+                                }
+                              },
+                              onSubmitted: () {
+                                if (!busy) submit();
+                              },
                             ),
                           ],
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryTint,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: AppColors.primarySoft.withValues(
-                                      alpha: 0.8,
-                                    ),
-                                  ),
-                                ),
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  14,
-                                  16,
-                                  14,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.12,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(
-                                        Icons.pin_outlined,
-                                        color: AppColors.primary,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Expanded(
-                                      child: Text(
-                                        'Saisie sécurisée à 6 chiffres. Le clavier numérique reste actif pendant la vérification.',
-                                        style: TextStyle(
-                                          fontSize: 13.2,
-                                          height: 1.45,
-                                          color: AppColors.body,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              TextField(
-                                controller: controller,
-                                autofocus: true,
-                                enabled: !busy,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                maxLength: 6,
-                                obscureText: obscure,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 2.2,
-                                  color: AppColors.ink,
-                                ),
-                                decoration: InputDecoration(
-                                  labelText: 'Mot de passe',
-                                  hintText: '000000',
-                                  counterText: '',
-                                  errorText: errorText,
-                                  filled: true,
-                                  fillColor: AppColors.successSurface,
-                                  labelStyle: const TextStyle(
-                                    color: AppColors.leaderGreenDark,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.password_outlined,
-                                    size: 21,
-                                    color: AppColors.leaderGreenDark,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    onPressed: busy
-                                        ? null
-                                        : () {
-                                            setState(() => obscure = !obscure);
-                                          },
-                                    icon: Icon(
-                                      obscure
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                    ),
-                                  ),
-                                ),
-                                onSubmitted: (_) {
-                                  if (!busy) {
-                                    submit();
-                                  }
-                                },
-                              ),
-                              if (errorText != null) ...[
-                                const SizedBox(height: 12),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.dangerSurface,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: AppColors.danger.withValues(
-                                        alpha: 0.16,
-                                      ),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline_rounded,
-                                        color: AppColors.danger,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          errorText!,
-                                          style: const TextStyle(
-                                            color: AppColors.danger,
-                                            fontSize: 13.2,
-                                            height: 1.4,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: ElevatedButton(
+                        onPressed: busy
+                            ? null
+                            : () => Navigator.of(dialogContext).pop(false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.ink,
+                          disabledBackgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          elevation: 0,
+                          side: const BorderSide(color: Color(0xFFE8EAED)),
+                        ),
+                        child: const Text(
+                          'إلغاء',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 0, 22, 22),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: busy
-                                    ? null
-                                    : () => Navigator.of(
-                                        dialogContext,
-                                      ).pop(false),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.ink,
-                                  side: BorderSide(
-                                    color: AppColors.line.withValues(
-                                      alpha: 0.9,
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Annuler',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: busy ? null : submit,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.leaderGreen,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                child: busy
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Text(
-                                        'Valider',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -383,6 +198,7 @@ Future<bool> showSensitiveActionPasswordDialog(
         );
       },
     );
+
     return result ?? false;
   } finally {
     controller.dispose();
@@ -400,4 +216,107 @@ Future<bool> showSensitiveActionAuthCodeDialog(
     title: title,
     description: description,
   );
+}
+
+class _PinCodeBoxes extends StatelessWidget {
+  const _PinCodeBoxes({
+    required this.controller,
+    required this.enabled,
+    required this.obscure,
+    required this.errorText,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final bool enabled;
+  final bool obscure;
+  final String? errorText;
+  final VoidCallback onChanged;
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = controller.text.trim();
+    final dots = List.generate(6, (i) => i < value.length ? value[i] : '');
+
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Opacity(
+              opacity: 0.01,
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                enabled: enabled,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                maxLength: 6,
+                obscureText: obscure,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (_) => onChanged(),
+                onSubmitted: (_) => onSubmitted(),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  counterText: '',
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(6, (index) {
+                final filled = dots[index].isNotEmpty;
+                final active = value.length == index;
+                return Padding(
+                  padding: EdgeInsetsDirectional.only(
+                    end: index == 5 ? 0 : 8,
+                  ),
+                  child: Container(
+                    width: 42,
+                    height: 58,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: active
+                            ? Colors.black
+                            : const Color(0xFFB8BDC6),
+                        width: active ? 2 : 1.6,
+                      ),
+                    ),
+                    child: Text(
+                      filled ? (obscure ? '•' : dots[index]) : '',
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              errorText!,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }

@@ -20,16 +20,17 @@ import '../transfer_carnets_logic.dart';
 import 'transfer_confirmation_screen.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../../shared/widgets/app_bar_header.dart';
-import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const _transferHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _transferHeaderGap = 10.0;
-const _transferHeaderTitleSize = 26.0;
+const _transferHeaderGap = 18.0;
+const _transferHeaderTitleSize = 32.0;
+const _headerNavy = Color(0xFF0F2747);
 
 class TransferCarnetsScreen extends StatefulWidget {
   const TransferCarnetsScreen({super.key});
@@ -74,13 +75,20 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     return Container(
       color: Colors.white,
       padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
-      child: const AppBarHeader(
+      child: AppBarHeader(
         title: 'Transférer',
         showBack: true,
         largeTitle: true,
         largeTitlePadding: _transferHeaderPadding,
         largeTitleGap: _transferHeaderGap,
         largeTitleFontSize: _transferHeaderTitleSize,
+        largeTitleTextStyle: GoogleFonts.poppins(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: _headerNavy,
+          letterSpacing: -0.4,
+          height: 1.05,
+        ),
       ),
     );
   }
@@ -364,13 +372,15 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
         totalAmount: totalAmount,
         confirmedAt: DateTime.now(),
         recipientName: confirmedRecipientName,
+        recipientPhone: phone,
         lines: confirmLines,
-        onHome: () {
-          if (mounted) {
-            context.go('/home');
-          }
-        },
       );
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.go('/home');
+        }
+      });
       return;
     }
   }
@@ -385,6 +395,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
           child: Column(
             children: [
               _buildHeader(),
+              const SizedBox(height: 18),
               const Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -408,6 +419,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
           child: Column(
             children: [
               _buildHeader(),
+              const SizedBox(height: 18),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -475,84 +487,90 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       body: SafeArea(
         top: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
+            const SizedBox(height: 18),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 22, 16, 24),
                 children: [
+                  Text(
+                    'Entrez le numéro de téléphone du destinataire et sélectionnez les carnets à transférer.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.muted,
+                      height: 1.35,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   if (transferable.isEmpty) ...[
                     SizedBox(
                       height: MediaQuery.sizeOf(context).height * 0.48,
                       child: const EmptyState(
                         icon: Icons.send_rounded,
-                        title: 'Aucun carnet transférable',
-                        message:
-                            'Vos carnets complets disponibles pour transfert apparaîtront ici',
+                        title: 'Aucun carnet disponible',
+                        message: 'Vos carnets disponibles apparaîtront ici',
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être transférés.',
+                        'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être envoyés.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppColors.body, height: 1.35),
                       ),
                     ),
-                  ] else if (transferable.isEmpty)
-                    const AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Aucun carnet transférable.',
-                            style: TextStyle(
-                              color: AppColors.ink,
-                              fontWeight: FontWeight.w800,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Telephone du destinataire',
-                      style: GoogleFonts.inter(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                  ] else ...[
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.ink,
+                      ),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 14,
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        hintText: 'Numéro de téléphone',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.muted,
+                        ),
+                        suffixIcon: const Icon(
+                          Icons.contact_page_outlined,
+                          size: 20,
+                          color: AppColors.muted,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD8DDE6),
+                            width: 1.2,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Sélectionner les carnets à transférer',
-                      style: GoogleFonts.inter(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
-                        color: AppColors.muted,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD8DDE6),
+                            width: 1.2,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: AppColors.leaderGreen,
+                            width: 1.4,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -592,9 +610,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                                 ),
                               )
                             : const Icon(Icons.send_rounded, size: 18),
-                        label: Text(
-                          _submitting ? 'Transfert...' : 'Transférer',
-                        ),
+                        label: Text(_submitting ? 'Envoi...' : 'Envoyer'),
                       ),
                     ),
                   ],
@@ -781,7 +797,7 @@ class _TransferLineCard extends StatelessWidget {
                       carnetTypeLabel,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -815,14 +831,7 @@ class _TransferLineCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    '${Formatters.numberFr(transferableValue)} MRU',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
-                  ),
+                  AmountInline(amount: transferableValue),
                 ],
               ),
             ],

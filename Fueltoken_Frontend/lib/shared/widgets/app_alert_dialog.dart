@@ -12,8 +12,9 @@ Future<void> showAppAlertDialog(
   bool isError = false,
 }) {
   final theme = Theme.of(context);
-  final iconBg =
-      isError ? AppColors.warning.withValues(alpha: 0.15) : AppColors.primaryTint.withValues(alpha: 0.5);
+  final iconBg = isError
+      ? AppColors.warning.withValues(alpha: 0.15)
+      : AppColors.primaryTint.withValues(alpha: 0.5);
   final iconFg = isError ? AppColors.warning : AppColors.primary;
   return showDialog<void>(
     context: context,
@@ -28,9 +29,7 @@ Future<void> showAppAlertDialog(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: AppColors.line.withValues(alpha: 0.85),
-            ),
+            border: Border.all(color: AppColors.line.withValues(alpha: 0.85)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.12),

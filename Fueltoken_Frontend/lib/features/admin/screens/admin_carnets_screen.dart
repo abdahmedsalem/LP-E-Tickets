@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -37,12 +37,12 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
 
   String _briefError(Object e) {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session Odoo expirÃ©e. DÃ©connectez-vous puis reconnectez-vous.';
+      return 'Session Odoo expirée. Déconnectez-vous puis reconnectez-vous.';
     }
     final s = e.toString().replaceFirst('Exception: ', '').trim();
     if (s.isEmpty) return 'Une erreur est survenue.';
     if (s.length > 100) {
-      return 'Une erreur est survenue. RÃ©essayez ou reconnectez-vous.';
+      return 'Une erreur est survenue. Réessayez ou reconnectez-vous.';
     }
     return s;
   }
@@ -74,7 +74,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
             _catalogFromAdminTypesList = false;
             _loading = false;
             _loadError =
-                'Connexion serveur ACPEC requise pour gÃ©rer les types de ticket.';
+                'Connexion serveur ACPEC requise pour gérer les types de ticket.';
           });
         }
       }
@@ -92,10 +92,10 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('AccÃ¨s Ã  la gestion'),
+        title: const Text('Accès à la gestion'),
         content: const Text(
-          'La gestion des offres en ligne nâ€™est pas disponible sur cette version '
-          'de lâ€™application. Contactez votre support pour plus dâ€™informations.',
+          'La gestion des offres en ligne n’est pas disponible sur cette version '
+          'de l’application. Contactez votre support pour plus d’informations.',
         ),
         actions: [
           TextButton(
@@ -129,7 +129,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
       );
       if (ok == true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Type crÃ©Ã© sur le serveur.')),
+          const SnackBar(content: Text('Type créé sur le serveur.')),
         );
         await _refresh();
       }
@@ -139,7 +139,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Connexion serveur ACPEC requise pour crÃ©er un type de ticket.',
+            'Connexion serveur ACPEC requise pour créer un type de ticket.',
           ),
         ),
       );
@@ -154,7 +154,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Identifiant de type non numÃ©rique : modification via lâ€™API impossible.',
+            'Identifiant de type non numérique : modification via l’API impossible.',
           ),
         ),
       );
@@ -177,7 +177,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
     );
     if (ok == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Type mis Ã  jour sur le serveur.')),
+        const SnackBar(content: Text('Type mis à jour sur le serveur.')),
       );
       await _refresh();
     }
@@ -188,12 +188,12 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isAcpec ? 'DÃ©sactiver ce type ?' : 'Supprimer ce type ?'),
+        title: Text(isAcpec ? 'Désactiver ce type ?' : 'Supprimer ce type ?'),
         content: Text(
           isAcpec
-              ? '${t.code} Â· ${t.name}\n\n'
-                    'Le type sera marquÃ© comme inactif sur le serveur.'
-              : '${t.code} Â· ${t.name}',
+              ? '${t.code} · ${t.name}\n\n'
+                    'Le type sera marqué comme inactif sur le serveur.'
+              : '${t.code} · ${t.name}',
         ),
         actions: [
           TextButton(
@@ -203,7 +203,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: Text(isAcpec ? 'DÃ©sactiver' : 'Supprimer'),
+            child: Text(isAcpec ? 'Désactiver' : 'Supprimer'),
           ),
         ],
       ),
@@ -213,7 +213,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
       if (!OdooApiConfig.isConfigured) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Serveur Odoo non configurÃ©.')),
+          const SnackBar(content: Text('Serveur Odoo non configuré.')),
         );
         return;
       }
@@ -223,7 +223,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Identifiant non numÃ©rique : impossible dâ€™appeler carnet-types/delete.',
+              'Identifiant non numérique : impossible d’appeler carnet-types/delete.',
             ),
           ),
         );
@@ -236,7 +236,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Type dÃ©sactivÃ© sur le serveur (active = false).'),
+            content: Text('Type désactivé sur le serveur (active = false).'),
           ),
         );
         await _refresh();
@@ -246,7 +246,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
           SnackBar(
             content: Text(
               e.isOdooSessionExpired
-                  ? 'Session expirÃ©e. Reconnectez-vous.'
+                  ? 'Session expirée. Reconnectez-vous.'
                   : e.message,
             ),
           ),
@@ -332,7 +332,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
                     TextButton.icon(
                       onPressed: _refresh,
                       icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('RÃ©essayer'),
+                      label: const Text('Réessayer'),
                     ),
                   ],
                 ),
@@ -375,8 +375,8 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
                             const SizedBox(height: 6),
                             Text(
                               bothFailed
-                                  ? 'Impossible de charger les types. VÃ©rifiez le rÃ©seau puis rÃ©essayez.'
-                                  : 'Certains Ã©lÃ©ments nâ€™ont pas pu Ãªtre chargÃ©s. La liste peut Ãªtre incomplÃ¨te.',
+                                  ? 'Impossible de charger les types. Vérifiez le réseau puis réessayez.'
+                                  : 'Certains éléments n’ont pas pu être chargés. La liste peut être incomplète.',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -395,8 +395,8 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 32),
                       child: Text(
                         failed
-                            ? 'Aucun type pour lâ€™instant. VÃ©rifiez la connexion puis rÃ©essayez.'
-                            : 'Aucun type de carnet. Appuyez sur + pour en crÃ©er un.',
+                            ? 'Aucun type pour l’instant. Vérifiez la connexion puis réessayez.'
+                            : 'Aucun type de carnet. Appuyez sur + pour en créer un.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: failed
@@ -428,7 +428,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
                         ? () => _tryDelete(t)
                         : null,
                     deleteTooltip: AppEnvironment.useAcpecLiveData
-                        ? 'DÃ©sactiver (active = false)'
+                        ? 'Désactiver (active = false)'
                         : 'Retirer',
                   );
                 },
@@ -519,7 +519,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
   String get _previewName {
     final fc = _parsedFaceCount;
     final fv = _parsedFaceValue;
-    if (fc == null || fv == null || fc <= 0 || fv <= 0) return 'â€”';
+    if (fc == null || fv == null || fc <= 0 || fv <= 0) return '—';
     return _carnetNameFrom(fc, fv);
   }
 
@@ -531,7 +531,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Indiquez le nombre de tickets, la valeur nominale et la durÃ©e de validitÃ©.',
+            'Indiquez le nombre de tickets, la valeur nominale et la durée de validité.',
           ),
         ),
       );
@@ -569,7 +569,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
         SnackBar(
           content: Text(
             e.isOdooSessionExpired
-                ? 'Session expirÃ©e. Reconnectez-vous.'
+                ? 'Session expirée. Reconnectez-vous.'
                 : e.message,
           ),
         ),
@@ -639,8 +639,8 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
                         const SizedBox(height: 4),
                         Text(
                           isEdit
-                              ? 'Ajustez les paramÃ¨tres du carnet'
-                              : 'Le nom et le code sont gÃ©nÃ©rÃ©s automatiquement',
+                              ? 'Ajustez les paramètres du carnet'
+                              : 'Le nom et le code sont générés automatiquement',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -692,7 +692,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
                       controller: _validityDays,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'ValiditÃ© (jours aprÃ¨s validation du lot)',
+                        labelText: 'Validité (jours après validation du lot)',
                         hintText: 'Ex. 365',
                         border: OutlineInputBorder(),
                       ),
@@ -709,7 +709,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Identifiants gÃ©nÃ©rÃ©s',
+                            'Identifiants générés',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -752,7 +752,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
                             child: Text(
                               lineAmount > 0
                                   ? 'Montant carnet : ${Formatters.money(lineAmount)}'
-                                  : 'Montant carnet calculÃ© Ã  partir des champs ci-dessus',
+                                  : 'Montant carnet calculé à partir des champs ci-dessus',
                               style: const TextStyle(
                                 fontSize: 12,
                                 height: 1.35,
@@ -776,7 +776,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
                       child: _submitting
                           ? const AppInlineLoading(size: 22)
                           : Text(
-                              isEdit ? 'Enregistrer' : 'CrÃ©er',
+                              isEdit ? 'Enregistrer' : 'Créer',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
@@ -835,7 +835,7 @@ class _AdminCarnetTypeCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             type.name,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.poppins(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
                               color: scheme.onSurface,
@@ -886,7 +886,7 @@ class _AdminCarnetTypeCard extends StatelessWidget {
                         ),
                         _StatChip(
                           icon: Icons.event_outlined,
-                          label: '${type.validityDays} j aprÃ¨s validation',
+                          label: '${type.validityDays} j après validation',
                           accent: AppColors.warning,
                         ),
                       ],
@@ -979,7 +979,7 @@ class _StatChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: accent,

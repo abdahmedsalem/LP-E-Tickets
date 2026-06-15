@@ -240,8 +240,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/purchases/:id',
-          builder: (_, st) =>
-              PurchaseDetailScreen(lotId: st.pathParameters['id']!),
+          builder: (_, st) => PurchaseDetailScreen(lotId: st.pathParameters['id']!),
         ),
         GoRoute(path: '/qr/emit', builder: (_, _) => const EmitQrScreen()),
         GoRoute(
@@ -364,8 +363,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/admin/purchases/:id',
-          builder: (_, st) =>
-              AdminPurchaseDetailScreen(purchaseId: st.pathParameters['id']!),
+          builder: (_, st) => AdminPurchaseDetailScreen(purchaseId: st.pathParameters['id']!),
         ),
         GoRoute(
           path: '/admin/accounts/:id',
