@@ -1,3 +1,4 @@
+import hmac
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, fields, models
@@ -62,7 +63,9 @@ class AcpecMobileAuthOtp(models.Model):
             self.write(vals)
             raise AccessError(_('Code OTP invalide.'))
 
-        if self._hash_otp(code, self.salt) != self.otp_hash:
+        expected_hash = self.otp_hash or ''
+        given_hash = self._hash_otp(code, self.salt) or ''
+        if not hmac.compare_digest(given_hash, expected_hash):
             attempt_count = self.attempt_count + 1
             vals = {'attempt_count': attempt_count}
             if attempt_count >= self.max_attempts:

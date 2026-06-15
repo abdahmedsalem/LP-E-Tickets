@@ -1,3 +1,4 @@
+import hmac
 import hashlib
 import logging
 import os
@@ -408,7 +409,9 @@ class AcpecMobileAuthOtp(models.Model):
             raise ValidationError(
                 _('Le code OTP doit contenir exactement %s chiffres.') % expected_length
             )
-        if self._hash_otp(code, self.salt) != self.otp_hash:
+        expected_hash = self.otp_hash or ''
+        given_hash = self._hash_otp(code, self.salt) or ''
+        if not hmac.compare_digest(given_hash, expected_hash):
             attempt_count = self.attempt_count + 1
             vals = {'attempt_count': attempt_count}
             if attempt_count >= self.max_attempts:
