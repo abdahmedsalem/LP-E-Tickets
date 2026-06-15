@@ -34,3 +34,7 @@ class ResConfigSettings(models.TransientModel):
         string='Brand Light Color',
         config_parameter='muk_web_colors.color_brand_light',
     )
+    color_primary_light = fields.Char(
+        string='Primary Light Color',
+        config_parameter='muk_web_colors.color_primary_light',
+    )
