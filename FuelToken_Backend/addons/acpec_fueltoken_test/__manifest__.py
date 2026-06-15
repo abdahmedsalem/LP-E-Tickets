@@ -1,8 +1,8 @@
 {
     'name': 'ACPEC FuelToken Test',
-    'version': '19.0.1.2.2',
+    'version': '19.0.1.2.3',
     'summary': 'Console navigateur de test pour les APIs FuelToken',
-    'description': 'Console navigateur locale pour tester les endpoints reels ACPEC Mobile Auth et FuelToken. En local, le module force l OTP a 0000.',
+    'description': 'Console navigateur locale pour tester les endpoints reels ACPEC Mobile Auth et FuelToken. En local, le module force l OTP a 000000.',
     'category': 'Tools',
     'author': 'ACPEC SARL',
     'website': 'https://acpec.odoorim.com',

@@ -55,7 +55,7 @@
                                 </div>
                                 <div class="acpec-card-body">
                                     <div class="acpec-warning">
-                                        Cette console appelle les endpoints réels. Le module de test local force uniquement l’OTP à 0000 et désactive l’envoi SMS. Après /login, /password-login ou /verify-otp, le token Bearer est capturé automatiquement.
+                                        Cette console appelle les endpoints réels. Le module de test local force uniquement l’OTP à 000000 et désactive l’envoi SMS. Après /login, /password-login ou /verify-otp, le token Bearer est capturé automatiquement.
                                     </div>
 
                                     <div class="acpec-field">
@@ -107,7 +107,7 @@
                                         <div class="acpec-card-body" style="padding-top:16px;">
                                             <ol class="acpec-order">
                                                 <li>Version check et signup companies.</li>
-                                                <li>Signup client par téléphone : l’API retourne otp_challenge_id et otp_dev_code=0000.</li>
+                                                <li>Signup client par téléphone : l’API retourne otp_challenge_id et otp_dev_code=000000.</li>
                                                 <li>Verify OTP avec le payload prérempli automatiquement, puis vérification de session avec Bearer token.</li>
                                                 <li>Wallet courant.</li>
                                                 <li>Création d’un lot d’achat avec un <code>carnet_type_id</code> réel.</li>
@@ -165,12 +165,20 @@
                         let refreshToken = window.localStorage.getItem('acpec_ft_refresh_token') || '';
                         let lastOtpIdentifier = window.localStorage.getItem('acpec_ft_last_otp_identifier') || '';
                         let lastOtpChallengeId = window.localStorage.getItem('acpec_ft_last_otp_challenge_id') || '';
-                        let lastOtpCode = window.localStorage.getItem('acpec_ft_last_otp_code') || '0000';
+                        let lastOtpCode = window.localStorage.getItem('acpec_ft_last_otp_code') || '000000';
                         let lastSignupPayload = {};
                         try {
                             lastSignupPayload = JSON.parse(window.localStorage.getItem('acpec_ft_last_signup_payload') || '{}');
                         } catch (error) {
                             lastSignupPayload = {};
+                        }
+                        if (lastOtpCode && String(lastOtpCode).length !== 6) {
+                            lastOtpCode = '000000';
+                            window.localStorage.setItem('acpec_ft_last_otp_code', lastOtpCode);
+                        }
+                        if (lastSignupPayload && lastSignupPayload.secret_code && String(lastSignupPayload.secret_code).length !== 4) {
+                            lastSignupPayload.secret_code = '';
+                            window.localStorage.setItem('acpec_ft_last_signup_payload', JSON.stringify(lastSignupPayload));
                         }
 
                         function syncTokenBoxes() {
@@ -254,7 +262,7 @@
                                     payload.challenge_id = parsedChallengeId;
                                 }
                             }
-                            payload.code = lastOtpCode || '0000';
+                            payload.code = lastOtpCode || '000000';
 
                             // Pour un challenge de type register, le vrai endpoint verify-otp
                             // exige les mêmes informations métier que le signup.

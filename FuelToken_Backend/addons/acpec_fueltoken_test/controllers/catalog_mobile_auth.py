@@ -27,12 +27,12 @@ API_CATALOG_MOBILE_AUTH = [
         'payload': {
             'name': 'Client Test',
             'signup_identifier': '+22246000099',
-            'secret_code': '123456',
+            'secret_code': '1234',
             'company_id': 1,
             'email': 'client.test@example.com',
             'note': 'Inscription mobile locale.',
         },
-        'note': 'Appelle le vrai endpoint signup. En local, le module test force l OTP à 0000 et retourne otp_dev_code.',
+        'note': 'Appelle le vrai endpoint signup. En local, le module test force l OTP à 000000 et retourne otp_dev_code.',
     },
     {
         'group': 'Mobile Auth',
@@ -41,7 +41,7 @@ API_CATALOG_MOBILE_AUTH = [
         'method': 'POST',
         'payload': {
             'identifier': 'test@example.com',
-            'secret_code': '123456',
+            'secret_code': '1234',
             'device_uid': 'dev-browser',
             'device_name': 'Console test',
             'platform': 'web',
@@ -56,7 +56,7 @@ API_CATALOG_MOBILE_AUTH = [
         'method': 'POST',
         'payload': {
             'identifier': 'test@example.com',
-            'secret_code': '123456',
+            'secret_code': '1234',
             'device_uid': 'dev-browser',
             'device_name': 'Console test',
             'platform': 'web',
@@ -73,7 +73,7 @@ API_CATALOG_MOBILE_AUTH = [
             'identifier': '46000099',
             'purpose': 'login',
         },
-        'note': 'Appelle le vrai endpoint request-otp. En local, le module test force l OTP à 0000 et retourne dev_otp_code.',
+        'note': 'Appelle le vrai endpoint request-otp. En local, le module test force l OTP à 000000 et retourne dev_otp_code.',
     },
     {
         'group': 'Mobile Auth OTP',
@@ -83,9 +83,9 @@ API_CATALOG_MOBILE_AUTH = [
         'payload': {
             'identifier': '46000099',
             'challenge_id': 0,
-            'code': '0000',
+            'code': '000000',
             'name': 'Client Test',
-            'secret_code': '123456',
+            'secret_code': '1234',
             'company_id': 1,
             'email': 'client.test@example.com',
             'note': 'Validation OTP locale.',
