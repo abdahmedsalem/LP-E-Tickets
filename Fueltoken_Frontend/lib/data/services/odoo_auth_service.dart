@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/foundation.dart'
+    show debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb;
 
 import '../../core/auth/odoo_session_store.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
@@ -160,6 +161,86 @@ class OdooAuthService {
     } on OdooJsonRpcException catch (e) {
       throw Exception(e.message);
     }
+  }
+
+  /// Demande OTP pour la connexion mobile ACPEC.
+  Future<Map<String, dynamic>> requestLoginOtp({
+    required String identifier,
+  }) async {
+    final route = OdooAuthRpcConfig.requestOtpRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'OTP de connexion ACPEC indisponible : configurez ODOO_USE_ACPEC_AUTH=true.',
+      );
+    }
+
+    await OdooSessionStore.clear();
+    try {
+      final idForRpc = localMrDigitsFromFull(identifier);
+      final result = await _api.callRoute(
+        route,
+        params: {'identifier': idForRpc, 'purpose': 'login'},
+      );
+      _ensureAcpecEnvelopeSuccess(result);
+      final top = Map<String, dynamic>.from(result as Map);
+      final data = top['data'];
+      if (data is Map) {
+        final dm = Map<String, dynamic>.from(data);
+        top['data'] = <String, dynamic>{
+          ...dm,
+          'otp_challenge_id': dm['otp_challenge_id'] ?? dm['challenge_id'],
+          'otp_challenge_ref': dm['otp_challenge_ref'] ?? dm['challenge_ref'],
+          'otp_expires_at': dm['otp_expires_at'] ?? dm['expires_at'],
+          'otp_delivery': dm['otp_delivery'] ?? dm['delivery'],
+        };
+      }
+      return top;
+    } on OdooJsonRpcException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  /// Vérifie l'OTP de connexion et persiste les tokens de session longue.
+  Future<AppUser> verifyLoginOtp({
+    required String identifier,
+    required String code,
+    int? challengeId,
+  }) async {
+    final route = OdooAuthRpcConfig.verifyOtpRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Vérification OTP de connexion ACPEC indisponible : configurez ODOO_USE_ACPEC_AUTH=true.',
+      );
+    }
+
+    final idForRpc = localMrDigitsFromFull(identifier);
+    final platform = _currentPlatformName();
+    try {
+      final result = await _api.callRoute(
+        route,
+        params: {
+          if (challengeId != null && challengeId > 0)
+            'challenge_id': challengeId,
+          'identifier': idForRpc,
+          'code': code.trim(),
+          'purpose': 'login',
+          'device_uid': 'flutter-$platform-local',
+          'device_name': kIsWeb ? 'Flutter Web' : 'Flutter $platform',
+          'platform': platform,
+          'app_version': 'dev',
+        },
+      );
+      _ensureAcpecEnvelopeSuccess(result);
+      await OdooSessionStore.mergeSessionFromResult(result);
+      return _userFromRpcResult(result);
+    } on OdooJsonRpcException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
+  static String _currentPlatformName() {
+    if (kIsWeb) return 'web';
+    return defaultTargetPlatform.toString().split('.').last;
   }
 
   /// Demande d'inscription Odoo ACPEC qui déclenche un OTP SMS pour un numéro.

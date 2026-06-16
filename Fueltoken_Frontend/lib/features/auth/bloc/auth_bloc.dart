@@ -28,6 +28,30 @@ class AuthLoginRequested extends AuthEvent {
   List<Object?> get props => [identifier, pin];
 }
 
+class AuthLoginOtpRequested extends AuthEvent {
+  final String identifier;
+
+  const AuthLoginOtpRequested({required this.identifier});
+
+  @override
+  List<Object?> get props => [identifier];
+}
+
+class AuthLoginOtpVerified extends AuthEvent {
+  final String identifier;
+  final String code;
+  final int? challengeId;
+
+  const AuthLoginOtpVerified({
+    required this.identifier,
+    required this.code,
+    this.challengeId,
+  });
+
+  @override
+  List<Object?> get props => [identifier, code, challengeId];
+}
+
 class AuthRegisterRequested extends AuthEvent {
   final String email;
   final String name;
@@ -104,11 +128,17 @@ class AuthState extends Equatable {
   /// Affiché sur l’écran de connexion après expiration de session (non technique).
   final String? loginInfoMessage;
 
+  /// Challenge OTP courant pour le login mobile ACPEC.
+  final int? loginOtpChallengeId;
+  final String? loginOtpIdentifier;
+
   const AuthState({
     this.status = AuthStatus.unknown,
     this.user,
     this.errorMessage,
     this.loginInfoMessage,
+    this.loginOtpChallengeId,
+    this.loginOtpIdentifier,
   });
 
   AuthState copyWith({
@@ -116,8 +146,11 @@ class AuthState extends Equatable {
     AppUser? user,
     String? errorMessage,
     String? loginInfoMessage,
+    int? loginOtpChallengeId,
+    String? loginOtpIdentifier,
     bool clearError = false,
     bool clearLoginInfo = false,
+    bool clearLoginOtp = false,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -126,11 +159,24 @@ class AuthState extends Equatable {
       loginInfoMessage: clearLoginInfo
           ? null
           : (loginInfoMessage ?? this.loginInfoMessage),
+      loginOtpChallengeId: clearLoginOtp
+          ? null
+          : (loginOtpChallengeId ?? this.loginOtpChallengeId),
+      loginOtpIdentifier: clearLoginOtp
+          ? null
+          : (loginOtpIdentifier ?? this.loginOtpIdentifier),
     );
   }
 
   @override
-  List<Object?> get props => [status, user, errorMessage, loginInfoMessage];
+  List<Object?> get props => [
+    status,
+    user,
+    errorMessage,
+    loginInfoMessage,
+    loginOtpChallengeId,
+    loginOtpIdentifier,
+  ];
 }
 
 // ─────────── Bloc
@@ -142,6 +188,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       super(const AuthState(status: AuthStatus.unauthenticated)) {
     on<AuthHydrateRequested>(_onHydrate);
     on<AuthLoginRequested>(_onLogin);
+    on<AuthLoginOtpRequested>(_onLoginOtpRequested);
+    on<AuthLoginOtpVerified>(_onLoginOtpVerified);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthRemoteRegistrationCompleted>(_onRemoteRegistrationCompleted);
     on<AuthSessionEstablished>(_onSessionEstablished);
@@ -195,6 +243,86 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     try {
       final user = await _repo.login(e.identifier, e.pin);
+      emit(AuthState(status: AuthStatus.authenticated, user: user));
+    } catch (err) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
+    }
+  }
+
+
+  Future<void> _onLoginOtpRequested(
+    AuthLoginOtpRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticating,
+        clearError: true,
+        clearLoginInfo: true,
+        clearLoginOtp: true,
+      ),
+    );
+    if (AcpecRpcDebug.enabled) {
+      final id = e.identifier.trim();
+      developer.log(
+        'AuthLoginOtp request identifier="$id" isEmail=${id.contains('@')}',
+        name: 'ACPEC_AUTH',
+      );
+    }
+    try {
+      final body = await _repo.requestLoginOtp(identifier: e.identifier);
+      final data = body['data'];
+      int? challengeId;
+      if (data is Map) {
+        final raw = data['challenge_id'] ?? data['otp_challenge_id'];
+        challengeId = int.tryParse(raw?.toString() ?? '');
+      }
+      emit(
+        state.copyWith(
+          status: AuthStatus.unauthenticated,
+          loginOtpChallengeId: challengeId,
+          loginOtpIdentifier: e.identifier,
+        ),
+      );
+    } catch (err) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoginOtpVerified(
+    AuthLoginOtpVerified e,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticating,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
+    if (AcpecRpcDebug.enabled) {
+      final id = e.identifier.trim();
+      developer.log(
+        'AuthLoginOtp verify identifier="$id" codeLen=${e.code.length}',
+        name: 'ACPEC_AUTH',
+      );
+    }
+    try {
+      final user = await _repo.verifyLoginOtp(
+        identifier: e.identifier,
+        code: e.code,
+        challengeId: e.challengeId,
+      );
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
       emit(

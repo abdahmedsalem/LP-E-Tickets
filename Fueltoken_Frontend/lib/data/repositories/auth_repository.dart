@@ -127,6 +127,50 @@ class AuthRepository {
     return null;
   }
 
+  Future<Map<String, dynamic>> requestLoginOtp({
+    required String identifier,
+  }) async {
+    if (!OdooApiConfig.isConfigured || OdooAuthRpcConfig.requestOtpRoute.isEmpty) {
+      throw Exception('Connexion OTP ACPEC indisponible.');
+    }
+    try {
+      return await OdooAuthService.instance.requestLoginOtp(
+        identifier: identifier,
+      );
+    } catch (e) {
+      throw Exception(ErrorPresenter.message(e));
+    }
+  }
+
+  Future<AppUser> verifyLoginOtp({
+    required String identifier,
+    required String code,
+    int? challengeId,
+  }) async {
+    if (!OdooApiConfig.isConfigured || OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
+      throw Exception('Vérification OTP ACPEC indisponible.');
+    }
+    try {
+      final user = AcpecRoleOverrides.apply(
+        await OdooAuthService.instance.verifyLoginOtp(
+          identifier: identifier,
+          code: code,
+          challengeId: challengeId,
+        ),
+      );
+      final idx = _users.indexWhere((u) => u.id == user.id);
+      if (idx >= 0) {
+        _users[idx] = user;
+      } else {
+        _users.add(user);
+      }
+      _current = user;
+      return user;
+    } catch (e) {
+      throw Exception(ErrorPresenter.message(e));
+    }
+  }
+
   Future<AppUser> register({
     required String email,
     required String name,
