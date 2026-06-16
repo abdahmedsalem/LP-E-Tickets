@@ -147,7 +147,8 @@ class AcpecMobileSession(models.Model):
         if session.state != 'active':
             return self.browse()
         if session.expires_at and session.expires_at <= now:
-            session.sudo().write({'state': 'expired'})
+            # L'access token est court. Son expiration ne doit pas expirer
+            # la session longue tant que refresh_expires_at reste valide.
             return self.browse()
         try:
             self._check_mobile_only_user(session.user_id.sudo())
