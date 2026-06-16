@@ -59,11 +59,11 @@ class _PurchaseConfirmationScreenState
     var completed = false;
     setState(() => _confirming = true);
     try {
-      final ok = await showSensitiveActionPasswordDialog(
+      final ok = await showSensitiveActionPinDialog(
         context,
-        title: 'Vérification du mot de passe',
+        title: 'Vérification du PIN',
         description:
-            'Saisissez votre mot de passe pour confirmer cette opération.',
+            'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (!ok || !mounted) return;
       await widget.args.onConfirm();

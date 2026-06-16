@@ -22,39 +22,39 @@ class AuthHydrateRequested extends AuthEvent {
 
 class AuthLoginRequested extends AuthEvent {
   final String identifier; // email ou téléphone
-  final String password;
-  const AuthLoginRequested({required this.identifier, required this.password});
+  final String pin;
+  const AuthLoginRequested({required this.identifier, required this.pin});
   @override
-  List<Object?> get props => [identifier, password];
+  List<Object?> get props => [identifier, pin];
 }
 
 class AuthRegisterRequested extends AuthEvent {
   final String email;
   final String name;
   final String phone;
-  final String password;
+  final String pin;
   const AuthRegisterRequested({
     required this.email,
     required this.name,
     required this.phone,
-    required this.password,
+    required this.pin,
   });
   @override
-  List<Object?> get props => [email, name, phone, password];
+  List<Object?> get props => [email, name, phone, pin];
 }
 
 /// Inscription finalisée après validation OTP (service REST externe).
 class AuthRemoteRegistrationCompleted extends AuthEvent {
   final AppUser user;
-  final String password;
+  final String pin;
   final Map<String, dynamic>? tokens;
   const AuthRemoteRegistrationCompleted({
     required this.user,
-    required this.password,
+    required this.pin,
     this.tokens,
   });
   @override
-  List<Object?> get props => [user, password, tokens];
+  List<Object?> get props => [user, pin, tokens];
 }
 
 /// Session ACPEC établie après inscription + approbation.
@@ -189,12 +189,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final id = e.identifier.trim();
       developer.log(
         'AuthLogin identifier="$id" isEmail=${id.contains('@')} '
-        'secretCodeLen=${e.password.length}',
+        'secretCodeLen=${e.pin.length}',
         name: 'ACPEC_AUTH',
       );
     }
     try {
-      final user = await _repo.login(e.identifier, e.password);
+      final user = await _repo.login(e.identifier, e.pin);
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
       emit(
@@ -222,7 +222,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: e.email,
         name: e.name,
         phone: e.phone,
-        password: e.password,
+        pin: e.pin,
       );
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
@@ -249,7 +249,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await _repo.adoptRemoteUser(
         user: e.user,
-        password: e.password,
+        pin: e.pin,
         tokens: e.tokens,
       );
       emit(AuthState(status: AuthStatus.authenticated, user: user));

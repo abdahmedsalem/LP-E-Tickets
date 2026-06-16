@@ -21,7 +21,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifier = TextEditingController();
-  final _password = TextEditingController();
+  final _pin = TextEditingController();
   bool _obscure = true;
   bool _handlingAuthMessage = false;
   bool _biometricUnlockStarted = false;
@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _identifier.addListener(_onFieldChanged);
-    _password.addListener(_onFieldChanged);
+    _pin.addListener(_onFieldChanged);
     _hydrateIdentifier();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _tryUnlockWithBiometrics(),
@@ -50,9 +50,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _identifier.removeListener(_onFieldChanged);
-    _password.removeListener(_onFieldChanged);
+    _pin.removeListener(_onFieldChanged);
     _identifier.dispose();
-    _password.dispose();
+    _pin.dispose();
     super.dispose();
   }
 
@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _presentLoginFailure(String raw) {
     final t = raw.trim();
     if (t.isEmpty) {
-      return 'Identifiants ou mot de passe incorrects.';
+      return 'Identifiants ou PIN incorrects.';
     }
     // Erreurs JSON-RPC / réseau (souvent > 160 car.) : les afficher pour diagnostic
     // (ex. mauvaise ODOO_JSONRPC_BASE_URL depuis un téléphone).
@@ -91,8 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     if (!enabled) return;
     final id = await LoginSessionCache.lastIdentifier();
-    final pw = await LoginSessionCache.lastPassword();
-    if (id == null || pw == null || id.isEmpty || pw.isEmpty) return;
+    final pin = await LoginSessionCache.lastPin();
+    if (id == null || pin == null || id.isEmpty || pin.isEmpty) return;
     if (!mounted) return;
     final authBloc = context.read<AuthBloc>();
     final s = authBloc.state;
@@ -120,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _biometricUnlockStarted = false;
         return;
       }
-      authBloc.add(AuthLoginRequested(identifier: id, password: pw));
+      authBloc.add(AuthLoginRequested(identifier: id, pin: pin));
     } on PlatformException {
       if (mounted) _biometricUnlockStarted = false;
     }
@@ -161,14 +161,14 @@ class _LoginScreenState extends State<LoginScreen> {
             }
             if (state.status == AuthStatus.authenticated) {
               final id = _identifier.text.trim();
-              var pw = _password.text;
-              if (pw.isEmpty) {
-                pw = await LoginSessionCache.lastPassword() ?? '';
+              var pin = _pin.text;
+              if (pin.isEmpty) {
+                pin = await LoginSessionCache.lastPin() ?? '';
               }
-              if (id.isNotEmpty && pw.isNotEmpty) {
-                await LoginSessionCache.saveLastLogin(
+              if (id.isNotEmpty && pin.isNotEmpty) {
+                await LoginSessionCache.saveLastPin(
                   identifier: id,
-                  password: pw,
+                  pin: pin,
                 );
               }
               // La navigation après connexion est gérée par [AppRouter] via
@@ -243,8 +243,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 18),
                             _LoginTextField(
-                              controller: _password,
-                              hint: 'Mot de passe',
+                              controller: _pin,
+                              hint: 'PIN',
                               obscure: _obscure,
                               validator: validateFourDigitNumericPassword,
                               keyboardType: TextInputType.number,
@@ -253,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 LengthLimitingTextInputFormatter(kSecretCodeLength),
                               ],
                               borderColor: const Color(0xFFC7CEDA),
-                              counterLabel: '${_password.text.trim().length}/$kSecretCodeLength',
+                              counterLabel: '${_pin.text.trim().length}/$kSecretCodeLength',
                               trailing: IconButton(
                                 splashRadius: 20,
                                 iconSize: 20,
@@ -282,7 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       MaterialTapTargetSize.shrinkWrap,
                                 ),
                                 child: const Text(
-                                  'Mot de passe oublié ?',
+                                  'PIN oublié ?',
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w500,
@@ -320,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 AuthLoginRequested(
                                                   identifier: _identifier.text
                                                       .trim(),
-                                                  password: _password.text,
+                                                  pin: _pin.text,
                                                 ),
                                               );
                                             }

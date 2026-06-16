@@ -114,7 +114,7 @@ class AppRouter {
             if (x is! ForgotOtpRouteArgs) {
               return const Scaffold(
                 body: Center(
-                  child: Text('Reprendre depuis mot de passe oublié.'),
+                  child: Text('Reprendre depuis PIN oublié.'),
                 ),
               );
             }

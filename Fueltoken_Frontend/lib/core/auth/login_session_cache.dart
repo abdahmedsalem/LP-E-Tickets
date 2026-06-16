@@ -5,16 +5,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LoginSessionCache {
   LoginSessionCache._();
   static const _kId = 'ft_last_identifier';
-  static const _kPw = 'ft_last_password';
+  static const _kPin = 'ft_last_pin';
   static const _kBio = 'ft_pref_biometric';
 
-  static Future<void> saveLastLogin({
+  static Future<void> saveLastPin({
     required String identifier,
-    required String password,
+    required String pin,
   }) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kId, identifier.trim());
-    await p.setString(_kPw, password);
+    await p.setString(_kPin, pin);
   }
 
   static Future<String?> lastIdentifier() async {
@@ -22,15 +22,15 @@ class LoginSessionCache {
     return p.getString(_kId);
   }
 
-  static Future<String?> lastPassword() async {
+  static Future<String?> lastPin() async {
     final p = await SharedPreferences.getInstance();
-    return p.getString(_kPw);
+    return p.getString(_kPin);
   }
 
   static Future<void> clear() async {
     final p = await SharedPreferences.getInstance();
     await p.remove(_kId);
-    await p.remove(_kPw);
+    await p.remove(_kPin);
   }
 
   static Future<bool> biometricPreferred() async {

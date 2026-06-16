@@ -26,25 +26,25 @@ class AuthRepository {
 
   AppUser? _current;
 
-  /// Mot de passe mock par utilisateur (inscription / reset après OTP).
-  final Map<String, String> _passwordByUserId = {};
+  /// PIN mock par utilisateur (inscription / reset après OTP).
+  final Map<String, String> _pinByUserId = {};
 
   AppUser? get currentUser => _current;
 
   /// Connexion Odoo ACPEC lorsque la base URL et la route login sont configurées ; sinon mode local.
-  Future<AppUser> login(String identifier, String password) async {
+  Future<AppUser> login(String identifier, String pin) async {
     if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasLogin) {
-      return await _loginOdoo(identifier, password);
+      return await _loginOdoo(identifier, pin);
     }
-    return _loginLocal(identifier, password);
+    return _loginLocal(identifier, pin);
   }
 
-  Future<AppUser> _loginOdoo(String identifier, String password) async {
+  Future<AppUser> _loginOdoo(String identifier, String pin) async {
     try {
       final user = AcpecRoleOverrides.apply(
         await OdooAuthService.instance.login(
           identifier: identifier,
-          password: password,
+          pin: pin,
         ),
       );
       _current = user;
@@ -54,7 +54,7 @@ class AuthRepository {
     }
   }
 
-  Future<AppUser> _loginLocal(String identifier, String password) async {
+  Future<AppUser> _loginLocal(String identifier, String pin) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final raw = identifier.trim();
     final normalized = raw.contains('@')
@@ -67,12 +67,12 @@ class AuthRepository {
               normalized.replaceAll(' ', ''),
       orElse: () => throw Exception('Compte introuvable.'),
     );
-    if (password.length != kSecretCodeLength) {
-      throw Exception('Mot de passe incorrect.');
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('PIN incorrect.');
     }
-    final stored = _passwordByUserId[user.id];
-    if (stored != null && stored != password) {
-      throw Exception('Mot de passe incorrect.');
+    final stored = _pinByUserId[user.id];
+    if (stored != null && stored != pin) {
+      throw Exception('PIN incorrect.');
     }
     _current = user;
     return user;
@@ -103,7 +103,7 @@ class AuthRepository {
     required String email,
     required String name,
     required String phone,
-    required String password,
+    required String pin,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     if (_users.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
@@ -119,7 +119,7 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
     _users.add(user);
-    _passwordByUserId[user.id] = password;
+    _pinByUserId[user.id] = pin;
     _current = user;
     return user;
   }
@@ -127,7 +127,7 @@ class AuthRepository {
   /// Compte créé côté API (`complete-registration`) — enregistre JWT + cache profil.
   Future<AppUser> adoptRemoteUser({
     required AppUser user,
-    required String password,
+    required String pin,
     Map<String, dynamic>? tokens,
   }) async {
     final access = tokens?['access']?.toString() ?? '';
@@ -141,8 +141,8 @@ class AuthRepository {
       // Inscription / session Odoo : conserver session_id stockée.
     }
     await Future.delayed(const Duration(milliseconds: 100));
-    if (password.length != kSecretCodeLength) {
-      throw Exception('Le mot de passe doit avoir 4 chiffres.');
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('Le PIN doit avoir 4 chiffres.');
     }
     final resolved = AcpecRoleOverrides.apply(user);
     final idxId = _users.indexWhere((u) => u.id == resolved.id);
@@ -158,17 +158,17 @@ class AuthRepository {
         _users.add(resolved);
       }
     }
-    _passwordByUserId[resolved.id] = password;
+    _pinByUserId[resolved.id] = pin;
     _current = resolved;
     return resolved;
   }
 
-  /// Si l’identifiant correspond à un utilisateur seed local, aligne le mot de passe (ex. après reset OTP).
-  Future<void> syncLocalPasswordIfExists({
+  /// Si l’identifiant correspond à un utilisateur seed local, aligne le PIN (ex. après reset OTP).
+  Future<void> syncLocalPinIfExists({
     required String identifier,
-    required String newPassword,
+    required String newPin,
   }) async {
-    if (newPassword.length != kSecretCodeLength) return;
+    if (newPin.length != kSecretCodeLength) return;
     final raw = identifier.trim();
     final normalized = raw.contains('@')
         ? raw.toLowerCase()
@@ -179,20 +179,20 @@ class AuthRepository {
           u.phone.replaceAll(' ', '').toLowerCase() ==
           normalized.replaceAll(' ', '').toLowerCase();
       if (idMatch || phoneMatch) {
-        _passwordByUserId[u.id] = newPassword;
+        _pinByUserId[u.id] = newPin;
         return;
       }
     }
   }
 
-  /// Après vérification OTP (mot de passe oublié).
-  Future<void> resetPasswordForIdentifier({
+  /// Après vérification OTP (PIN oublié).
+  Future<void> resetPinForIdentifier({
     required String identifier,
-    required String newPassword,
+    required String newPin,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    if (newPassword.length != kSecretCodeLength) {
-      throw Exception('Le mot de passe doit avoir 4 chiffres.');
+    if (newPin.length != kSecretCodeLength) {
+      throw Exception('Le PIN doit avoir 4 chiffres.');
     }
     final raw = identifier.trim();
     final normalized = raw.contains('@')
@@ -212,7 +212,7 @@ class AuthRepository {
     if (user == null) {
       throw Exception('Compte introuvable.');
     }
-    _passwordByUserId[user.id] = newPassword;
+    _pinByUserId[user.id] = newPin;
   }
 
   Future<void> logout() async {

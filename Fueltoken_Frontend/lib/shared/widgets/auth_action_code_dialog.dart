@@ -8,8 +8,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/validation/password_validators.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 
-/// Demande le mot de passe du compte actuellement connecté avant une action sensible.
-Future<bool> showSensitiveActionPasswordDialog(
+/// Demande le PIN du compte actuellement connecté avant une action sensible.
+Future<bool> showSensitiveActionPinDialog(
   BuildContext context, {
   required String title,
   required String description,
@@ -31,13 +31,13 @@ Future<bool> showSensitiveActionPasswordDialog(
       return false;
     }
 
-    final storedPassword = await LoginSessionCache.lastPassword();
-    if (storedPassword == null || storedPassword.isEmpty) {
+    final storedPin = await LoginSessionCache.lastPin();
+    if (storedPin == null || storedPin.isEmpty) {
       if (context.mounted) {
         await showDialog<void>(
           context: context,
           builder: (_) => const AlertDialog(
-            title: Text('Mot de passe introuvable'),
+            title: Text('PIN introuvable'),
             content: Text('Reconnectez-vous pour continuer.'),
           ),
         );
@@ -58,8 +58,8 @@ Future<bool> showSensitiveActionPasswordDialog(
         return StatefulBuilder(
           builder: (dialogContext, setState) {
             Future<void> submit() async {
-              final password = controller.text.trim();
-              final validationError = validateFourDigitNumericPassword(password);
+              final pin = controller.text.trim();
+              final validationError = validateFourDigitNumericPassword(pin);
               if (validationError != null) {
                 setState(() => errorText = validationError);
                 return;
@@ -69,8 +69,8 @@ Future<bool> showSensitiveActionPasswordDialog(
                 errorText = null;
               });
               try {
-                if (password != storedPassword) {
-                  throw StateError('Mot de passe incorrect.');
+                if (pin != storedPin) {
+                  throw StateError('PIN incorrect.');
                 }
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop(true);
@@ -211,7 +211,7 @@ Future<bool> showSensitiveActionAuthCodeDialog(
   required String title,
   required String description,
 }) {
-  return showSensitiveActionPasswordDialog(
+  return showSensitiveActionPinDialog(
     context,
     title: title,
     description: description,

@@ -1,4 +1,4 @@
-/// Mot de passe / code secret mobile : **exactement 4 chiffres**.
+/// PIN mobile / code secret de confirmation : **exactement 4 chiffres**.
 ///
 /// Ne pas confondre avec l'OTP SMS Chinguisoft, qui est un code de
 /// verification a 6 chiffres.
@@ -9,10 +9,10 @@ final RegExp kFourDigitNumericPasswordRegExp = RegExp(r'^\d{4}$');
 
 String? validateFourDigitNumericPassword(String? raw) {
   if (raw == null || raw.isEmpty) {
-    return 'Saisissez votre mot de passe';
+    return 'Saisissez votre PIN';
   }
   if (!kFourDigitNumericPasswordRegExp.hasMatch(raw)) {
-    return 'Le mot de passe doit être composé de 4 chiffres uniquement.';
+    return 'Le PIN doit être composé de 4 chiffres uniquement.';
   }
   return null;
 }
@@ -27,7 +27,7 @@ String? validateSixDigitNumericPassword(String? raw) {
 /// Connexion et autres écrans : longueur minimale (lettres, chiffres, symboles).
 String? validateAppPassword(String? raw, {int minLength = 4}) {
   if (raw == null || raw.isEmpty) {
-    return 'Saisissez votre mot de passe';
+    return 'Saisissez votre PIN';
   }
   if (raw.length < minLength) {
     return 'Au moins $minLength caractères (lettres, chiffres ou mélange).';
