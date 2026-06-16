@@ -54,7 +54,7 @@ class AuthRemoteRegistrationCompleted extends AuthEvent {
     this.tokens,
   });
   @override
-  List<Object?> get props => [user, password];
+  List<Object?> get props => [user, password, tokens];
 }
 
 /// Session ACPEC établie après inscription + approbation.
