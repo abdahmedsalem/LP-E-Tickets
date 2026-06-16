@@ -76,8 +76,15 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
           ? Map<String, dynamic>.from(body['data'] as Map)
           : Map<String, dynamic>.from(body as Map);
       final user = AppUser.fromOdooProfileMap(payload, envelope: body);
+      final tokens = _extractTokens(body);
       if (!mounted) return;
-      context.read<AuthBloc>().add(AuthSessionEstablished(user));
+      context.read<AuthBloc>().add(
+        AuthRemoteRegistrationCompleted(
+          user: user,
+          password: widget.args.password,
+          tokens: tokens,
+        ),
+      );
       return;
     } catch (e, st) {
       debugPrint('OTP verification failed: $e\n$st');
@@ -87,6 +94,42 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Map<String, dynamic>? _extractTokens(Map<String, dynamic> body) {
+    Map<String, dynamic>? pick(dynamic value) {
+      if (value is Map) return Map<String, dynamic>.from(value);
+      return null;
+    }
+
+    final top = pick(body);
+    if (top == null) return null;
+
+    final candidates = <Map<String, dynamic>>[
+      top,
+      if (top['data'] is Map) Map<String, dynamic>.from(top['data'] as Map),
+      if (top['user'] is Map) Map<String, dynamic>.from(top['user'] as Map),
+    ];
+
+    for (final map in candidates) {
+      final access =
+          map['access_token']?.toString().trim() ??
+          map['ACCESS_TOKEN']?.toString().trim() ??
+          map['accessToken']?.toString().trim() ??
+          '';
+      final refresh =
+          map['refresh_token']?.toString().trim() ??
+          map['REFRESH_TOKEN']?.toString().trim() ??
+          map['refreshToken']?.toString().trim() ??
+          '';
+      if (access.isNotEmpty || refresh.isNotEmpty) {
+        return <String, dynamic>{
+          if (access.isNotEmpty) 'access': access,
+          if (refresh.isNotEmpty) 'refresh': refresh,
+        };
+      }
+    }
+    return null;
   }
 
   Future<void> _resend() async {
