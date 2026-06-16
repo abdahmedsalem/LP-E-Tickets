@@ -45,8 +45,9 @@ class OdooJsonRpcException implements Exception {
     if (m.contains('unauthorized')) return true;
     if (m.contains('session_closed')) return true;
     if (m.contains('token expired')) return true;
-    if (m.contains('jwt'))
+    if (m.contains('jwt')) {
       return m.contains('expired') || m.contains('invalid');
+    }
     final d = data;
     if (d is Map) {
       final c = d['code']?.toString().toLowerCase() ?? '';

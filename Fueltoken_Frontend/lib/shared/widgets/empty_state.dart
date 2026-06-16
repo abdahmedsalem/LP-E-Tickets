@@ -45,7 +45,7 @@ class EmptyState extends StatelessWidget {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: AppColors.leaderGreen.withOpacity(0.12),
+                        color: AppColors.leaderGreen.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(icon, size: 34, color: AppColors.leaderGreen),
@@ -90,6 +90,7 @@ class EmptyState extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _EmptyFolderPainter extends CustomPainter {
   const _EmptyFolderPainter({required this.color, required this.icon});
 
