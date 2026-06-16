@@ -83,7 +83,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             'active': station.active,
         }
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_list(self, **kwargs):
         try:
             user = self._admin_user()
@@ -101,7 +101,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_create(self, **kwargs):
         try:
             user = self._admin_user()
@@ -123,7 +123,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_update(self, **kwargs):
         try:
             user = self._admin_user()
@@ -149,7 +149,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_delete(self, **kwargs):
         try:
             user = self._admin_user()
@@ -163,7 +163,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/pending', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/pending', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchases_pending(self, **kwargs):
         try:
             user = self._admin_user()
@@ -187,7 +187,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_detail(self, **kwargs):
         try:
             user = self._admin_user()
@@ -200,7 +200,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_approve(self, **kwargs):
         try:
             user = self._admin_user()
@@ -214,7 +214,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_reject(self, **kwargs):
         try:
             user = self._admin_user()
@@ -230,7 +230,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def stations_list(self, **kwargs):
         try:
             user = self._admin_user()
@@ -242,7 +242,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_create(self, **kwargs):
         try:
             user = self._admin_user()
@@ -262,7 +262,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_update(self, **kwargs):
         try:
             user = self._admin_user()
@@ -296,7 +296,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/disable', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/disable', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_disable(self, **kwargs):
         try:
             user = self._admin_user()
@@ -310,7 +310,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/reports/summary', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/admin/reports/summary', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def reports_summary(self, **kwargs):
         try:
             user = self._admin_user()

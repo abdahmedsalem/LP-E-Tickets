@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -1172,6 +1173,13 @@ class _ProofTile extends StatelessWidget {
   }
 
   Future<void> _downloadProof(BuildContext context) async {
+    if (kIsWeb) {
+      AppMessage.info(
+        context,
+        'Téléchargement de preuve disponible dans l’application mobile.',
+      );
+      return;
+    }
     try {
       final bytes = await _resolveBytes();
       if (bytes == null || bytes.isEmpty) {

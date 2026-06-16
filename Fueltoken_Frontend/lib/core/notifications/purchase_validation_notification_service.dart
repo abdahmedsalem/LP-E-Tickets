@@ -1,6 +1,7 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,6 +39,13 @@ class PurchaseValidationNotificationService {
 
   Future<void> initialize() async {
     if (_initialized) return;
+    if (kIsWeb) {
+      // flutter_local_notifications and dart:io Platform checks are not
+      // available on Flutter Web. Keep web runtime clean and let in-app
+      // notification screens fetch their data separately.
+      _initialized = true;
+      return;
+    }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwin = DarwinInitializationSettings(
@@ -76,6 +84,7 @@ class PurchaseValidationNotificationService {
   }
 
   Future<void> syncForUser(AppUser user) async {
+    if (kIsWeb) return;
     if (!AppEnvironment.useAcpecLiveData) return;
     if (user.role != UserRole.user) return;
     if (!_syncingUserIds.add(user.id)) return;

@@ -318,7 +318,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             })
         return items
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/carnet-types', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/carnet-types', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_types(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
@@ -342,7 +342,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/wallet/current', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/wallet/current', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def current_wallet(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
@@ -394,7 +394,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/purchases/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/purchases/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def create_purchase(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines', 'proof_data'])
@@ -417,7 +417,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/purchases', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/purchases', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchases(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
@@ -471,7 +471,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/purchases/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/purchases/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_detail(self, **kwargs):
         try:
             self._require_keys(kwargs, ['purchase_id'])
@@ -518,7 +518,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/transactions', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/transactions', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def transactions(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
@@ -607,7 +607,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/transactions/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/transactions/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def transaction_detail(self, **kwargs):
         try:
             self._require_keys(kwargs, ['transaction_id'])
@@ -627,7 +627,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/faces', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/faces', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def faces(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
@@ -666,7 +666,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/qr/issue', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/qr/issue', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def issue_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines'])
@@ -690,7 +690,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/qr/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/qr/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def qr_list(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
@@ -712,7 +712,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/qr/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/qr/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def qr_detail(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
@@ -729,7 +729,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/qr/retirer', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/qr/retirer', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def retirer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code', 'lines'])
@@ -755,7 +755,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
     # ─── Transfert de carnets ────────────────────────────────────────────────
 
-    @http.route('/api/acpec/fueltoken/v1/mobile/qr/separer', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/mobile/qr/separer', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def separer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
@@ -805,7 +805,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
-        type='jsonrpc', auth='public', methods=['POST'], csrf=False,
+        type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*',
     )
     def transfer_carnets_recipient(self, **kwargs):
         """Résout un numéro de téléphone en nom de destinataire avant transfert.
@@ -849,7 +849,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/carnets/transfer',
-        type='jsonrpc', auth='public', methods=['POST'], csrf=False,
+        type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*',
     )
     def transfer_carnets(self, **kwargs):
         """Transfert de carnets complets vers un autre client identifié par numéro de téléphone.
@@ -951,7 +951,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/carnets/transfers',
-        type='jsonrpc', auth='public', methods=['POST'], csrf=False,
+        type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*',
     )
     def transfer_list(self, **kwargs):
         """Historique des transferts du client authentifié (source et destinataire)."""

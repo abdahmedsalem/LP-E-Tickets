@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -44,6 +45,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   final Set<String> _selectedTypeIds = {};
 
   String? _proofPath;
+  Uint8List? _proofBytes;
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
@@ -180,7 +182,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         imageQuality: 80,
       );
       if (picked != null) {
-        setState(() => _proofPath = picked.path);
+        final bytes = await picked.readAsBytes();
+        if (mounted) {
+          setState(() {
+            _proofPath = picked.path;
+            _proofBytes = bytes;
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -222,7 +230,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
       final proofPath = _proofPath!;
       final navigator = Navigator.of(context);
-      final proofBytes = await File(proofPath).readAsBytes();
+      final proofBytes = _proofBytes ??
+          (kIsWeb ? null : await File(proofPath).readAsBytes());
+      if (!mounted) return;
+      if (proofBytes == null || proofBytes.isEmpty) {
+        AppMessage.error(context, 'La preuve de paiement est illisible.');
+        return;
+      }
       _lastSubmitResult = null;
 
       // Naviguer vers l'écran de confirmation
