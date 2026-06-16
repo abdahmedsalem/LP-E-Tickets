@@ -10,7 +10,7 @@ _logger = logging.getLogger(__name__)
 
 class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
-    @http.route('/api/acpec/mobile_auth/v1/version-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/version-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def version_check(self, **kwargs):
         _logger.info("version_check: %s", kwargs)
         try:
@@ -29,7 +29,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/signup-companies', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/signup-companies', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def signup_companies(self, **kwargs):
         try:
             return self._json_response({
@@ -38,7 +38,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/signup', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/signup', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def signup(self, **kwargs):
         try:
             self._require_keys(kwargs, ['name', 'signup_identifier', 'secret_code', 'company_id'])
@@ -114,7 +114,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
     @http.route([
         '/api/acpec/mobile_auth/v1/login',
         '/api/acpec/mobile_auth/v1/password-login',
-    ], type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    ], type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def password_login(self, **kwargs):
         # Password/PIN login is intentionally disabled.  Mobile login is OTP ->
         # Bearer tokens only; secret_code is a confirmation PIN stored separately
