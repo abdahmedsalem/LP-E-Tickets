@@ -98,6 +98,20 @@ class AuthSessionExpiredRequested extends AuthEvent {
   const AuthSessionExpiredRequested();
 }
 
+class AuthUnlockRequested extends AuthEvent {
+  final String pin;
+  const AuthUnlockRequested({required this.pin});
+  @override
+  List<Object?> get props => [pin];
+}
+
+class AuthLocalPinSetupRequested extends AuthEvent {
+  final String pin;
+  const AuthLocalPinSetupRequested({required this.pin});
+  @override
+  List<Object?> get props => [pin];
+}
+
 class AuthRoleChanged extends AuthEvent {
   final UserRole role;
   final String? stationId;
@@ -117,6 +131,8 @@ enum AuthStatus {
   unauthenticated,
   authenticating,
   authenticated,
+  locked,
+  pinSetupRequired,
   failure,
 }
 
@@ -195,6 +211,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSessionEstablished>(_onSessionEstablished);
     on<AuthLogoutRequested>(_onLogout);
     on<AuthSessionExpiredRequested>(_onSessionExpired);
+    on<AuthUnlockRequested>(_onUnlock);
+    on<AuthLocalPinSetupRequested>(_onLocalPinSetup);
     on<AuthRoleChanged>(_onRoleChanged);
   }
 
@@ -203,9 +221,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     final user = await _repo.tryRestoreRemoteSession();
-    if (user != null) {
-      emit(AuthState(status: AuthStatus.authenticated, user: user));
+    if (user == null) return;
+
+    final hasLocalPin = await _repo.hasLocalUnlockPin();
+    if (hasLocalPin) {
+      emit(AuthState(status: AuthStatus.locked, user: user));
+      return;
     }
+
+    // Migration sûre : une session longue restaurée sans PIN local ne doit pas
+    // ouvrir directement Home. On force une reconnexion OTP, puis création du
+    // PIN local de déverrouillage.
+    try {
+      await _repo.logout();
+    } catch (_) {}
+    emit(
+      const AuthState(
+        status: AuthStatus.unauthenticated,
+        loginInfoMessage:
+            'Reconnectez-vous par OTP pour activer le PIN de déverrouillage local.',
+      ),
+    );
   }
 
   Future<void> _onSessionExpired(
@@ -323,7 +359,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         code: e.code,
         challengeId: e.challengeId,
       );
-      emit(AuthState(status: AuthStatus.authenticated, user: user));
+      final hasLocalPin = await _repo.hasLocalUnlockPin(
+        identifier: e.identifier,
+      );
+      emit(
+        AuthState(
+          status: hasLocalPin
+              ? AuthStatus.authenticated
+              : AuthStatus.pinSetupRequired,
+          user: user,
+        ),
+      );
     } catch (err) {
       emit(
         state.copyWith(
@@ -404,6 +450,64 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _repo.logout();
     } catch (_) {
       // État déjà « déconnecté » ; le dépôt vide en principe les jetons localement.
+    }
+  }
+
+  Future<void> _onUnlock(
+    AuthUnlockRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    final lockedUser = state.user;
+    emit(
+      state.copyWith(
+        status: AuthStatus.locked,
+        user: lockedUser,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
+    try {
+      final user = await _repo.unlockWithLocalPin(e.pin);
+      emit(AuthState(status: AuthStatus.authenticated, user: user));
+    } catch (err) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.locked,
+          user: lockedUser,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLocalPinSetup(
+    AuthLocalPinSetupRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    final setupUser = state.user;
+    emit(
+      state.copyWith(
+        status: AuthStatus.pinSetupRequired,
+        user: setupUser,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
+    try {
+      await _repo.saveLocalUnlockPinForCurrentUser(e.pin);
+      final user = _repo.currentUser;
+      if (user == null) {
+        throw Exception('Session absente. Reconnectez-vous.');
+      }
+      emit(AuthState(status: AuthStatus.authenticated, user: user));
+    } catch (err) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.pinSetupRequired,
+          user: setupUser,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
     }
   }
 
