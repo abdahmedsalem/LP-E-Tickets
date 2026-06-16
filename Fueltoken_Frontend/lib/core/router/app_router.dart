@@ -18,6 +18,7 @@ import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
+import '../../features/auth/screens/session_pin_lock_screen.dart';
 import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/client_shell_scaffold.dart';
 import '../../features/home/screens/user_home_screen.dart';
@@ -48,9 +49,13 @@ class AppRouter {
       redirect: (ctx, state) {
         final auth = authBloc.state;
         final loggedIn = auth.status == AuthStatus.authenticated;
+        final locked = auth.status == AuthStatus.locked ||
+            auth.status == AuthStatus.pinSetupRequired;
         final loc = state.matchedLocation;
+        final atPinLockRoute = loc == '/session-pin-lock';
         final atAuthRoute = {
           '/login',
+          '/session-pin-lock',
           '/register',
           '/register/verify-otp',
           '/forgot-password',
@@ -58,7 +63,12 @@ class AppRouter {
           '/forgot-password/reset',
         }.contains(loc);
 
-        if (!loggedIn && !atAuthRoute) return '/login';
+        if (locked && !atPinLockRoute) return '/session-pin-lock';
+        if (!locked && atPinLockRoute) {
+          if (loggedIn && auth.user != null) return _homeFor(auth.user!.role);
+          return '/login';
+        }
+        if (!loggedIn && !locked && !atAuthRoute) return '/login';
         if (loggedIn && atAuthRoute) {
           switch (auth.user!.role) {
             case UserRole.user:
@@ -103,6 +113,10 @@ class AppRouter {
       },
       routes: [
         GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+        GoRoute(
+          path: '/session-pin-lock',
+          builder: (_, _) => const SessionPinLockScreen(),
+        ),
         GoRoute(
           path: '/forgot-password',
           builder: (_, _) => const ForgotPasswordScreen(),

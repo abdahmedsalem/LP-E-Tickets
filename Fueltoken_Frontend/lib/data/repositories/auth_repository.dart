@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import '../../core/auth/auth_token_store.dart';
+import '../../core/auth/login_session_cache.dart';
 import '../../core/auth/odoo_session_store.dart';
 import '../../core/config/app_brand_config.dart';
 import '../../core/config/acpec_role_overrides.dart';
@@ -31,6 +32,61 @@ class AuthRepository {
 
   AppUser? get currentUser => _current;
 
+  String _cacheIdentifier(String raw) {
+    final t = raw.trim();
+    if (t.contains('@')) return t.toLowerCase();
+    return normalizePhoneIdentifierForLookup(t);
+  }
+
+  String _cacheIdentifierForUser(AppUser user) {
+    final phone = user.phone.trim();
+    if (phone.isNotEmpty) return _cacheIdentifier(phone);
+    return _cacheIdentifier(user.email);
+  }
+
+  Future<bool> hasLocalUnlockPin({String? identifier}) async {
+    final pin = await LoginSessionCache.lastPin();
+    if (pin == null || pin.isEmpty) return false;
+    final storedIdentifier = await LoginSessionCache.lastIdentifier();
+    if (storedIdentifier == null || storedIdentifier.trim().isEmpty) {
+      return false;
+    }
+    final expected = identifier != null
+        ? _cacheIdentifier(identifier)
+        : (_current == null ? null : _cacheIdentifierForUser(_current!));
+    if (expected == null || expected.isEmpty) return false;
+    return _cacheIdentifier(storedIdentifier) == expected;
+  }
+
+  Future<void> saveLocalUnlockPinForCurrentUser(String pin) async {
+    final user = _current;
+    if (user == null) {
+      throw Exception('Session absente. Reconnectez-vous.');
+    }
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('Le PIN doit avoir 4 chiffres.');
+    }
+    final identifier = _cacheIdentifierForUser(user);
+    await LoginSessionCache.saveLastPin(identifier: identifier, pin: pin);
+    _pinByUserId[user.id] = pin;
+  }
+
+  Future<AppUser> unlockWithLocalPin(String pin) async {
+    final user = _current;
+    if (user == null) {
+      throw Exception('Session absente. Reconnectez-vous.');
+    }
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('PIN incorrect.');
+    }
+    final hasPinForUser = await hasLocalUnlockPin();
+    final storedPin = await LoginSessionCache.lastPin();
+    if (!hasPinForUser || storedPin != pin.trim()) {
+      throw Exception('PIN incorrect.');
+    }
+    return user;
+  }
+
   /// Connexion Odoo ACPEC lorsque la base URL et la route login sont configurées ; sinon mode local.
   Future<AppUser> login(String identifier, String pin) async {
     if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasLogin) {
@@ -48,6 +104,7 @@ class AuthRepository {
         ),
       );
       _current = user;
+      await LoginSessionCache.saveLastIdentifier(_cacheIdentifier(identifier));
       return user;
     } catch (e) {
       throw Exception(ErrorPresenter.message(e));
@@ -165,6 +222,7 @@ class AuthRepository {
         _users.add(user);
       }
       _current = user;
+      await LoginSessionCache.saveLastIdentifier(_cacheIdentifier(identifier));
       return user;
     } catch (e) {
       throw Exception(ErrorPresenter.message(e));
@@ -192,6 +250,10 @@ class AuthRepository {
     );
     _users.add(user);
     _pinByUserId[user.id] = pin;
+    await LoginSessionCache.saveLastPin(
+      identifier: _cacheIdentifier(phone),
+      pin: pin,
+    );
     _current = user;
     return user;
   }
@@ -235,6 +297,10 @@ class AuthRepository {
       }
     }
     _pinByUserId[resolved.id] = pin;
+    await LoginSessionCache.saveLastPin(
+      identifier: _cacheIdentifierForUser(resolved),
+      pin: pin,
+    );
     _current = resolved;
     return resolved;
   }
@@ -245,6 +311,10 @@ class AuthRepository {
     required String newPin,
   }) async {
     if (newPin.length != kSecretCodeLength) return;
+    await LoginSessionCache.saveLastPin(
+      identifier: _cacheIdentifier(identifier),
+      pin: newPin,
+    );
     final raw = identifier.trim();
     final normalized = raw.contains('@')
         ? raw.toLowerCase()

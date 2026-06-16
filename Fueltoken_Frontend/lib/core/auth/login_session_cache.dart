@@ -8,6 +8,11 @@ class LoginSessionCache {
   static const _kPin = 'ft_last_pin';
   static const _kBio = 'ft_pref_biometric';
 
+  static Future<void> saveLastIdentifier(String identifier) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kId, identifier.trim());
+  }
+
   static Future<void> saveLastPin({
     required String identifier,
     required String pin,
@@ -24,7 +29,20 @@ class LoginSessionCache {
 
   static Future<String?> lastPin() async {
     final p = await SharedPreferences.getInstance();
-    return p.getString(_kPin);
+    final s = p.getString(_kPin);
+    if (s == null || s.trim().isEmpty) return null;
+    return s.trim();
+  }
+
+  static Future<bool> hasLastPin() async {
+    final pin = await lastPin();
+    return pin != null && pin.isNotEmpty;
+  }
+
+  static Future<bool> verifyLastPin(String pin) async {
+    final stored = await lastPin();
+    if (stored == null || stored.isEmpty) return false;
+    return stored == pin.trim();
   }
 
   static Future<void> clear() async {
