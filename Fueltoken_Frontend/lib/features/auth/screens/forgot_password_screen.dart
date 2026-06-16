@@ -8,7 +8,7 @@ import '../../../core/validation/contact_validators.dart';
 import '../../../shared/widgets/app_message.dart';
 import 'forgot_otp_flow_screens.dart';
 
-/// Recuperation : envoi OTP -> saisie code -> nouveau mot de passe.
+/// Recuperation : envoi OTP -> saisie code -> nouveau PIN.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -120,7 +120,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                         const SizedBox(height: 18),
                         const Text(
-                          'Recuperation du mot de passe',
+                          'Recuperation du PIN',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 18,

@@ -1,6 +1,6 @@
 /// URL de base d’un service REST **legacy** éventuellement conservé pour d’autres intégrations.
 ///
-/// Le flux de récupération de mot de passe n’utilise plus ce service.
+/// Le flux de récupération de PIN n’utilise plus ce service.
 class AppApiConfig {
   AppApiConfig._();
 

@@ -16,13 +16,13 @@ class RegisterOtpRouteArgs {
   const RegisterOtpRouteArgs({
     required this.name,
     required this.phoneFull,
-    required this.password,
+    required this.pin,
     this.challengeId,
   });
 
   final String name;
   final String phoneFull;
-  final String password;
+  final String pin;
   final int? challengeId;
 }
 
@@ -69,7 +69,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         identifier: widget.args.phoneFull,
         code: clean,
         name: widget.args.name,
-        password: widget.args.password,
+        pin: widget.args.pin,
         challengeId: _challengeId,
       );
       final payload = body['data'] is Map
@@ -81,7 +81,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       context.read<AuthBloc>().add(
         AuthRemoteRegistrationCompleted(
           user: user,
-          password: widget.args.password,
+          pin: widget.args.pin,
           tokens: tokens,
         ),
       );

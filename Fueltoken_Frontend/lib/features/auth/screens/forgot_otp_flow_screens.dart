@@ -167,16 +167,16 @@ class _ResetPasswordAfterOtpScreenState
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
-      await AuthRepository.instance.resetPasswordForIdentifier(
+      await AuthRepository.instance.resetPinForIdentifier(
         identifier: widget.args.identifier,
-        newPassword: _pass.text,
+        newPin: _pass.text,
       );
-      await AuthRepository.instance.syncLocalPasswordIfExists(
+      await AuthRepository.instance.syncLocalPinIfExists(
         identifier: widget.args.identifier,
-        newPassword: _pass.text,
+        newPin: _pass.text,
       );
       if (!mounted) return;
-      AppMessage.info(context, 'Mot de passe mis a jour. Connectez-vous.');
+      AppMessage.info(context, 'PIN mis a jour. Connectez-vous.');
       context.go('/login');
     } catch (e) {
       if (mounted) {
@@ -191,8 +191,8 @@ class _ResetPasswordAfterOtpScreenState
   Widget build(BuildContext context) {
     return _ForgotFlowScaffold(
       onBack: () => context.pop(),
-      title: 'Nouveau mot de passe',
-      subtitle: 'Choisissez un mot de passe numerique a 4 chiffres.',
+      title: 'Nouveau PIN',
+      subtitle: 'Choisissez un PIN numerique a 4 chiffres.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -205,7 +205,7 @@ class _ResetPasswordAfterOtpScreenState
                   _PasswordField(
                     controller: _pass,
                     obscure: _obscure,
-                    label: 'Mot de passe',
+                    label: 'PIN',
                     hint: '4 chiffres',
                     trailing: IconButton(
                       splashRadius: 20,
@@ -225,12 +225,12 @@ class _ResetPasswordAfterOtpScreenState
                     controller: _pass2,
                     obscure: _obscure,
                     label: 'Confirmer',
-                    hint: 'Ressaisir le mot de passe',
+                    hint: 'Ressaisir le PIN',
                     validator: (v) {
                       final err = validateFourDigitNumericPassword(v);
                       if (err != null) return err;
                       if (v != _pass.text) {
-                        return 'Les mots de passe ne correspondent pas.';
+                        return 'Les PIN ne correspondent pas.';
                       }
                       return null;
                     },

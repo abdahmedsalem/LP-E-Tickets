@@ -18,7 +18,7 @@ class OdooAuthService {
 
   Future<AppUser> login({
     required String identifier,
-    required String password,
+    required String pin,
   }) async {
     final route = OdooAuthRpcConfig.loginRoute;
     if (route.isEmpty) {
@@ -30,7 +30,7 @@ class OdooAuthService {
     try {
       await OdooSessionStore.clear();
       final idForRpc = _normalizeIdentifierForMobileAuthLogin(identifier);
-      final secret = password.trim();
+      final secret = pin.trim();
       if (kDebugMode) {
         debugPrint(
           '(log appareil uniquement, pas dans la requête HTTP) login : '
@@ -44,6 +44,20 @@ class OdooAuthService {
           'secret_code': secret,
         },
       );
+      final top = result is Map ? Map<String, dynamic>.from(result) : null;
+      if (top != null && _acpecIndicatesFailure(top)) {
+        final message = _acpecErrorMessage(top);
+        if (top['error'] is Map) {
+          final errorMap = Map<String, dynamic>.from(top['error'] as Map);
+          final code = errorMap['code']?.toString() ?? top['code']?.toString() ?? '';
+          if (code == 'PASSWORD_LOGIN_DISABLED') {
+            throw Exception(
+              'La connexion par PIN legacy est désactivée. Utilisez le flux OTP.',
+            );
+          }
+        }
+        throw Exception(message);
+      }
       if (kDebugMode && result is Map) {
         final m = Map<String, dynamic>.from(result);
         debugPrint(
@@ -162,7 +176,7 @@ class OdooAuthService {
     required String identifier,
     required String code,
     required String name,
-    required String password,
+    required String pin,
     int? challengeId,
   }) async {
     final route = OdooAuthRpcConfig.verifyOtpRoute;
@@ -180,7 +194,7 @@ class OdooAuthService {
         'identifier': idForRpc,
         'code': code.trim(),
         'name': name.trim(),
-        'secret_code': password,
+        'secret_code': pin,
       },
     );
     _ensureAcpecEnvelopeSuccess(result);
@@ -206,7 +220,7 @@ class OdooAuthService {
     return Map<String, dynamic>.from(result as Map);
   }
 
-  /// Demande OTP pour la récupération de mot de passe via le backend ACPEC.
+  /// Demande OTP pour la récupération de PIN via le backend ACPEC.
   Future<Map<String, dynamic>> requestPasswordResetOtp({
     required String phoneFull,
   }) async {
@@ -237,7 +251,7 @@ class OdooAuthService {
     return top;
   }
 
-  /// Vérifie l’OTP de récupération de mot de passe via le backend ACPEC.
+  /// Vérifie l’OTP de récupération de PIN via le backend ACPEC.
   Future<Map<String, dynamic>> verifyPasswordResetOtp({
     required String identifier,
     required String code,
@@ -267,14 +281,14 @@ class OdooAuthService {
   Future<String> submitSignupRequest({
     required String name,
     required String signupIdentifier,
-    required String secretCode,
+    required String pin,
     required int companyId,
     String note = '',
   }) async {
     final result = await submitSignupRequestDetailed(
       name: name,
       signupIdentifier: signupIdentifier,
-      secretCode: secretCode,
+      pin: pin,
       companyId: companyId,
       note: note,
     );
@@ -298,7 +312,7 @@ class OdooAuthService {
   Future<Map<String, dynamic>> submitSignupRequestDetailed({
     required String name,
     required String signupIdentifier,
-    required String secretCode,
+    required String pin,
     required int companyId,
     String note = '',
   }) async {
@@ -315,7 +329,7 @@ class OdooAuthService {
         params: {
           'name': name.trim(),
           'signup_identifier': idForRpc,
-          'secret_code': secretCode,
+          'secret_code': pin,
           'company_id': companyId,
           if (note.trim().isNotEmpty) 'note': note.trim(),
         },

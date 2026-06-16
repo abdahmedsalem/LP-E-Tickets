@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phoneLocal = TextEditingController();
-  final _password = TextEditingController();
+  final _pin = TextEditingController();
   bool _obscure = true;
   bool _sendingOtp = false;
 
@@ -30,16 +30,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     _phoneLocal.addListener(_onFieldChanged);
-    _password.addListener(_onFieldChanged);
+    _pin.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
     _phoneLocal.removeListener(_onFieldChanged);
-    _password.removeListener(_onFieldChanged);
+    _pin.removeListener(_onFieldChanged);
     _name.dispose();
     _phoneLocal.dispose();
-    _password.dispose();
+    _pin.dispose();
     super.dispose();
   }
 
@@ -78,7 +78,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         extra: RegisterOtpRouteArgs(
           name: _name.text.trim(),
           phoneFull: _phoneFull,
-          password: _password.text,
+          pin: _pin.text,
           challengeId: challengeId,
         ),
       );
@@ -190,8 +190,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 14),
                           _RegisterField(
-                            controller: _password,
-                            hint: 'Mot de passe',
+                            controller: _pin,
+                            hint: 'PIN de confirmation',
                             obscure: _obscure,
                             keyboardType: TextInputType.number,
                             maxLength: kSecretCodeLength,
@@ -199,7 +199,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               FilteringTextInputFormatter.digitsOnly,
                             ],
                             validator: validateFourDigitNumericPassword,
-                            counterLabel: '${_password.text.trim().length}/$kSecretCodeLength',
+                            counterLabel:
+                                '${_pin.text.trim().length}/$kSecretCodeLength',
                             trailing: IconButton(
                               splashRadius: 20,
                               iconSize: 20,
