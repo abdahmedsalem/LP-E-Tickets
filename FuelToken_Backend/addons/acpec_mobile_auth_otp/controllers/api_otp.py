@@ -7,7 +7,7 @@ from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuth
 
 class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
-    @http.route('/api/acpec/mobile_auth/v1/request-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/request-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def request_otp(self, **kwargs):
         try:
             self._require_keys(kwargs, ['identifier'])
@@ -62,7 +62,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def verify_otp(self, **kwargs):
         try:
             self._require_keys(kwargs, ['code'])

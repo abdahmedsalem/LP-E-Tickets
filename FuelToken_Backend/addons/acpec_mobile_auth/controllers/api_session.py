@@ -6,7 +6,7 @@ from .api_common import AcpecMobileAuthApiCommon
 
 class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
 
-    @http.route('/api/acpec/mobile_auth/v1/session-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/session-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def session_check(self, **kwargs):
         try:
             session = self._get_mobile_session(required=False)
@@ -16,7 +16,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/me', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/me', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def me(self, **kwargs):
         try:
             session = self._get_mobile_session(required=True)
@@ -24,7 +24,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/refresh', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/refresh', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def refresh(self, **kwargs):
         try:
             refresh_token = self._get_refresh_token(kwargs)
@@ -39,7 +39,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/mobile_auth/v1/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def logout(self, **kwargs):
         try:
             session = self._get_mobile_session(required=False)
