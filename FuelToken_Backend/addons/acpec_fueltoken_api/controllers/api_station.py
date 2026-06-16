@@ -53,7 +53,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             'reason': reason,
         }
 
-    @http.route('/api/acpec/fueltoken/v1/station/profile', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/station/profile', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def profile(self, **kwargs):
         try:
             station, user = self._station_user()
@@ -63,7 +63,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/station/qr/check', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/station/qr/check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def check_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
@@ -79,7 +79,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/station/qr/use', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/station/qr/use', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def use_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
@@ -101,7 +101,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/station/transactions', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/acpec/fueltoken/v1/station/transactions', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_transactions(self, **kwargs):
         try:
             station, user = self._station_user()
