@@ -79,21 +79,49 @@ class AuthRepository {
   }
 
   /// Restaure la session Odoo (`session-check` avec cookie / session et/ou Bearer).
+  ///
+  /// Doctrine session longue : un access token expiré ne doit pas provoquer un
+  /// retour immédiat au login. Si un refresh token est disponible, on tente
+  /// d'abord `/refresh`, puis un nouveau `session-check`. Les jetons ne sont
+  /// effacés que si le refresh échoue réellement.
   Future<AppUser?> tryRestoreRemoteSession() async {
     if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasSessionMe) {
       final sid = await OdooSessionStore.readSessionId();
       final bearer = await OdooSessionStore.readAccessToken();
-      if ((sid == null || sid.isEmpty) && (bearer == null || bearer.isEmpty)) {
+      final refresh = await OdooSessionStore.readRefreshToken();
+      final hasSession = sid != null && sid.isNotEmpty;
+      final hasBearer = bearer != null && bearer.isNotEmpty;
+      final hasRefresh = refresh != null && refresh.isNotEmpty;
+      if (!hasSession && !hasBearer && !hasRefresh) {
         return null;
       }
-      try {
-        final user = AcpecRoleOverrides.apply(
-          await OdooAuthService.instance.sessionMe(),
-        );
-        _current = user;
-        return user;
-      } catch (_) {
-        await OdooSessionStore.clear();
+
+      if (hasSession || hasBearer) {
+        try {
+          final user = AcpecRoleOverrides.apply(
+            await OdooAuthService.instance.sessionMe(),
+          );
+          _current = user;
+          return user;
+        } catch (_) {
+          // Access token expiré ou session courte refusée : ne pas purger ici.
+          // La session longue doit encore pouvoir être renouvelée.
+        }
+      }
+
+      if (hasRefresh) {
+        try {
+          final refreshed = AcpecRoleOverrides.apply(
+            await OdooAuthService.instance.refreshSession(
+              refreshToken: refresh,
+            ),
+          );
+          _current = refreshed;
+          return refreshed;
+        } catch (_) {
+          await OdooSessionStore.clear();
+          await AuthTokenStore.clear();
+        }
       }
     }
     return null;
@@ -134,11 +162,15 @@ class AuthRepository {
     final refresh = tokens?['refresh']?.toString() ?? '';
     final hasJwt = access.isNotEmpty && refresh.isNotEmpty;
     if (hasJwt) {
-      await OdooSessionStore.clear();
-      await AuthTokenStore.save(access: access, refresh: refresh);
+      // Session mobile ACPEC/Odoo : les tokens retournés par verify-otp doivent
+      // rester dans OdooSessionStore, car c'est ce store que la restauration au
+      // démarrage lit après F5 / réouverture de l'application.
+      await OdooSessionStore.saveAccessToken(access);
+      await OdooSessionStore.saveRefreshToken(refresh);
+      await AuthTokenStore.clear();
     } else {
       await AuthTokenStore.clear();
-      // Inscription / session Odoo : conserver session_id stockée.
+      // Inscription / session Odoo : conserver session_id et tokens déjà capturés.
     }
     await Future.delayed(const Duration(milliseconds: 100));
     if (pin.length != kSecretCodeLength) {
