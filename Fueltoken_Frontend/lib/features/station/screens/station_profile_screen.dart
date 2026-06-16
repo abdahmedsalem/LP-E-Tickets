@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,7 +14,6 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
-import '../../../shared/widgets/icon_btn.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 /// Profil station / opérateur (données retirées de l’accueil).
@@ -416,6 +415,7 @@ class _AcpecProfileErrorCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _AcpecStationProfilePanel extends StatelessWidget {
   const _AcpecStationProfilePanel({required this.profile});
 

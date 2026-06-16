@@ -131,6 +131,37 @@ class OdooAuthService {
     }
   }
 
+  /// Renouvelle la session mobile longue avec le refresh token stocké.
+  ///
+  /// Ne doit pas envoyer l'ancien access token : au démarrage ou après F5 web,
+  /// celui-ci peut être expiré. Le refresh token est la source de vérité pour
+  /// restaurer la session longue.
+  Future<AppUser> refreshSession({String? refreshToken}) async {
+    final route = OdooAuthRpcConfig.refreshRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Refresh ACPEC désactivé (ODOO_USE_ACPEC_AUTH / routes).',
+      );
+    }
+    final refresh = (refreshToken ?? await OdooSessionStore.readRefreshToken())
+        ?.trim();
+    if (refresh == null || refresh.isEmpty) {
+      throw Exception('Refresh token absent.');
+    }
+    try {
+      final result = await _api.callRouteWithoutSession(
+        route,
+        params: <String, dynamic>{'refresh_token': refresh},
+        extraHeaders: <String, String>{'X-ACPEC-Refresh-Token': refresh},
+      );
+      _ensureAcpecEnvelopeSuccess(result);
+      await OdooSessionStore.mergeSessionFromResult(result);
+      return _userFromRpcResult(result);
+    } on OdooJsonRpcException catch (e) {
+      throw Exception(e.message);
+    }
+  }
+
   /// Demande d'inscription Odoo ACPEC qui déclenche un OTP SMS pour un numéro.
   Future<Map<String, dynamic>> requestSignupOtp({
     required String phoneFull,

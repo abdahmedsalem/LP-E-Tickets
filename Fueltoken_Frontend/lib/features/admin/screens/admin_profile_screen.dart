@@ -12,7 +12,7 @@ import '../../../main.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// Profil administrateur : identité, affichage, déconnexion.
+/// Profil administrateur : identitÃ©, affichage, dÃ©connexion.
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
@@ -53,18 +53,18 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       if (user.phone.trim().isNotEmpty)
         _InfoTile(
           icon: Icons.phone_outlined,
-          label: 'Téléphone',
+          label: 'TÃ©lÃ©phone',
           value: user.phone,
         ),
       _InfoTile(
         icon: Icons.badge_outlined,
-        label: 'Rôle',
+        label: 'RÃ´le',
         value: user.role.label,
       ),
       if ((user.companyId ?? '').trim().isNotEmpty)
         _InfoTile(
           icon: Icons.business_outlined,
-          label: 'Société',
+          label: 'SociÃ©tÃ©',
           value: user.companyId!,
           mono: true,
         ),
@@ -193,7 +193,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
           const SizedBox(height: 22),
           Text(
-            'IDENTITÉ',
+            'IDENTITÃ‰',
             style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -246,7 +246,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 ),
               ),
               subtitle: Text(
-                'Appliqué à toute l’app sur cet appareil.',
+                'AppliquÃ© Ã  toute lâ€™app sur cet appareil.',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: scheme.onSurfaceVariant,
@@ -264,7 +264,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('Déconnexion'),
+                  title: const Text('DÃ©connexion'),
                   content: const Text(
                     'Quitter la session administrateur sur cet appareil ?',
                   ),
@@ -278,7 +278,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.danger,
                       ),
-                      child: const Text('Se déconnecter'),
+                      child: const Text('Se dÃ©connecter'),
                     ),
                   ],
                 ),
@@ -289,7 +289,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               }
             },
             icon: const Icon(Icons.logout_rounded),
-            label: const Text('Se déconnecter'),
+            label: const Text('Se dÃ©connecter'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,

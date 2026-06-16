@@ -15,6 +15,36 @@ class AcpecFueltokenJsonRpcApi {
 
   /// [route] : chemin absolu serveur (ex. `/api/acpec/...`).
   Future<dynamic> callRoute(String route, {Map<String, dynamic>? params}) {
+    var r = _normalizeRoute(route);
+    return _coordinator.execute(
+      route: r,
+      params: params,
+      request: () => _client.postJsonRpc(path: r, params: params),
+    );
+  }
+
+  /// Appel technique sans Cookie / X-Acpec-Session / Authorization.
+  ///
+  /// Utilisé surtout pour `/refresh` : au démarrage de l'application, l'access
+  /// token local peut être expiré. Il ne faut pas l'envoyer avec la requête de
+  /// renouvellement, sinon une ancienne session courte peut perturber le test
+  /// de session longue.
+  Future<dynamic> callRouteWithoutSession(
+    String route, {
+    Map<String, dynamic>? params,
+    Map<String, String>? extraHeaders,
+  }) {
+    var r = _normalizeRoute(route);
+    return _client.postJsonRpc(
+      path: r,
+      params: params,
+      extraHeaders: extraHeaders,
+      omitSessionHeaders: true,
+      suppressAuthRecovery: true,
+    );
+  }
+
+  static String _normalizeRoute(String route) {
     var r = route.trim();
     if (r.isEmpty) {
       throw StateError('route ACPEC vide.');
@@ -22,11 +52,7 @@ class AcpecFueltokenJsonRpcApi {
     if (!r.startsWith('/')) {
       r = '/$r';
     }
-    return _coordinator.execute(
-      route: r,
-      params: params,
-      request: () => _client.postJsonRpc(path: r, params: params),
-    );
+    return r;
   }
 
   @Deprecated('Utiliser callRoute avec le chemin complet.')

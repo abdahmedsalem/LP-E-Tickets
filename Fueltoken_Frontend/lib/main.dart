@@ -199,7 +199,10 @@ class FuelTokenAppState extends State<FuelTokenApp>
     _authBloc.add(const AuthLogoutRequested());
   }
 
-  bool _shouldAutoLogout(UserRole? role) => role == UserRole.user;
+  // Patch session longue : ne plus détruire la session mobile après 30 secondes
+  // d'inactivité. Le futur comportement attendu est un verrouillage local PIN,
+  // sans effacement du refresh token ni révocation backend.
+  bool _shouldAutoLogout(UserRole? role) => false;
 
   Future<void> reloadPreferences() async {
     final locale = await AppPreferences.localeCode();

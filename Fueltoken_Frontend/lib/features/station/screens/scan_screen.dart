@@ -82,7 +82,7 @@ class _ScanScreenState extends State<ScanScreen> {
           result: const StationQrCheckResult(
             canConsume: false,
             reason:
-                'Ce QR vient d’être consommé sur cette session et ne peut plus être scanné.',
+                'Ce QR vient dâ€™Ãªtre consommÃ© sur cette session et ne peut plus Ãªtre scannÃ©.',
           ),
         ),
       );
@@ -119,7 +119,7 @@ class _ScanScreenState extends State<ScanScreen> {
       if (mounted) {
         await _showError(
           e.isOdooSessionExpired
-              ? 'Session expirée. Reconnectez-vous.'
+              ? 'Session expirÃ©e. Reconnectez-vous.'
               : e.message,
         );
       }
@@ -229,7 +229,7 @@ class _ScanScreenState extends State<ScanScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Consommation validée',
+                  'Consommation validÃ©e',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 18,
@@ -560,7 +560,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Vérification QR',
+                    'VÃ©rification QR',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 18,
@@ -571,7 +571,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Contrôle serveur avant consommation',
+                    'ContrÃ´le serveur avant consommation',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
@@ -591,21 +591,21 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                     label: 'Montant total',
                     value: result.totalAmount != null
                         ? '${Formatters.numberFr(result.totalAmount!)} MRU'
-                        : 'Non renseigné',
+                        : 'Non renseignÃ©',
                     highlighted: true,
                   ),
                   const SizedBox(height: 8),
                   _InfoLine(
                     label: 'Client',
-                    value: result.clientName ?? 'Non renseigné',
+                    value: result.clientName ?? 'Non renseignÃ©',
                   ),
                   const SizedBox(height: 12),
                   _QrStatePill(
-                    label: result.canConsume ? 'Consommation autorisée' : 'Consommation bloquée',
+                    label: result.canConsume ? 'Consommation autorisÃ©e' : 'Consommation bloquÃ©e',
                     color: result.canConsume ? AppColors.success : AppColors.danger,
                     subtitle: result.canConsume
                         ? 'Vous pouvez enregistrer la consommation sur ce QR.'
-                        : 'Ce QR ne peut pas être consommé dans son état actuel.',
+                        : 'Ce QR ne peut pas Ãªtre consommÃ© dans son Ã©tat actuel.',
                   ),
                   const SizedBox(height: 18),
                   SizedBox(
@@ -629,7 +629,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                             },
                       child: Text(
                         _confirming
-                            ? 'Validation…'
+                            ? 'Validationâ€¦'
                             : (widget.onConfirmConsume == null ? 'Fermer' : 'Envoyer'),
                       ),
                     ),

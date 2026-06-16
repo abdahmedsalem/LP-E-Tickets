@@ -58,7 +58,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
 
       if (!OdooApiConfig.isConfigured) {
         const userMsg =
-            'Le service ne peut pas être vérifié sur cet appareil pour le moment.';
+            'Le service ne peut pas Ãªtre vÃ©rifiÃ© sur cet appareil pour le moment.';
         _debugErrorDetail =
             'ODOO_JSONRPC_BASE_URL manquant (build / dart-define).';
         throw AcpecBootstrapException(userMsg);
@@ -89,7 +89,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       if (mounted) {
         setState(() {
           _error =
-              'Connexion au service impossible. Vérifiez votre réseau et réessayez.';
+              'Connexion au service impossible. VÃ©rifiez votre rÃ©seau et rÃ©essayez.';
           _debugErrorDetail = e.message;
           _loading = false;
         });
@@ -98,7 +98,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       if (mounted) {
         setState(() {
           _error =
-              'Une erreur inattendue s?est produite. Réessayez plus tard.';
+              'Une erreur inattendue s?est produite. RÃ©essayez plus tard.';
           _debugErrorDetail = e.toString();
           _loading = false;
         });
@@ -136,7 +136,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       appBar: AppBar(
         backgroundColor: pageBg,
         title: Text(
-          'État du service',
+          'Ã‰tat du service',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         leading: IconButton(
@@ -168,7 +168,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
               if (_installedVersion.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Version installée : $_installedVersion',
+                  'Version installÃ©e : $_installedVersion',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
@@ -217,7 +217,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           ),
           icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Réessayer'),
+          label: const Text('RÃ©essayer'),
         ),
       ],
     );
@@ -239,9 +239,9 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         icon: Icons.system_update_alt_rounded,
         iconColor: AppColors.warning,
         surfaceTint: AppColors.warningSurface,
-        title: 'Mise à jour requise',
+        title: 'Mise Ã  jour requise',
         body:
-            'Installez la dernière version de FuelToken pour continuer à utiliser le service.',
+            'Installez la derniÃ¨re version de FuelToken pour continuer Ã  utiliser le service.',
       );
     }
 
@@ -254,7 +254,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         surfaceTint: AppColors.dangerSurface.withValues(alpha: 0.4),
         title: 'Service indisponible',
         body:
-            'Le service ne répond pas correctement. Réessayez dans quelques instants.',
+            'Le service ne rÃ©pond pas correctement. RÃ©essayez dans quelques instants.',
       );
     }
 
@@ -265,7 +265,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         icon: Icons.info_outline_rounded,
         iconColor: AppColors.primary,
         surfaceTint: AppColors.primarySoft.withValues(alpha: 0.5),
-        title: 'Mise à jour disponible',
+        title: 'Mise Ã  jour disponible',
         body: v.messageRaw!,
       );
     }
@@ -277,9 +277,9 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         icon: Icons.new_releases_outlined,
         iconColor: AppColors.primary,
         surfaceTint: AppColors.primarySoft.withValues(alpha: 0.35),
-        title: 'Mise à jour disponible',
+        title: 'Mise Ã  jour disponible',
         body:
-            'Une version plus récente existe. Nous vous recommandons de mettre à jour l?application lorsque vous le pourrez.',
+            'Une version plus rÃ©cente existe. Nous vous recommandons de mettre Ã  jour l?application lorsque vous le pourrez.',
       );
     }
 
@@ -291,7 +291,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       surfaceTint: AppColors.successSurface.withValues(alpha: 0.45),
       title: 'Tout est en ordre',
       body:
-          'Votre application est à jour et le service répond normalement.',
+          'Votre application est Ã  jour et le service rÃ©pond normalement.',
     );
   }
 
@@ -381,7 +381,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         const SizedBox(height: 10),
         if (_companies.isEmpty)
           Text(
-            'Aucune organisation à afficher pour le moment.',
+            'Aucune organisation Ã  afficher pour le moment.',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: scheme.onSurfaceVariant,
@@ -464,7 +464,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Détail (mode développement)',
+            'DÃ©tail (mode dÃ©veloppement)',
             style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w700,
