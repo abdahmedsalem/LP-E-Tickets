@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -514,7 +515,9 @@ class _PaymentProofImageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasBytes = proofBytes != null && proofBytes!.isNotEmpty;
     final path = proofPath?.trim();
-    final file = (path != null && path.isNotEmpty) ? File(path) : null;
+    final file = (!kIsWeb && path != null && path.isNotEmpty)
+        ? File(path)
+        : null;
 
     return Container(
       width: double.infinity,
