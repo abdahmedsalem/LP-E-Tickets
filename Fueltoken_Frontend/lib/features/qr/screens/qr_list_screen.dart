@@ -376,8 +376,8 @@ class _QRCard extends StatelessWidget {
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const TextSpan(
-                        text: ' MRU',
+                      TextSpan(
+                        text: ' ${Formatters.defaultCurrency}',
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,

@@ -46,9 +46,7 @@ class AmountInline extends StatelessWidget {
               letterSpacing: unitStyle?.letterSpacing,
             );
 
-    final unit = currency?.trim().isNotEmpty == true
-        ? currency!.trim()
-        : Formatters.fallbackCurrency;
+    final unit = Formatters.currencyOrDefault(currency);
 
     return Text.rich(
       TextSpan(

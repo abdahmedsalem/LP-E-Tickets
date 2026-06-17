@@ -21,9 +21,7 @@ class FaceValueChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final valueFontSize = (size * 0.28).clamp(11.0, 19.0);
     final currencyFontSize = (size * 0.16).clamp(7.5, 11.0);
-    final unit = currency?.trim().isNotEmpty == true
-        ? currency!.trim()
-        : Formatters.fallbackCurrency;
+    final unit = Formatters.currencyOrDefault(currency);
     return Container(
       width: size,
       height: size,

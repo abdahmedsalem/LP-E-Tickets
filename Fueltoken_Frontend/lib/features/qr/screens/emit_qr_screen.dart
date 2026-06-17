@@ -1156,7 +1156,7 @@ class _AmountInline extends StatelessWidget {
       TextSpan(
         children: [
           TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-          TextSpan(text: ' MRU', style: unitStyle),
+          TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
         ],
       ),
       textAlign: textAlign,

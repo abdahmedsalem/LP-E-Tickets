@@ -99,11 +99,14 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
 
       if (!mounted || currencies.isEmpty) return;
 
+      final resolvedCurrency = currencies.length == 1
+          ? currencies.single
+          : Formatters.fallbackCurrency;
+
       setState(() {
-        _walletCurrency = currencies.length == 1
-            ? currencies.single
-            : Formatters.fallbackCurrency;
+        _walletCurrency = resolvedCurrency;
       });
+      Formatters.setDefaultCurrency(resolvedCurrency);
     } catch (_) {
       // La devise reste le fallback central si le catalogue est indisponible.
     }
