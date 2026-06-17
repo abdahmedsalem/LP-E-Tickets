@@ -160,14 +160,21 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
-    final size = _carnetSizeFor(line);
-    if (size > 0) {
-      return Formatters.carnetTypeLabel(size, line.faceValue);
-    }
     final rawName = line.carnetTypeName.trim();
     if (rawName.isNotEmpty) {
       return Formatters.normalizeCarnetTypeLabel(rawName);
     }
+
+    final rawCode = line.carnetTypeCode.trim();
+    if (rawCode.isNotEmpty) {
+      return rawCode;
+    }
+
+    final size = _carnetSizeFor(line);
+    if (size > 0) {
+      return Formatters.carnetTypeLabel(size, line.faceValue);
+    }
+
     return 'Carnet';
   }
 
