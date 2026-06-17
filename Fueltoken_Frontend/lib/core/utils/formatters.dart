@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 class Formatters {
+  static const fallbackCurrency = 'MRU';
   Formatters._();
 
   static final _money = NumberFormat.decimalPattern('fr_FR');
@@ -10,7 +11,13 @@ class Formatters {
 
   static DateTime _local(DateTime d) => d.isUtc ? d.toLocal() : d;
 
-  static String money(num value) => '${_money.format(value)} MRU';
+  static String money(num value, {String? currency}) {
+    final unit = currency?.trim().isNotEmpty == true
+        ? currency!.trim()
+        : fallbackCurrency;
+    return '${_money.format(value)} $unit';
+  }
+
   static String number(num value) => _money.format(value);
   static String numberFr(num value) => _money.format(value);
   static String carnetTypeLabel(int size, int faceValue) =>
