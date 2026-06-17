@@ -440,12 +440,12 @@ class _AmountInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '${Formatters.numberFr(amount)} MRU',
+      label: Formatters.money(amount),
       child: Text.rich(
         TextSpan(
           children: [
             TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-            TextSpan(text: ' MRU', style: unitStyle),
+            TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
           ],
         ),
         textAlign: textAlign,
@@ -631,7 +631,7 @@ class _StationHistoryDetailBody extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${Formatters.numberFr(line.amount)} MRU',
+                      Formatters.money(line.amount),
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
@@ -731,8 +731,8 @@ class _ConsumptionDetailSummary extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              const Text(
-                'MRU',
+              Text(
+                Formatters.defaultCurrency,
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -884,7 +884,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${Formatters.numberFr(line.amount)} MRU',
+                              Formatters.money(line.amount),
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,

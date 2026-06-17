@@ -40,7 +40,7 @@ class _ScanScreenState extends State<ScanScreen> {
     detectionSpeed: DetectionSpeed.noDuplicates,
     torchEnabled: false,
   );
-  
+
   bool _processing = false;
   bool _consuming = false;
   final Set<String> _consumedThisSession = <String>{};
@@ -281,8 +281,8 @@ class _ScanScreenState extends State<ScanScreen> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Text(
-                            'MRU',
+                          Text(
+                            Formatters.defaultCurrency,
                             style: TextStyle(
                               fontSize: 11,
                               color: AppColors.primaryDark,
@@ -407,10 +407,7 @@ class _ScanHeader extends StatelessWidget {
 }
 
 class _ScanCameraCard extends StatelessWidget {
-  const _ScanCameraCard({
-    required this.controller,
-    required this.onDetect,
-  });
+  const _ScanCameraCard({required this.controller, required this.onDetect});
 
   final MobileScannerController controller;
   final void Function(BarcodeCapture capture) onDetect;
@@ -500,10 +497,22 @@ class _CornerFramePainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
-    drawCorner(const Offset(0, corner), [const Offset(0, 0), const Offset(corner, 0)]);
-    drawCorner(Offset(size.width - corner, 0), [Offset(size.width, 0), Offset(size.width, corner)]);
-    drawCorner(Offset(0, size.height - corner), [Offset(0, size.height), Offset(corner, size.height)]);
-    drawCorner(Offset(size.width - corner, size.height), [Offset(size.width, size.height), Offset(size.width, size.height - corner)]);
+    drawCorner(const Offset(0, corner), [
+      const Offset(0, 0),
+      const Offset(corner, 0),
+    ]);
+    drawCorner(Offset(size.width - corner, 0), [
+      Offset(size.width, 0),
+      Offset(size.width, corner),
+    ]);
+    drawCorner(Offset(0, size.height - corner), [
+      Offset(0, size.height),
+      Offset(corner, size.height),
+    ]);
+    drawCorner(Offset(size.width - corner, size.height), [
+      Offset(size.width, size.height),
+      Offset(size.width, size.height - corner),
+    ]);
   }
 
   @override
@@ -582,7 +591,9 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   Center(
                     child: MiniQR(
                       data: widget.publicCode,
-                      state: result.canConsume ? QrState.active : QrState.blocked,
+                      state: result.canConsume
+                          ? QrState.active
+                          : QrState.blocked,
                       size: 128,
                     ),
                   ),
@@ -590,7 +601,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   _InfoLine(
                     label: 'Montant total',
                     value: result.totalAmount != null
-                        ? '${Formatters.numberFr(result.totalAmount!)} MRU'
+                        ? Formatters.money(result.totalAmount!)
                         : 'Non renseigné',
                     highlighted: true,
                   ),
@@ -601,8 +612,12 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 12),
                   _QrStatePill(
-                    label: result.canConsume ? 'Consommation autorisée' : 'Consommation bloquée',
-                    color: result.canConsume ? AppColors.success : AppColors.danger,
+                    label: result.canConsume
+                        ? 'Consommation autorisée'
+                        : 'Consommation bloquée',
+                    color: result.canConsume
+                        ? AppColors.success
+                        : AppColors.danger,
                     subtitle: result.canConsume
                         ? 'Vous pouvez enregistrer la consommation sur ce QR.'
                         : 'Ce QR ne peut pas être consommé dans son état actuel.',
@@ -630,7 +645,9 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                       child: Text(
                         _confirming
                             ? 'Validation…'
-                            : (widget.onConfirmConsume == null ? 'Fermer' : 'Envoyer'),
+                            : (widget.onConfirmConsume == null
+                                  ? 'Fermer'
+                                  : 'Envoyer'),
                       ),
                     ),
                   ),
@@ -668,11 +685,7 @@ class _QrStatePill extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 22,
-            color: color,
-          ),
+          Icon(Icons.check_circle_outline, size: 22, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -743,7 +756,9 @@ class _InfoLine extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: highlighted ? AppColors.primaryDark : scheme.onSurfaceVariant,
+                color: highlighted
+                    ? AppColors.primaryDark
+                    : scheme.onSurfaceVariant,
               ),
             ),
           ),
