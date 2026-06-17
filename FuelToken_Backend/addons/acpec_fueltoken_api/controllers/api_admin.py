@@ -18,17 +18,36 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         return rec.name or rec.code or _('Carnet de tickets')
 
     def _carnet_payload(self, rec):
+        currency = rec.currency_id or rec.company_id.currency_id
+        face_count = rec.face_count or 0
+        face_value = rec.face_value or 0
+        carnet_amount = rec.carnet_amount or (face_count * face_value)
+        sequence = getattr(rec, 'sequence', 0)
         return {
             'id': rec.id,
-            'code': rec.code,
+            'code': rec.code or False,
             'name': self._carnet_type_label(rec),
-            'face_count': rec.face_count,
-            'face_value': rec.face_value,
-            'carnet_amount': rec.carnet_amount,
-            'validity_days': rec.validity_days,
+
+            'face_count': face_count,
+            'ticket_count': face_count,
+
+            'face_value': face_value,
+            'carnet_amount': carnet_amount,
+            'total_amount': carnet_amount,
+            'amount_total': carnet_amount,
+
+            'validity_days': rec.validity_days or 0,
+            'expiry_days': rec.validity_days or 0,
+
             'active': rec.active,
-            'company_id': rec.company_id.id,
-            'company_name': rec.company_id.name,
+            'sequence': sequence,
+
+            'company_id': rec.company_id.id if rec.company_id else False,
+            'company_name': rec.company_id.name if rec.company_id else False,
+
+            'currency_id': currency.id if currency else False,
+            'currency_name': currency.name if currency else False,
+            'currency_symbol': currency.symbol if currency else False,
         }
 
     def _purchase_payload(self, purchase, detail=False):
