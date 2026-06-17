@@ -212,7 +212,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          Formatters.fallbackCurrency,
+                          widget.currency,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 11,
