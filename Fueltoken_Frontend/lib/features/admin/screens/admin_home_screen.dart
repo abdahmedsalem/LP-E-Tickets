@@ -216,7 +216,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             const SizedBox(height: 14),
             _WideStatCard(
               label: 'Volume consommé (toutes stations)',
-              value: '${Formatters.number(consumed)} MRU',
+              value: Formatters.money(consumed),
               icon: Icons.local_gas_station_rounded,
               color: const Color(0xFFF4C542),
               scheme: scheme,

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -84,7 +84,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               children: [
                 AppBarHeader(
                   title: 'Notifications',
-                    action: hasUnread
+                  action: hasUnread
                       ? TextButton(
                           onPressed: _markAllRead,
                           child: Text(
@@ -188,10 +188,10 @@ class _NotificationCard extends StatelessWidget {
     final accent = isPurchase
         ? (isRejected ? AppColors.brandRed : AppColors.leaderGreen)
         : isTransfer
-            ? AppColors.leaderGreen
-            : isQrExpiration
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFF59E0B);
+        ? AppColors.leaderGreen
+        : isQrExpiration
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFFF59E0B);
     final dateLabel = item.notificationDateLabel?.trim() ?? '';
     final titleLabel = item.title;
 
@@ -339,7 +339,7 @@ class _PurchaseLineTile extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: ' MRU',
+                  text: ' ${Formatters.defaultCurrency}',
                   style: GoogleFonts.poppins(
                     fontSize: 9,
                     fontWeight: FontWeight.w500,
@@ -409,7 +409,7 @@ class _ReceiptLineTile extends StatelessWidget {
                       ),
                     ),
                     TextSpan(
-                      text: ' MRU',
+                      text: ' ${Formatters.defaultCurrency}',
                       style: GoogleFonts.poppins(
                         fontSize: 9,
                         fontWeight: FontWeight.w500,
@@ -434,7 +434,7 @@ class _ReceiptLineTile extends StatelessWidget {
     final raw = value.trim();
     if (raw.isEmpty) return Formatters.numberFr(fallback);
     final normalized = raw.replaceAll(RegExp(r'\s+'), ' ');
-    if (normalized.toUpperCase().endsWith(' MRU')) {
+    if (RegExp(r'\s[A-Z]{3}$').hasMatch(normalized.toUpperCase())) {
       return normalized.substring(0, normalized.length - 4).trim();
     }
     return normalized;
@@ -559,20 +559,20 @@ class _QrExpirationTile extends StatelessWidget {
               border: Border.all(color: const Color(0xFFE8EAED)),
             ),
             child: Column(
-                children: [
-                  Center(
-                    child: MiniQR(
-                      data: qrCode.isEmpty ? 'QR indisponible' : qrCode,
-                      state: QrState.expired,
-                      size: 104,
-                    ),
+              children: [
+                Center(
+                  child: MiniQR(
+                    data: qrCode.isEmpty ? 'QR indisponible' : qrCode,
+                    state: QrState.expired,
+                    size: 104,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    qrCode.isEmpty ? 'Code QR indisponible' : qrCode,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  qrCode.isEmpty ? 'Code QR indisponible' : qrCode,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -644,6 +644,3 @@ class _QrExpirationTile extends StatelessWidget {
     );
   }
 }
-
-
-
