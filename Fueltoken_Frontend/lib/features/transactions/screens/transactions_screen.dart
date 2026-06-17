@@ -1070,10 +1070,7 @@ class _TxLineRow extends StatelessWidget {
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: _dateStyle(),
-                  ),
+                  Text(subtitle, style: _dateStyle()),
                 ],
               ],
             ),
@@ -1124,10 +1121,7 @@ class _TxLineRow extends StatelessWidget {
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: _dateStyle(),
-                  ),
+                  Text(subtitle, style: _dateStyle()),
                 ],
               ],
             ),
@@ -1412,14 +1406,14 @@ class _AmountInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = '${Formatters.numberFr(amount)} MRU';
+    final label = Formatters.money(amount);
     return Semantics(
       label: label,
       child: Text.rich(
         TextSpan(
           children: [
             TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-            TextSpan(text: ' MRU', style: unitStyle),
+            TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
           ],
         ),
         textAlign: textAlign,
@@ -1443,7 +1437,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
   final lotRef = tx.lotInternalRef ?? tx.lotId;
   final station = tx.stationName ?? tx.stationId;
   final client = tx.userName.trim().isNotEmpty ? tx.userName : tx.userId;
-  final amount = '${Formatters.numberFr(tx.totalAmount.abs())} MRU';
+  final amount = Formatters.money(tx.totalAmount.abs());
 
   switch (tx.type) {
     case TxType.purchaseSubmitted:

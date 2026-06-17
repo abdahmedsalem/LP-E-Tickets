@@ -575,7 +575,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         return type.displayCurrency;
       }
     }
-    return _offerTypes.isNotEmpty ? _offerTypes.first.displayCurrency : 'MRU';
+    return _offerTypes.isNotEmpty
+        ? _offerTypes.first.displayCurrency
+        : Formatters.fallbackCurrency;
   }
 
   @override

@@ -9,6 +9,7 @@ class AmountInline extends StatelessWidget {
     required this.amount,
     this.valueStyle,
     this.unitStyle,
+    this.currency,
     this.textAlign = TextAlign.left,
   });
 
@@ -17,36 +18,44 @@ class AmountInline extends StatelessWidget {
   final int amount;
   final TextStyle? valueStyle;
   final TextStyle? unitStyle;
+  final String? currency;
   final TextAlign textAlign;
 
   @override
   Widget build(BuildContext context) {
     final fallbackUnitColor = const Color(0xFF2E7D32).withValues(alpha: 0.82);
-    final resolvedValueStyle = valueStyle ??
+    final resolvedValueStyle =
+        valueStyle ??
         GoogleFonts.poppins(
           fontSize: 15,
           fontWeight: FontWeight.w800,
           color: const Color(0xFF2E7D32),
         );
-    final resolvedUnitStyle = (unitStyle ??
-            GoogleFonts.poppins(
+    final resolvedUnitStyle =
+        (unitStyle ??
+                GoogleFonts.poppins(
+                  fontSize: unitFontSize,
+                  fontWeight: FontWeight.w700,
+                  color: fallbackUnitColor,
+                ))
+            .copyWith(
               fontSize: unitFontSize,
-              fontWeight: FontWeight.w700,
-              color: fallbackUnitColor,
-            ))
-        .copyWith(
-      fontSize: unitFontSize,
-      fontWeight: unitStyle?.fontWeight ?? FontWeight.w700,
-      color: unitStyle?.color ?? fallbackUnitColor,
-      height: unitStyle?.height,
-      letterSpacing: unitStyle?.letterSpacing,
-    );
+              fontWeight: unitStyle?.fontWeight ?? FontWeight.w700,
+              color: unitStyle?.color ?? fallbackUnitColor,
+              height: unitStyle?.height,
+              letterSpacing: unitStyle?.letterSpacing,
+            );
+
+    final unit = Formatters.currencyOrDefault(currency);
 
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: Formatters.numberFr(amount), style: resolvedValueStyle),
-          TextSpan(text: ' MRU', style: resolvedUnitStyle),
+          TextSpan(
+            text: Formatters.numberFr(amount),
+            style: resolvedValueStyle,
+          ),
+          TextSpan(text: ' $unit', style: resolvedUnitStyle),
         ],
       ),
       textAlign: textAlign,

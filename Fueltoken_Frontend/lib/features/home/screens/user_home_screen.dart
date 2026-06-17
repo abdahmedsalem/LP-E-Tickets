@@ -7,6 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/config/app_environment.dart';
 import '../../settings/data/notifications_store.dart';
 import '../../../shared/widgets/fuel_brand_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -75,10 +78,44 @@ class _UserHomeBody extends StatefulWidget {
 class _UserHomeBodyState extends State<_UserHomeBody> {
   Timer? _pollTimer;
   late final VoidCallback _walletBusListener;
+  String _walletCurrency = Formatters.fallbackCurrency;
+  String? _walletCurrencyCompanyId;
+
+  Future<void> _loadWalletCurrency() async {
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) return;
+
+    final companyId = AppEnvironment.companyIdForUser(user);
+    if (_walletCurrencyCompanyId == companyId) return;
+    _walletCurrencyCompanyId = companyId;
+
+    try {
+      final types = await AcpecCarnetCatalogService.instance
+          .listPurchaseOfferTypes(companyId: companyId);
+      final currencies = types
+          .map((type) => type.displayCurrency.trim())
+          .where((currency) => currency.isNotEmpty)
+          .toSet();
+
+      if (!mounted || currencies.isEmpty) return;
+
+      final resolvedCurrency = currencies.length == 1
+          ? currencies.single
+          : Formatters.fallbackCurrency;
+
+      setState(() {
+        _walletCurrency = resolvedCurrency;
+      });
+      Formatters.setDefaultCurrency(resolvedCurrency);
+    } catch (_) {
+      // La devise reste le fallback central si le catalogue est indisponible.
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _loadWalletCurrency();
     _walletBusListener = () {
       if (!mounted || context.read<WalletCubit>().isClosed) return;
       context.read<WalletCubit>().refresh();
@@ -223,7 +260,10 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SizedBox(
                           height: 106,
-                          child: ClientHomeWalletCard(amount: wallet.amount),
+                          child: ClientHomeWalletCard(
+                            amount: wallet.amount,
+                            currency: _walletCurrency,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 22),

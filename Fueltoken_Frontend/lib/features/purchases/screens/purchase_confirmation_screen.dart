@@ -63,8 +63,7 @@ class _PurchaseConfirmationScreenState
       final ok = await showSensitiveActionPinDialog(
         context,
         title: 'Vérification du PIN',
-        description:
-            'Saisissez votre PIN pour confirmer cette opération.',
+        description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (!ok || !mounted) return;
       await widget.args.onConfirm();
@@ -255,17 +254,38 @@ class _PurchaseLinesCard extends StatelessWidget {
   final List<PurchaseConfirmationLine> lines;
 
   String _carnetTypeLabel(PurchaseConfirmationLine line) {
+    final rawName = line.carnetType.name.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: line.carnetType.size,
+        fallbackFaceValue: line.carnetType.faceValue,
+      );
+    }
+
     if (line.carnetType.size > 0 && line.carnetType.faceValue > 0) {
       return Formatters.carnetTypeLabel(
         line.carnetType.size,
         line.carnetType.faceValue,
       );
     }
-    return Formatters.normalizeCarnetTypeLabel(
-      line.carnetType.name,
-      fallbackSize: line.carnetType.size,
-      fallbackFaceValue: line.carnetType.faceValue,
-    );
+
+    return 'Carnet';
+  }
+
+  String _currencyFor(PurchaseConfirmationLine line) =>
+      line.carnetType.displayCurrency.trim().isNotEmpty
+      ? line.carnetType.displayCurrency.trim()
+      : Formatters.fallbackCurrency;
+
+  String _totalCurrency(List<PurchaseConfirmationLine> lines) {
+    final currencies = lines
+        .map(_currencyFor)
+        .where((currency) => currency.trim().isNotEmpty)
+        .toSet();
+    return currencies.length == 1
+        ? currencies.single
+        : Formatters.fallbackCurrency;
   }
 
   @override
@@ -285,6 +305,7 @@ class _PurchaseLinesCard extends StatelessWidget {
               label: _carnetTypeLabel(lines[i]),
               qty: lines[i].qty,
               amount: lines[i].totalAmount,
+              currency: _currencyFor(lines[i]),
             ),
             if (i < lines.length - 1)
               Padding(
@@ -299,6 +320,7 @@ class _PurchaseLinesCard extends StatelessWidget {
             ),
           _TotalRow(
             totalAmount: lines.fold(0, (s, line) => s + line.totalAmount),
+            currency: _totalCurrency(lines),
           ),
         ],
       ),
@@ -311,11 +333,13 @@ class _PurchaseLineRow extends StatelessWidget {
     required this.label,
     required this.qty,
     required this.amount,
+    required this.currency,
   });
 
   final String label;
   final int qty;
   final int amount;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -351,6 +375,7 @@ class _PurchaseLineRow extends StatelessWidget {
           flex: 4,
           child: _AmountInline(
             amount: amount,
+            currency: currency,
             textAlign: TextAlign.right,
             valueStyle: GoogleFonts.poppins(
               fontSize: 15,
@@ -370,9 +395,10 @@ class _PurchaseLineRow extends StatelessWidget {
 }
 
 class _TotalRow extends StatelessWidget {
-  const _TotalRow({required this.totalAmount});
+  const _TotalRow({required this.totalAmount, required this.currency});
 
   final int totalAmount;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -390,6 +416,7 @@ class _TotalRow extends StatelessWidget {
         ),
         _AmountInline(
           amount: totalAmount,
+          currency: currency,
           valueStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w800,
@@ -409,23 +436,29 @@ class _TotalRow extends StatelessWidget {
 class _AmountInline extends StatelessWidget {
   const _AmountInline({
     required this.amount,
+    required this.currency,
     required this.valueStyle,
     required this.unitStyle,
     this.textAlign = TextAlign.left,
   });
 
   final int amount;
+  final String currency;
   final TextStyle valueStyle;
   final TextStyle unitStyle;
   final TextAlign textAlign;
 
   @override
   Widget build(BuildContext context) {
+    final unit = currency.trim().isNotEmpty
+        ? currency.trim()
+        : Formatters.fallbackCurrency;
+
     return Text.rich(
       TextSpan(
         children: [
           TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-          TextSpan(text: ' MRU', style: unitStyle),
+          TextSpan(text: ' $unit', style: unitStyle),
         ],
       ),
       textAlign: textAlign,

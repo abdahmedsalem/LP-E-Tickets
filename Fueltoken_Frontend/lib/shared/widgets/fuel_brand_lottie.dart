@@ -77,9 +77,14 @@ class FuelBrandLottie extends StatelessWidget {
 
 /// Carte solde accueil client (vert + logo à droite).
 class ClientHomeWalletCard extends StatefulWidget {
-  const ClientHomeWalletCard({super.key, required this.amount});
+  const ClientHomeWalletCard({
+    super.key,
+    required this.amount,
+    this.currency = Formatters.fallbackCurrency,
+  });
 
   final int amount;
+  final String currency;
 
   @override
   State<ClientHomeWalletCard> createState() => _ClientHomeWalletCardState();
@@ -207,7 +212,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'MRU',
+                          widget.currency,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 11,

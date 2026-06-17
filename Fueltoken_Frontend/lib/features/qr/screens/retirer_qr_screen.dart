@@ -478,9 +478,9 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                                 height: 1,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'MRU',
+                            SizedBox(height: 2),
+                            Text(
+                              Formatters.defaultCurrency,
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,

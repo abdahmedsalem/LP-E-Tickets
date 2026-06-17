@@ -78,8 +78,7 @@ class _TransferConfirmationScreenState
       final ok = await showSensitiveActionPinDialog(
         context,
         title: 'Vérification du PIN',
-        description:
-            'Saisissez votre PIN pour confirmer cette opération.',
+        description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (!ok || !mounted) return;
       await widget.args.onConfirm();
@@ -536,7 +535,7 @@ class _AmountInline extends StatelessWidget {
       TextSpan(
         children: [
           TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-          TextSpan(text: ' MRU', style: unitStyle),
+          TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
         ],
       ),
       textAlign: textAlign,
