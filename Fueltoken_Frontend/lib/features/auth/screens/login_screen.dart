@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/login_session_cache.dart';
 import '../../../core/validation/contact_validators.dart';
-import '../../../core/validation/password_validators.dart' show kOtpSmsCodeLength;
+import '../../../core/validation/password_validators.dart'
+    show kOtpSmsCodeLength;
 import '../../../shared/widgets/app_alert_dialog.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -81,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
       context,
       title: 'Contacts',
       message:
-          'Contactez votre support FuelToken ou votre point de contact habituel pour obtenir de l’aide.',
+          'Contactez votre support Tickets Carburant ou votre point de contact habituel pour obtenir de l’aide.',
       confirmLabel: 'Fermer',
       icon: Icons.mail_outline_rounded,
     );
@@ -90,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _presentLoginFailure(String raw) {
     final t = raw.trim();
     if (t.isEmpty) {
-      return 'Connexion impossible. Vérifiez le numéro ou le code OTP.';
+      return 'Connexion impossible. Vérifiez le numéro ou le code SMS.';
     }
     // Erreurs JSON-RPC / réseau (souvent > 160 car.) : les afficher pour diagnostic
     // (ex. mauvaise ODOO_JSONRPC_BASE_URL depuis un téléphone).
@@ -147,9 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       return;
     }
-    authBloc.add(
-      AuthLoginOtpRequested(identifier: _identifier.text.trim()),
-    );
+    authBloc.add(AuthLoginOtpRequested(identifier: _identifier.text.trim()));
   }
 
   @override
@@ -206,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
           },
           builder: (ctx, state) {
             final loading = state.status == AuthStatus.authenticating;
-            final buttonLabel = _otpStep ? 'Valider le code' : 'Recevoir le code OTP';
+            final buttonLabel = _otpStep ? 'Continuer' : 'Vérifier mon compte';
             return GestureDetector(
               onTap: () => FocusScope.of(context).unfocus(),
               child: SafeArea(
@@ -231,12 +230,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 18),
                             const _LoginWelcomeCopy(),
                             const SizedBox(height: 34),
-                            const _LoginSectionTitle(title: 'Connexion par OTP'),
+                            _LoginSectionTitle(
+                              title: _otpStep
+                                  ? 'Code de vérification'
+                                  : 'Vérification du compte',
+                            ),
                             const SizedBox(height: 10),
                             Text(
                               _otpStep
-                                  ? 'Saisissez le code reçu pour ${_otpIdentifier ?? _identifier.text.trim()}.'
-                                  : 'Entrez votre numéro de téléphone pour recevoir un code de connexion.',
+                                  ? 'Nous avons envoyé un code par SMS au ${_otpIdentifier ?? _identifier.text.trim()}.'
+                                  : 'Saisissez votre téléphone pour vérifier votre compte.',
                               style: const TextStyle(
                                 fontSize: 13.5,
                                 height: 1.35,
@@ -247,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 16),
                             _LoginTextField(
                               controller: _identifier,
-                              hint: 'Téléphone (8 chiffres)',
+                              hint: 'Téléphone',
                               obscure: false,
                               keyboardType: TextInputType.phone,
                               textCapitalization: TextCapitalization.none,
@@ -260,13 +263,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 18),
                               _LoginTextField(
                                 controller: _otp,
-                                hint: 'Code OTP',
+                                hint: 'Code SMS',
                                 obscure: false,
                                 validator: _validateOtp,
                                 keyboardType: TextInputType.number,
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(kOtpSmsCodeLength),
+                                  LengthLimitingTextInputFormatter(
+                                    kOtpSmsCodeLength,
+                                  ),
                                 ],
                                 borderColor: const Color(0xFFC7CEDA),
                                 counterLabel: _otpCounterLabel,
@@ -280,7 +285,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                           _otp.clear();
                                           ctx.read<AuthBloc>().add(
                                             AuthLoginOtpRequested(
-                                              identifier: _identifier.text.trim(),
+                                              identifier: _identifier.text
+                                                  .trim(),
                                             ),
                                           );
                                         },
@@ -324,7 +330,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   color: Colors.transparent,
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(12),
-                                    onTap: loading ? null : () => _submit(state),
+                                    onTap: loading
+                                        ? null
+                                        : () => _submit(state),
                                     child: Center(
                                       child: loading
                                           ? const SizedBox(
@@ -357,48 +365,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 26),
+                            const SizedBox(height: 24),
                             Center(
                               child: Wrap(
                                 alignment: WrapAlignment.center,
                                 crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 6,
-                                runSpacing: 4,
+                                spacing: 16,
+                                runSpacing: 8,
                                 children: [
-                                  const Text(
-                                    'Nouvel utilisateur ?',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      color: Color(0xFF475569),
-                                    ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        ctx.push('/forgot-password'),
+                                    child: const Text('PIN oublié ?'),
                                   ),
-                                  GestureDetector(
-                                    onTap: () => ctx.go('/register'),
-                                    child: const Text(
-                                      "S'inscrire maintenant",
-                                      style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Color(0xFF203A73),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 18,
-                                    color: Color(0xFF203A73),
+                                  TextButton(
+                                    onPressed: () => ctx.go('/register'),
+                                    child: const Text("S'inscrire maintenant"),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            Center(
-                              child: TextButton(
-                                onPressed: () => ctx.push('/forgot-password'),
-                                child: const Text('PIN oublié ?'),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 18),
                             Center(
                               child: SizedBox(
                                 width: 212,
@@ -500,33 +487,16 @@ class _LoginWelcomeCopy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Bienvenue dans votre',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 18,
-            height: 1.18,
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w400,
-            letterSpacing: -0.8,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          'espace de tickets carburant.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 18,
-            height: 1.18,
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w400,
-            letterSpacing: -0.8,
-          ),
-        ),
-      ],
+    return const Text(
+      'Tickets Carburant',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 26,
+        height: 1.12,
+        color: Color(0xFF1E293B),
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.8,
+      ),
     );
   }
 }
@@ -606,7 +576,7 @@ class _LoginTextField extends StatelessWidget {
               horizontal: 20,
               vertical: 18,
             ),
-                border: OutlineInputBorder(
+            border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(color: borderColor, width: 1.1),
             ),

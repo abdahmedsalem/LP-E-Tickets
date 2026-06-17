@@ -230,8 +230,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
       final proofPath = _proofPath!;
       final navigator = Navigator.of(context);
-      final proofBytes = _proofBytes ??
-          (kIsWeb ? null : await File(proofPath).readAsBytes());
+      final proofBytes =
+          _proofBytes ?? (kIsWeb ? null : await File(proofPath).readAsBytes());
       if (!mounted) return;
       if (proofBytes == null || proofBytes.isEmpty) {
         AppMessage.error(context, 'La preuve de paiement est illisible.');

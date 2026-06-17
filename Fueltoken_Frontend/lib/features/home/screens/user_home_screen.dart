@@ -105,7 +105,6 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
         if (user == null) {
           return const Scaffold(body: _HomeLoadingSkeleton());
         }
-        final initials = _initialsOf(user.name);
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -125,56 +124,48 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 4, 12, 0),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    AppColors.leaderGreen.withValues(
-                                      alpha: 0.22,
+                            InkWell(
+                              onTap: () => ctx.go('/settings'),
+                              customBorder: const CircleBorder(),
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AppColors.leaderGreen.withValues(
+                                        alpha: 0.22,
+                                      ),
+                                      AppColors.accentTeal.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.leaderGreen.withValues(
+                                      alpha: 0.25,
                                     ),
-                                    AppColors.accentTeal.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                  ],
-                                ),
-                                border: Border.all(
-                                  color: AppColors.leaderGreen.withValues(
-                                    alpha: 0.25,
                                   ),
                                 ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                initials,
-                                style: const TextStyle(
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.person_rounded,
                                   color: AppColors.leaderGreenDark,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
+                                  size: 27,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Bonjour,',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
                                   Text(
                                     user.name,
                                     maxLines: 1,
@@ -198,7 +189,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Compte vérifié',
+                                        'Compte v\u00e9rifi\u00e9',
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
@@ -298,11 +289,6 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
         );
       },
     );
-  }
-
-  String _initialsOf(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    return parts.map((p) => p.isEmpty ? '' : p[0]).take(2).join().toUpperCase();
   }
 }
 
