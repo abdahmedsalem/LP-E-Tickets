@@ -57,7 +57,21 @@ Future<bool> showSensitiveActionPinDialog(
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
+            Future<void> closeDialog(bool value) async {
+              FocusManager.instance.primaryFocus?.unfocus();
+              try {
+                await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+              } catch (_) {
+                // Ignore text input shutdown errors during dialog close.
+              }
+              await Future<void>.delayed(const Duration(milliseconds: 120));
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext, rootNavigator: true).pop(value);
+              }
+            }
+
             Future<void> submit() async {
+              FocusScope.of(dialogContext).unfocus();
               final pin = controller.text.trim();
               final validationError = validateFourDigitNumericPassword(pin);
               if (validationError != null) {
@@ -73,7 +87,7 @@ Future<bool> showSensitiveActionPinDialog(
                   throw StateError('PIN incorrect.');
                 }
                 if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop(true);
+                  await closeDialog(true);
                 }
               } catch (e) {
                 setState(() {
@@ -146,13 +160,9 @@ Future<bool> showSensitiveActionPinDialog(
                               errorText: errorText,
                               onChanged: () {
                                 if (busy) return;
-                                final current = controller.text.trim();
                                 setState(() {
                                   if (errorText != null) errorText = null;
                                 });
-                                if (current.length == kSecretCodeLength) {
-                                  submit();
-                                }
                               },
                               onSubmitted: () {
                                 if (!busy) submit();
@@ -163,32 +173,75 @@ Future<bool> showSensitiveActionPinDialog(
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 58,
-                      child: ElevatedButton(
-                        onPressed: busy
-                            ? null
-                            : () => Navigator.of(dialogContext).pop(false),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.ink,
-                          disabledBackgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 58,
+                            child: ElevatedButton(
+                              onPressed: busy
+                                  ? null
+                                  : () async {
+                                      await closeDialog(false);
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppColors.ink,
+                                disabledBackgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                elevation: 0,
+                                side: const BorderSide(color: Color(0xFFE8EAED)),
+                              ),
+                              child: const Text(
+                                'Annuler',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ),
                           ),
-                          elevation: 0,
-                          side: const BorderSide(color: Color(0xFFE8EAED)),
                         ),
-                        child: const Text(
-                          'إلغاء',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            height: 58,
+                            child: ElevatedButton(
+                              onPressed: busy ? null : submit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.leaderGreen,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor:
+                                    AppColors.leaderGreen.withValues(alpha: 0.55),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: busy
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Confirmer',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -201,7 +254,7 @@ Future<bool> showSensitiveActionPinDialog(
 
     return result ?? false;
   } finally {
-    controller.dispose();
+    // PATCH6: controller.dispose() disabled here; Android IME/TextField may still read it while dialog closes.
   }
 }
 
