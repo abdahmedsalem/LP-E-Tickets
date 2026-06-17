@@ -11,7 +11,7 @@ class WalletGradientCard extends StatelessWidget {
     this.miniStats = const [],
     this.eyebrow,
     this.subtitle,
-    this.currency = 'MRU',
+    this.currency = Formatters.fallbackCurrency,
     this.onTap,
     this.onEyeTap,
   });

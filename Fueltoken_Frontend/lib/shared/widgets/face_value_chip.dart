@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/utils/formatters.dart';
+
 /// Small green chip that displays a face value (e.g. 500, 1000).
 class FaceValueChip extends StatelessWidget {
   const FaceValueChip({
@@ -7,16 +9,21 @@ class FaceValueChip extends StatelessWidget {
     required this.value,
     this.size = 50,
     this.gradient = true,
+    this.currency,
   });
 
   final num value;
   final double size;
   final bool gradient;
+  final String? currency;
 
   @override
   Widget build(BuildContext context) {
     final valueFontSize = (size * 0.28).clamp(11.0, 19.0);
     final currencyFontSize = (size * 0.16).clamp(7.5, 11.0);
+    final unit = currency?.trim().isNotEmpty == true
+        ? currency!.trim()
+        : Formatters.fallbackCurrency;
     return Container(
       width: size,
       height: size,
@@ -63,7 +70,7 @@ class FaceValueChip extends StatelessWidget {
             ),
             SizedBox(height: size * 0.04),
             Text(
-              'MRU',
+              unit,
               style: TextStyle(
                 fontSize: currencyFontSize,
                 fontWeight: FontWeight.w800,
