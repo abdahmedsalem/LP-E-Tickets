@@ -31,6 +31,24 @@ class AppUser extends Equatable {
     required this.createdAt,
   });
 
+
+  static String _safeText(dynamic value) {
+    if (value == null || value == false) return '';
+    final s = value.toString().trim();
+    if (s.isEmpty) return '';
+    final lower = s.toLowerCase();
+    if (lower == 'false' || lower == 'null') return '';
+    return s;
+  }
+
+  static String _firstSafeText(List<dynamic> values) {
+    for (final value in values) {
+      final s = _safeText(value);
+      if (s.isNotEmpty) return s;
+    }
+    return '';
+  }
+
   /// Profil issu du flux d’inscription (JWT) ou du profil Odoo.
   factory AppUser.fromOtpApiUserJson(Map<String, dynamic> u) {
     final idRaw = u['id_utilisateur'];
@@ -44,7 +62,7 @@ class AppUser extends Equatable {
     if (name.isEmpty) {
       name = u['username']?.toString() ?? 'Utilisateur';
     }
-    final telRaw = u['telephone']?.toString() ?? '';
+    final telRaw = _safeText(u['telephone']);
     final telDigits = telRaw.replaceAll(RegExp(r'\D'), '');
     String phone = '';
     if (telDigits.length == 8) {
@@ -88,7 +106,7 @@ class AppUser extends Equatable {
 
     return AppUser(
       id: id,
-      email: u['email']?.toString() ?? '',
+      email: _safeText(u['email']),
       name: name,
       phone: phone,
       role: role,
@@ -149,11 +167,11 @@ class AppUser extends Equatable {
       name = u['login']?.toString() ?? u['email']?.toString() ?? 'Utilisateur';
     }
 
-    final telRaw =
-        u['phone']?.toString() ??
-        u['mobile']?.toString() ??
-        u['telephone']?.toString() ??
-        '';
+    final telRaw = _firstSafeText([
+      u['phone'],
+      u['mobile'],
+      u['telephone'],
+    ]);
     final telDigits = telRaw.replaceAll(RegExp(r'\D'), '');
     String phone = '';
     if (telDigits.length == 8) {
@@ -186,7 +204,7 @@ class AppUser extends Equatable {
 
     return AppUser(
       id: id,
-      email: u['email']?.toString() ?? '',
+      email: _safeText(u['email']),
       name: name,
       phone: phone,
       role: resolvedRole,

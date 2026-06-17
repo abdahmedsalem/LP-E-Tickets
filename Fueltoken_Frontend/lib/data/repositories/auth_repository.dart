@@ -32,16 +32,42 @@ class AuthRepository {
 
   AppUser? get currentUser => _current;
 
+  bool _isUsableIdentifier(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return false;
+    final lower = t.toLowerCase();
+    return lower != 'false' && lower != 'null';
+  }
+
   String _cacheIdentifier(String raw) {
     final t = raw.trim();
+    if (!_isUsableIdentifier(t)) return '';
     if (t.contains('@')) return t.toLowerCase();
-    return normalizePhoneIdentifierForLookup(t);
+
+    // Doctrine Mauritanie UI/cache : l'utilisateur manipule toujours 8 chiffres.
+    // Les préfixes techniques (+222 / 222) sont ajoutés seulement côté SMS/API si besoin.
+    final digits = t.replaceAll(RegExp(r'\\D'), '');
+    if (digits.length == 8) return digits;
+    if (digits.length == 11 && digits.startsWith('222')) {
+      return digits.substring(3);
+    }
+
+    final normalized = normalizePhoneIdentifierForLookup(t);
+    final normalizedDigits = normalized.replaceAll(RegExp(r'\\D'), '');
+    if (normalizedDigits.length == 8) return normalizedDigits;
+    if (normalizedDigits.length == 11 && normalizedDigits.startsWith('222')) {
+      return normalizedDigits.substring(3);
+    }
+
+    return normalized;
   }
 
   String _cacheIdentifierForUser(AppUser user) {
     final phone = user.phone.trim();
-    if (phone.isNotEmpty) return _cacheIdentifier(phone);
-    return _cacheIdentifier(user.email);
+    if (_isUsableIdentifier(phone)) return _cacheIdentifier(phone);
+    final email = user.email.trim();
+    if (_isUsableIdentifier(email)) return _cacheIdentifier(email);
+    return '';
   }
 
   Future<bool> hasLocalUnlockPin({String? identifier}) async {
@@ -51,10 +77,13 @@ class AuthRepository {
     if (storedIdentifier == null || storedIdentifier.trim().isEmpty) {
       return false;
     }
-    final expected = identifier != null
+    var expected = identifier != null
         ? _cacheIdentifier(identifier)
         : (_current == null ? null : _cacheIdentifierForUser(_current!));
-    if (expected == null || expected.isEmpty) return false;
+    if (expected == null || expected.isEmpty) {
+      expected = _cacheIdentifier(storedIdentifier);
+    }
+    if (expected.isEmpty) return false;
     return _cacheIdentifier(storedIdentifier) == expected;
   }
 
