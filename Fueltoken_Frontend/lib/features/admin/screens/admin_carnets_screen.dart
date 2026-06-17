@@ -308,10 +308,7 @@ class _AdminCarnetsScreenState extends State<AdminCarnetsScreen> {
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'Nouveau type',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
         ),
       ),
       body: _loading
@@ -474,10 +471,13 @@ class _CarnetTypeEditorSheet extends StatefulWidget {
 }
 
 String _carnetCodeFrom(int faceCount, int faceValue) =>
-    'C$faceCount-$faceValue';
+    'C${faceCount}T-$faceValue';
 
-String _carnetNameFrom(int faceCount, int faceValue) =>
-    'Carnet ${Formatters.numberFr(faceValue)} MRU';
+String _carnetPreviewFrom(int faceCount, int faceValue, String currency) {
+  final base = _carnetCodeFrom(faceCount, faceValue);
+  final c = currency.trim();
+  return c.isEmpty ? '$base + devise société' : '$base$c';
+}
 
 class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
   late final TextEditingController _faceCount;
@@ -520,7 +520,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
     final fc = _parsedFaceCount;
     final fv = _parsedFaceValue;
     if (fc == null || fv == null || fc <= 0 || fv <= 0) return '—';
-    return _carnetNameFrom(fc, fv);
+    return _carnetPreviewFrom(fc, fv, widget.existing?.displayCurrency ?? '');
   }
 
   Future<void> _submit() async {
@@ -537,14 +537,10 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
       );
       return;
     }
-    final name = _carnetNameFrom(fc, fv);
-    final code = _carnetCodeFrom(fc, fv);
     final cid = widget.defaultCompanyId;
     setState(() => _submitting = true);
     try {
       final base = <String, dynamic>{
-        'name': name,
-        'code': code,
         'face_count': fc,
         'face_value': fv,
         'validity_days': vd,
@@ -682,7 +678,7 @@ class _CarnetTypeEditorSheetState extends State<_CarnetTypeEditorSheet> {
                       keyboardType: TextInputType.number,
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
-                        labelText: 'Valeur nominale (MRU)',
+                        labelText: 'Valeur nominale du ticket',
                         hintText: 'Ex. 500',
                         border: OutlineInputBorder(),
                       ),
@@ -871,17 +867,20 @@ class _AdminCarnetTypeCard extends StatelessWidget {
                       children: [
                         _StatChip(
                           icon: Icons.payments_outlined,
-                          label: '${Formatters.number(type.faceValue)} MRU',
+                          label:
+                              '${Formatters.number(type.faceValue)} ${type.displayCurrency}',
                           accent: AppColors.primary,
                         ),
                         _StatChip(
                           icon: Icons.confirmation_number_outlined,
-                          label: '${type.size} ticket${type.size > 1 ? 's' : ''}',
+                          label:
+                              '${type.size} ticket${type.size > 1 ? 's' : ''}',
                           accent: AppColors.success,
                         ),
                         _StatChip(
                           icon: Icons.summarize_outlined,
-                          label: Formatters.money(type.totalAmount),
+                          label:
+                              '${Formatters.number(type.totalAmount)} ${type.displayCurrency}',
                           accent: accent,
                         ),
                         _StatChip(

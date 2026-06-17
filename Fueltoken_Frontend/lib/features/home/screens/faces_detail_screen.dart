@@ -38,6 +38,9 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   Map<String, String> _carnetNameById = {};
   Map<String, String> _carnetNameByCode = {};
   Map<int, String> _carnetNameByFaceValue = {};
+  Map<String, String> _carnetCurrencyById = {};
+  Map<String, String> _carnetCurrencyByCode = {};
+  Map<int, String> _carnetCurrencyByFaceValue = {};
 
   late final VoidCallback _facesBusListener;
 
@@ -77,14 +80,26 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       final nameById = <String, String>{};
       final nameByCode = <String, String>{};
       final nameByFaceValue = <int, String>{};
+      final currencyById = <String, String>{};
+      final currencyByCode = <String, String>{};
+      final currencyByFaceValue = <int, String>{};
       for (final type in result.types) {
+        final currency = type.displayCurrency.trim();
         if (type.id.trim().isNotEmpty) {
-          byId[type.id.trim()] = type.size;
-          nameById[type.id.trim()] = type.name;
+          final key = type.id.trim();
+          byId[key] = type.size;
+          nameById[key] = type.name;
+          if (currency.isNotEmpty) {
+            currencyById[key] = currency;
+          }
         }
         if (type.code.trim().isNotEmpty) {
-          byCode[type.code.trim().toUpperCase()] = type.size;
-          nameByCode[type.code.trim().toUpperCase()] = type.name;
+          final key = type.code.trim().toUpperCase();
+          byCode[key] = type.size;
+          nameByCode[key] = type.name;
+          if (currency.isNotEmpty) {
+            currencyByCode[key] = currency;
+          }
         }
         if (type.name.trim().isNotEmpty) {
           byName[type.name.trim().toLowerCase()] = type.size;
@@ -92,6 +107,9 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         if (type.faceValue > 0 && !byFaceValue.containsKey(type.faceValue)) {
           byFaceValue[type.faceValue] = type.size;
           nameByFaceValue[type.faceValue] = type.name;
+          if (currency.isNotEmpty) {
+            currencyByFaceValue[type.faceValue] = currency;
+          }
         }
       }
       setState(() {
@@ -102,6 +120,9 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         _carnetNameById = nameById;
         _carnetNameByCode = nameByCode;
         _carnetNameByFaceValue = nameByFaceValue;
+        _carnetCurrencyById = currencyById;
+        _carnetCurrencyByCode = currencyByCode;
+        _carnetCurrencyByFaceValue = currencyByFaceValue;
       });
     } catch (_) {
       // Fallback to local inference in the UI.
@@ -145,7 +166,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       case _CarnetQuickFilter.all:
         return true;
       case _CarnetQuickFilter.active:
-        return !line.isExpired;
+        return !line.isExpired && line.availableQty > 0;
       case _CarnetQuickFilter.expired:
         return line.isExpired;
     }
@@ -182,34 +203,82 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     return 0;
   }
 
+  String _normalizedCarnetLabel(
+    String raw, {
+    int? fallbackSize,
+    int? fallbackFaceValue,
+  }) {
+    final value = raw.trim();
+    if (value.isEmpty) return '';
+    return Formatters.normalizeCarnetTypeLabel(
+      value,
+      fallbackSize: fallbackSize,
+      fallbackFaceValue: fallbackFaceValue,
+    );
+  }
+
   String _carnetTypeLabelFor(FaceLine line) {
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return _normalizedCarnetLabel(rawName);
+    }
+
+    final byId = _carnetNameById[line.carnetTypeId.trim()];
+    if (byId != null && byId.trim().isNotEmpty) {
+      return _normalizedCarnetLabel(byId);
+    }
+
+    final byCode = _carnetNameByCode[line.carnetTypeCode.trim().toUpperCase()];
+    if (byCode != null && byCode.trim().isNotEmpty) {
+      return _normalizedCarnetLabel(byCode);
+    }
+
+    final byFaceValue = _carnetNameByFaceValue[line.faceValue];
+    if (byFaceValue != null && byFaceValue.trim().isNotEmpty) {
+      return _normalizedCarnetLabel(byFaceValue);
+    }
+
+    final rawCode = line.carnetTypeCode.trim();
+    if (rawCode.isNotEmpty) return rawCode;
+
     final carnetSize = _carnetSizeFor(line);
     if (carnetSize > 0) {
       return Formatters.carnetTypeLabel(carnetSize, line.faceValue);
     }
 
-    final byId = _carnetNameById[line.carnetTypeId.trim()];
-    if (byId != null && byId.trim().isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(byId);
-    }
-
-    final byCode = _carnetNameByCode[line.carnetTypeCode.trim().toUpperCase()];
-    if (byCode != null && byCode.trim().isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(byCode);
-    }
-
-    final byFaceValue = _carnetNameByFaceValue[line.faceValue];
-    if (byFaceValue != null && byFaceValue.trim().isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(byFaceValue);
-    }
-
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) return Formatters.normalizeCarnetTypeLabel(rawName);
-
-    final rawCode = line.carnetTypeCode.trim();
-    if (rawCode.isNotEmpty) return rawCode;
-
     return 'Carnet';
+  }
+
+  String _currencyFor(FaceLine line) {
+    final byId = _carnetCurrencyById[line.carnetTypeId.trim()];
+    if (byId != null && byId.trim().isNotEmpty) return byId.trim();
+
+    final byCode =
+        _carnetCurrencyByCode[line.carnetTypeCode.trim().toUpperCase()];
+    if (byCode != null && byCode.trim().isNotEmpty) return byCode.trim();
+
+    final byFaceValue = _carnetCurrencyByFaceValue[line.faceValue];
+    if (byFaceValue != null && byFaceValue.trim().isNotEmpty) {
+      return byFaceValue.trim();
+    }
+
+    return '';
+  }
+
+  String _amountLabel(int amount, FaceLine line) {
+    final currency = _currencyFor(line);
+    final number = Formatters.numberFr(amount);
+    return currency.isEmpty ? number : '$number $currency';
+  }
+
+  String _summaryAmountLabel(List<FaceLine> lines) {
+    if (lines.isEmpty) return Formatters.numberFr(0);
+    final amount = lines.fold<int>(0, (sum, line) => sum + line.availableValue);
+    final ref = lines.firstWhere(
+      (line) => _currencyFor(line).isNotEmpty,
+      orElse: () => lines.first,
+    );
+    return _amountLabel(amount, ref);
   }
 
   Future<void> _openCarnetDetail(FaceLine line) async {
@@ -409,6 +478,24 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             children: [
               const _HistoryAlignedPageHeader(title: 'Mes carnets'),
               const SizedBox(height: 18),
+              if (_liveLines.isNotEmpty) ...[
+                _CarnetsSummaryCard(
+                  availableTickets: _liveLines.fold<int>(
+                    0,
+                    (sum, line) => sum + line.availableQty,
+                  ),
+                  availableAmountLabel: _summaryAmountLabel(_liveLines),
+                  activeQrTickets: _liveLines.fold<int>(
+                    0,
+                    (sum, line) => sum + line.qrActiveQty,
+                  ),
+                  expiredTickets: _liveLines.fold<int>(
+                    0,
+                    (sum, line) => sum + line.expiredQty,
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _CarnetFilterChips(
@@ -453,6 +540,11 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                         _CarnetLineCard(
                           line: line,
                           carnetTypeLabel: _carnetTypeLabelFor(line),
+                          faceValueLabel: _amountLabel(line.faceValue, line),
+                          availableAmountLabel: _amountLabel(
+                            line.availableValue,
+                            line,
+                          ),
                           onTap: () => _openCarnetDetail(line),
                         ),
                     ]),
@@ -465,6 +557,145 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 }
 
 enum _CarnetQuickFilter { all, active, expired }
+
+class _CarnetsSummaryCard extends StatelessWidget {
+  const _CarnetsSummaryCard({
+    required this.availableTickets,
+    required this.availableAmountLabel,
+    required this.activeQrTickets,
+    required this.expiredTickets,
+  });
+
+  final int availableTickets;
+  final String availableAmountLabel;
+  final int activeQrTickets;
+  final int expiredTickets;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Résumé portefeuille',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _CarnetSummaryMetric(
+                  label: 'Disponibles',
+                  value: Formatters.numberFr(availableTickets),
+                  icon: Icons.confirmation_number_outlined,
+                  accent: AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CarnetSummaryMetric(
+                  label: 'Valeur',
+                  value: availableAmountLabel,
+                  icon: Icons.payments_outlined,
+                  accent: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _CarnetSummaryMetric(
+                  label: 'QR actifs',
+                  value: Formatters.numberFr(activeQrTickets),
+                  icon: Icons.qr_code_2_outlined,
+                  accent: AppColors.warning,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CarnetSummaryMetric(
+                  label: 'Expirés',
+                  value: Formatters.numberFr(expiredTickets),
+                  icon: Icons.event_busy_outlined,
+                  accent: AppColors.danger,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CarnetSummaryMetric extends StatelessWidget {
+  const _CarnetSummaryMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: accent.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: accent),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.muted.withValues(alpha: 0.95),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.ink,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _HistoryAlignedPageHeader extends StatelessWidget {
   const _HistoryAlignedPageHeader({required this.title});
@@ -502,7 +733,7 @@ class _CarnetFilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       (_CarnetQuickFilter.all, 'Tous'),
-      (_CarnetQuickFilter.active, 'Actifs'),
+      (_CarnetQuickFilter.active, 'Disponibles'),
       (_CarnetQuickFilter.expired, 'Expirés'),
     ];
 
@@ -710,7 +941,11 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
               color: AppColors.primaryTint,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(Icons.layers_outlined, size: 20, color: AppColors.primaryDeep),
+            child: Icon(
+              Icons.layers_outlined,
+              size: 20,
+              color: AppColors.primaryDeep,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -866,61 +1101,209 @@ class _CarnetLineCard extends StatelessWidget {
   const _CarnetLineCard({
     required this.line,
     required this.carnetTypeLabel,
+    required this.faceValueLabel,
+    required this.availableAmountLabel,
     required this.onTap,
   });
 
   final FaceLine line;
   final String carnetTypeLabel;
+  final String faceValueLabel;
+  final String availableAmountLabel;
   final VoidCallback onTap;
-
-  String _displayTitle() {
-    final restants = '${Formatters.numberFr(line.availableQty)} restants';
-    return '$carnetTypeLabel • $restants';
-  }
 
   @override
   Widget build(BuildContext context) {
+    final expired = line.isExpired;
+    final stateLabel = expired
+        ? 'Expiré'
+        : line.availableQty > 0
+        ? 'Disponible'
+        : 'Indisponible';
+    final stateColor = expired
+        ? AppColors.danger
+        : line.availableQty > 0
+        ? AppColors.success
+        : AppColors.warning;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: stateColor.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.confirmation_number_outlined,
+                    size: 22,
+                    color: stateColor,
+                  ),
+                ),
+                const SizedBox(width: 11),
                 Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        carnetTypeLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.ink,
+                          height: 1.12,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Ticket : $faceValueLabel',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.2,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                          height: 1.15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: stateColor.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                   child: Text(
-                    _displayTitle(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
+                    stateLabel,
+                    style: TextStyle(
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      height: 1.15,
+                      color: stateColor,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-                height: 1,
+            const SizedBox(height: 13),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F9FB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.line.withValues(alpha: 0.75),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CarnetLineMetric(
+                          label: 'Tickets disponibles',
+                          value: Formatters.numberFr(line.availableQty),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _CarnetLineMetric(
+                          label: 'Valeur disponible',
+                          value: availableAmountLabel,
+                          alignEnd: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CarnetLineMetric(
+                          label: 'QR actifs',
+                          value: Formatters.numberFr(line.qrActiveQty),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _CarnetLineMetric(
+                          label: 'Expire le',
+                          value: Formatters.dateTimeDash(line.expirationDate),
+                          alignEnd: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CarnetLineMetric extends StatelessWidget {
+  const _CarnetLineMetric({
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+  });
+
+  final String label;
+  final String value;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.muted,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: AppColors.ink,
+            height: 1.1,
+          ),
+        ),
+      ],
     );
   }
 }

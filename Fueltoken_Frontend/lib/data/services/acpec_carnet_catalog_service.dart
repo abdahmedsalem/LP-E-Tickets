@@ -666,7 +666,7 @@ class _CarnetAgg {
 
   String get displayName {
     if (name.trim().isNotEmpty) return name.trim();
-    return 'Ticket $size × $faceValue';
+    return 'C${size}T-$faceValue';
   }
 }
 
