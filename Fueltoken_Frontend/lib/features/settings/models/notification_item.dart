@@ -12,7 +12,7 @@ class NotificationPurchaseLineItem {
   final String quantityLabel;
   final String amountLabel;
 
-  /// Valeur unitaire d'un ticket (ex. 2000 MRU).
+  /// Valeur unitaire d'un ticket.
   final int faceValue;
 
   /// Nombre de tickets par carnet (ex. 10).
