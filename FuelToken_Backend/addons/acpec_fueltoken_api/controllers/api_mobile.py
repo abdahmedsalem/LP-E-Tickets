@@ -318,6 +318,48 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             })
         return items
 
+    def _mobile_carnet_type_payload(self, rec):
+        currency = rec.currency_id or rec.company_id.currency_id
+        face_count = rec.face_count or 0
+        face_value = rec.face_value or 0
+        carnet_amount = rec.carnet_amount or (face_count * face_value)
+        sequence = getattr(rec, 'sequence', 0)
+        try:
+            ticket_face = rec.ticket_face_id
+        except Exception:
+            ticket_face = False
+
+        return {
+            'id': rec.id,
+            'code': rec.code or False,
+            'name': self._carnet_type_label(rec),
+            'display_name': self._carnet_type_label(rec),
+
+            'ticket_face_id': ticket_face.id if ticket_face else False,
+            'ticket_face_name': ticket_face.name if ticket_face else False,
+
+            'face_count': face_count,
+            'ticket_count': face_count,
+
+            'face_value': face_value,
+            'carnet_amount': carnet_amount,
+            'total_amount': carnet_amount,
+            'amount_total': carnet_amount,
+
+            'validity_days': rec.validity_days or 0,
+            'expiry_days': rec.validity_days or 0,
+
+            'active': rec.active,
+            'sequence': sequence,
+
+            'company_id': rec.company_id.id if rec.company_id else False,
+            'company_name': rec.company_id.name if rec.company_id else False,
+
+            'currency_id': currency.id if currency else False,
+            'currency_name': currency.name if currency else False,
+            'currency_symbol': currency.symbol if currency else False,
+        }
+
     @http.route('/api/acpec/fueltoken/v1/mobile/carnet-types', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_types(self, **kwargs):
         try:
@@ -327,17 +369,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 ('company_id', '=', wallet.company_id.id),
             ]
             records = request.env['acpec.fuel.carnet.type'].sudo().search(domain, order='face_value, face_count, code')
-            items = []
-            for rec in records:
-                items.append({
-                    'id': rec.id,
-                    'code': rec.code,
-                    'name': self._carnet_type_label(rec),
-                    'face_count': rec.face_count,
-                    'face_value': rec.face_value,
-                    'carnet_amount': rec.carnet_amount,
-                    'validity_days': rec.validity_days,
-                })
+            items = [self._mobile_carnet_type_payload(rec) for rec in records]
             return self._json_response({'items': items, 'count': len(items)})
         except Exception as exc:
             return self._handle_exception_response(exc)
