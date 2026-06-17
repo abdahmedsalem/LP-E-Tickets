@@ -21,6 +21,11 @@ class AcpecCarnetTypesMapper {
     return int.tryParse(s.split('.').first) ?? d;
   }
 
+  static String _string(dynamic v, [String d = '']) {
+    final s = v?.toString().trim() ?? '';
+    return s.isEmpty ? d : s;
+  }
+
   static bool _isActiveRow(Map<String, dynamic> m) {
     if (m.containsKey('active')) {
       final a = m['active'];
@@ -137,8 +142,27 @@ class AcpecCarnetTypesMapper {
 
     final validityDays = math.max(
       1,
-      _int(row['validity_days'] ?? row['validity_after_validation_days'], 365),
+      _int(
+        row['validity_days'] ??
+            row['expiry_days'] ??
+            row['validity_after_validation_days'],
+        365,
+      ),
     );
+
+    final apiTotalAmount = _int(
+      row['total_amount'] ??
+          row['amount_total'] ??
+          row['carnet_amount'] ??
+          row['booklet_amount'],
+      0,
+    );
+
+    final currencyName = _string(
+      row['currency_name'] ?? row['currency'] ?? row['currency_code'],
+      'MRU',
+    );
+    final currencySymbol = _string(row['currency_symbol']);
 
     final cidRaw = row['company_id'] ?? row['company_code'] ?? row['company'];
     var cid = cidRaw?.toString().trim() ?? '';
@@ -163,6 +187,9 @@ class AcpecCarnetTypesMapper {
       companyId: cid,
       active: active,
       validityDays: validityDays,
+      apiTotalAmount: apiTotalAmount > 0 ? apiTotalAmount : null,
+      currencyName: currencyName,
+      currencySymbol: currencySymbol,
     );
   }
 
