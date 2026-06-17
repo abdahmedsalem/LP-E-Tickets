@@ -18,7 +18,7 @@ if (-not (Test-Path $envFile)) {
     } else {
         @"
 # Configuration equipe FuelToken
-ODOO_JSONRPC_BASE_URL=http://57.128.181.183:8199
+ODOO_JSONRPC_BASE_URL=http://127.0.0.1:8069
 ODOO_USE_ACPEC_AUTH=true
 ODOO_FUEL_ENABLED=true
 "@ | Set-Content -Path $envFile -Encoding UTF8

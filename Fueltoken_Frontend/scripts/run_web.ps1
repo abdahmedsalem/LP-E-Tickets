@@ -13,7 +13,7 @@ Set-Location $Root
 $envDir = Join-Path $Root "scripts\env"
 $envFile = Join-Path $envDir "flutter.mobile.env"
 $envLocalOverride = Join-Path $envDir "flutter.mobile.local.env"
-$TeamOdooUrl = "http://localhost:8069"
+$TeamOdooUrl = "http://127.0.0.1:8069"
 $webPort = 8091
 
 function Import-FlutterMobileEnvFile([string]$path) {
@@ -57,6 +57,7 @@ if (-not $env:ODOO_FUEL_ENABLED) { $env:ODOO_FUEL_ENABLED = "true" }
 
 $defines = @(
     "--release",
+    "--dart-define=ODOO_JSONRPC_BASE_URL=$($env:ODOO_JSONRPC_BASE_URL)",
     "--dart-define=ODOO_USE_ACPEC_AUTH=$($env:ODOO_USE_ACPEC_AUTH)",
     "--dart-define=ODOO_FUEL_ENABLED=$($env:ODOO_FUEL_ENABLED)"
 )

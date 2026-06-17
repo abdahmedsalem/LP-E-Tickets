@@ -16,7 +16,7 @@ ENV_DIR="${ROOT}/scripts/env"
 ENV_LOCAL="${ENV_DIR}/flutter.mobile.env"
 ENV_EXAMPLE="${ENV_DIR}/flutter.mobile.example.env"
 ENV_LOCAL_OVERRIDE="${ENV_DIR}/flutter.mobile.local.env"
-TEAM_ODOO_URL="${ODOO_JSONRPC_BASE_URL:-http://57.128.181.183:8199}"
+TEAM_ODOO_URL="${ODOO_JSONRPC_BASE_URL:-http://127.0.0.1:8069}"
 
 mkdir -p "$ENV_DIR"
 

@@ -197,7 +197,7 @@ class _NotificationCard extends StatelessWidget {
 
     return AppCard(
       onTap: onToggleDetails,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
       borderColor: item.read ? AppColors.line : accent.withValues(alpha: 0.38),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,9 +219,9 @@ class _NotificationCard extends StatelessWidget {
                         letterSpacing: -0.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
-                    dateLabel,
+                      dateLabel,
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,

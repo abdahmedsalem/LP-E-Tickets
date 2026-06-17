@@ -18,7 +18,7 @@ $envDir = Join-Path $root "scripts\env"
 $envFile = Join-Path $envDir "flutter.mobile.env"
 $envExample = Join-Path $envDir "flutter.mobile.example.env"
 $envLocalOverride = Join-Path $envDir "flutter.mobile.local.env"
-$teamOdooUrl = "http://localhost:8069"
+$teamOdooUrl = "http://127.0.0.1:8069"
 
 function Write-EnvDiag {
     param([string]$Message)
