@@ -509,7 +509,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
               isExpanded: _expanded,
               headerBuilder: (context, isExpanded) {
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+                  padding: const EdgeInsets.fromLTRB(10, 16, 10, 16),
                   child: Row(
                     children: [
                       Expanded(
@@ -527,7 +527,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                                     ._cPrimaryText,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 8),
                             Text(
                               '$dateLabel $hourLabel',
                               style: const TextStyle(
@@ -564,7 +564,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                 );
               },
               body: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
                 child: _StationHistoryDetailBody(
                   transaction: tx,
                   amount: amount,

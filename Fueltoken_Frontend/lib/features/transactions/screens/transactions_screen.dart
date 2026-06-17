@@ -134,6 +134,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void _setQuickFilter(_HistoryQuickFilter next) {
     if (_quickFilter == next) return;
     setState(() => _quickFilter = next);
+    if (AppEnvironment.useAcpecLiveData) {
+      unawaited(_reloadAcpecForCurrentFilter());
+    }
     if (_scroll.hasClients) {
       _scroll.animateTo(
         0,
@@ -373,7 +376,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Future<void> _reloadAcpecForCurrentFilter() async {
     if (!AppEnvironment.useAcpecLiveData) return;
-    if (_effectiveFilter == null) {
+    if (_effectiveFilter == null && _quickFilter == _HistoryQuickFilter.all) {
       await _loadAcpec(reset: true);
     } else {
       await _loadAcpecFullRange();
