@@ -11,6 +11,9 @@ class CarnetType extends Equatable {
   final String companyId;
   final bool active;
   final int validityDays;
+  final int? apiTotalAmount;
+  final String currencyName;
+  final String currencySymbol;
 
   const CarnetType({
     required this.id,
@@ -21,9 +24,20 @@ class CarnetType extends Equatable {
     required this.companyId,
     this.active = true,
     this.validityDays = 365,
+    this.apiTotalAmount,
+    this.currencyName = 'MRU',
+    this.currencySymbol = '',
   });
 
-  int get totalAmount => size * faceValue;
+  int get totalAmount => apiTotalAmount ?? (size * faceValue);
+
+  String get displayCurrency {
+    final c = currencyName.trim();
+    if (c.isNotEmpty) return c;
+    final s = currencySymbol.trim();
+    if (s.isNotEmpty) return s;
+    return 'MRU';
+  }
 
   @override
   List<Object?> get props => [
@@ -35,5 +49,8 @@ class CarnetType extends Equatable {
     companyId,
     active,
     validityDays,
+    apiTotalAmount,
+    currencyName,
+    currencySymbol,
   ];
 }

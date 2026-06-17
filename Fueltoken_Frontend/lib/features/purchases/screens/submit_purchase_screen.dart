@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -176,24 +176,35 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   Future<void> _pickProof() async {
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+        allowMultiple: false,
+        withData: true,
       );
-      if (picked != null) {
-        final bytes = await picked.readAsBytes();
-        if (mounted) {
-          setState(() {
-            _proofPath = picked.path;
-            _proofBytes = bytes;
-          });
-        }
+
+      final file = result?.files.single;
+      if (file == null) return;
+
+      final bytes =
+          file.bytes ??
+          (file.path == null || kIsWeb
+              ? null
+              : await File(file.path!).readAsBytes());
+
+      if (bytes == null || bytes.isEmpty) {
+        if (!mounted) return;
+        AppMessage.error(context, 'La preuve de paiement est illisible.');
+        return;
       }
+
+      setState(() {
+        _proofPath = file.path ?? file.name;
+        _proofBytes = bytes;
+      });
     } catch (_) {
-      if (mounted) {
-        AppMessage.error(context, "Impossible de charger l'image. Réessayez.");
-      }
+      if (!mounted) return;
+      AppMessage.error(context, "Impossible de charger la preuve de paiement.");
     }
   }
 
@@ -338,6 +349,235 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     }
   }
 
+  Future<void> _openPaymentProofSheet() async {
+    if (!_hasSelection || _submitting) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, modalSetState) {
+            final selectedTypes = _offerTypes
+                .where((type) => (_qty[type.id] ?? 0) > 0)
+                .toList();
+            final totalAmount = _totalAmount();
+            final currency = _selectedCurrency;
+            final totalCarnets = selectedTypes.fold<int>(
+              0,
+              (sum, type) => sum + (_qty[type.id] ?? 0),
+            );
+            final totalTickets = selectedTypes.fold<int>(
+              0,
+              (sum, type) => sum + ((_qty[type.id] ?? 0) * type.size),
+            );
+            final hasProof = _proofPath != null;
+            final canSubmit = hasProof && !_submitting;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0E3E8),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Valider la commande',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'V\u00e9rifiez le panier, puis ajoutez la preuve de paiement.',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.muted,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F9FB),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: AppColors.line.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'R\u00e9sum\u00e9 panier',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              for (final type in selectedTypes)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '${_qty[type.id] ?? 0} \u00d7 ${type.name}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.ink2,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${Formatters.numberFr((_qty[type.id] ?? 0) * type.totalAmount)} $currency',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.ink,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              const Divider(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '$totalCarnets carnet(s) / $totalTickets ticket(s)',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.muted,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${Formatters.numberFr(totalAmount)} $currency',
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'PREUVE DE PAIEMENT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.9,
+                            color: AppColors.muted.withValues(alpha: 0.9),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _ProofPicker(
+                          path: _proofPath,
+                          onTap: () async {
+                            await _pickProof();
+                            if (mounted) {
+                              modalSetState(() {});
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: canSubmit
+                                ? () async {
+                                    Navigator.of(bottomSheetContext).pop();
+                                    await _submit();
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF43A047),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(
+                                0xFF43A047,
+                              ).withValues(alpha: 0.35),
+                              disabledForegroundColor: Colors.white.withValues(
+                                alpha: 0.7,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _submitting
+                                ? const AppInlineLoading(size: 20)
+                                : const Text(
+                                    'Soumettre la commande',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String get _selectedCurrency {
+    for (final type in _offerTypes) {
+      if ((_qty[type.id] ?? 0) > 0) {
+        return type.displayCurrency;
+      }
+    }
+    return _offerTypes.isNotEmpty ? _offerTypes.first.displayCurrency : 'MRU';
+  }
+
   @override
   Widget build(BuildContext context) {
     final amt = _totalAmount();
@@ -350,9 +590,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: _BottomBar(
             totalAmount: amt,
+            currency: _selectedCurrency,
             hasSelection: _hasSelection,
             submitting: _submitting,
-            onSubmit: _submitting ? null : _submit,
+            onSubmit: _submitting ? null : _openPaymentProofSheet,
           ),
         ),
       ),
@@ -480,20 +721,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'PREUVE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.9,
-                        color: AppColors.muted.withValues(alpha: 0.9),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    const SizedBox(height: 8),
-                    _ProofPicker(path: _proofPath, onTap: _pickProof),
                   ],
                 ],
               ),
@@ -685,7 +912,7 @@ class _CarnetCard extends StatelessWidget {
               Align(
                 alignment: Alignment.topRight,
                 child: Text(
-                  '${Formatters.numberFr(type.totalAmount)} MRU',
+                  '${Formatters.numberFr(type.totalAmount)} ${type.displayCurrency}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
@@ -706,7 +933,7 @@ class _CarnetCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Carnet ${Formatters.numberFr(type.size)} × ${Formatters.numberFr(type.faceValue)}',
+                          type.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
@@ -773,12 +1000,14 @@ class _CarnetCard extends StatelessWidget {
 class _BottomBar extends StatelessWidget {
   const _BottomBar({
     required this.totalAmount,
+    required this.currency,
     required this.hasSelection,
     required this.submitting,
     required this.onSubmit,
   });
 
   final int totalAmount;
+  final String currency;
   final bool hasSelection;
   final bool submitting;
   final VoidCallback? onSubmit;
@@ -804,7 +1033,7 @@ class _BottomBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'TOTAL DE LA COMMANDE',
+                  'TOTAL PANIER',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 9,
@@ -832,7 +1061,7 @@ class _BottomBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'MRU',
+                        currency,
                         style: TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -867,7 +1096,7 @@ class _BottomBar extends StatelessWidget {
               child: submitting
                   ? const AppInlineLoading(size: 20)
                   : const Text(
-                      'Soumettre',
+                      'Continuer',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
