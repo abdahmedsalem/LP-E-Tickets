@@ -36,11 +36,6 @@ class ClientShellScaffold extends StatelessWidget {
       icon: Icons.receipt_long_outlined,
       selectedIcon: Icons.receipt_long,
     ),
-    _ClientTabDestination(
-      label: 'Profil',
-      icon: Icons.person_outline_rounded,
-      selectedIcon: Icons.person_rounded,
-    ),
   ];
 
   void _onTabTap(int index) {
@@ -74,6 +69,7 @@ class ClientShellScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -81,8 +77,8 @@ class ClientShellScaffold extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: Container(
         width: double.infinity,
-        height: 86,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        height: 86 + bottomInset,
+        padding: EdgeInsets.fromLTRB(12, 8, 12, 8 + bottomInset),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: const BorderRadius.only(
