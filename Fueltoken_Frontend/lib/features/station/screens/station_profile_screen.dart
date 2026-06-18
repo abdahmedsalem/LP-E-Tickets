@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/config/odoo_fueltoken_rpc_config.dart';
+import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_context.dart';
@@ -59,12 +61,22 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
     return e.toString().replaceFirst('Exception: ', '').trim();
   }
 
-  Future<void> _loadAcpecProfile() async {
+  Future<void> _loadAcpecProfile({bool forceRefresh = false}) async {
     if (!AppEnvironment.useAcpecLiveData) return;
+
+    final sessionUser = context.read<AuthBloc>().state.user;
+    if (forceRefresh) {
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.stationProfile,
+        const {},
+      );
+    }
+
     setState(() {
       _profileLoading = true;
       _profileError = null;
     });
+
     try {
       final raw = await OdooFueltokenFacade().stationProfile(const {});
       final p = AcpecStationProfileData.fromRpc(raw);
@@ -75,8 +87,14 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+
+      final fallback = sessionUser == null
+          ? null
+          : AcpecStationProfileData.fromSessionUser(sessionUser);
+
       setState(() {
-        _profileError = _briefError(e);
+        _acpecProfile = fallback;
+        _profileError = fallback == null ? _briefError(e) : null;
         _profileLoading = false;
       });
     }
@@ -92,7 +110,11 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
     final pageBg = context.fuelPageBackground;
     final useAcpec = AppEnvironment.useAcpecLiveData;
     final ap = _acpecProfile;
-    final stationTitle = useAcpec && ap != null ? ap.stationName : 'Station';
+    final stationTitle = useAcpec && ap != null
+        ? ap.stationName
+        : (user.stationName?.trim().isNotEmpty == true
+              ? user.stationName!.trim()
+              : 'Station');
     final operatorSubtitle = useAcpec && ap != null
         ? ap.operatorName
         : user.name;
@@ -153,7 +175,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                       _ProfileRow('Adresse', ap.stationAddress),
                       _ProfileRow(
                         'Statut',
-                        ap.stationActive ? 'Active' : 'Inactive',
+                        ap.stationActive ? 'En service' : 'Hors service',
                       ),
                     ],
                   ),
@@ -173,7 +195,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _AcpecProfileErrorCard(
                   message: _profileError!,
-                  onRetry: _loadAcpecProfile,
+                  onRetry: () => _loadAcpecProfile(forceRefresh: true),
                 ),
               ),
           ] else ...[
@@ -454,7 +476,7 @@ class _AcpecStationProfilePanel extends StatelessWidget {
             _ProfileRow('Adresse', profile.stationAddress),
             _ProfileRow(
               'Statut',
-              profile.stationActive ? 'Active' : 'Inactive',
+              profile.stationActive ? 'En service' : 'Hors service',
             ),
           ],
         ),
