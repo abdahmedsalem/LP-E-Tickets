@@ -32,6 +32,17 @@ const _transferHeaderGap = 18.0;
 const _transferHeaderTitleSize = 32.0;
 const _headerNavy = Color(0xFF0F2747);
 
+bool _isReasonableExpirationDate(DateTime date) {
+  return date.year > 1971 && date.year < 2100;
+}
+
+String _expirationLabel(DateTime date) {
+  if (!_isReasonableExpirationDate(date)) {
+    return 'Expiration non renseignée';
+  }
+  return 'Expire le ${Formatters.dateTimeDash(date)}';
+}
+
 class TransferCarnetsScreen extends StatefulWidget {
   const TransferCarnetsScreen({super.key});
 
@@ -160,19 +171,29 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(rawName);
-    }
-
-    final rawCode = line.carnetTypeCode.trim();
+    final rawCode = line.carnetTypeCode
+        .trim()
+        .replaceAll(' ', '')
+        .toUpperCase();
     if (rawCode.isNotEmpty) {
-      return rawCode;
+      if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
+        return rawCode;
+      }
+      return '$rawCode${Formatters.defaultCurrency}';
     }
 
     final size = _carnetSizeFor(line);
     if (size > 0) {
-      return Formatters.carnetTypeLabel(size, line.faceValue);
+      return 'C${size}T-${line.faceValue}${Formatters.defaultCurrency}';
+    }
+
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: size,
+        fallbackFaceValue: line.faceValue,
+      );
     }
 
     return 'Carnet';
@@ -771,6 +792,8 @@ class _TransferLineCard extends StatelessWidget {
     final transferableValue =
         (line.availableQty ~/ carnetSize) * carnetSize * line.faceValue;
     final isSelected = selected > 0;
+    final compositionLabel =
+        '$carnetSize tickets × ${Formatters.money(line.faceValue)}';
 
     return Material(
       color: Colors.transparent,
@@ -820,17 +843,28 @@ class _TransferLineCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
+              Text(
+                _expirationLabel(line.expirationDate),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                      compositionLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
                       ),
                     ),
                   ),

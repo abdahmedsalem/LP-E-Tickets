@@ -6,6 +6,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _transferConfirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
@@ -89,9 +90,23 @@ class _TransferConfirmationScreenState
           Navigator.of(context).pop(true);
         }
       });
-    } on OdooJsonRpcException {
+    } on OdooJsonRpcException catch (e) {
+      if (mounted) {
+        AppMessage.error(
+          context,
+          e.isOdooSessionExpired || e.isAuthRequired
+              ? 'Session expirée. Reconnectez-vous.'
+              : e.message,
+        );
+      }
       return;
     } catch (e) {
+      if (mounted) {
+        AppMessage.error(
+          context,
+          e.toString().replaceFirst('Exception: ', '').trim(),
+        );
+      }
       return;
     } finally {
       if (mounted && !completed) setState(() => _confirming = false);

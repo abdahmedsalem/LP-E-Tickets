@@ -1187,12 +1187,17 @@ class AcpecPurchasesMapper {
     if (v is DateTime) return v;
     final s = v.toString().trim();
     if (s.isEmpty) return null;
-    return DateTime.tryParse(s) ??
-        (int.tryParse(s) != null
-            ? DateTime.fromMillisecondsSinceEpoch(
-                int.parse(s) * 1000,
-                isUtc: true,
-              )
-            : null);
+    final parsed = DateTime.tryParse(s);
+    if (parsed != null) return parsed;
+
+    final asInt = int.tryParse(s);
+    if (asInt != null && asInt > 1000000000) {
+      return DateTime.fromMillisecondsSinceEpoch(
+        asInt > 1000000000000 ? asInt : asInt * 1000,
+        isUtc: true,
+      );
+    }
+
+    return null;
   }
 }

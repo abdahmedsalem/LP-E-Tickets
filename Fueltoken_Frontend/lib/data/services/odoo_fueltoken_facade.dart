@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+
 import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../api/acpec_fueltoken_jsonrpc_api.dart';
@@ -44,10 +46,10 @@ class OdooFueltokenFacade {
   }
 
   void _ensureRemoteHostForQrActions() {
-    if (OdooApiConfig.isLocalHostBase) {
+    if (OdooApiConfig.isLocalHostBase && kReleaseMode) {
       throw OdooFuelRpcLocalHostConfigured(
         'ODOO_JSONRPC_BASE_URL doit pointer vers le serveur Odoo distant '
-        '(ex. http://57.128.181.183:8199), pas localhost / 127.0.0.1 / 10.0.2.2.',
+        'en production, pas localhost / 127.0.0.1 / 10.0.2.2.',
       );
     }
   }

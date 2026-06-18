@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models/user_role.dart';
-import '../../features/admin/screens/admin_carnets_screen.dart';
 import '../../features/admin/screens/admin_home_screen.dart';
 import '../../features/admin/screens/admin_lots_screen.dart';
 import '../../features/admin/screens/admin_more_screen.dart';
@@ -49,7 +48,8 @@ class AppRouter {
       redirect: (ctx, state) {
         final auth = authBloc.state;
         final loggedIn = auth.status == AuthStatus.authenticated;
-        final locked = auth.status == AuthStatus.locked ||
+        final locked =
+            auth.status == AuthStatus.locked ||
             auth.status == AuthStatus.pinSetupRequired;
         final loc = state.matchedLocation;
         final atPinLockRoute = loc == '/session-pin-lock';
@@ -127,9 +127,7 @@ class AppRouter {
             final x = st.extra;
             if (x is! ForgotOtpRouteArgs) {
               return const Scaffold(
-                body: Center(
-                  child: Text('Reprendre depuis PIN oublié.'),
-                ),
+                body: Center(child: Text('Reprendre depuis PIN oublié.')),
               );
             }
             return ForgotVerifyOtpScreen(args: x);
@@ -176,7 +174,7 @@ class AppRouter {
           },
         ),
 
-        // user ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â navigation principale (5 onglets)
+        // user — navigation principale (5 onglets)
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return ClientShellScaffold(navigationShell: navigationShell);
@@ -282,7 +280,7 @@ class AppRouter {
           ),
         ),
 
-        // station â€” accueil, scan et profil
+        // station — accueil, scan et profil
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return StationShellScaffold(navigationShell: navigationShell);
@@ -319,7 +317,7 @@ class AppRouter {
           ],
         ),
 
-        // admin ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â 4 onglets (accent violet)
+        // admin — 4 onglets (accent violet)
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return AdminShellScaffold(navigationShell: navigationShell);
@@ -395,10 +393,6 @@ class AppRouter {
           },
         ),
         GoRoute(
-          path: '/admin/carnets',
-          builder: (_, _) => const AdminCarnetsScreen(),
-        ),
-        GoRoute(
           path: '/admin/stations',
           builder: (_, _) => const AdminStationsScreen(),
         ),
@@ -421,7 +415,7 @@ class AppRouter {
     }
   }
 
-  /// ÃƒÆ’Ã¢â‚¬Â°crans rÃƒÆ’Ã‚Â©servÃƒÆ’Ã‚Â©s au profil Ãƒâ€šÃ‚Â« client Ãƒâ€šÃ‚Â» ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â un compte admin ne doit pas sÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢y retrouver par erreur.
+  /// Écrans réservés au profil « client » — un compte admin ne doit pas s’y retrouver par erreur.
   static bool _isClientAppPath(String loc) {
     if (loc == '/home' || loc == '/faces' || loc == '/transactions') {
       return true;

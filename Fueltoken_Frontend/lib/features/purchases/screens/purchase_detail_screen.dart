@@ -47,6 +47,17 @@ Color _purchaseAmountColor(PurchaseLotState state) {
   };
 }
 
+bool _isReasonableBusinessDate(DateTime date) {
+  return date.year > 1971 && date.year < 2100;
+}
+
+String _safeDateTimeDash(DateTime? date) {
+  if (date == null || !_isReasonableBusinessDate(date)) {
+    return 'Non renseignée';
+  }
+  return Formatters.dateTimeDash(date);
+}
+
 class PurchaseDetailScreen extends StatefulWidget {
   final String lotId;
   final bool adminMode;
@@ -811,23 +822,23 @@ class _MetaCard extends StatelessWidget {
           _InfoRow(
             icon: Icons.schedule_outlined,
             label: 'Soumis le',
-            value: Formatters.dateTimeDash(lot.createdAt),
+            value: _safeDateTimeDash(lot.submittedAt ?? lot.createdAt),
           ),
           _InfoRow(
             icon: Icons.event_outlined,
             label: 'Expiration des tickets',
-            value: Formatters.dateTimeDash(lot.expirationDate),
+            value: _safeDateTimeDash(lot.expirationDate),
           ),
           if (lot.validationDate != null)
             _InfoRow(
               icon: Icons.verified_outlined,
-              label: 'Valid? le',
+              label: 'Validé le',
               value: Formatters.dateTimeDash(lot.validationDate!),
             ),
           if (lot.validatorName != null && lot.validatorName!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.badge_outlined,
-              label: 'Valid? par',
+              label: 'Validé par',
               value: lot.validatorName!.trim(),
             ),
         ],
