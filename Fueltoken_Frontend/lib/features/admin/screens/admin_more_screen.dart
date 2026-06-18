@@ -34,16 +34,6 @@ class AdminMoreScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [
           _MoreTile(
-            icon: Icons.style_outlined,
-            title: 'Types de ticket',
-            subtitle: 'C10-500, C20-500…',
-            color: AppColors.info,
-            scheme: scheme,
-            shadow: shadow,
-            onTap: () => context.push('/admin/carnets'),
-          ),
-          const SizedBox(height: 10),
-          _MoreTile(
             icon: Icons.local_gas_station_outlined,
             title: 'Stations',
             subtitle: 'Liste et statut',

@@ -124,7 +124,10 @@ class AcpecFacesMapper {
     }
     final asInt = int.tryParse(s);
     if (asInt != null && asInt > 1000000000) {
-      return DateTime.fromMillisecondsSinceEpoch(asInt * 1000, isUtc: true);
+      return DateTime.fromMillisecondsSinceEpoch(
+        asInt > 1000000000000 ? asInt : asInt * 1000,
+        isUtc: true,
+      );
     }
     return null;
   }
