@@ -90,7 +90,38 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             } for attachment in purchase.proof_attachment_ids]
         return data
 
+    def _station_agent_payload(self, agent):
+        return {
+            'id': agent.id,
+            'station_id': agent.station_id.id,
+            'user_id': agent.user_id.id,
+            'user_name': agent.user_id.name,
+            'active': agent.active,
+            'is_primary': agent.is_primary,
+            'date_start': fields.Date.to_string(agent.date_start) if agent.date_start else False,
+            'date_end': fields.Date.to_string(agent.date_end) if agent.date_end else False,
+        }
+
+    def _station_agents_payload(self, station):
+        agents = station.active_agent_ids.sorted(lambda a: (not a.is_primary, a.id))
+        if agents:
+            return [self._station_agent_payload(agent) for agent in agents]
+        if station.user_id:
+            return [{
+                'id': False,
+                'station_id': station.id,
+                'user_id': station.user_id.id,
+                'user_name': station.user_id.name,
+                'active': station.active,
+                'is_primary': True,
+                'date_start': False,
+                'date_end': False,
+                'source': 'legacy_user_id',
+            }]
+        return []
+
     def _station_payload(self, station):
+        agents = self._station_agents_payload(station)
         return {
             'id': station.id,
             'name': station.name,
@@ -100,6 +131,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             'company_id': station.company_id.id,
             'company_name': station.company_id.name,
             'active': station.active,
+            'agents': agents,
+            'agent_count': len(agents),
         }
 
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
