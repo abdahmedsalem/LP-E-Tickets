@@ -65,6 +65,36 @@ class _ConsumeFixtureMixin:
                 })
         raise AssertionError('Aucun code de carnet libre pour le test.')
 
+    def _mobile_station_group_ids(self, env):
+        """Groupes d'un utilisateur mobile-only station.
+
+        Un user mobile ne doit jamais être créé comme Internal User puis enrichi.
+        On passe les groupes mobiles directement au create(), comme le flux OTP.
+        """
+        xmlids = (
+            'acpec_mobile_auth.group_mobile_auth_user',
+            'acpec_fueltoken_base.group_fuel_station',
+        )
+        group_ids = []
+        for xmlid in xmlids:
+            group = env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                group_ids.append(group.id)
+        return group_ids
+
+    def _station_mobile_user_vals(self, env, vals, mobile_phone):
+        vals = dict(vals)
+        group_ids = self._mobile_station_group_ids(env)
+        if group_ids:
+            vals['group_ids'] = [(6, 0, group_ids)]
+        vals.setdefault('mobile_phone', mobile_phone)
+        vals.setdefault('mobile_state', 'approved')
+        vals.setdefault(
+            'password',
+            env['res.users'].sudo()._acpec_mobile_unusable_password(),
+        )
+        return vals
+
     def _build_consume_fixture(self, env):
         """Cree et renvoie les ids utiles : qr, station, user station, face_line.
 
@@ -118,12 +148,12 @@ class _ConsumeFixtureMixin:
 
         station_user = env['res.users'].sudo().with_context(
             no_reset_password=True
-        ).create({
+        ).create(self._station_mobile_user_vals(env, {
             'name': 'Station conso %s' % suffix,
             'login': 'station-conc-%s' % suffix,
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
-        })
+        }, 'station-conc-%s' % suffix))
         station = env['acpec.fuel.station'].sudo().create({
             'name': 'Station test %s' % suffix,
             'user_id': station_user.id,
@@ -216,14 +246,15 @@ class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
         other_company = self.env['res.company'].sudo().create({
             'name': 'Autre societe %s' % uuid.uuid4().hex[:6],
         })
+        foreign_suffix = uuid.uuid4().hex[:8]
         foreign_user = self.env['res.users'].sudo().with_context(
             no_reset_password=True
-        ).create({
+        ).create(self._station_mobile_user_vals(self.env, {
             'name': 'Station etrangere',
-            'login': 'station-foreign-%s' % uuid.uuid4().hex[:8],
+            'login': 'station-foreign-%s' % foreign_suffix,
             'company_id': other_company.id,
             'company_ids': [(6, 0, [other_company.id])],
-        })
+        }, 'station-foreign-%s' % foreign_suffix))
         foreign_station = self.env['acpec.fuel.station'].sudo().create({
             'name': 'Station etrangere %s' % uuid.uuid4().hex[:6],
             'user_id': foreign_user.id,

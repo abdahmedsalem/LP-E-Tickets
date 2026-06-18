@@ -14,6 +14,9 @@ access_fuel_qr_line_admin,acpec.fuel.qr.line admin,model_acpec_fuel_qr_line,acpe
 access_fuel_station_station,acpec.fuel.station station,model_acpec_fuel_station,acpec_fueltoken_base.group_fuel_station,1,0,0,0
 access_fuel_station_manager,acpec.fuel.station manager,model_acpec_fuel_station,acpec_fueltoken_base.group_fuel_manager,1,1,1,0
 access_fuel_station_admin,acpec.fuel.station admin,model_acpec_fuel_station,acpec_fueltoken_base.group_fuel_admin,1,1,1,1
+access_fuel_station_agent_station,acpec.fuel.station.agent station,model_acpec_fuel_station_agent,acpec_fueltoken_base.group_fuel_station,1,0,0,0
+access_fuel_station_agent_manager,acpec.fuel.station.agent manager,model_acpec_fuel_station_agent,acpec_fueltoken_base.group_fuel_manager,1,1,1,0
+access_fuel_station_agent_admin,acpec.fuel.station.agent admin,model_acpec_fuel_station_agent,acpec_fueltoken_base.group_fuel_admin,1,1,1,1
 access_fuel_transaction_user,acpec.fuel.transaction user,model_acpec_fuel_transaction,acpec_fueltoken_base.group_fuel_user,1,0,0,0
 access_fuel_transaction_manager,acpec.fuel.transaction manager,model_acpec_fuel_transaction,acpec_fueltoken_base.group_fuel_manager,1,0,0,0
 access_fuel_transaction_admin,acpec.fuel.transaction admin,model_acpec_fuel_transaction,acpec_fueltoken_base.group_fuel_admin,1,0,0,0
