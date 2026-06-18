@@ -230,18 +230,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     // Migration sûre : une session longue restaurée sans PIN local ne doit pas
-    // ouvrir directement Home. On force une reconnexion OTP, puis création du
-    // PIN local de déverrouillage.
-    try {
-      await _repo.logout();
-    } catch (_) {}
-    emit(
-      const AuthState(
-        status: AuthStatus.unauthenticated,
-        loginInfoMessage:
-            'Reconnectez-vous par OTP pour activer le PIN de déverrouillage local.',
-      ),
-    );
+    // ouvrir directement Home, mais elle ne doit pas non plus être révoquée.
+    // On garde la session mobile et on force seulement la création du PIN local.
+    emit(AuthState(status: AuthStatus.pinSetupRequired, user: user));
   }
 
   Future<void> _onSessionExpired(
@@ -289,7 +280,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     }
   }
-
 
   Future<void> _onLoginOtpRequested(
     AuthLoginOtpRequested e,
@@ -453,10 +443,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onUnlock(
-    AuthUnlockRequested e,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _onUnlock(AuthUnlockRequested e, Emitter<AuthState> emit) async {
     final lockedUser = state.user;
     emit(
       state.copyWith(
