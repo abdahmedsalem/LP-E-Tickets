@@ -1012,13 +1012,12 @@ class _TxLineRow extends StatelessWidget {
     final qty = line.qty > 0 ? line.qty : 1;
     final ticketLabel =
         '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
-    final carnetLabel = line.carnetSize > 0 && line.faceValue > 0
-        ? 'carnet ${Formatters.numberFr(line.carnetSize)} x ${line.faceValue}'
-        : line.carnetTypeName.trim().isNotEmpty
-        ? line.carnetTypeName.trim().replaceFirst('Carnet', 'carnet')
-        : line.faceValue > 0
-        ? 'carnet ${Formatters.numberFr(line.faceValue)}'
-        : 'carnet';
+    final carnetLabel = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackSize: line.carnetSize,
+      fallbackFaceValue: line.faceValue,
+      fallbackCode: line.carnetTypeCode,
+    ).replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), 'carnet ');
     return '$ticketLabel de $carnetLabel';
   }
 

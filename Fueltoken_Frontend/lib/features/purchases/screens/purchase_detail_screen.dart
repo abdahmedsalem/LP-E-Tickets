@@ -1092,17 +1092,12 @@ class _LinesCard extends StatelessWidget {
 }
 
 String _lineTypeLabel(PurchaseLine line) {
-  final serverLabel = line.carnetTypeName.trim();
-  if (serverLabel.isNotEmpty) return serverLabel;
-  final fromName = Formatters.normalizeCarnetTypeLabel(
+  return Formatters.carnetTypeLabelFromServer(
     line.carnetTypeName,
     fallbackSize: line.carnetSize,
     fallbackFaceValue: line.faceValue,
+    fallbackCode: line.carnetTypeCode,
   );
-  if (fromName.trim().isNotEmpty) return fromName;
-  final code = line.carnetTypeCode.trim();
-  if (code.isNotEmpty && code != '—') return code;
-  return 'Carnet';
 }
 
 class _ProofsSection extends StatelessWidget {

@@ -417,16 +417,11 @@ class _TransferLineRow extends StatelessWidget {
   final TransferConfirmationLine line;
 
   String _carnetTypeLabel() {
-    if (line.carnetSize > 0) {
-      return Formatters.carnetTypeLabel(
-        line.carnetSize,
-        line.faceLine.faceValue,
-      );
-    }
-    return Formatters.normalizeCarnetTypeLabel(
+    return Formatters.carnetTypeLabelFromServer(
       line.faceLine.carnetTypeName,
       fallbackSize: line.carnetSize,
       fallbackFaceValue: line.faceLine.faceValue,
+      fallbackCode: line.faceLine.carnetTypeCode,
     );
   }
 

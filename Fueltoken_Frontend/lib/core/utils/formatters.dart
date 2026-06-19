@@ -67,6 +67,33 @@ class Formatters {
     return text;
   }
 
+  static String carnetTypeLabelFromServer(
+    String serverLabel, {
+    int? fallbackSize,
+    int? fallbackFaceValue,
+    String? fallbackCode,
+  }) {
+    final label = serverLabel.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (label.isNotEmpty) {
+      return normalizeCarnetTypeLabel(
+        label,
+        fallbackSize: fallbackSize,
+        fallbackFaceValue: fallbackFaceValue,
+      );
+    }
+
+    final code = fallbackCode?.trim();
+    if (code != null && code.isNotEmpty && code != '—') {
+      return code;
+    }
+
+    if ((fallbackSize ?? 0) > 0 && (fallbackFaceValue ?? 0) > 0) {
+      return carnetTypeLabel(fallbackSize!, fallbackFaceValue!);
+    }
+
+    return 'Carnet';
+  }
+
   static String shortPublicCode(String code) {
     if (code.length <= 12) return code;
     return '${code.substring(0, 4)} ${code.substring(4, 8)} ${code.substring(8, 12)}';

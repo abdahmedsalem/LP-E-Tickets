@@ -628,20 +628,6 @@ class _StationHistoryRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.danger.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.local_gas_station_rounded,
-              size: 22,
-              color: AppColors.danger,
-            ),
-          ),
-          const SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,70 +637,74 @@ class _StationHistoryRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.ink,
-                    height: 1.12,
+                    height: 1.15,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${tx.stationName ?? 'Station inconnue'} • ${tx.userName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  '$dateLabel $hourLabel',
                   style: const TextStyle(
-                    fontSize: 12.2,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
                     color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
                     height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
-                  '$dateLabel $hourLabel',
+                  'Client concerné : ${tx.userName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 11.2,
                     color: AppColors.muted,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'QR consommé : ${qrCode.isEmpty ? '—' : qrCode}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.2,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w500,
+                    height: 1.15,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _AmountInline(
-                amount: amount,
-                textAlign: TextAlign.right,
-                valueStyle: GoogleFonts.poppins(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.danger,
-                  height: 1,
-                  letterSpacing: -0.2,
-                ),
-                unitStyle: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.danger.withValues(alpha: 0.82),
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                constraints: const BoxConstraints(maxWidth: 96),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryTint.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  qrCode,
+          _AmountInline(
+            amount: amount,
+            textAlign: TextAlign.right,
+            valueStyle: GoogleFonts.poppins(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.danger,
+              height: 1,
+              letterSpacing: -0.2,
+            ),
+            unitStyle: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.danger.withValues(alpha: 0.82),
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StationConsumptionOverviewCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -943,13 +933,12 @@ class _StationTxLineRow extends StatelessWidget {
     final qty = line.qty > 0 ? line.qty : 1;
     final ticketLabel =
         '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
-    final carnetLabel = line.carnetSize > 0 && line.faceValue > 0
-        ? 'carnet ${Formatters.numberFr(line.carnetSize)} x ${line.faceValue}'
-        : line.carnetTypeName.trim().isNotEmpty
-        ? line.carnetTypeName.trim().replaceFirst('Carnet', 'carnet')
-        : line.faceValue > 0
-        ? 'carnet ${Formatters.numberFr(line.faceValue)}'
-        : 'carnet';
+    final carnetLabel = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackSize: line.carnetSize,
+      fallbackFaceValue: line.faceValue,
+      fallbackCode: line.carnetTypeCode,
+    ).replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), 'carnet ');
     return '$ticketLabel de $carnetLabel';
   }
 

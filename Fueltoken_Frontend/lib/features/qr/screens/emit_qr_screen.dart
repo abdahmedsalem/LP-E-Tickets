@@ -114,7 +114,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
 
   String _lineCarnetLabel(FaceLine line) {
     final size = _lineCarnetSize(line);
-    return Formatters.carnetTypeLabel(size, line.faceValue);
+    return Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackSize: size,
+      fallbackFaceValue: line.faceValue,
+      fallbackCode: line.carnetTypeCode,
+    );
   }
 
   List<FaceLine> _availableLinesFor(String ownerId) {

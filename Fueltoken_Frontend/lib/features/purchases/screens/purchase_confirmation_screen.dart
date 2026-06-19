@@ -254,23 +254,12 @@ class _PurchaseLinesCard extends StatelessWidget {
   final List<PurchaseConfirmationLine> lines;
 
   String _carnetTypeLabel(PurchaseConfirmationLine line) {
-    final rawName = line.carnetType.name.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: line.carnetType.size,
-        fallbackFaceValue: line.carnetType.faceValue,
-      );
-    }
-
-    if (line.carnetType.size > 0 && line.carnetType.faceValue > 0) {
-      return Formatters.carnetTypeLabel(
-        line.carnetType.size,
-        line.carnetType.faceValue,
-      );
-    }
-
-    return 'Carnet';
+    return Formatters.carnetTypeLabelFromServer(
+      line.carnetType.name,
+      fallbackSize: line.carnetType.size,
+      fallbackFaceValue: line.carnetType.faceValue,
+      fallbackCode: line.carnetType.code,
+    );
   }
 
   String _currencyFor(PurchaseConfirmationLine line) =>

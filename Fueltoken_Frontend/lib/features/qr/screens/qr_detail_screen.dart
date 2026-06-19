@@ -622,29 +622,12 @@ class _CompositionCard extends StatelessWidget {
 
   String _carnetLabel(QrLine line) {
     final carnetSize = _carnetSizeFor(line);
-    if (carnetSize > 0 && line.faceValue > 0) {
-      return Formatters.carnetTypeLabel(carnetSize, line.faceValue);
-    }
-
-    final name = line.carnetTypeName.trim();
-    if (name.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        name,
-        fallbackSize: carnetSize,
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-
-    final code = line.carnetTypeCode.trim();
-    if (code.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        code,
-        fallbackSize: carnetSize,
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-
-    return 'Carnet';
+    return Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackSize: carnetSize,
+      fallbackFaceValue: line.faceValue,
+      fallbackCode: line.carnetTypeCode,
+    );
   }
 
   @override
