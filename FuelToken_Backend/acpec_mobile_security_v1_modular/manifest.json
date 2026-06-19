@@ -1,0 +1,47 @@
+{
+  "name": "ACPEC Mobile Security V1 Modular Spec",
+  "active_modules": [
+    "00_decisions_invariants.md",
+    "01_users_roles_lifecycle.md",
+    "02_auth_protocol_otp.md",
+    "03_sessions_tokens.md",
+    "04_device_trust_stepup.md",
+    "05_pin_autolock.md",
+    "06_odoo_integration.md",
+    "07_idempotency.md",
+    "08_config_dev_prod.md",
+    "09_tests_poc.md",
+    "10_backend_runtime_hardening_17A_21A.md",
+    "11_flutter_security_contract_17A_21A.md"
+  ],
+  "context_rule": "Always load 00_decisions_invariants.md plus the relevant module(s).",
+  "adr_not_normative": true,
+  "closed_decisions": {
+    "OPEN-CLIENT-001": "V1 target mobile clients <= 5000; res.users per client accepted; controlled provisioning only; no Odoo portal signup.",
+    "OPEN-MANAGER-001": "manager_field_validation_enabled defaults to false; manager trusted validation disabled unless explicitly enabled.",
+    "COH-DEVICE-001": "Client devices may become trusted by system_cooldown after configured cooldown, but only low_value_only; high-value remains back-office controlled.",
+    "COH-ROLE-001": "Managers never grant or remove mobile roles, including mobile_station_user; back-office grants all roles.",
+    "COH-USER-001": "Mobile users remain base.group_portal portal-type, but acpec_mobile_only requires password=false/no web credential and blocks portal web surfaces."
+  },
+  "updated_at": "2026-06-19",
+  "runtime_backend_patches": {
+    "patch17A": "centralized mobile security policy params",
+    "patch17B": "mobile-only portal baseline enforcement",
+    "patch18A": "block web password flows for mobile-only users",
+    "patch18B": "block alternative web credentials for mobile-only users",
+    "patch18C": "deny web sessions for mobile-only users",
+    "patch19A": "approved mobile_state gate for sessions; signup stays pending",
+    "patch19B": "refresh token retry grace window",
+    "patch20A": "device trust state and sensitive guard foundation",
+    "patch20B": "apply trusted device gate to selected sensitive FuelToken actions",
+    "patch20C": "back-office workflow for device trust",
+    "patch21A": "server-side PIN required for selected sensitive actions"
+  },
+  "remaining_before_production": [
+    "classify QR issue/retirer/separer endpoints",
+    "classify station qr/use endpoint",
+    "classify admin carnet-types create/update/delete endpoints",
+    "add strong request_hash idempotency where missing",
+    "add detailed business audit for sensitive actions"
+  ]
+}
