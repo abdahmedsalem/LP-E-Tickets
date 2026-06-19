@@ -15,31 +15,31 @@ class TestSensitiveDeviceTrustGate(TransactionCase):
 
     def test_mobile_write_endpoints_require_trusted_device(self):
         self.assertIn(
-            "_require_trusted_sensitive",
+            "_require_sensitive_action_pin",
             self._source(AcpecFuelTokenMobileApi.create_purchase),
         )
         self.assertIn(
-            "_require_trusted_sensitive",
+            "_require_sensitive_action_pin",
             self._source(AcpecFuelTokenMobileApi.transfer_carnets),
         )
 
     def test_mobile_read_or_preview_endpoints_do_not_require_trusted_device(self):
         self.assertNotIn(
-            "_require_trusted_sensitive",
+            "_require_sensitive_action_pin",
             self._source(AcpecFuelTokenMobileApi.transfer_carnets_recipient),
         )
         self.assertNotIn(
-            "_require_trusted_sensitive",
+            "_require_sensitive_action_pin",
             self._source(AcpecFuelTokenMobileApi.purchases),
         )
         self.assertNotIn(
-            "_require_trusted_sensitive",
+            "_require_sensitive_action_pin",
             self._source(AcpecFuelTokenMobileApi.purchase_detail),
         )
 
     def test_admin_write_endpoints_require_trusted_manager_device(self):
         self.assertIn(
-            "_require_trusted_sensitive",
+            "_require_sensitive_action_pin",
             self._source(AcpecFuelTokenAdminApi._trusted_admin_user),
         )
 
