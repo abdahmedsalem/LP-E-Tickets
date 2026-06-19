@@ -442,6 +442,30 @@ class AcpecMobileAuthApiCommon(http.Controller):
         self._assert_mobile_only_user(user)
         return user
 
+    def _require_trusted_sensitive(self):
+        """Guard for sensitive mobile operations.
+
+        This deliberately does not replace _require_mobile_auth(): normal mobile
+        reads/profile/refresh can work on approved users even when a new device
+        is still pending trust. Sensitive actions must explicitly call this
+        helper.
+        """
+        session = self._get_mobile_session(required=True)
+        user = session.user_id.sudo()
+        self._assert_mobile_only_user(user)
+
+        if not session.device_uid:
+            raise AccessError('Device mobile non identifié.')
+
+        if session.device_trust_state != 'trusted':
+            if session.device_trust_state == 'pending_trust':
+                raise AccessError('Device mobile en attente de validation.')
+            if session.device_trust_state == 'blocked':
+                raise AccessError('Device mobile bloqué.')
+            raise AccessError('Device mobile non approuvé.')
+
+        return user
+
     def _mobile_profile_payload(self, user, session=False):
         data = {
             'uid': user.id,
@@ -464,6 +488,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 'expires_at': fields.Datetime.to_string(session.expires_at) if session.expires_at else False,
                 'refresh_expires_at': fields.Datetime.to_string(session.refresh_expires_at) if session.refresh_expires_at else False,
                 'device_uid': session.device_uid or False,
+                'device_trust_state': session.device_trust_state or False,
+                'device_trusted_at': fields.Datetime.to_string(session.device_trusted_at) if session.device_trusted_at else False,
+                'device_trust_required_for_sensitive': True,
             })
         return data
 
