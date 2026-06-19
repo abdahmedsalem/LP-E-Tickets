@@ -3,7 +3,7 @@ import secrets
 
 from dateutil.relativedelta import relativedelta
 
-from odoo import _, api, fields, models
+from odoo import _, SUPERUSER_ID, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
@@ -325,39 +325,65 @@ class AcpecMobileSession(models.Model):
 
         raise AccessError(_('La session mobile n’est plus active.'))
 
+    def _check_device_trust_admin(self):
+        if self.env.uid == SUPERUSER_ID:
+            return True
+        if not self.env.user.has_group('acpec_mobile_auth.group_mobile_auth_admin'):
+            raise AccessError('Seul un administrateur Mobile Auth peut modifier la confiance device.')
+        return True
+
     def action_revoke(self):
+        self._check_device_trust_admin()
         now = fields.Datetime.now()
         for session in self:
             if session.state == 'active':
                 session.write({'state': 'revoked', 'revoked_at': now})
+                session.message_post(body='Session mobile révoquée par %s.' % (self.env.user.display_name,))
         return True
 
     def action_trust_device(self):
+        self._check_device_trust_admin()
         now = fields.Datetime.now()
         for session in self:
             if not session.device_uid:
-                raise UserError(_('Impossible de faire confiance à une session sans identifiant device.'))
+                raise UserError('Impossible de faire confiance à une session sans identifiant device.')
             session.write({
                 'device_trust_state': 'trusted',
                 'device_trusted_at': now,
                 'device_blocked_at': False,
             })
+            session.message_post(
+                body='Device mobile marqué trusted par %s. Device UID: %s'
+                % (self.env.user.display_name, session.device_uid)
+            )
         return True
 
     def action_block_device(self):
+        self._check_device_trust_admin()
         now = fields.Datetime.now()
-        self.write({
-            'device_trust_state': 'blocked',
-            'device_blocked_at': now,
-        })
+        for session in self:
+            session.write({
+                'device_trust_state': 'blocked',
+                'device_blocked_at': now,
+            })
+            session.message_post(
+                body='Device mobile bloqué par %s. Device UID: %s'
+                % (self.env.user.display_name, session.device_uid or 'n/a')
+            )
         return True
 
     def action_reset_device_trust(self):
-        self.write({
-            'device_trust_state': 'pending_trust',
-            'device_trusted_at': False,
-            'device_blocked_at': False,
-        })
+        self._check_device_trust_admin()
+        for session in self:
+            session.write({
+                'device_trust_state': 'pending_trust',
+                'device_trusted_at': False,
+                'device_blocked_at': False,
+            })
+            session.message_post(
+                body='Confiance device réinitialisée par %s. Device UID: %s'
+                % (self.env.user.display_name, session.device_uid or 'n/a')
+            )
         return True
 
     def unlink(self):

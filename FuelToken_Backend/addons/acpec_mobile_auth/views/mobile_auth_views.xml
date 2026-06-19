@@ -121,8 +121,10 @@
                 <field name="user_id"/>
                 <field name="partner_id"/>
                 <field name="company_id"/>
+                <field name="device_uid"/>
                 <field name="device_name"/>
                 <field name="platform"/>
+                <field name="device_trust_state"/>
                 <field name="expires_at"/>
                 <field name="refresh_expires_at"/>
                 <field name="last_seen_at"/>
@@ -137,8 +139,23 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_revoke" type="object" string="Revoke" invisible="state != 'active'" class="btn-secondary"/>
-                    <field name="state" widget="statusbar" statusbar_visible="active,expired,revoked"/>
+                    <button name="action_trust_device" type="object" string="Trust Device"
+                            invisible="not device_uid or device_trust_state == 'trusted'"
+                            class="btn-primary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <button name="action_block_device" type="object" string="Block Device"
+                            invisible="device_trust_state == 'blocked'"
+                            class="btn-secondary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <button name="action_reset_device_trust" type="object" string="Reset Trust"
+                            invisible="device_trust_state == 'pending_trust'"
+                            class="btn-secondary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <button name="action_revoke" type="object" string="Revoke"
+                            invisible="state != 'active'"
+                            class="btn-secondary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <field name="state" widget="statusbar" statusbar_visible="active,rotated,expired,revoked"/>
                 </header>
                 <sheet>
                     <group>
@@ -153,6 +170,9 @@
                             <field name="device_name" readonly="1"/>
                             <field name="platform" readonly="1"/>
                             <field name="app_version" readonly="1"/>
+                            <field name="device_trust_state" readonly="1"/>
+                            <field name="device_trusted_at" readonly="1"/>
+                            <field name="device_blocked_at" readonly="1"/>
                         </group>
                     </group>
                     <group>
@@ -165,6 +185,7 @@
                         <group>
                             <field name="ip_address" readonly="1"/>
                             <field name="user_agent" readonly="1"/>
+                            <field name="device_trust_note"/>
                         </group>
                     </group>
                 </sheet>
