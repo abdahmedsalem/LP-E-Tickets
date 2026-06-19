@@ -34,8 +34,18 @@ class AcpecMobileSession(models.Model):
     refresh_expires_at = fields.Datetime(required=True, index=True)
     last_seen_at = fields.Datetime(readonly=True, copy=False)
     revoked_at = fields.Datetime(readonly=True, copy=False)
+    rotated_at = fields.Datetime(readonly=True, copy=False)
+    refresh_grace_until = fields.Datetime(readonly=True, copy=False, index=True)
+    refresh_grace_used_at = fields.Datetime(readonly=True, copy=False)
+    rotated_to_session_id = fields.Many2one(
+        'acpec.mobile.session',
+        readonly=True,
+        copy=False,
+        ondelete='set null',
+    )
     state = fields.Selection([
         ('active', 'Active'),
+        ('rotated', 'Rotated'),
         ('expired', 'Expired'),
         ('revoked', 'Revoked'),
     ], default='active', required=True, index=True, tracking=True)
@@ -173,14 +183,62 @@ class AcpecMobileSession(models.Model):
         return session
 
     @api.model
-    def refresh_with_token(self, refresh_token, device_vals=None):
-        token_hash = self._hash_token(refresh_token)
-        session = self.sudo().search([('refresh_token_hash', '=', token_hash)], limit=1)
-        if not session:
-            raise AccessError(_('Refresh token invalide.'))
-        now = fields.Datetime.now()
-        if session.state != 'active':
-            raise AccessError(_('La session mobile n’est plus active.'))
+    def _refresh_token_grace_seconds(self):
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'acpec_mobile_auth.refresh_token_grace_seconds',
+            default='30',
+        )
+        try:
+            seconds = int(value)
+        except (TypeError, ValueError):
+            seconds = 30
+        return max(0, min(seconds, 120))
+
+    @api.model
+    def _refresh_successor_device_vals(self, session, device_vals=None):
+        vals = {
+            'device_uid': session.device_uid or False,
+            'device_name': session.device_name or False,
+            'platform': session.platform or False,
+            'app_version': session.app_version or False,
+            'ip_address': session.ip_address or False,
+            'user_agent': session.user_agent or False,
+        }
+        for key in ('device_uid', 'device_name', 'platform', 'app_version', 'ip_address', 'user_agent'):
+            if device_vals and key in device_vals and device_vals.get(key):
+                vals[key] = device_vals[key]
+        return vals
+
+    @api.model
+    def _create_refresh_successor_session(self, session, now, device_vals=None):
+        access_token = self._new_token()
+        new_refresh_token = self._new_token()
+        expires_at = now + relativedelta(minutes=self._access_minutes())
+        refresh_expires_at = now + relativedelta(days=self._refresh_days())
+
+        vals = {
+            'user_id': session.user_id.id,
+            'access_token_hash': self._hash_token(access_token),
+            'refresh_token_hash': self._hash_token(new_refresh_token),
+            'expires_at': expires_at,
+            'refresh_expires_at': refresh_expires_at,
+            'last_seen_at': now,
+            'state': 'active',
+        }
+        vals.update(self._refresh_successor_device_vals(session, device_vals=device_vals))
+
+        new_session = self.sudo().create(vals)
+        return {
+            'session': new_session,
+            'access_token': access_token,
+            'refresh_token': new_refresh_token,
+            'expires_at': fields.Datetime.to_string(expires_at),
+            'refresh_expires_at': fields.Datetime.to_string(refresh_expires_at),
+            'token_type': 'Bearer',
+        }
+
+    @api.model
+    def _assert_refreshable_mobile_session(self, session, now):
         if session.refresh_expires_at and session.refresh_expires_at <= now:
             session.sudo().write({'state': 'expired'})
             raise AccessError(_('Refresh token expiré.'))
@@ -189,30 +247,56 @@ class AcpecMobileSession(models.Model):
         except AccessError as exc:
             session.sudo().write({'state': 'revoked', 'revoked_at': now})
             raise exc
-        access_token = self._new_token()
-        new_refresh_token = self._new_token()
-        expires_at = now + relativedelta(minutes=self._access_minutes())
-        refresh_expires_at = now + relativedelta(days=self._refresh_days())
-        vals = {
-            'access_token_hash': self._hash_token(access_token),
-            'refresh_token_hash': self._hash_token(new_refresh_token),
-            'expires_at': expires_at,
-            'refresh_expires_at': refresh_expires_at,
+
+    @api.model
+    def _refresh_active_session(self, session, now, device_vals=None):
+        self._assert_refreshable_mobile_session(session, now)
+
+        result = self._create_refresh_successor_session(session, now, device_vals=device_vals)
+        grace_seconds = self._refresh_token_grace_seconds()
+        grace_until = now + relativedelta(seconds=grace_seconds) if grace_seconds else now
+
+        session.sudo().write({
+            'state': 'rotated',
+            'rotated_at': now,
+            'refresh_grace_until': grace_until,
+            'refresh_grace_used_at': False,
+            'rotated_to_session_id': result['session'].id,
             'last_seen_at': now,
-            'state': 'active',
-        }
-        for key in ('device_uid', 'device_name', 'platform', 'app_version', 'ip_address', 'user_agent'):
-            if device_vals and key in device_vals and device_vals.get(key):
-                vals[key] = device_vals[key]
-        session.sudo().write(vals)
-        return {
-            'session': session,
-            'access_token': access_token,
-            'refresh_token': new_refresh_token,
-            'expires_at': fields.Datetime.to_string(expires_at),
-            'refresh_expires_at': fields.Datetime.to_string(refresh_expires_at),
-            'token_type': 'Bearer',
-        }
+        })
+        return result
+
+    @api.model
+    def _refresh_rotated_session_in_grace(self, session, now, device_vals=None):
+        if session.refresh_grace_used_at:
+            raise AccessError(_('Refresh token déjà consommé.'))
+        if not session.refresh_grace_until or session.refresh_grace_until <= now:
+            raise AccessError(_('Refresh token invalide.'))
+
+        self._assert_refreshable_mobile_session(session, now)
+
+        session.sudo().write({
+            'refresh_grace_used_at': now,
+            'last_seen_at': now,
+        })
+        return self._create_refresh_successor_session(session, now, device_vals=device_vals)
+
+    @api.model
+    def refresh_with_token(self, refresh_token, device_vals=None):
+        token_hash = self._hash_token(refresh_token)
+        session = self.sudo().search([('refresh_token_hash', '=', token_hash)], limit=1)
+        if not session:
+            raise AccessError(_('Refresh token invalide.'))
+
+        now = fields.Datetime.now()
+
+        if session.state == 'active':
+            return self._refresh_active_session(session, now, device_vals=device_vals)
+
+        if session.state == 'rotated':
+            return self._refresh_rotated_session_in_grace(session, now, device_vals=device_vals)
+
+        raise AccessError(_('La session mobile n’est plus active.'))
 
     def action_revoke(self):
         now = fields.Datetime.now()
