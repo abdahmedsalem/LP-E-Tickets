@@ -30,6 +30,14 @@ class AcpecMobileSession(models.Model):
     app_version = fields.Char()
     ip_address = fields.Char()
     user_agent = fields.Char()
+    device_trust_state = fields.Selection([
+        ('pending_trust', 'Pending Trust'),
+        ('trusted', 'Trusted'),
+        ('blocked', 'Blocked'),
+    ], default='pending_trust', required=True, index=True, tracking=True)
+    device_trusted_at = fields.Datetime(readonly=True, copy=False)
+    device_blocked_at = fields.Datetime(readonly=True, copy=False)
+    device_trust_note = fields.Text(copy=False)
     expires_at = fields.Datetime(required=True, index=True)
     refresh_expires_at = fields.Datetime(required=True, index=True)
     last_seen_at = fields.Datetime(readonly=True, copy=False)
@@ -150,6 +158,7 @@ class AcpecMobileSession(models.Model):
             'app_version': device_vals.get('app_version') or False,
             'ip_address': device_vals.get('ip_address') or False,
             'user_agent': device_vals.get('user_agent') or False,
+            'device_trust_state': 'pending_trust',
         }
         session = self.sudo().create(vals)
         return {
@@ -216,6 +225,20 @@ class AcpecMobileSession(models.Model):
         expires_at = now + relativedelta(minutes=self._access_minutes())
         refresh_expires_at = now + relativedelta(days=self._refresh_days())
 
+        successor_device_vals = self._refresh_successor_device_vals(session, device_vals=device_vals)
+        old_device_uid = session.device_uid or False
+        new_device_uid = successor_device_vals.get('device_uid') or False
+        same_device = bool(old_device_uid and new_device_uid and old_device_uid == new_device_uid)
+
+        if same_device:
+            device_trust_state = session.device_trust_state or 'pending_trust'
+            device_trusted_at = session.device_trusted_at if device_trust_state == 'trusted' else False
+            device_blocked_at = session.device_blocked_at if device_trust_state == 'blocked' else False
+        else:
+            device_trust_state = 'pending_trust'
+            device_trusted_at = False
+            device_blocked_at = False
+
         vals = {
             'user_id': session.user_id.id,
             'access_token_hash': self._hash_token(access_token),
@@ -224,8 +247,12 @@ class AcpecMobileSession(models.Model):
             'refresh_expires_at': refresh_expires_at,
             'last_seen_at': now,
             'state': 'active',
+            'device_trust_state': device_trust_state,
+            'device_trusted_at': device_trusted_at,
+            'device_blocked_at': device_blocked_at,
+            'device_trust_note': session.device_trust_note if same_device else False,
         }
-        vals.update(self._refresh_successor_device_vals(session, device_vals=device_vals))
+        vals.update(successor_device_vals)
 
         new_session = self.sudo().create(vals)
         return {
@@ -303,6 +330,34 @@ class AcpecMobileSession(models.Model):
         for session in self:
             if session.state == 'active':
                 session.write({'state': 'revoked', 'revoked_at': now})
+        return True
+
+    def action_trust_device(self):
+        now = fields.Datetime.now()
+        for session in self:
+            if not session.device_uid:
+                raise UserError(_('Impossible de faire confiance à une session sans identifiant device.'))
+            session.write({
+                'device_trust_state': 'trusted',
+                'device_trusted_at': now,
+                'device_blocked_at': False,
+            })
+        return True
+
+    def action_block_device(self):
+        now = fields.Datetime.now()
+        self.write({
+            'device_trust_state': 'blocked',
+            'device_blocked_at': now,
+        })
+        return True
+
+    def action_reset_device_trust(self):
+        self.write({
+            'device_trust_state': 'pending_trust',
+            'device_trusted_at': False,
+            'device_blocked_at': False,
+        })
         return True
 
     def unlink(self):
