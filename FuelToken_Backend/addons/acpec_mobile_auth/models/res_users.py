@@ -16,6 +16,7 @@ class ResUsers(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('blocked', 'Blocked'),
     ], string='Mobile State', default='pending',)
     mobile_only = fields.Boolean(
         string='Mobile Only',
@@ -440,6 +441,24 @@ class ResUsers(models.Model):
             rotated += 1
         return rotated
 
+
+    def _acpec_revoke_mobile_sessions(self):
+        """Revoke active mobile sessions for mobile-only users in this recordset."""
+        users = self.filtered(lambda user: bool(getattr(user, 'mobile_only', False)))
+        if not users:
+            return True
+
+        sessions = self.env['acpec.mobile.session'].sudo().search([
+            ('user_id', 'in', users.ids),
+            ('state', '=', 'active'),
+        ])
+        if sessions:
+            sessions.write({
+                'state': 'revoked',
+                'revoked_at': fields.Datetime.now(),
+            })
+        return True
+
     @api.model_create_multi
     def create(self, vals_list):
         users = super().create(vals_list)
@@ -450,4 +469,12 @@ class ResUsers(models.Model):
         self._acpec_assert_mobile_password_write_allowed(vals)
         result = super().write(vals)
         self._check_acpec_mobile_user_separation()
+
+        should_revoke_mobile_sessions = (
+            ('mobile_state' in vals and vals.get('mobile_state') != 'approved')
+            or vals.get('active') is False
+        )
+        if should_revoke_mobile_sessions:
+            self.sudo()._acpec_revoke_mobile_sessions()
+
         return result
