@@ -17,6 +17,13 @@ class ResUsers(models.Model):
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
     ], string='Mobile State', default='pending',)
+    mobile_only = fields.Boolean(
+        string='Mobile Only',
+        default=False,
+        index=True,
+        copy=False,
+        help='Technical flag for FuelToken mobile-only portal users. These users authenticate through mobile OTP/session flows only.',
+    )
     mobile_pin_hash = fields.Char(string='Mobile PIN Hash', copy=False, groups='base.group_system')
     mobile_pin_salt = fields.Char(string='Mobile PIN Salt', copy=False, groups='base.group_system')
     mobile_pin_set = fields.Boolean(string='Mobile PIN Set', default=False, copy=False, readonly=True)
@@ -47,17 +54,40 @@ class ResUsers(models.Model):
         return self.browse(user_ids)
 
     def _acpec_mobile_identity_group_xmlids(self):
+        """Groups that mark a user as a FuelToken mobile identity.
+
+        Do not include base.group_portal here: portal is the technical Odoo
+        external-user type and may also be used by real web portal users.
+        """
         return (
             'acpec_mobile_auth.group_mobile_auth_user',
+        )
+
+    def _acpec_mobile_baseline_group_xmlids(self):
+        """Mandatory technical baseline for every FuelToken mobile-only user."""
+        return (
+            'base.group_portal',
+            'acpec_mobile_auth.group_mobile_auth_user',
+        )
+
+    def _acpec_mobile_role_group_xmlids(self):
+        """Application roles; assigned only by controlled back-office flows."""
+        return (
             'acpec_fueltoken_base.group_fuel_user',
             'acpec_fueltoken_base.group_fuel_station',
             'acpec_fueltoken_base.group_fuel_manager',
         )
 
     def _acpec_mobile_forbidden_group_xmlids(self):
+        """Groups forbidden for FuelToken mobile-only users.
+
+        base.group_portal is intentionally allowed and required: the user is
+        technically a portal-type Odoo user, but functionally mobile-only.
+        """
         return (
-            'base.group_portal',
             'base.group_user',
+            'base.group_public',
+            'acpec_mobile_auth.group_mobile_auth_admin',
             'acpec_fueltoken_base.group_fuel_admin',
         )
 
@@ -98,9 +128,11 @@ class ResUsers(models.Model):
     @api.model
     def _mobile_pin_lock_seconds(self):
         return self.env["acpec.mobile.security.policy"].sudo().mobile_pin_lock_seconds()
+
     @api.model
     def _mobile_pin_max_attempts(self):
         return self.env["acpec.mobile.security.policy"].sudo().mobile_pin_max_attempts()
+
     def set_mobile_pin(self, pin):
         """Set the mobile confirmation PIN without touching res.users.password."""
         pin = self._validate_mobile_pin(pin)
@@ -206,6 +238,48 @@ class ResUsers(models.Model):
         return candidates
 
     @api.model
+    def _acpec_migrate_mobile_user_baseline(self):
+        """Align existing FuelToken mobile users with the V1 baseline.
+
+        Scope is intentionally narrow: only users already marked mobile_only or
+        carrying the mobile auth identity group are migrated. We do not convert
+        arbitrary portal/company users into mobile users.
+        """
+        Users = self.sudo().with_context(active_test=False)
+        mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
+        baseline_group_ids = self._acpec_group_ids(self._acpec_mobile_baseline_group_xmlids())
+        forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
+
+        candidates = Users.search([('mobile_only', '=', True)])
+        if mobile_group_ids:
+            self.env.cr.execute(
+                """
+                SELECT DISTINCT uid
+                  FROM res_groups_users_rel
+                 WHERE gid = ANY(%s)
+                """,
+                (list(mobile_group_ids),),
+            )
+            group_user_ids = [row[0] for row in self.env.cr.fetchall()]
+            if group_user_ids:
+                candidates |= Users.browse(group_user_ids)
+
+        migrated = 0
+        for user in candidates:
+            groups = set(user.group_ids.ids)
+            groups.update(baseline_group_ids)
+            groups.difference_update(forbidden_group_ids)
+            vals = {
+                'mobile_only': True,
+                'group_ids': [(6, 0, sorted(groups))],
+            }
+            if not user.password:
+                vals['password'] = user._acpec_mobile_unusable_password()
+            user.write(vals)
+            migrated += 1
+        return migrated
+
+    @api.model
     def _acpec_migrate_legacy_mobile_pin_credentials(self):
         """Disable legacy PIN-as-Odoo-password for existing mobile-only users.
 
@@ -230,26 +304,52 @@ class ResUsers(models.Model):
     def _check_acpec_mobile_user_separation(self):
         mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
         forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
-        if not mobile_group_ids or not forbidden_group_ids:
-            return
+        baseline_group_ids = self._acpec_group_ids(self._acpec_mobile_baseline_group_xmlids())
 
         mobile_group_users = self._acpec_users_with_group_ids(mobile_group_ids)
-        mobile_phone_users = self.filtered(lambda user: bool(user.mobile_phone))
-        mobile_users = mobile_group_users | mobile_phone_users
+        mobile_only_users = self.filtered(lambda user: bool(user.mobile_only))
+        mobile_users = mobile_group_users | mobile_only_users
         if not mobile_users:
             return
 
-        invalid_users = mobile_users._acpec_users_with_group_ids(forbidden_group_ids)
-        if invalid_users:
+        if forbidden_group_ids:
+            invalid_users = mobile_users._acpec_users_with_group_ids(forbidden_group_ids)
+            if invalid_users:
+                names = ', '.join(
+                    str(user.display_name or user.name or user.login or user.id)
+                    for user in invalid_users[:5]
+                )
+                raise ValidationError(_(
+                    "Un utilisateur mobile FuelToken doit rester mobile-only : "
+                    "pas d'accès interne Odoo, pas de groupe public, pas de groupe admin mobile "
+                    "et pas de groupe back-office FuelToken. Utilisateurs concernés: %s"
+                ) % names)
+
+        missing_mobile_only = mobile_group_users.filtered(lambda user: not user.mobile_only)
+        if missing_mobile_only:
             names = ', '.join(
-            str(user.display_name or user.name or user.login or user.id)
-            for user in invalid_users[:5]
-        )
+                str(user.display_name or user.name or user.login or user.id)
+                for user in missing_mobile_only[:5]
+            )
             raise ValidationError(_(
-                "Un utilisateur mobile FuelToken doit rester mobile-only : "
-                "pas d'accès portail, pas d'accès interne Odoo et pas de groupe back-office FuelToken. "
+                "Un utilisateur avec le groupe Mobile Auth User doit être marqué mobile_only=True. "
                 "Utilisateurs concernés: %s"
             ) % names)
+
+        if baseline_group_ids:
+            missing_baseline = mobile_users.filtered(
+                lambda user: set(baseline_group_ids) - set(user.group_ids.ids)
+            )
+            if missing_baseline:
+                names = ', '.join(
+                    str(user.display_name or user.name or user.login or user.id)
+                    for user in missing_baseline[:5]
+                )
+                raise ValidationError(_(
+                    "Un utilisateur mobile FuelToken doit avoir la baseline technique : "
+                    "base.group_portal + acpec_mobile_auth.group_mobile_auth_user. "
+                    "Utilisateurs concernés: %s"
+                ) % names)
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -68,9 +68,11 @@ class AcpecMobileSession(models.Model):
     @api.model
     def _access_minutes(self):
         return self.env["acpec.mobile.security.policy"].sudo().access_token_minutes()
+
     @api.model
     def _refresh_days(self):
         return self.env["acpec.mobile.security.policy"].sudo().refresh_token_days()
+
     @api.model
     def _has_group_safe(self, user, xmlid):
         try:
@@ -84,11 +86,24 @@ class AcpecMobileSession(models.Model):
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
             raise AccessError(_('Compte mobile rejeté.'))
+        if not getattr(user, 'mobile_only', False):
+            raise AccessError(_('Ce compte n’est pas un compte mobile-only FuelToken.'))
+
+        required_xmlids = (
+            'base.group_portal',
+            'acpec_mobile_auth.group_mobile_auth_user',
+        )
         forbidden_xmlids = (
             'base.group_user',
-            'base.group_portal',
+            'base.group_public',
+            'acpec_mobile_auth.group_mobile_auth_admin',
             'acpec_fueltoken_base.group_fuel_admin',
         )
+
+        for xmlid in required_xmlids:
+            if not self._has_group_safe(user, xmlid):
+                raise AccessError(_('Compte mobile FuelToken incomplet ou mal configuré.'))
+
         for xmlid in forbidden_xmlids:
             if self._has_group_safe(user, xmlid):
                 raise AccessError(_('Ce compte n’est pas autorisé à utiliser l’application mobile FuelToken.'))

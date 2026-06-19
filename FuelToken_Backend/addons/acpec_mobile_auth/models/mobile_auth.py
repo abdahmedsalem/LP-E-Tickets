@@ -83,12 +83,13 @@ class AcpecMobileAuthAccountRequest(models.Model):
     def _mobile_user_group_ids(self):
         """Return groups for approved mobile-only FuelToken accounts.
 
-        Mobile accounts must never receive Odoo portal/public website groups.
-        They authenticate through the OTP/mobile-session flow and use only
-        FuelToken mobile application groups.
+        The technical Odoo type is portal, but the user remains functionally
+        mobile-only. Business roles must be assigned by controlled back-office
+        flows, not by the mobile client.
         """
         group_ids = []
         for xmlid in (
+            'base.group_portal',
             'acpec_mobile_auth.group_mobile_auth_user',
             'acpec_fueltoken_base.group_fuel_user',
         ):
@@ -107,7 +108,9 @@ class AcpecMobileAuthAccountRequest(models.Model):
                 raise UserError(_('No linked user exists for this account request.'))
             vals = {
                 'active': True,
+                'mobile_only': True,
                 'mobile_state': 'approved',
+                'password': record.user_id._acpec_mobile_unusable_password(),
             }
             if group_ids:
                 vals['group_ids'] = [(6, 0, group_ids)]

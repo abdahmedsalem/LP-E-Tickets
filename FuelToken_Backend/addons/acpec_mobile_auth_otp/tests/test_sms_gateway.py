@@ -466,6 +466,15 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
 
     def test_legacy_mobile_user_migration_requires_new_pin_without_touching_internal_users(self):
+        mobile_baseline_group_ids = []
+        for xmlid in (
+            'base.group_portal',
+            'acpec_mobile_auth.group_mobile_auth_user',
+        ):
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                mobile_baseline_group_ids.append(group.id)
+
         mobile_partner = self.env['res.partner'].create({'name': 'Legacy Mobile'})
         mobile_group = self.env.ref('acpec_mobile_auth.group_mobile_auth_user')
         mobile_user = self.env['res.users'].sudo().with_context(no_reset_password=True).create({
@@ -475,9 +484,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             'partner_id': mobile_partner.id,
             'company_id': self.env.company.id,
             'company_ids': [(6, 0, [self.env.company.id])],
-            'group_ids': [(6, 0, [mobile_group.id])],
+            'group_ids': [(6, 0, mobile_baseline_group_ids)],
             'mobile_phone': '32524001',
             'mobile_state': 'approved',
+            'mobile_only': True,
         })
 
         internal_partner = self.env['res.partner'].create({'name': 'Internal User'})

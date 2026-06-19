@@ -249,15 +249,15 @@ class AcpecMobileAuthApiCommon(http.Controller):
         }
 
     def _mobile_signup_group_ids(self):
-        """Return the groups assigned to accounts created by the mobile OTP flow.
+        """Return the technical baseline groups for mobile OTP-created users.
 
-        Mobile FuelToken users are mobile-only identities. They must not
-        receive Odoo's portal or public website groups; their access is driven
-        only by the mobile authentication/session layer and FuelToken mobile
-        application groups.
+        A FuelToken mobile user is technically an Odoo portal user, but is
+        functionally mobile-only. Application roles are assigned separately by
+        controlled back-office flows.
         """
         group_ids = []
         for xmlid in (
+            'base.group_portal',
             'acpec_mobile_auth.group_mobile_auth_user',
             'acpec_fueltoken_base.group_fuel_user',
         ):
@@ -303,6 +303,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
             'active': True,
+            'mobile_only': True,
             'mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
         }
@@ -389,11 +390,24 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _assert_mobile_only_user(self, user):
         if not user or not user.exists() or not user.active:
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
+        if not getattr(user, 'mobile_only', False):
+            raise AccessError(_('Ce compte n’est pas un compte mobile-only FuelToken.'))
+
+        required_xmlids = (
+            'base.group_portal',
+            'acpec_mobile_auth.group_mobile_auth_user',
+        )
         forbidden_xmlids = (
             'base.group_user',
-            'base.group_portal',
+            'base.group_public',
+            'acpec_mobile_auth.group_mobile_auth_admin',
             'acpec_fueltoken_base.group_fuel_admin',
         )
+
+        for xmlid in required_xmlids:
+            if not self._has_group_safe(user, xmlid):
+                raise AccessError(_('Compte mobile FuelToken incomplet ou mal configuré.'))
+
         for xmlid in forbidden_xmlids:
             if self._has_group_safe(user, xmlid):
                 raise AccessError(_('Ce compte n’est pas autorisé à utiliser l’application mobile FuelToken.'))
@@ -413,6 +427,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'mobile_phone': user.mobile_phone,
             'email': user.email,
             'mobile_state': user.mobile_state,
+            'mobile_only': bool(user.mobile_only),
             'mobile_pin_set': bool(user.mobile_pin_set),
             'mobile_pin_required': bool(user.mobile_pin_required),
             'profile': self._get_mobile_profile(user),
