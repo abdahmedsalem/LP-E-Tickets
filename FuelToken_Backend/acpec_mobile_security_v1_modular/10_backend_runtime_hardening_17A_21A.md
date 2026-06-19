@@ -129,3 +129,26 @@ Avant production complète, reclasser :
 - idempotence forte par `request_hash` ;
 - audit métier détaillé des actions sensibles ;
 - éventuel modèle `acpec.mobile.device` en V2.
+
+## Additif patch22A — classification des endpoints sensibles
+
+Les endpoints suivants sont classés sensibles et exigent désormais device trusted + PIN serveur action_code :
+
+- /api/acpec/fueltoken/v1/mobile/qr/issue
+- /api/acpec/fueltoken/v1/mobile/qr/retirer
+- /api/acpec/fueltoken/v1/mobile/qr/separer
+- /api/acpec/fueltoken/v1/station/qr/use
+- /api/acpec/fueltoken/v1/admin/carnet-types/create
+- /api/acpec/fueltoken/v1/admin/carnet-types/update
+- /api/acpec/fueltoken/v1/admin/carnet-types/delete
+
+Les endpoints suivants restent en authentification simple, sans PIN serveur :
+
+- /api/acpec/fueltoken/v1/mobile/qr/list
+- /api/acpec/fueltoken/v1/mobile/qr/detail
+- /api/acpec/fueltoken/v1/station/profile
+- /api/acpec/fueltoken/v1/station/qr/check
+- /api/acpec/fueltoken/v1/station/transactions
+- /api/acpec/fueltoken/v1/admin/carnet-types/list
+
+Règle doctrinale : toute mutation de valeur économique doit passer par _require_sensitive_action_pin(...). Les lectures, previews et checks non mutatifs restent en authentification mobile simple.

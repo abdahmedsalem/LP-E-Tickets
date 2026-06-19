@@ -14,6 +14,12 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
         return station, user
 
+    def _trusted_station_user(self, params=None, purpose='station_sensitive_action'):
+        user = self._require_sensitive_action_pin(params or {}, purpose=purpose)
+        self._require_fuel_group(user, 'station')
+        station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
+        return station, user
+
     def _station_agent_payload(self, agent):
         return {
             'id': agent.id,
@@ -116,7 +122,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     def use_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
-            station, user = self._station_user()
+            station, user = self._trusted_station_user(kwargs, purpose='station_qr_use')
             qr = request.env['acpec.fuel.qr'].sudo().search([('public_code', '=', kwargs.get('public_code'))], limit=1)
             if not qr:
                 raise ValidationError(_('QR introuvable.'))

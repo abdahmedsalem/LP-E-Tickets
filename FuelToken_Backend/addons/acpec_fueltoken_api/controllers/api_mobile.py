@@ -703,6 +703,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def issue_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines'])
+            self._require_sensitive_action_pin(kwargs, purpose='qr_issue')
             wallet = self._mobile_wallet()
             requests = []
             for line in kwargs.get('lines') or []:
@@ -766,6 +767,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def retirer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code', 'lines'])
+            self._require_sensitive_action_pin(kwargs, purpose='qr_retirer')
             wallet = self._mobile_wallet()
             qr = request.env['acpec.fuel.qr'].sudo().search([
                 ('public_code', '=', kwargs.get('public_code')),
@@ -792,6 +794,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def separer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
+            self._require_sensitive_action_pin(kwargs, purpose='qr_separer')
             wallet = self._mobile_wallet()
             qr = request.env['acpec.fuel.qr'].sudo().search([
                 ('public_code', '=', kwargs.get('public_code')),
