@@ -97,20 +97,10 @@ class ResUsers(models.Model):
 
     @api.model
     def _mobile_pin_lock_seconds(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.mobile_pin_lock_seconds')
-        try:
-            return max(0, int(value or 60))
-        except Exception:
-            return 60
-
+        return self.env["acpec.mobile.security.policy"].sudo().mobile_pin_lock_seconds()
     @api.model
     def _mobile_pin_max_attempts(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.mobile_pin_max_attempts')
-        try:
-            return max(1, int(value or 5))
-        except Exception:
-            return 5
-
+        return self.env["acpec.mobile.security.policy"].sudo().mobile_pin_max_attempts()
     def set_mobile_pin(self, pin):
         """Set the mobile confirmation PIN without touching res.users.password."""
         pin = self._validate_mobile_pin(pin)

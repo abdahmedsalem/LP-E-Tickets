@@ -67,20 +67,10 @@ class AcpecMobileSession(models.Model):
 
     @api.model
     def _access_minutes(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.access_token_minutes')
-        try:
-            return int(value or 60)
-        except Exception:
-            return 60
-
+        return self.env["acpec.mobile.security.policy"].sudo().access_token_minutes()
     @api.model
     def _refresh_days(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.refresh_token_days')
-        try:
-            return int(value or 30)
-        except Exception:
-            return 30
-
+        return self.env["acpec.mobile.security.policy"].sudo().refresh_token_days()
     @api.model
     def _has_group_safe(self, user, xmlid):
         try:

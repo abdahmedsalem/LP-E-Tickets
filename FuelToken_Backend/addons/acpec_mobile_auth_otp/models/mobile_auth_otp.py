@@ -73,18 +73,10 @@ class AcpecMobileAuthOtp(models.Model):
 
     @api.model
     def _otp_code_length(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_code_length')
-        try:
-            # OTP SMS codes are 6 digits for the Chinguisoft validation API.
-            # Do not confuse this with the signup confirmation secret_code,
-            # which remains exactly 4 digits in acpec_mobile_auth.
-            return min(
-                OTP_SMS_CODE_LENGTH_MAX,
-                max(OTP_SMS_CODE_LENGTH_MIN, int(value or OTP_SMS_CODE_LENGTH_DEFAULT)),
-            )
-        except Exception:
-            return OTP_SMS_CODE_LENGTH_DEFAULT
-
+        return self.env["acpec.mobile.security.policy"].sudo().otp_code_length()
+    @api.model
+    def _otp_code_length(self):
+        return self.env["acpec.mobile.security.policy"].sudo().otp_code_length()
     @api.model
     def _new_code(self):
         length = self._otp_code_length()
@@ -92,38 +84,26 @@ class AcpecMobileAuthOtp(models.Model):
 
     @api.model
     def _expiration_minutes(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_expiration_minutes')
-        try:
-            return int(value or 5)
-        except Exception:
-            return 5
-
+        return self.env["acpec.mobile.security.policy"].sudo().otp_expiration_minutes()
     @api.model
     def _max_attempts(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_max_attempts')
-        try:
-            return int(value or 5)
-        except Exception:
-            return 5
-
+        return self.env["acpec.mobile.security.policy"].sudo().otp_max_attempts()
     @api.model
     def _request_cooldown_seconds(self):
-        value = self.env['ir.config_parameter'].sudo().get_param(
-            'acpec_mobile_auth.otp_request_cooldown_seconds'
-        )
-        try:
-            return max(0, int(value or 60))
-        except Exception:
-            return 60
-
+        return self.env["acpec.mobile.security.policy"].sudo().otp_request_cooldown_seconds()
     @api.model
     def _rate_limit_int(self, key, default):
-        value = self.env['ir.config_parameter'].sudo().get_param(key)
-        try:
-            return max(0, int(value if value not in (False, None, '') else default))
-        except Exception:
-            return default
-
+        policy = self.env["acpec.mobile.security.policy"].sudo()
+        specs = {
+            "acpec_mobile_auth.otp_limit_identifier_per_minute": policy.OTP_LIMIT_IDENTIFIER_PER_MINUTE,
+            "acpec_mobile_auth.otp_limit_identifier_per_day": policy.OTP_LIMIT_IDENTIFIER_PER_DAY,
+            "acpec_mobile_auth.otp_limit_ip_per_hour": policy.OTP_LIMIT_IP_PER_HOUR,
+            "acpec_mobile_auth.otp_limit_register_ip_per_day": policy.OTP_LIMIT_REGISTER_IP_PER_DAY,
+        }
+        spec = specs.get(key)
+        if spec:
+            return policy.get_int(spec)
+        return policy.get_int_param(key, default, min_value=0)
     @api.model
     def _otp_limit_identifier_per_minute(self):
         return self._rate_limit_int('acpec_mobile_auth.otp_limit_identifier_per_minute', 1)
@@ -374,12 +354,9 @@ class AcpecMobileAuthOtp(models.Model):
         ).strip()
         return provider == 'chinguisoft' and bool(validation_key) and bool(token)
 
+    @api.model
     def _otp_dev_mode(self):
-        value = self.env['ir.config_parameter'].sudo().get_param('acpec_mobile_auth.otp_dev_mode')
-        if value in (False, None, ''):
-            return False
-        return str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'oui')
-
+        return self.env["acpec.mobile.security.policy"].sudo().otp_dev_mode_enabled()
     def _send_otp_code(self, code):
         self.ensure_one()
         phone = self._sms_recipient_phone()

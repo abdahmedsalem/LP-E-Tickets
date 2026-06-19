@@ -119,20 +119,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return (getattr(httprequest, 'remote_addr', '') or '').strip()
 
     def _get_config_bool(self, key, default=False):
-        value = request.env['ir.config_parameter'].sudo().get_param(key)
-        if value in (False, None, ''):
-            return default
-        return self._get_bool_param(value, default=default)
-
+        return request.env["acpec.mobile.security.policy"].sudo().get_bool(key, default=default)
     def _get_config_int(self, key, default=0):
-        value = request.env['ir.config_parameter'].sudo().get_param(key)
-        if value in (False, None, ''):
-            return default
-        try:
-            return int(value)
-        except Exception:
-            return default
-
+        return request.env["acpec.mobile.security.policy"].sudo().get_int_param(key, default)
     def _validate_selection(self, value, key, allowed_values):
         if value and value not in allowed_values:
             raise ValidationError(
