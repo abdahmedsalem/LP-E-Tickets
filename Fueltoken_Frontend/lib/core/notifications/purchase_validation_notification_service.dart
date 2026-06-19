@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -27,7 +28,7 @@ class PurchaseValidationNotificationService {
   static const _channelId = 'purchase_validation';
   static const _channelName = 'Validation de commandes';
   static const _channelDescription =
-      'Notifications pour les commandes de carnets validÃ©es ou rejetÃ©es';
+      'Notifications pour les commandes de carnets validées ou rejetées';
   static const _prefsPrefix = 'ft_purchase_validation_notified_';
   static const _qrPrefsPrefix = 'ft_qr_expiration_notified_';
 
@@ -134,12 +135,13 @@ class PurchaseValidationNotificationService {
 
     for (final lot in terminalLots) {
       final key = 'purchase-${lot.id}';
-      if (notifiedIds.contains(key)) {
+      if (notifiedIds.contains(key) ||
+          NotificationsStore.instance.items.any((item) => item.id == key)) {
         await _refreshStoredPurchaseNotificationIfNeeded(lot);
         continue;
       }
       notifiedIds.add(key);
-      await _emitStatusNotification(lot);
+      unawaited(_emitStatusNotification(lot));
     }
   }
 
@@ -150,7 +152,8 @@ class PurchaseValidationNotificationService {
     final transfers = await _loadReceivedTransfers(user);
     for (final tx in transfers) {
       final key = 'transfer-${tx.id}';
-      if (notifiedIds.contains(key)) {
+      if (notifiedIds.contains(key) ||
+          NotificationsStore.instance.items.any((item) => item.id == key)) {
         await _refreshStoredTransferNotificationIfNeeded(tx);
         continue;
       }
@@ -173,17 +176,25 @@ class PurchaseValidationNotificationService {
 
     final now = DateTime.now().toLocal();
     for (final qr in qrs) {
+      if (qr.state != QrState.active) continue;
+
       final expiration = _resolveQrExpiration(qr);
       if (expiration == null) continue;
       final expirationLocal = expiration.toLocal();
       if (!now.isBefore(expirationLocal)) continue;
 
-      for (final threshold in const [_QrExpirationThreshold.days7, _QrExpirationThreshold.hours24]) {
+      for (final threshold in const [
+        _QrExpirationThreshold.days7,
+        _QrExpirationThreshold.hours24,
+      ]) {
         if (!_isQrExpirationDue(now, expirationLocal, threshold)) {
           continue;
         }
         final key = _qrExpirationKey(qr, threshold);
-        if (notifiedIds.contains(key)) continue;
+        if (notifiedIds.contains(key) ||
+            NotificationsStore.instance.items.any((item) => item.id == key)) {
+          continue;
+        }
         notifiedIds.add(key);
         await _emitQrExpirationNotification(qr, expirationLocal, threshold);
       }
@@ -191,6 +202,8 @@ class PurchaseValidationNotificationService {
   }
 
   Future<void> _emitStatusNotification(PurchaseLot lot) async {
+    await Future<void>.delayed(const Duration(milliseconds: 2500));
+
     final item = _buildStoredNotification(lot);
 
     const androidDetails = AndroidNotificationDetails(
@@ -369,13 +382,11 @@ class PurchaseValidationNotificationService {
         )
         .toList(growable: false);
     final isRejected = lot.state == PurchaseLotState.rejected;
-    final title = isRejected
-        ? 'Commande carnet refusée'
-        : 'Commande carnet validée';
+    final title = isRejected ? 'Achat refusé' : 'Achat validé';
     final rejectionReason = isRejected ? lot.rejectionReason : null;
     final body = isRejected
         ? _rejectedBody(amountLabel, dateLabel, rejectionReason)
-        : '$amountLabel â€¢ ValidÃ©e le $dateLabel';
+        : '$amountLabel • Validée le $dateLabel';
 
     return NotificationItem(
       id: 'purchase-${lot.id}',
@@ -413,10 +424,10 @@ class PurchaseValidationNotificationService {
           ),
         )
         .toList(growable: false);
-    final title = 'Reçu';
+    final title = 'Carnet reçu';
     final body = party.isNotEmpty
-        ? '$amountLabel â€¢ Reçu de $party â€¢ $dateLabel'
-        : '$amountLabel â€¢ Reçu â€¢ $dateLabel';
+        ? '$amountLabel • Reçu de $party • $dateLabel'
+        : '$amountLabel • Reçu • $dateLabel';
 
     return NotificationItem(
       id: 'transfer-${tx.id}',
@@ -446,10 +457,10 @@ class PurchaseValidationNotificationService {
     final notificationDateLabel = Formatters.dateTime(DateTime.now());
     final qrCode = qr.publicCode.trim();
     final title = threshold == _QrExpirationThreshold.hours24
-        ? 'QR expire dans 24 h'
+        ? 'QR expire dans 24h'
         : 'QR expire dans 7 jours';
     final body =
-        '$amountLabel â€¢ Code $qrCode â€¢ Expire le $dateLabel â€¢ ${threshold.displayLabel}';
+        '$amountLabel • Code $qrCode • Expire le $dateLabel';
 
     return NotificationItem(
       id: _qrExpirationKey(qr, threshold),
@@ -482,9 +493,9 @@ class PurchaseValidationNotificationService {
         ? null
         : rejectionReason.trim();
     if (reason == null) {
-      return '$amountLabel â€¢ RejetÃ©e le $dateLabel';
+      return '$amountLabel • Rejetée le $dateLabel';
     }
-    return '$amountLabel â€¢ RejetÃ©e le $dateLabel â€¢ Motif: $reason';
+    return '$amountLabel • Rejetée le $dateLabel • Motif: $reason';
   }
 
   bool _isQrExpirationDue(
@@ -492,8 +503,15 @@ class PurchaseValidationNotificationService {
     DateTime expirationLocal,
     _QrExpirationThreshold threshold,
   ) {
-    final start = expirationLocal.subtract(threshold.duration);
-    return !nowLocal.isBefore(start) && nowLocal.isBefore(expirationLocal);
+    final remaining = expirationLocal.difference(nowLocal);
+    if (remaining.isNegative) return false;
+
+    switch (threshold) {
+      case _QrExpirationThreshold.days7:
+        return remaining <= const Duration(days: 7) && remaining > const Duration(hours: 24);
+      case _QrExpirationThreshold.hours24:
+        return remaining <= const Duration(hours: 24);
+    }
   }
 
   DateTime? _resolveQrExpiration(QrToken qr) {
@@ -660,7 +678,7 @@ enum _QrExpirationThreshold {
       case _QrExpirationThreshold.days7:
         return 'Alerte 7 jours';
       case _QrExpirationThreshold.hours24:
-        return 'Alerte 24 h';
+        return 'Alerte 24h';
     }
   }
 }

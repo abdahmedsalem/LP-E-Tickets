@@ -1,4 +1,4 @@
-import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../data/services/odoo_jsonrpc_client.dart';
 
 /// Traduit toute exception en message court et convivial pour l'utilisateur.
 ///

@@ -13,6 +13,7 @@ import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -456,124 +457,427 @@ class _AmountInline extends StatelessWidget {
   }
 }
 
-class _StationHistoryRow extends StatefulWidget {
+class _StationHistoryRow extends StatelessWidget {
   const _StationHistoryRow({required this.transaction});
 
   final BusinessTransaction transaction;
 
-  @override
-  State<_StationHistoryRow> createState() => _StationHistoryRowState();
-}
+  Future<void> _openDetails(BuildContext context) async {
+    final scheme = Theme.of(context).colorScheme;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final amount = transaction.totalAmount.abs();
 
-class _StationHistoryRowState extends State<_StationHistoryRow> {
-  bool _expanded = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.62,
+          minChildSize: 0.42,
+          maxChildSize: 0.94,
+          expand: false,
+          builder: (context, scrollController) {
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(22),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: scheme.outline.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 12, 8),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Consommation station',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                          tooltip: 'Fermer',
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 20),
+                      children: [
+                        _StationConsumptionOverviewCard(
+                          transaction: transaction,
+                          amount: amount,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Détail de la consommation',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _StationConsumptionDetailGrid(transaction: transaction),
+                        if (transaction.lines.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            'Lignes de consommation',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ...transaction.lines.map((line) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: scheme.outline.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    FaceValueChip(value: line.faceValue),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurface,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      Formatters.money(line.amount),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: scheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final tx = widget.transaction;
+    final tx = transaction;
     final amount = tx.totalAmount.abs();
-    final title = tx.displayTitle;
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
+    final qrCode = (tx.qrPublicCode ?? tx.qrId ?? '—').trim();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8EAED)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
+      onTap: () => _openDetails(context),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.local_gas_station_rounded,
+              size: 22,
+              color: AppColors.danger,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tx.displayTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.ink,
+                    height: 1.12,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${tx.stationName ?? 'Station inconnue'} • ${tx.userName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.2,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$dateLabel $hourLabel',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _AmountInline(
+                amount: amount,
+                textAlign: TextAlign.right,
+                valueStyle: GoogleFonts.poppins(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.danger,
+                  height: 1,
+                  letterSpacing: -0.2,
+                ),
+                unitStyle: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger.withValues(alpha: 0.82),
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                constraints: const BoxConstraints(maxWidth: 96),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTint.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  qrCode,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryDeep,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: ExpansionPanelList(
-          expandedHeaderPadding: EdgeInsets.zero,
-          elevation: 0,
-          materialGapSize: 0,
-          expansionCallback: (panelIndex, isExpanded) {
-            setState(() => _expanded = !_expanded);
-          },
-          children: [
-            ExpansionPanel(
-              canTapOnHeader: true,
-              backgroundColor: Colors.transparent,
-              isExpanded: _expanded,
-              headerBuilder: (context, isExpanded) {
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 16, 10, 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: _StationConsumptionHistoryScreenState
-                                    ._cPrimaryText,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$dateLabel $hourLabel',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: _StationConsumptionHistoryScreenState
-                                    ._cSecondaryText,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      _AmountInline(
-                        amount: amount,
-                        textAlign: TextAlign.right,
-                        valueStyle: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: _StationConsumptionHistoryScreenState._cDanger,
-                          height: 1,
-                          letterSpacing: -0.2,
-                        ),
-                        unitStyle: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: _StationConsumptionHistoryScreenState._cDanger
-                              .withValues(alpha: 0.82),
-                          height: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              body: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
-                child: _StationHistoryDetailBody(
-                  transaction: tx,
-                  amount: amount,
-                ),
-              ),
-            ),
-          ],
-        ),
+    );
+  }
+}
+
+class _StationConsumptionOverviewCard extends StatelessWidget {
+  const _StationConsumptionOverviewCard({
+    required this.transaction,
+    required this.amount,
+  });
+
+  final BusinessTransaction transaction;
+  final int amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final qrCode = (transaction.qrPublicCode ?? transaction.qrId ?? '—').trim();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.local_gas_station_rounded,
+              color: AppColors.danger,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  transaction.stationName ?? 'Station inconnue',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('dd-MM-yyyy HH:mm').format(transaction.date),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 92,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Montant',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '-${Formatters.number(amount)} ${Formatters.defaultCurrency}',
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.danger,
+                    height: 1,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryTint.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    qrCode,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDeep,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StationConsumptionDetailGrid extends StatelessWidget {
+  const _StationConsumptionDetailGrid({required this.transaction});
+
+  final BusinessTransaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final qrCode = (transaction.qrPublicCode ?? transaction.qrId ?? '—').trim();
+    return _DetailInfoGrid(
+      items: [
+        ('QR code consommé', qrCode.isEmpty ? '—' : qrCode),
+        ('Client concerné', transaction.userName),
+        ('Station', transaction.stationName ?? 'Station inconnue'),
+        ('Transaction', transaction.id),
+      ],
     );
   }
 }
@@ -589,62 +893,184 @@ class _StationHistoryDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final qrRef = transaction.qrPublicCode ?? transaction.qrId;
+
+    final rows = [
+      if (transaction.userName.isNotEmpty)
+        _StationTxDetailRow(label: 'Client concerné', value: transaction.userName),
+      if (qrRef != null && qrRef.isNotEmpty)
+        _StationTxDetailRow(label: 'QR code consommé', value: qrRef),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ConsumptionDetailSummary(
-          amount: amount,
-          clientName: transaction.userName,
-          stationName: transaction.stationName ?? 'Station inconnue',
-          txType: transaction.type.label,
-        ),
+        for (var i = 0; i < rows.length; i++) ...[
+          _StationTxDetailRowWidget(row: rows[i]),
+          if (i < rows.length - 1)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE8EAED)),
+        ],
         if (transaction.lines.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          ...transaction.lines.map((line) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: scheme.outline.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    FaceValueChip(value: line.faceValue),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      Formatters.money(line.amount),
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
+          const SizedBox(height: 10),
+          Text(
+            'Lignes',
+            style: GoogleFonts.poppins(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.muted,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (var i = 0; i < transaction.lines.length; i++) ...[
+            _StationTxLineRow(line: transaction.lines[i]),
+            if (i < transaction.lines.length - 1) const SizedBox(height: 8),
+          ],
         ],
       ],
+    );
+  }
+}
+
+class _StationTxDetailRow {
+  const _StationTxDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+}
+
+class _StationTxDetailRowWidget extends StatelessWidget {
+  const _StationTxDetailRowWidget({required this.row});
+
+  final _StationTxDetailRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              row.label,
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 6,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              row.value,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.poppins(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StationTxLineRow extends StatelessWidget {
+  const _StationTxLineRow({required this.line});
+
+  final TransactionLine line;
+
+  String _qrTitle() {
+    final qty = line.qty > 0 ? line.qty : 1;
+    final ticketLabel =
+        '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
+    final carnetLabel = line.carnetSize > 0 && line.faceValue > 0
+        ? 'carnet ${Formatters.numberFr(line.carnetSize)} x ${line.faceValue}'
+        : line.carnetTypeName.trim().isNotEmpty
+        ? line.carnetTypeName.trim().replaceFirst('Carnet', 'carnet')
+        : line.faceValue > 0
+        ? 'carnet ${Formatters.numberFr(line.faceValue)}'
+        : 'carnet';
+    return '$ticketLabel de $carnetLabel';
+  }
+
+  String? _subtitle() {
+    if (line.expirationDate == null) return null;
+    return 'Date d\'expiration : ${DateFormat('dd-MM-yyyy').format(line.expirationDate!)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = _subtitle();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _qrTitle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    height: 1.15,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _AmountInline(
+            amount: line.amount,
+            textAlign: TextAlign.right,
+            valueStyle: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+              height: 1.1,
+            ),
+            unitStyle: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.black.withValues(alpha: 0.72),
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

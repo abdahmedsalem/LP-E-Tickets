@@ -537,16 +537,11 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                     ]
                   : [
                       for (final line in allLines)
-                        _CarnetLineCard(
-                          line: line,
-                          carnetTypeLabel: _carnetTypeLabelFor(line),
-                          faceValueLabel: _amountLabel(line.faceValue, line),
-                          availableAmountLabel: _amountLabel(
-                            line.availableValue,
-                            line,
-                          ),
-                          onTap: () => _openCarnetDetail(line),
-                        ),
+                      _CarnetLineCard(
+                        line: line,
+                        carnetTypeLabel: _carnetTypeLabelFor(line),
+                        onTap: () => _openCarnetDetail(line),
+                      ),
                     ]),
             ],
           ),
@@ -1101,35 +1096,19 @@ class _CarnetLineCard extends StatelessWidget {
   const _CarnetLineCard({
     required this.line,
     required this.carnetTypeLabel,
-    required this.faceValueLabel,
-    required this.availableAmountLabel,
     required this.onTap,
   });
 
   final FaceLine line;
   final String carnetTypeLabel;
-  final String faceValueLabel;
-  final String availableAmountLabel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final expired = line.isExpired;
-    final stateLabel = expired
-        ? 'Expiré'
-        : line.availableQty > 0
-        ? 'Disponible'
-        : 'Indisponible';
-    final stateColor = expired
-        ? AppColors.danger
-        : line.availableQty > 0
-        ? AppColors.success
-        : AppColors.warning;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1137,173 +1116,41 @@ class _CarnetLineCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: stateColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.confirmation_number_outlined,
-                    size: 22,
-                    color: stateColor,
-                  ),
-                ),
-                const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        carnetTypeLabel,
-                        maxLines: 1,
+                        '$carnetTypeLabel · ${Formatters.numberFr(line.availableQty)} tickets restants',
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.poppins(
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
                           color: AppColors.ink,
-                          height: 1.12,
+                          height: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 6),
                       Text(
-                        'Ticket : $faceValueLabel',
+                        'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 12.2,
+                          fontSize: 12.3,
                           fontWeight: FontWeight.w600,
                           color: AppColors.muted,
-                          height: 1.15,
+                          height: 1.2,
                         ),
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: stateColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    stateLabel,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: stateColor,
-                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 13),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F9FB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.line.withValues(alpha: 0.75),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CarnetLineMetric(
-                          label: 'Tickets disponibles',
-                          value: Formatters.numberFr(line.availableQty),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _CarnetLineMetric(
-                          label: 'Valeur disponible',
-                          value: availableAmountLabel,
-                          alignEnd: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CarnetLineMetric(
-                          label: 'QR actifs',
-                          value: Formatters.numberFr(line.qrActiveQty),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _CarnetLineMetric(
-                          label: 'Expire le',
-                          value: Formatters.dateTimeDash(line.expirationDate),
-                          alignEnd: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CarnetLineMetric extends StatelessWidget {
-  const _CarnetLineMetric({
-    required this.label,
-    required this.value,
-    this.alignEnd = false,
-  });
-
-  final String label;
-  final String value;
-  final bool alignEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: alignEnd
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: const TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.muted,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: GoogleFonts.poppins(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            color: AppColors.ink,
-            height: 1.1,
-          ),
-        ),
-      ],
     );
   }
 }
