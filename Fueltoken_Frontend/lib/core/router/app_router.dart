@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,10 +9,10 @@ import '../../features/admin/screens/admin_lots_screen.dart';
 import '../../features/admin/screens/admin_more_screen.dart';
 import '../../features/admin/screens/admin_profile_screen.dart';
 import '../../features/admin/screens/admin_purchase_detail_screen.dart';
-import '../../features/admin/screens/admin_submitted_purchases_screen.dart';
 import '../../features/admin/screens/admin_reports_screen.dart';
 import '../../features/admin/screens/admin_shell_scaffold.dart';
 import '../../features/admin/screens/admin_stations_screen.dart';
+import '../../features/admin/screens/admin_submitted_purchases_screen.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/screens/forgot_otp_flow_screens.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
@@ -18,8 +20,8 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
 import '../../features/auth/screens/session_pin_lock_screen.dart';
-import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/client_shell_scaffold.dart';
+import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/user_home_screen.dart';
 import '../../features/purchases/screens/purchase_detail_screen.dart';
 import '../../features/purchases/screens/purchases_list_screen.dart';
@@ -30,13 +32,13 @@ import '../../features/qr/screens/qr_list_screen.dart';
 import '../../features/qr/screens/retirer_qr_screen.dart';
 import '../../features/qr/screens/separer_qr_screen.dart';
 import '../../features/qr/screens/transfer_carnets_screen.dart';
-import '../../features/station/screens/scan_screen.dart';
-import '../../features/station/screens/station_home_screen.dart';
-import '../../features/station/screens/station_profile_screen.dart';
-import '../../features/station/screens/station_consumption_history_screen.dart';
 import '../../features/settings/screens/acpec_connection_step1_screen.dart';
 import '../../features/settings/screens/notifications_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/station/screens/scan_screen.dart';
+import '../../features/station/screens/station_consumption_history_screen.dart';
+import '../../features/station/screens/station_home_screen.dart';
+import '../../features/station/screens/station_profile_screen.dart';
 import '../../features/station/screens/station_shell_scaffold.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
 
@@ -45,7 +47,7 @@ class AppRouter {
     return GoRouter(
       initialLocation: '/login',
       refreshListenable: _AuthListenable(authBloc),
-      redirect: (ctx, state) {
+      redirect: (_, state) {
         final auth = authBloc.state;
         final loggedIn = auth.status == AuthStatus.authenticated;
         final locked =
@@ -79,10 +81,9 @@ class AppRouter {
               return '/station/home';
           }
         }
-        // role guards
+
         if (loggedIn) {
           final role = auth.user!.role;
-          final loc = state.matchedLocation;
           if (role == UserRole.admin && loc.startsWith('/purchases/new')) {
             return null;
           }
@@ -123,11 +124,11 @@ class AppRouter {
         ),
         GoRoute(
           path: '/forgot-password/verify-otp',
-          builder: (ctx, st) {
+          builder: (_, st) {
             final x = st.extra;
             if (x is! ForgotOtpRouteArgs) {
               return const Scaffold(
-                body: Center(child: Text('Reprendre depuis PIN oublié.')),
+                body: Center(child: Text('Reprendre depuis le PIN oublie.')),
               );
             }
             return ForgotVerifyOtpScreen(args: x);
@@ -135,12 +136,12 @@ class AppRouter {
         ),
         GoRoute(
           path: '/forgot-password/reset',
-          builder: (ctx, st) {
+          builder: (_, st) {
             final x = st.extra;
             if (x is! ForgotResetRouteArgs) {
               return const Scaffold(
                 body: Center(
-                  child: Text('Reprendre depuis la vérification OTP.'),
+                  child: Text('Reprendre depuis la verification OTP.'),
                 ),
               );
             }
@@ -150,7 +151,7 @@ class AppRouter {
         GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
         GoRoute(
           path: '/register/verify-otp',
-          builder: (ctx, st) {
+          builder: (_, st) {
             final x = st.extra;
             if (x is! RegisterOtpRouteArgs) {
               return const Scaffold(
@@ -162,19 +163,14 @@ class AppRouter {
         ),
         GoRoute(
           path: '/signup/pending',
-          builder: (ctx, st) {
-            if (st.extra == Object()) {
-              return const Scaffold(
-                body: Center(child: Text("Reprendre depuis l'inscription.")),
-              );
-            }
+          builder: (_, _) {
             return const Scaffold(
-              body: Center(child: Text('Compte active. Connectez-vous.')),
+              body: Center(child: Text('Compte actif. Connectez-vous.')),
             );
           },
         ),
 
-        // user — navigation principale (5 onglets)
+        // Client shell, 5 tabs
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return ClientShellScaffold(navigationShell: navigationShell);
@@ -279,8 +275,8 @@ class AppRouter {
             child: StationConsumptionHistoryScreen(),
           ),
         ),
-
-        // station — accueil, scan et profil
+ 
+        // Station shell: home, scan, profile
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return StationShellScaffold(navigationShell: navigationShell);
@@ -317,7 +313,7 @@ class AppRouter {
           ],
         ),
 
-        // admin — 4 onglets (accent violet)
+        // Admin shell, 4 tabs
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return AdminShellScaffold(navigationShell: navigationShell);
@@ -378,15 +374,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/admin/accounts/:id',
-          builder: (_, st) {
-            if (st.extra == Object()) {
-              return Scaffold(
-                appBar: AppBar(title: const Text('Compte mobile')),
-                body: const Center(
-                  child: Text('Compte introuvable. Revenez à la liste.'),
-                ),
-              );
-            }
+          builder: (_, _) {
             return const Scaffold(
               body: Center(child: Text('Gestion des comptes mobile.')),
             );
@@ -415,7 +403,7 @@ class AppRouter {
     }
   }
 
-  /// Écrans réservés au profil « client » — un compte admin ne doit pas s’y retrouver par erreur.
+  /// Screens reserved for the client profile. Admins should not land here.
   static bool _isClientAppPath(String loc) {
     if (loc == '/home' || loc == '/faces' || loc == '/transactions') {
       return true;
@@ -434,8 +422,9 @@ class _AuthListenable extends ChangeNotifier {
   _AuthListenable(this._bloc) {
     _sub = _bloc.stream.listen((_) => notifyListeners());
   }
+
   final AuthBloc _bloc;
-  late final dynamic _sub;
+  late final StreamSubscription<dynamic> _sub;
 
   @override
   void dispose() {

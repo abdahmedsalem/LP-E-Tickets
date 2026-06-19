@@ -32,7 +32,6 @@ class _StationConsumptionHistoryScreenState
   static const Color _cPrimaryText = Color(0xFF111827);
   static const Color _cSecondaryText = Color(0xFF4B5563);
   static const Color _cOrange = Color(0xFF16A34A);
-  static const Color _cDanger = Color(0xFFDC2626);
 
   List<BusinessTransaction> _items = [];
   bool _loading = true;
@@ -877,56 +876,6 @@ class _StationConsumptionDetailGrid extends StatelessWidget {
         ('Client concerné', transaction.userName),
         ('Station', transaction.stationName ?? 'Station inconnue'),
         ('Transaction', transaction.id),
-      ],
-    );
-  }
-}
-
-class _StationHistoryDetailBody extends StatelessWidget {
-  const _StationHistoryDetailBody({
-    required this.transaction,
-    required this.amount,
-  });
-
-  final BusinessTransaction transaction;
-  final int amount;
-
-  @override
-  Widget build(BuildContext context) {
-    final qrRef = transaction.qrPublicCode ?? transaction.qrId;
-
-    final rows = [
-      if (transaction.userName.isNotEmpty)
-        _StationTxDetailRow(label: 'Client concerné', value: transaction.userName),
-      if (qrRef != null && qrRef.isNotEmpty)
-        _StationTxDetailRow(label: 'QR code consommé', value: qrRef),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < rows.length; i++) ...[
-          _StationTxDetailRowWidget(row: rows[i]),
-          if (i < rows.length - 1)
-            const Divider(height: 1, thickness: 1, color: Color(0xFFE8EAED)),
-        ],
-        if (transaction.lines.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Text(
-            'Lignes',
-            style: GoogleFonts.poppins(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.muted,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (var i = 0; i < transaction.lines.length; i++) ...[
-            _StationTxLineRow(line: transaction.lines[i]),
-            if (i < transaction.lines.length - 1) const SizedBox(height: 8),
-          ],
-        ],
       ],
     );
   }

@@ -389,7 +389,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 child: SafeArea(
                   top: false,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,19 +404,20 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 16),
                         Text(
-                          'Valider la commande',
+                          'Ajouter la preuve de paiement',
                           style: GoogleFonts.poppins(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink,
+                            height: 1.1,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
-                          'V\u00e9rifiez le panier, puis ajoutez la preuve de paiement.',
-                          style: GoogleFonts.inter(
+                          'Vérifiez le panier, puis joignez un reçu ou un virement avant de confirmer.',
+                          style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: AppColors.muted,
@@ -503,15 +504,15 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'PREUVE DE PAIEMENT',
-                          style: TextStyle(
-                            fontSize: 10,
+                          'Preuve de paiement',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: 0.9,
-                            color: AppColors.muted.withValues(alpha: 0.9),
+                            color: AppColors.ink,
+                            height: 1.1,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         _ProofPicker(
                           path: _proofPath,
                           onTap: () async {
@@ -524,7 +525,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
-                          height: 52,
+                          height: 56,
                           child: ElevatedButton(
                             onPressed: canSubmit
                                 ? () async {
@@ -542,7 +543,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                 alpha: 0.7,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(18),
                               ),
                               elevation: 0,
                             ),
@@ -1212,33 +1213,25 @@ class _ProofPicker extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(17),
+        borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: hasFile
-                  ? [const Color(0xFFF5FBF7), Colors.white]
-                  : [const Color(0xFFF8FAFC), Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: hasFile
-                  ? AppColors.leaderGreen.withValues(alpha: 0.32)
-                  : const Color(0xFFD9E0E8),
+              color: hasFile ? AppColors.success.withValues(alpha: 0.28) : AppColors.line,
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
                 color: hasFile
-                    ? AppColors.leaderGreen.withValues(alpha: 0.10)
-                    : const Color(0x0A000000),
-                blurRadius: 22,
-                spreadRadius: -8,
-                offset: const Offset(0, 10),
+                    ? AppColors.success.withValues(alpha: 0.08)
+                    : const Color(0x08000000),
+                blurRadius: 18,
+                spreadRadius: -6,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -1249,13 +1242,13 @@ class _ProofPicker extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: hasFile
-                      ? AppColors.leaderGreen.withValues(alpha: 0.12)
-                      : const Color(0xFFEFF3F8),
-                  borderRadius: BorderRadius.circular(14),
+                      ? AppColors.success.withValues(alpha: 0.10)
+                      : const Color(0xFFF2F4F7),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   hasFile ? Icons.verified_rounded : Icons.upload_file_outlined,
-                  color: hasFile ? AppColors.leaderGreen : AppColors.body,
+                  color: hasFile ? AppColors.success : AppColors.muted,
                   size: 24,
                 ),
               ),
@@ -1271,16 +1264,14 @@ class _ProofPicker extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: hasFile
-                            ? AppColors.leaderGreen.withValues(alpha: 0.10)
+                            ? AppColors.success.withValues(alpha: 0.10)
                             : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         hasFile ? 'Prête' : 'Pièce requise',
                         style: GoogleFonts.poppins(
-                          color: hasFile
-                              ? AppColors.leaderGreen
-                              : AppColors.muted,
+                          color: hasFile ? AppColors.success : AppColors.muted,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           height: 1.0,
@@ -1289,9 +1280,7 @@ class _ProofPicker extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      hasFile
-                          ? 'Preuve sélectionnée'
-                          : 'Ajouter la preuve de paiement',
+                      hasFile ? 'Preuve sélectionnée' : 'Ajouter la preuve de paiement',
                       style: GoogleFonts.poppins(
                         color: AppColors.ink,
                         fontWeight: FontWeight.w700,
@@ -1318,8 +1307,8 @@ class _ProofPicker extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Icon(
-                hasFile ? Icons.refresh_rounded : Icons.chevron_right,
-                color: hasFile ? AppColors.leaderGreen : AppColors.muted,
+                hasFile ? Icons.edit_outlined : Icons.chevron_right,
+                color: hasFile ? AppColors.success : AppColors.muted,
                 size: 22,
               ),
             ],

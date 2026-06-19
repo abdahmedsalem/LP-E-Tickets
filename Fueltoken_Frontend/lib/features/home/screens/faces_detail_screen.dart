@@ -65,6 +65,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     super.dispose();
   }
 
+  // Load catalog metadata so carnet labels can be inferred consistently.
   Future<void> _loadCarnetSizes() async {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
@@ -129,6 +130,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     }
   }
 
+  // Fetch the live "Mes carnets" payload and map it into UI rows.
   Future<void> _loadLiveFaces() async {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
@@ -161,6 +163,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     }
   }
 
+  // Filters only affect visibility, never the fetched data itself.
   bool _matchesQuickFilter(FaceLine line) {
     switch (_quickFilter) {
       case _CarnetQuickFilter.all:
@@ -177,6 +180,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     setState(() => _quickFilter = next);
   }
 
+  // Resolve the carnet size from the strongest identifier available.
   int _carnetSizeFor(FaceLine line) {
     if (line.carnetFaceCount > 0) return line.carnetFaceCount;
     final byId = _carnetSizeById[line.carnetTypeId.trim()];
@@ -203,6 +207,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     return 0;
   }
 
+  // Keep raw labels readable by normalizing catalog text before display.
   String _normalizedCarnetLabel(
     String raw, {
     int? fallbackSize,
@@ -281,6 +286,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     return _amountLabel(amount, ref);
   }
 
+  // Open the detailed carnet view with all counters precomputed.
   Future<void> _openCarnetDetail(FaceLine line) async {
     final scheme = Theme.of(context).colorScheme;
     final bottom = MediaQuery.paddingOf(context).bottom;
@@ -300,6 +306,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         : availableQty > 0
         ? AppColors.success
         : AppColors.warning;
+    // Use a full page when possible, otherwise fall back to a bottom sheet.
     final showDetailAsPage = context.mounted;
     if (showDetailAsPage) {
       await Navigator.of(context).push<void>(
@@ -413,6 +420,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   Widget build(BuildContext context) {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
+      // Keep the page shell visible while the session is not ready yet.
       return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -441,6 +449,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     }
 
     if (!AppEnvironment.useAcpecLiveData) {
+      // Explain why the list is empty when live ACPEC data is disabled.
       return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -463,6 +472,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       );
     }
 
+    // Apply the selected filter before rendering the visible list.
     final allLines = _liveLines.where(_matchesQuickFilter).toList();
     final scheme = Theme.of(context).colorScheme;
 
@@ -479,6 +489,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
               const _HistoryAlignedPageHeader(title: 'Mes carnets'),
               const SizedBox(height: 18),
               if (_liveLines.isNotEmpty) ...[
+                // Summary cards only show once live data has been loaded.
                 _CarnetsSummaryCard(
                   availableTickets: _liveLines.fold<int>(
                     0,
@@ -504,6 +515,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              // The list can be loading, empty, errored, or populated.
               ...(_liveLoading && allLines.isEmpty
                   ? [
                       const Padding(
@@ -790,6 +802,7 @@ class _CarnetFilterChip extends StatelessWidget {
   }
 }
 
+// Full-screen detail view for one carnet, reused from the list tap action.
 class _CarnetDetailScreen extends StatelessWidget {
   const _CarnetDetailScreen({
     required this.title,
@@ -1092,6 +1105,7 @@ class _CarnetDetailMetric extends StatelessWidget {
   }
 }
 
+// Main list row showing one carnet group and its remaining tickets.
 class _CarnetLineCard extends StatelessWidget {
   const _CarnetLineCard({
     required this.line,
@@ -1113,40 +1127,40 @@ class _CarnetLineCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$carnetTypeLabel · ${Formatters.numberFr(line.availableQty)} tickets restants',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.ink,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.3,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              carnetTypeLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: AppColors.ink,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${Formatters.numberFr(line.availableQty)} tickets restants',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.8,
+                fontWeight: FontWeight.w700,
+                color: AppColors.muted,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.3,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+                height: 1.2,
+              ),
             ),
           ],
         ),
