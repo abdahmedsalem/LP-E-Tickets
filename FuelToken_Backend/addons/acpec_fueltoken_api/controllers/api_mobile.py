@@ -430,6 +430,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def create_purchase(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines', 'proof_data'])
+            self._require_trusted_sensitive()
             wallet = self._mobile_wallet()
             purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
                 wallet.partner_id,
@@ -903,7 +904,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             """
         try:
             self._require_keys(kwargs, ['recipient_phone', 'lines'])
-            source_user = self._require_mobile_auth()
+            source_user = self._require_trusted_sensitive()
             self._require_fuel_group(source_user, 'client')
             wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
                 source_user.partner_id, source_user.company_id,
