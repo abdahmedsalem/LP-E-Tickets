@@ -6,3 +6,4 @@ from . import test_mobile_state_gate
 from . import test_mobile_refresh_grace
 from . import test_mobile_device_trust
 from . import test_mobile_device_trust_backoffice
+from . import test_sensitive_action_pin

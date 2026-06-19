@@ -466,6 +466,26 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         return user
 
+    def _get_sensitive_action_pin(self, params):
+        params = params or {}
+        for key in ('action_code', 'action_pin', 'pin', 'secret_code'):
+            value = self._get_clean_str(params, key)
+            if value:
+                return value
+        raise ValidationError('Code PIN de confirmation requis pour cette action sensible.')
+
+    def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action'):
+        """Require trusted device + server-side mobile PIN for a concrete sensitive action.
+
+        This must be called inside the sensitive endpoint itself. Do not expose a
+        generic public /verify-pin route: a valid PIN is meaningful only when it
+        is bound to a concrete authenticated action.
+        """
+        user = self._require_trusted_sensitive()
+        pin = self._get_sensitive_action_pin(params or {})
+        user.check_mobile_pin(pin, purpose=purpose)
+        return user
+
     def _mobile_profile_payload(self, user, session=False):
         data = {
             'uid': user.id,

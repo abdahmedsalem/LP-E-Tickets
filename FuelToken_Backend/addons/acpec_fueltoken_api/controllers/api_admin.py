@@ -12,8 +12,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         self._require_fuel_group(user, 'manager')
         return user
 
-    def _trusted_admin_user(self):
-        user = self._require_trusted_sensitive()
+    def _trusted_admin_user(self, params=None, purpose='admin_sensitive_action'):
+        user = self._require_sensitive_action_pin(params or {}, purpose=purpose)
         self._require_fuel_group(user, 'manager')
         return user
 
@@ -260,7 +260,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/purchases/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_approve(self, **kwargs):
         try:
-            user = self._trusted_admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='purchase_approve')
             self._require_keys(kwargs, ['purchase_id'])
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
@@ -274,7 +274,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/purchases/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_reject(self, **kwargs):
         try:
-            user = self._trusted_admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='purchase_reject')
             self._require_keys(kwargs, ['purchase_id'])
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
@@ -302,7 +302,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/stations/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_create(self, **kwargs):
         try:
-            user = self._trusted_admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='station_create')
             self._require_keys(kwargs, ['name', 'user_id'])
             company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
             company = self._require_allowed_company(user, company_id)
@@ -322,7 +322,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/stations/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_update(self, **kwargs):
         try:
-            user = self._trusted_admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='station_update')
             self._require_keys(kwargs, ['station_id'])
             rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
             if not rec:
@@ -356,7 +356,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/stations/disable', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_disable(self, **kwargs):
         try:
-            user = self._trusted_admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='station_disable')
             self._require_keys(kwargs, ['station_id'])
             rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
             if not rec:

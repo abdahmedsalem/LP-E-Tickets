@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken API',
-    'version': '19.0.1.2.4',
+    'version': '19.0.1.2.5',
     'category': 'ACPEC/FuelToken',
     'summary': 'API mobile et station FuelToken',
     'author': 'ACPEC SARL',
