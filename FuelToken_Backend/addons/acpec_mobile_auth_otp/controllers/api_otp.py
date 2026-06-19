@@ -94,6 +94,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 company = self._get_company(company_id)
                 identifier_vals = self._parse_signup_identifier(challenge.identifier or identifier)
 
+                account_request = False
                 if not user:
                     with request.env.cr.savepoint():
                         partner, user, account_request = self._create_mobile_signup_account(
@@ -105,14 +106,26 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                             note=note,
                         )
                         challenge.sudo().write({'user_id': user.id})
+                else:
+                    account_request = request.env['acpec.mobile.auth.account.request'].sudo().search([
+                        ('user_id', '=', user.id),
+                        ('state', '=', 'pending'),
+                    ], order='id desc', limit=1)
 
+                # Registration OTP proves phone control, not administrative approval.
+                # The user remains pending and receives no mobile session token here.
                 user.sudo().write({
                     'active': True,
-                    'mobile_state': 'approved',
+                    'mobile_state': 'pending',
                 })
 
-                payload = self._create_mobile_session_payload(user, kwargs)
-                payload['auth_method'] = 'otp'
+                payload = self._mobile_profile_payload(user)
+                payload.update({
+                    'auth_method': 'otp',
+                    'pending_approval': True,
+                    'account_request_id': account_request.id if account_request else False,
+                    'message': 'Compte mobile créé. En attente d’approbation.',
+                })
                 return self._json_response(payload)
             payload = self._create_mobile_session_payload(user, kwargs)
             payload['auth_method'] = 'otp'
