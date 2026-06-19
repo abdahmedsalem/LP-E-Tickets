@@ -84,8 +84,17 @@ class AcpecMobileSession(models.Model):
     def _check_mobile_only_user(self, user):
         if not user or not user.exists() or not user.active:
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
-        if getattr(user, 'mobile_state', False) == 'rejected':
-            raise AccessError(_('Compte mobile rejeté.'))
+
+        mobile_state = getattr(user, 'mobile_state', False)
+        if mobile_state != 'approved':
+            if mobile_state == 'pending':
+                raise AccessError(_('Compte mobile en attente d’approbation.'))
+            if mobile_state == 'rejected':
+                raise AccessError(_('Compte mobile rejeté.'))
+            if mobile_state == 'blocked':
+                raise AccessError(_('Compte mobile bloqué.'))
+            raise AccessError(_('Compte mobile non approuvé.'))
+
         if not getattr(user, 'mobile_only', False):
             raise AccessError(_('Ce compte n’est pas un compte mobile-only FuelToken.'))
 

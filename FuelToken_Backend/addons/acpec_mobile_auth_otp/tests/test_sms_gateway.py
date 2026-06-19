@@ -250,14 +250,15 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         self.assertTrue(verify_result['ok'])
         session_data = verify_result['data']
-        self.assertTrue(session_data['access_token'])
-        self.assertTrue(session_data['refresh_token'])
-        self.assertNotIn('pending_approval', session_data)
+        self.assertNotIn('access_token', session_data)
+        self.assertNotIn('refresh_token', session_data)
+        self.assertTrue(session_data['pending_approval'])
+        self.assertTrue(session_data['account_request_id'])
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524655')], limit=1)
         self.assertTrue(user)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'approved')
+        self.assertEqual(user.mobile_state, 'pending')
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)
         self.assertTrue(user.mobile_pin_hash)
@@ -267,7 +268,16 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
             ('user_id', '=', user.id),
         ], order='id desc', limit=1)
-        self.assertFalse(account_request)
+        self.assertTrue(account_request)
+        self.assertEqual(account_request.state, 'pending')
+
+        with self.assertRaises(AccessError):
+            self.env['acpec.mobile.session'].sudo().create_for_user(user)
+
+        account_request.action_approve()
+        self.assertEqual(user.mobile_state, 'approved')
+        approved_session = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        self.assertTrue(approved_session['access_token'])
 
     def test_signup_route_returns_register_otp_payload_for_phone(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
@@ -376,12 +386,13 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         self.assertTrue(verify_result['ok'])
         session_data = verify_result['data']
-        self.assertTrue(session_data['access_token'])
-        self.assertTrue(session_data['refresh_token'])
+        self.assertNotIn('access_token', session_data)
+        self.assertNotIn('refresh_token', session_data)
+        self.assertTrue(session_data['pending_approval'])
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524657')], limit=1)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'approved')
+        self.assertEqual(user.mobile_state, 'pending')
         self.assertTrue(user.mobile_pin_set_at)
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)
@@ -443,13 +454,15 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         self.assertTrue(verify_result['ok'])
         session_data = verify_result['data']
-        self.assertTrue(session_data['access_token'])
-        self.assertTrue(session_data['refresh_token'])
-        self.assertTrue(session_data['session_ref'])
+        self.assertNotIn('access_token', session_data)
+        self.assertNotIn('refresh_token', session_data)
+        self.assertNotIn('session_ref', session_data)
+        self.assertTrue(session_data['pending_approval'])
+        self.assertTrue(session_data['account_request_id'])
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524656')], limit=1)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'approved')
+        self.assertEqual(user.mobile_state, 'pending')
         self.assertTrue(user.mobile_pin_set_at)
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)
@@ -460,9 +473,8 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
             ('user_id', '=', user.id),
         ], order='id desc', limit=1)
-        # The OTP registration flow creates the mobile account directly after
-        # successful verification; it does not leave an account.request record.
-        self.assertFalse(account_request)
+        self.assertTrue(account_request)
+        self.assertEqual(account_request.state, 'pending')
 
 
     def test_legacy_mobile_user_migration_requires_new_pin_without_touching_internal_users(self):
@@ -652,4 +664,3 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 purpose='register',
                 request_ip='10.0.0.31',
             )
-

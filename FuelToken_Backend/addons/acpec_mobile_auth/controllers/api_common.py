@@ -259,7 +259,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
         for xmlid in (
             'base.group_portal',
             'acpec_mobile_auth.group_mobile_auth_user',
-            'acpec_fueltoken_base.group_fuel_user',
         ):
             group = request.env.ref(xmlid, raise_if_not_found=False)
             if group:
@@ -304,7 +303,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'company_ids': [(6, 0, [company.id])],
             'active': True,
             'mobile_only': True,
-            'mobile_state': 'approved',
+            'mobile_state': 'pending',
             'password': user_model._acpec_mobile_unusable_password(),
         }
         if mobile_group_ids:
@@ -316,7 +315,32 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
         user.set_mobile_pin(secret_code)
-        return False, user, identifier_vals
+
+        request_model = request.env['acpec.mobile.auth.account.request'].sudo()
+        request_vals = {
+            'name': name,
+            'name_display': name,
+            'signup_identifier': identifier_vals['signup_identifier'],
+            'signup_identifier_type': identifier_vals['signup_identifier_type'],
+            'company_id': company.id,
+            'state': 'pending',
+            'user_id': user.id,
+        }
+
+        # Keep this creation resilient across small model evolutions.
+        if 'partner_id' in request_model._fields:
+            request_vals['partner_id'] = partner.id
+        if 'phone' in request_model._fields and identifier_vals['phone']:
+            request_vals['phone'] = identifier_vals['phone']
+        if 'email' in request_model._fields and email_value:
+            request_vals['email'] = email_value
+        if 'login' in request_model._fields:
+            request_vals['login'] = identifier_vals['login']
+        if 'note' in request_model._fields and note:
+            request_vals['note'] = note
+
+        account_request = request_model.create(request_vals)
+        return partner, user, account_request
 
     def _get_signup_companies(self):
         companies = request.env['res.company'].sudo().search([
@@ -483,4 +507,3 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     def _hash_public_value(self, value):
         return hashlib.sha256((value or '').encode('utf-8')).hexdigest()
-
