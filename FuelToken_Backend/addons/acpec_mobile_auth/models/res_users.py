@@ -5,7 +5,7 @@ import secrets
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessDenied, AccessError, UserError, ValidationError
 
 
 class ResUsers(models.Model):
@@ -245,7 +245,7 @@ class ResUsers(models.Model):
         carrying the mobile auth identity group are migrated. We do not convert
         arbitrary portal/company users into mobile users.
         """
-        Users = self.sudo().with_context(active_test=False)
+        Users = self.sudo().with_context(active_test=False, acpec_mobile_allow_password_write=True, no_reset_password=True)
         mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
         baseline_group_ids = self._acpec_group_ids(self._acpec_mobile_baseline_group_xmlids())
         forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
@@ -289,7 +289,7 @@ class ResUsers(models.Model):
         """
         users = self._acpec_legacy_mobile_pin_users()
         for user in users:
-            user.write({
+            user.with_context(acpec_mobile_allow_password_write=True, no_reset_password=True).write({
                 'password': user._acpec_mobile_unusable_password(),
                 'mobile_pin_hash': False,
                 'mobile_pin_salt': False,
@@ -351,6 +351,95 @@ class ResUsers(models.Model):
                     "Utilisateurs concernés: %s"
                 ) % names)
 
+    @api.model
+    def _acpec_mobile_user_from_login(self, login):
+        login = (login or '').strip()
+        if not login:
+            return self.env['res.users']
+        return self.sudo().with_context(active_test=False).search([('login', '=', login)], limit=1)
+
+    @api.model
+    def _acpec_is_password_credential(self, credential):
+        return isinstance(credential, dict) and credential.get('type') in (False, 'password') and bool(credential.get('password'))
+
+    @api.model
+    def _acpec_assert_not_mobile_only_password_auth(self, credential):
+        if not self._acpec_is_password_credential(credential):
+            return
+        user = self._acpec_mobile_user_from_login(credential.get('login'))
+        if user and user.mobile_only:
+            raise AccessDenied()
+
+    @api.model
+    def authenticate(self, credential, user_agent_env):
+        """Block Odoo password authentication for FuelToken mobile-only users.
+
+        Mobile-only users are technically portal users, but they authenticate
+        through the mobile OTP/session layer. Even if a random web password hash
+        exists internally, it must not be usable on Odoo's password login flow.
+        """
+        self._acpec_assert_not_mobile_only_password_auth(credential)
+        return super().authenticate(credential, user_agent_env)
+
+    def _acpec_mobile_password_write_allowed(self):
+        return bool(self.env.context.get('acpec_mobile_allow_password_write'))
+
+    def _acpec_mobile_password_write_targets(self):
+        if not self:
+            return self.env['res.users']
+        return self.sudo().with_context(active_test=False).filtered(lambda user: bool(user.mobile_only))
+
+    def _acpec_assert_mobile_password_write_allowed(self, vals):
+        if 'password' not in vals or self._acpec_mobile_password_write_allowed():
+            return
+        mobile_users = self._acpec_mobile_password_write_targets()
+        if mobile_users:
+            names = ', '.join(
+                str(user.display_name or user.name or user.login or user.id)
+                for user in mobile_users[:5]
+            )
+            raise AccessError(_(
+                "Le mot de passe web d'un utilisateur mobile-only FuelToken ne peut pas être modifié "
+                "par les flux Odoo standard. Utilisateurs concernés: %s"
+            ) % names)
+
+    def action_reset_password(self):
+        mobile_users = self.sudo().filtered(lambda user: bool(user.mobile_only))
+        if mobile_users:
+            raise UserError(_("La réinitialisation du mot de passe web est désactivée pour les utilisateurs mobile-only FuelToken."))
+        return super().action_reset_password()
+
+    @api.model
+    def reset_password(self, login):
+        """No-op reset for mobile-only users.
+
+        Returning True avoids leaking whether the identifier is mobile-only,
+        while preventing auth_signup from issuing a web password reset token.
+        """
+        user = self._acpec_mobile_user_from_login(login)
+        if user and user.mobile_only:
+            return True
+        return super().reset_password(login)
+
+    @api.model
+    def _acpec_rotate_mobile_only_web_passwords(self):
+        """Rotate mobile-only Odoo passwords to unknown high-entropy values.
+
+        This keeps the implementation Odoo-native while ensuring no migrated
+        mobile-only account keeps a known or legacy web password. Password login
+        is still blocked separately by authenticate().
+        """
+        Users = self.sudo().with_context(active_test=False, acpec_mobile_allow_password_write=True, no_reset_password=True)
+        users = Users.search([('mobile_only', '=', True)])
+        rotated = 0
+        forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
+        for user in users:
+            if forbidden_group_ids and user._acpec_users_with_group_ids(forbidden_group_ids):
+                continue
+            user.write({'password': user._acpec_mobile_unusable_password()})
+            rotated += 1
+        return rotated
+
     @api.model_create_multi
     def create(self, vals_list):
         users = super().create(vals_list)
@@ -358,6 +447,7 @@ class ResUsers(models.Model):
         return users
 
     def write(self, vals):
+        self._acpec_assert_mobile_password_write_allowed(vals)
         result = super().write(vals)
         self._check_acpec_mobile_user_separation()
         return result

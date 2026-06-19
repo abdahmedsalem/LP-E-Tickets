@@ -118,7 +118,7 @@ class AcpecMobileAuthAccountRequest(models.Model):
                 vals['mobile_phone'] = record.phone
             if record.email and not record.user_id.email:
                 vals['email'] = record.email
-            record.user_id.sudo().write(vals)
+            record.user_id.sudo().with_context(acpec_mobile_allow_password_write=True, no_reset_password=True).write(vals)
             record.write({
                 'state': 'approved',
                 'reviewed_at': now,
