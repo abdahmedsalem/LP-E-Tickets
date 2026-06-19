@@ -161,7 +161,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_create(self, **kwargs):
         try:
-            user = self._admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='carnet_type_create')
             self._require_keys(kwargs, ['face_count', 'face_value'])
             company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
             company = self._require_allowed_company(user, company_id)
@@ -183,7 +183,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_update(self, **kwargs):
         try:
-            user = self._admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='carnet_type_update')
             self._require_keys(kwargs, ['carnet_type_id'])
             rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
             if not rec:
@@ -209,7 +209,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_delete(self, **kwargs):
         try:
-            user = self._admin_user()
+            user = self._trusted_admin_user(kwargs, purpose='carnet_type_delete')
             self._require_keys(kwargs, ['carnet_type_id'])
             rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
             if not rec:
