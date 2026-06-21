@@ -1,4 +1,7 @@
+import os
+
 from odoo import api, models
+from odoo.tools import config
 
 
 class AcpecMobileSecurityPolicy(models.AbstractModel):
@@ -23,6 +26,34 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
     OTP_LIMIT_REGISTER_IP_PER_DAY = ("acpec_mobile_auth.otp_limit_register_ip_per_day", 100, 0, 1000)
 
     OTP_DEV_MODE_KEY = "acpec_mobile_auth.otp_dev_mode"
+    OTP_DEV_MODE_ENV_KEY = "ACPEC_FUELTOKEN_TEST_MODE"
+    TRUE_VALUES = ("1", "true", "yes", "y", "on", "dev", "test")
+
+    @api.model
+    def _is_truthy(self, value):
+        if value is True:
+            return True
+        if value in (False, None, ""):
+            return False
+        return str(value).strip().lower() in self.TRUE_VALUES
+
+    @api.model
+    def _env_bool(self, key):
+        return self._is_truthy(os.getenv(key))
+
+    @api.model
+    def otp_dev_runtime_allowed(self):
+        """Return True only for explicit local/test runtimes.
+
+        ``otp_dev_mode`` is useful for frontend/mobile local development, but
+        must not become effective in production just because an admin toggled
+        an ir.config_parameter.  Production enablement requires a deployment
+        mistake plus this explicit runtime gate, not a single DB flag.
+        """
+        return (
+            self._env_bool(self.OTP_DEV_MODE_ENV_KEY)
+            or self._is_truthy(config.get("test_enable"))
+        )
 
     @api.model
     def _get_param(self, key):
@@ -108,4 +139,7 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
 
     @api.model
     def otp_dev_mode_enabled(self):
-        return self.get_bool(self.OTP_DEV_MODE_KEY, default=False)
+        return (
+            self.get_bool(self.OTP_DEV_MODE_KEY, default=False)
+            and self.otp_dev_runtime_allowed()
+        )
