@@ -432,6 +432,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['lines', 'proof_data'])
             self._require_sensitive_action_pin(kwargs, purpose='purchase_create')
             idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_create')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_create')
             wallet = self._mobile_wallet()
             purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
                 wallet.partner_id,
@@ -441,6 +442,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 kwargs.get('proof_data'),
                 payment_reference=kwargs.get('payment_reference'),
                 idempotency_key=idempotency_key,
+                request_hash=request_hash,
             )
             return self._json_response({
                 'purchase_id': purchase.id,
@@ -706,6 +708,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['lines'])
             self._require_sensitive_action_pin(kwargs, purpose='qr_issue')
             idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_issue')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_issue')
             wallet = self._mobile_wallet()
             requests = []
             for line in kwargs.get('lines') or []:
@@ -720,6 +723,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     wallet,
                     requests,
                     idempotency_key=idempotency_key,
+                    request_hash=request_hash,
                 )
                 payload = self._qr_payload(qr)
             return self._json_response(payload)
@@ -771,6 +775,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['public_code', 'lines'])
             self._require_sensitive_action_pin(kwargs, purpose='qr_retirer')
             idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_retirer')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_retirer')
             wallet = self._mobile_wallet()
             qr = request.env['acpec.fuel.qr'].sudo().search([
                 ('public_code', '=', kwargs.get('public_code')),
@@ -782,6 +787,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             child = qr.action_retirer_to_child(
                 kwargs.get('lines') or [],
                 idempotency_key=idempotency_key,
+                request_hash=request_hash,
             )
             source_payload = self._qr_payload(qr)
             child_payload = self._qr_payload(child)
@@ -799,6 +805,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['public_code'])
             self._require_sensitive_action_pin(kwargs, purpose='qr_separer')
             idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_separer')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_separer')
             wallet = self._mobile_wallet()
             qr = request.env['acpec.fuel.qr'].sudo().search([
                 ('public_code', '=', kwargs.get('public_code')),
@@ -809,6 +816,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
             child = qr.action_separer_valid_to_child(
                 idempotency_key=idempotency_key,
+                request_hash=request_hash,
             )
             source_payload = self._qr_payload(qr)
             child_payload = self._qr_payload(child)
@@ -942,13 +950,17 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
             # ── 2. Idempotence (vérification avant création) ─────────────────
             idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_transfer')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_transfer')
             if idempotency_key:
                 existing = request.env['acpec.fuel.carnet.transfer'].sudo().search([
                     ('source_wallet_id', '=', wallet.id),
                     ('idempotency_key', '=', idempotency_key),
                 ], limit=1)
-                if existing and existing.state == 'confirmed':
-                    return self._json_response(self._transfer_payload(existing))
+                if existing:
+                    if existing.request_hash and existing.request_hash != request_hash:
+                        raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
+                    if existing.state == 'confirmed':
+                        return self._json_response(self._transfer_payload(existing))
 
             # ── 3. Wallet destinataire (find or create) ──────────────────────
             dest_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
@@ -981,6 +993,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'company_id': wallet.company_id.id,
                     'note': self._get_clean_str(kwargs, 'note') or False,
                     'idempotency_key': idempotency_key or False,
+                    'request_hash': request_hash,
                     'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
                 })
                 transfer.action_confirm()

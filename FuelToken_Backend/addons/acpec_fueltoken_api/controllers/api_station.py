@@ -124,10 +124,11 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['public_code'])
             station, user = self._trusted_station_user(kwargs, purpose='station_qr_use')
             idempotency_key = self._require_idempotency_key(kwargs, purpose='station_qr_use')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_qr_use')
             qr = request.env['acpec.fuel.qr'].sudo().search([('public_code', '=', kwargs.get('public_code'))], limit=1)
             if not qr:
                 raise ValidationError(_('QR introuvable.'))
-            tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key)
+            tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
             return self._json_response({
                 'transaction_id': tx.id,
                 'transaction_name': tx.name,

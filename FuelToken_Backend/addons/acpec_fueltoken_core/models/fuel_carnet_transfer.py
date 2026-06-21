@@ -43,6 +43,7 @@ class AcpecFuelCarnetTransfer(models.Model):
     )
     note = fields.Text(string='Note')
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
+    request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     confirmed_at = fields.Datetime(string='Confirmé le', readonly=True, copy=False)
     confirmed_by = fields.Many2one(
         'res.users', string='Confirmé par', readonly=True, copy=False,

@@ -35,6 +35,7 @@ class AcpecFuelPurchase(models.Model):
     )
     payment_reference = fields.Char(string='Reference paiement')
     idempotency_key = fields.Char(string='Cle idempotence', index=True, copy=False)
+    request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     submitted_at = fields.Datetime(string='Date soumission', readonly=True)
     approved_at = fields.Datetime(string='Date validation', readonly=True)
     approved_by = fields.Many2one('res.users', string='Valide par', readonly=True)
@@ -245,13 +246,15 @@ class AcpecFuelPurchase(models.Model):
         return super().write(vals)
 
     @api.model
-    def create_from_api(self, partner, company, lines, proof_filename, proof_data, payment_reference=False, idempotency_key=False):
+    def create_from_api(self, partner, company, lines, proof_filename, proof_data, payment_reference=False, idempotency_key=False, request_hash=False):
         if idempotency_key:
             existing = self.sudo().search([
                 ('partner_id', '=', partner.id),
                 ('idempotency_key', '=', idempotency_key),
             ], limit=1)
             if existing:
+                if existing.request_hash and request_hash and existing.request_hash != request_hash:
+                    raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
                 return existing
         proof_filename, proof_data, proof_mimetype = self._validate_purchase_proof(proof_filename, proof_data)
         with self.env.cr.savepoint():
@@ -260,6 +263,7 @@ class AcpecFuelPurchase(models.Model):
                 'company_id': company.id,
                 'payment_reference': payment_reference or False,
                 'idempotency_key': idempotency_key or False,
+                'request_hash': request_hash or False,
             })
             for item in lines:
                 carnet_type = self.env['acpec.fuel.carnet.type'].sudo().browse(int(item.get('carnet_type_id') or 0)).exists()

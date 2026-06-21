@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Purchase',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.0.2',
     'category': 'ACPEC/FuelToken',
     'summary': 'Lots d’achat de carnets FuelToken',
     'author': 'ACPEC SARL',

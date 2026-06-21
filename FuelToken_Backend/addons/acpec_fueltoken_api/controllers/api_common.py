@@ -3,6 +3,8 @@ from odoo.exceptions import ValidationError
 from odoo.http import request
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
+import hashlib
+import json
 
 
 class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
@@ -24,6 +26,43 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
             ),
         },
     }
+
+    _IDEMPOTENCY_HASH_EXCLUDED_KEYS = {
+        'action_code',
+        'action_pin',
+        'pin',
+        'secret_code',
+        'idempotency_key',
+        'access_token',
+        'refresh_token',
+        'token',
+        'password',
+    }
+
+    def _normalize_idempotency_hash_value(self, value):
+        if isinstance(value, dict):
+            return {
+                str(key): self._normalize_idempotency_hash_value(val)
+                for key, val in sorted(value.items(), key=lambda item: str(item[0]))
+                if str(key) not in self._IDEMPOTENCY_HASH_EXCLUDED_KEYS
+            }
+        if isinstance(value, (list, tuple)):
+            return [self._normalize_idempotency_hash_value(item) for item in value]
+        return value
+
+    def _compute_idempotency_request_hash(self, params, purpose='sensitive_action'):
+        payload = {
+            'purpose': purpose,
+            'params': self._normalize_idempotency_hash_value(params or {}),
+        }
+        raw = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(',', ':'),
+            ensure_ascii=False,
+            default=str,
+        )
+        return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
     def _require_idempotency_key(self, params, purpose='sensitive_action'):
         raw_value = (params or {}).get('idempotency_key')
