@@ -9,7 +9,9 @@ Ce document fige la doctrine runtime appliquée par les patches 24A à 25D.
 - Un nouveau device n’est pas trusted par défaut.
 - `secret_code` sert uniquement au flux d’inscription / OTP / initialisation PIN mobile.
 - `action_code` est le seul nom accepté pour confirmer une action sensible côté serveur.
+- En V1, `action_code` est le nom API canonique du PIN mobile de confirmation, vérifié côté serveur uniquement dans le contexte d’une action sensible authentifiée.
 - Les alias `action_pin`, `pin` et `secret_code` sont rejetés pour les actions sensibles.
+- Le PIN mobile de confirmation est soumis à un verrouillage progressif serveur et à un blocage dur nécessitant une réinitialisation après trop d’échecs cumulés.
 - Toute action sensible doit vérifier le device trusted via `_require_sensitive_action_pin(...)`.
 - Toute action sensible économique ou de configuration doit exiger `idempotency_key`.
 - Le serveur calcule `request_hash` via `_compute_idempotency_request_hash(...)`.

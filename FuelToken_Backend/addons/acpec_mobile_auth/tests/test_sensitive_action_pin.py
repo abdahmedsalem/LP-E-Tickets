@@ -53,6 +53,16 @@ class TestSensitiveActionPin(TransactionCase):
         controller._get_mobile_session = lambda required=True: session
         return controller
 
+    def _set_security_param(self, key, value):
+        self.env['ir.config_parameter'].sudo().set_param(key, str(value))
+
+    def _expect_access_error_without_savepoint(self, func, *args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except AccessError:
+            return
+        self.fail('AccessError attendu mais non levé.')
+
     def test_sensitive_action_pin_accepts_action_code_on_trusted_device(self):
         user, session = self._trusted_session()
         controller = self._controller_for_session(session)
@@ -80,6 +90,68 @@ class TestSensitiveActionPin(TransactionCase):
                 {'action_code': '9999'},
                 purpose='wrong_pin',
             )
+
+    def test_sensitive_action_pin_lock_keeps_failed_counter(self):
+        self._set_security_param('acpec_mobile_auth.mobile_pin_max_attempts', 2)
+        self._set_security_param('acpec_mobile_auth.mobile_pin_lock_seconds', 0)
+
+        user, session = self._trusted_session()
+        controller = self._controller_for_session(session)
+
+        self._expect_access_error_without_savepoint(
+            controller._require_sensitive_action_pin,
+            {'action_code': '9999'},
+            purpose='wrong_pin_1',
+        )
+        user.invalidate_recordset(['mobile_pin_failed_count', 'mobile_pin_locked_until'])
+        self.assertEqual(user.mobile_pin_failed_count, 1)
+        self.assertFalse(user.mobile_pin_locked_until)
+
+        self._expect_access_error_without_savepoint(
+            controller._require_sensitive_action_pin,
+            {'action_code': '9999'},
+            purpose='wrong_pin_2',
+        )
+        user.invalidate_recordset(['mobile_pin_failed_count', 'mobile_pin_locked_until'])
+        self.assertEqual(user.mobile_pin_failed_count, 2)
+        self.assertTrue(user.mobile_pin_locked_until)
+
+    def test_sensitive_action_pin_hard_block_requires_pin_reset(self):
+        self._set_security_param('acpec_mobile_auth.mobile_pin_max_attempts', 2)
+        self._set_security_param('acpec_mobile_auth.mobile_pin_lock_seconds', 30)
+        self._set_security_param('acpec_mobile_auth.mobile_pin_hard_block_attempts', 10)
+
+        user, session = self._trusted_session()
+        controller = self._controller_for_session(session)
+
+        for attempt in range(1, 10):
+            self._expect_access_error_without_savepoint(
+                controller._require_sensitive_action_pin,
+                {'action_code': '9999'},
+                purpose='wrong_pin_%s' % attempt,
+            )
+            user.sudo().write({'mobile_pin_locked_until': False})
+
+        self._expect_access_error_without_savepoint(
+            controller._require_sensitive_action_pin,
+            {'action_code': '9999'},
+            purpose='wrong_pin_hard_block',
+        )
+
+        user.invalidate_recordset([
+            'mobile_pin_failed_count',
+            'mobile_pin_required',
+            'mobile_pin_set',
+            'mobile_pin_hash',
+            'mobile_pin_salt',
+            'mobile_pin_locked_until',
+        ])
+        self.assertEqual(user.mobile_pin_failed_count, 10)
+        self.assertTrue(user.mobile_pin_required)
+        self.assertFalse(user.mobile_pin_set)
+        self.assertFalse(user.mobile_pin_hash)
+        self.assertFalse(user.mobile_pin_salt)
+        self.assertFalse(user.mobile_pin_locked_until)
 
 
     def test_sensitive_action_pin_is_not_a_substitute_for_trusted_device(self):
