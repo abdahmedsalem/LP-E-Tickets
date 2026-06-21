@@ -13,3 +13,4 @@ from . import test_admin_purchase_runtime_policy
 from . import test_admin_station_runtime_policy
 from . import test_admin_carnet_type_runtime_policy
 from . import test_admin_sensitive_inventory_policy
+from . import test_mobile_security_runtime_docs
