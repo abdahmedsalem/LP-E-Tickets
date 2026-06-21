@@ -82,12 +82,50 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             challenge = request.env['acpec.mobile.auth.otp'].sudo().search(domain, order='id desc', limit=1)
             if not challenge:
                 return self._public_otp_invalid_response(debug_reason='otp_not_found')
+            reset_secret_code = False
+            reset_user = False
+            if challenge.purpose == 'reset':
+                invalid_reset_aliases = ('action_code', 'action_pin', 'pin', 'new_pin')
+                used_aliases = [
+                    key for key in invalid_reset_aliases
+                    if kwargs.get(key) not in (None, False, '')
+                ]
+                if used_aliases:
+                    return self._error_response(
+                        'VALIDATION_ERROR',
+                        'Cle PIN reset invalide: utilisez uniquement secret_code.',
+                    )
+
+                reset_secret_code = self._get_clean_str(kwargs, 'secret_code')
+                if not reset_secret_code:
+                    return self._error_response('SECRET_CODE_REQUIRED', _('Secret code is required.'))
+
+                reset_user = challenge.user_id.sudo()
+                if not reset_user:
+                    return self._public_otp_invalid_response(debug_reason='reset_user_not_found')
+
+                # Validate the new PIN before consuming the OTP.
+                reset_user._validate_mobile_pin(reset_secret_code)
+
             try:
                 user = challenge.verify(code)
             except (AccessError, ValidationError) as exc:
                 return self._public_otp_invalid_response(
                     debug_reason=self._public_auth_debug_reason(exc)
                 )
+            if challenge.purpose == 'reset':
+                if not user or user.id != reset_user.id:
+                    return self._public_otp_invalid_response(debug_reason='reset_user_mismatch')
+
+                user.sudo().set_mobile_pin(reset_secret_code)
+                payload = self._create_mobile_session_payload(user, kwargs)
+                payload.update({
+                    'auth_method': 'otp',
+                    'pin_reset': True,
+                    'message': 'PIN mobile reinitialise.',
+                })
+                return self._json_response(payload)
+
             if challenge.purpose == 'register':
                 name = self._get_clean_str(kwargs, 'name')
                 secret_code = self._get_clean_str(kwargs, 'secret_code')

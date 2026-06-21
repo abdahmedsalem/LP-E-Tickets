@@ -112,12 +112,15 @@ class AcpecFuelCarnetTransfer(models.Model):
         - Deux transactions sont enregistrées : une par wallet (source et dest).
         """
         self.ensure_one()
-        actor_user = actor_user or self.env.user
+        if not actor_user:
+            if getattr(self.env, 'su', False):
+                raise UserError(_('Acteur de confirmation requis.'))
+            actor_user = self.env.user
         actor_user = self.env['res.users'].sudo().browse(
             actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
         ).exists()
         if not actor_user:
-            actor_user = self.env.user
+            raise UserError(_('Acteur de confirmation invalide.'))
 
         if self.state != 'draft':
             raise UserError(_('Seul un transfert en brouillon peut être confirmé.'))

@@ -167,6 +167,25 @@ class ResUsers(models.Model):
             })
         return True
 
+    def action_reset_mobile_pin(self):
+        """Force mobile PIN re-initialization without knowing the new PIN.
+
+        Back-office/admin recovery must never set a PIN on behalf of the user.
+        It only clears the existing PIN and requires the mobile user to define a
+        new one through an OTP reset flow.
+        """
+        for user in self.sudo():
+            user.write({
+                'mobile_pin_hash': False,
+                'mobile_pin_salt': False,
+                'mobile_pin_set': False,
+                'mobile_pin_required': True,
+                'mobile_pin_failed_count': 0,
+                'mobile_pin_locked_until': False,
+                'mobile_pin_set_at': False,
+            })
+        return True
+
     def check_mobile_pin(self, pin, purpose=False):
         """Validate a mobile PIN for an authenticated mobile user.
 
