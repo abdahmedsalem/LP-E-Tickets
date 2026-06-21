@@ -135,6 +135,55 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             ('state', '=', 'pending'),
         ], limit=1))
 
+    def test_otp_dev_mode_policy_requires_runtime_gate(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+
+        policy = self.env['acpec.mobile.security.policy'].sudo()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                self.assertFalse(policy.otp_dev_mode_enabled())
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value='1'):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                self.assertTrue(policy.otp_dev_mode_enabled())
+
+    def test_request_otp_route_hides_dev_code_without_runtime_gate(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
+        icp.set_param('SMS_PROVIDER', '')
+        icp.set_param('SMS_VALIDATION_KEY', '')
+        icp.set_param('SMS_TOKEN', '')
+        icp.set_param('SMS_URL', '')
+        icp.set_param('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+
+        controller = AcpecMobileAuthOtpApi()
+        controller._require_keys = lambda params, keys: None
+        controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
+        dummy_httprequest = SimpleNamespace(
+            remote_addr='127.0.0.1',
+            headers={'User-Agent': 'pytest'},
+        )
+        dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.models.mobile_auth_otp.AcpecMobileAuthOtp._send_otp_code', return_value=True), \
+                patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''), \
+                patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+            result = controller.request_otp(
+                identifier='32526001',
+                purpose='register',
+            )
+
+        self.assertTrue(result['ok'])
+        data = result['data']
+        self.assertEqual(data['delivery'], 'configured_provider')
+        self.assertEqual(data['otp_delivery'], 'configured_provider')
+        self.assertNotIn('dev_otp_code', data)
+        self.assertNotIn('otp_dev_code', data)
+
     def test_request_otp_keeps_dev_mode_without_sms_config(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')

@@ -97,7 +97,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                     'otp_expires_at': fields.Datetime.to_string(challenge.expires_at) if challenge.expires_at else False,
                     'otp_delivery': 'configured_provider',
                 })
-                if self._get_config_bool('acpec_mobile_auth.otp_dev_mode', default=False):
+                if request.env['acpec.mobile.security.policy'].sudo().otp_dev_mode_enabled():
                     data['otp_dev_code'] = code
                     data['otp_delivery'] = 'dev_response'
             else:

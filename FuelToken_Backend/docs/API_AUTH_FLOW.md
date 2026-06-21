@@ -44,7 +44,7 @@ En dÃ©veloppement, activer :
 acpec_mobile_auth.otp_dev_mode = True
 ```
 
-La rÃ©ponse inclura `dev_otp_code`.
+La réponse inclura `dev_otp_code` uniquement si `acpec_mobile_auth.otp_dev_mode=True` ET si le runtime local/test est explicitement autorisé, par exemple avec `ACPEC_FUELTOKEN_TEST_MODE=1` ou `--test-enable`.
 
 ### VÃ©rification OTP
 
