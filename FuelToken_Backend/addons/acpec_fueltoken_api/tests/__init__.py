@@ -12,3 +12,4 @@ from . import test_station_qr_use_runtime_policy
 from . import test_admin_purchase_runtime_policy
 from . import test_admin_station_runtime_policy
 from . import test_admin_carnet_type_runtime_policy
+from . import test_admin_sensitive_inventory_policy
