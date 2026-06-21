@@ -27,6 +27,8 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
 
     OTP_DEV_MODE_KEY = "acpec_mobile_auth.otp_dev_mode"
     OTP_DEV_MODE_ENV_KEY = "ACPEC_FUELTOKEN_TEST_MODE"
+    RUNTIME_ENV_KEYS = ("ACPEC_ENV", "ODOO_ENV", "ENV")
+    PRODUCTION_ENV_VALUES = ("prod", "production")
     TRUE_VALUES = ("1", "true", "yes", "y", "on", "dev", "test")
 
     @api.model
@@ -42,6 +44,22 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
         return self._is_truthy(os.getenv(key))
 
     @api.model
+    def runtime_is_production(self):
+        for key in self.RUNTIME_ENV_KEYS:
+            value = (os.getenv(key) or '').strip().lower()
+            if value in self.PRODUCTION_ENV_VALUES:
+                return True
+        return False
+
+    @api.model
+    def _raise_if_test_mode_forbidden_in_production(self):
+        if self.runtime_is_production() and self._env_bool(self.OTP_DEV_MODE_ENV_KEY):
+            raise RuntimeError(
+                '%s is forbidden when runtime environment is production.'
+                % self.OTP_DEV_MODE_ENV_KEY
+            )
+
+    @api.model
     def otp_dev_runtime_allowed(self):
         """Return True only for explicit local/test runtimes.
 
@@ -50,6 +68,9 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
         an ir.config_parameter.  Production enablement requires a deployment
         mistake plus this explicit runtime gate, not a single DB flag.
         """
+        self._raise_if_test_mode_forbidden_in_production()
+        if self.runtime_is_production():
+            return False
         return (
             self._env_bool(self.OTP_DEV_MODE_ENV_KEY)
             or self._is_truthy(config.get("test_enable"))
