@@ -8,8 +8,9 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
     ACCESS_TOKEN_MINUTES = ("acpec_mobile_auth.access_token_minutes", 15, 5, 60)
     REFRESH_TOKEN_DAYS = ("acpec_mobile_auth.refresh_token_days", 30, 1, 90)
 
-    MOBILE_PIN_LOCK_SECONDS = ("acpec_mobile_auth.mobile_pin_lock_seconds", 60, 0, 3600)
+    MOBILE_PIN_LOCK_SECONDS = ("acpec_mobile_auth.mobile_pin_lock_seconds", 60, 30, 3600)
     MOBILE_PIN_MAX_ATTEMPTS = ("acpec_mobile_auth.mobile_pin_max_attempts", 5, 1, 10)
+    MOBILE_PIN_HARD_BLOCK_ATTEMPTS = ("acpec_mobile_auth.mobile_pin_hard_block_attempts", 20, 10, 100)
 
     OTP_CODE_LENGTH = ("acpec_mobile_auth.otp_code_length", 6, 4, 8)
     OTP_EXPIRATION_MINUTES = ("acpec_mobile_auth.otp_expiration_minutes", 5, 1, 30)
@@ -68,6 +69,10 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
     @api.model
     def mobile_pin_max_attempts(self):
         return self.get_int(self.MOBILE_PIN_MAX_ATTEMPTS)
+
+    @api.model
+    def mobile_pin_hard_block_attempts(self):
+        return self.get_int(self.MOBILE_PIN_HARD_BLOCK_ATTEMPTS)
 
     @api.model
     def otp_code_length(self):

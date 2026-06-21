@@ -134,6 +134,22 @@ class ResUsers(models.Model):
     def _mobile_pin_max_attempts(self):
         return self.env["acpec.mobile.security.policy"].sudo().mobile_pin_max_attempts()
 
+    @api.model
+    def _mobile_pin_hard_block_attempts(self):
+        return self.env["acpec.mobile.security.policy"].sudo().mobile_pin_hard_block_attempts()
+
+    def _mobile_pin_lock_duration(self, failed_count):
+        """Return the progressive lock duration for cumulative PIN failures.
+
+        V1 keeps ``action_code`` as the API name of the mobile confirmation PIN,
+        but the server-side lock must not be flat.  Every block of
+        ``max_attempts`` failures doubles the delay, capped by policy.
+        """
+        max_attempts = max(1, self._mobile_pin_max_attempts())
+        base_seconds = max(1, self._mobile_pin_lock_seconds())
+        level = max(0, (int(failed_count or 0) - max_attempts) // max_attempts)
+        return min(base_seconds * (2 ** level), 3600)
+
     def set_mobile_pin(self, pin):
         """Set the mobile confirmation PIN without touching res.users.password."""
         pin = self._validate_mobile_pin(pin)
@@ -191,12 +207,28 @@ class ResUsers(models.Model):
 
             failed_count = (user.mobile_pin_failed_count or 0) + 1
             vals = {'mobile_pin_failed_count': failed_count}
+
+            hard_block_attempts = user._mobile_pin_hard_block_attempts()
+            if hard_block_attempts and failed_count >= hard_block_attempts:
+                vals.update({
+                    'mobile_pin_hash': False,
+                    'mobile_pin_salt': False,
+                    'mobile_pin_set': False,
+                    'mobile_pin_required': True,
+                    'mobile_pin_locked_until': False,
+                })
+                user.write(vals)
+                self.env.flush_all()
+                raise AccessError(_('Trop de tentatives PIN. Réinitialisation du PIN mobile requise.'))
+
             if failed_count >= user._mobile_pin_max_attempts():
                 vals.update({
-                    'mobile_pin_failed_count': 0,
-                    'mobile_pin_locked_until': now + relativedelta(seconds=user._mobile_pin_lock_seconds()),
+                    'mobile_pin_locked_until': now + relativedelta(
+                        seconds=user._mobile_pin_lock_duration(failed_count)
+                    ),
                 })
             user.write(vals)
+            self.env.flush_all()
             raise AccessError(_('PIN mobile invalide.'))
         return True
 
