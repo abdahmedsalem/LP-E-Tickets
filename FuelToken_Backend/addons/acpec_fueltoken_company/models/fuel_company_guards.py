@@ -156,9 +156,9 @@ class AcpecFuelCarnetTransferCompanyGuard(models.Model):
     def _check_company_distribution_rules(self):
         self._check_company_distribution_rules_records()
 
-    def action_confirm(self):
+    def action_confirm(self, actor_user=None):
         self._check_company_distribution_rules_records()
-        return super().action_confirm()
+        return super().action_confirm(actor_user=actor_user)
 
 
 class AcpecFuelPurchaseCompanyGuard(models.Model):

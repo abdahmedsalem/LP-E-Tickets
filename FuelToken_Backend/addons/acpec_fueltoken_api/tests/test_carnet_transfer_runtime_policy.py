@@ -180,6 +180,11 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         with patch.object(api_mobile_module, "request", fake_request):
             return controller.transfer_carnets(**payload)
 
+    def _call_transfer_list(self, controller, payload=None):
+        fake_request = SimpleNamespace(env=self.env)
+        with patch.object(api_mobile_module, "request", fake_request):
+            return controller.transfer_list(**(payload or {}))
+
     def _assert_error_contains(self, response, expected):
         self.assertIn(expected, repr(response))
         self.assertIn("success", repr(response))
@@ -235,7 +240,7 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
 
     def test_transfer_carnets_replays_same_payload_for_same_idempotency_key(self):
         (
-            controller, _source_user, _source_login, _recipient_user, recipient_login,
+            controller, source_user, _source_login, _recipient_user, recipient_login,
             _session, carnet_type, _purchase, face_line, source_wallet, dest_wallet,
         ) = self._controller_with_transfer_fixture(24003)
         key = "carnet-transfer-replay-key-24e"
@@ -250,6 +255,7 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         self.assertIn(str(transfer.id), repr(first_response))
         self.assertIn(str(transfer.id), repr(second_response))
         self.assertEqual(transfer.state, "confirmed")
+        self.assertEqual(transfer.confirmed_by.id, source_user.id)
         self.assertEqual(transfer.face_qty_total, carnet_type.face_count)
         self.assertTrue(transfer.request_hash)
 
@@ -299,3 +305,51 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         )
         self._assert_error_contains(response, "Device mobile en attente de validation")
         self.assertFalse(self._transfer_by_key(source_wallet, key))
+    def test_transfer_list_is_limited_to_current_company(self):
+        (
+            controller, source_user, _source_login, _recipient_user, recipient_login,
+            _session, _carnet_type, _purchase, face_line, source_wallet, _dest_wallet,
+        ) = self._controller_with_transfer_fixture(24030)
+
+        key = "carnet-transfer-list-company-filter-27b"
+        same_company_note = "same-company-transfer-visible-27b"
+        payload = self._payload(
+            recipient_login,
+            face_line,
+            key=key,
+            note=same_company_note,
+        )
+        self._call_transfer_carnets(controller, payload)
+        same_company_transfer = self._transfer_by_key(source_wallet, key)
+        self.assertEqual(len(same_company_transfer), 1)
+
+        other_company = self.env["res.company"].sudo().create({
+            "name": "Patch27B Other Transfer Company",
+        })
+        foreign_partner = self.env["res.partner"].sudo().create({
+            "name": "Patch27B Foreign Transfer Partner",
+        })
+        source_wallet_other_company = self.env["acpec.fuel.wallet"].sudo().get_or_create(
+            source_user.partner_id,
+            other_company,
+        )
+        dest_wallet_other_company = self.env["acpec.fuel.wallet"].sudo().get_or_create(
+            foreign_partner,
+            other_company,
+        )
+        foreign_note = "foreign-company-transfer-must-not-leak-27b"
+        foreign_transfer = self.env["acpec.fuel.carnet.transfer"].sudo().create({
+            "source_wallet_id": source_wallet_other_company.id,
+            "dest_wallet_id": dest_wallet_other_company.id,
+            "company_id": other_company.id,
+            "note": foreign_note,
+            "idempotency_key": "foreign-company-transfer-key-27b",
+        })
+        self.assertEqual(foreign_transfer.source_partner_id.id, source_user.partner_id.id)
+        self.assertNotEqual(foreign_transfer.company_id.id, self.company.id)
+
+        response = self._call_transfer_list(controller, {})
+        response_repr = repr(response)
+
+        self.assertIn(same_company_note, response_repr)
+        self.assertNotIn(foreign_note, response_repr)

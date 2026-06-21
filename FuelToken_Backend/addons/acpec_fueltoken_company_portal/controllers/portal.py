@@ -730,6 +730,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
                 note=(post.get('note') or '').strip() or False,
                 idempotency_key=(post.get('idempotency_key') or '').strip() or False,
                 confirm=True,
+                operator_user=request.env.user,
             )
         except (ValidationError, UserError) as exc:
             values = self._build_distribution_form_values(context, error=exc.args[0], form_data=post)

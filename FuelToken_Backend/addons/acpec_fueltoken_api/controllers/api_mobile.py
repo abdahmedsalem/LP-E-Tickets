@@ -996,7 +996,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'request_hash': request_hash,
                     'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
                 })
-                transfer.action_confirm()
+                transfer.action_confirm(actor_user=source_user)
 
             return self._json_response(self._transfer_payload(transfer))
         except Exception as exc:
@@ -1011,20 +1011,31 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         try:
             user = self._require_mobile_auth()
             self._require_fuel_group(user, 'client')
+            wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                user.partner_id, user.company_id,
+            )
             limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=100)
             include_meta = self._include_pagination_meta(kwargs)
             date_from, date_to = self._date_range_params(kwargs)
             direction = kwargs.get('direction')  # 'sent' | 'received' | None (tous)
             state = self._get_clean_str(kwargs, 'state')
 
-            domain = ['|',
+            domain = [
+                ('company_id', '=', wallet.company_id.id),
+                '|',
                 ('source_partner_id', '=', user.partner_id.id),
                 ('dest_partner_id', '=', user.partner_id.id),
             ]
             if direction == 'sent':
-                domain = [('source_partner_id', '=', user.partner_id.id)]
+                domain = [
+                    ('company_id', '=', wallet.company_id.id),
+                    ('source_partner_id', '=', user.partner_id.id),
+                ]
             elif direction == 'received':
-                domain = [('dest_partner_id', '=', user.partner_id.id)]
+                domain = [
+                    ('company_id', '=', wallet.company_id.id),
+                    ('dest_partner_id', '=', user.partner_id.id),
+                ]
             if state and state != 'all':
                 domain.append(('state', '=', state))
             self._add_date_range_domain(domain, date_from, date_to, field_name='create_date')

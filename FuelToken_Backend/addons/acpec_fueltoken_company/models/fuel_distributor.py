@@ -519,7 +519,7 @@ class AcpecFuelDistributor(models.Model):
             }
         return True
 
-    def action_distribute_to_member(self, member_partner, lines, note=False, idempotency_key=False, confirm=True):
+    def action_distribute_to_member(self, member_partner, lines, note=False, idempotency_key=False, confirm=True, operator_user=None):
         """Backend method for controlled company distribution to one member.
 
         This is the method that TicketsCarburant_WebClient / portal should call later.
@@ -527,6 +527,7 @@ class AcpecFuelDistributor(models.Model):
         duplicate transfer accounting logic.
         """
         self.ensure_one()
+        operator_user = operator_user or self.env.user
         member_partner = self.env['res.partner'].sudo().browse(
             member_partner.id if hasattr(member_partner, 'id') else int(member_partner or 0)
         ).exists()
@@ -544,7 +545,7 @@ class AcpecFuelDistributor(models.Model):
             ], limit=1)
             if existing:
                 if confirm and existing.state == 'draft':
-                    existing.action_confirm()
+                    existing.action_confirm(actor_user=operator_user)
                 return existing
 
         transfer_line_vals = self._prepare_distribution_line_vals(lines)
@@ -561,7 +562,7 @@ class AcpecFuelDistributor(models.Model):
         }
         transfer = self.env['acpec.fuel.carnet.transfer'].sudo().create(transfer_vals)
         if confirm:
-            transfer.action_confirm()
+            transfer.action_confirm(actor_user=operator_user)
 
         self.message_post(body=_(
             'Distribution société vers %(member)s: %(transfer)s, %(qty)s tickets.'
@@ -572,7 +573,7 @@ class AcpecFuelDistributor(models.Model):
         })
         return transfer
 
-    def action_distribute_bulk(self, distribution_lines, idempotency_key=False):
+    def action_distribute_bulk(self, distribution_lines, idempotency_key=False, operator_user=None):
         """Backend helper for later bulk distribution from the webclient.
 
         Expected input:
@@ -601,6 +602,7 @@ class AcpecFuelDistributor(models.Model):
                     note=item.get('note') or False,
                     idempotency_key=line_key,
                     confirm=True,
+                    operator_user=operator_user,
                 )
                 transfers |= transfer
         return transfers
