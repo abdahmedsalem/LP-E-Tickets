@@ -172,3 +172,19 @@ Alternative : table consommation avec `unique(ticket_id)`.
 - objet déjà consommé refuse clairement ;
 - response_json ne contient pas secrets.
 ```
+
+
+## Additif patch23A — idempotency_key obligatoire sur mutations économiques
+
+Les endpoints suivants exigent désormais idempotency_key en plus du device trusted et du PIN serveur action_code :
+
+- /api/acpec/fueltoken/v1/mobile/purchases/create
+- /api/acpec/fueltoken/v1/mobile/qr/issue
+- /api/acpec/fueltoken/v1/mobile/qr/retirer
+- /api/acpec/fueltoken/v1/mobile/qr/separer
+- /api/acpec/fueltoken/v1/mobile/carnets/transfer
+- /api/acpec/fueltoken/v1/station/qr/use
+
+Les endpoints de lecture, détail, profil, historique et check non mutatif restent sans idempotency_key obligatoire.
+
+Ce patch ne remplace pas le futur request_hash. Il rend seulement la clé obligatoire là où le moteur métier accepte déjà une clé idempotente.

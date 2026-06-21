@@ -431,6 +431,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         try:
             self._require_keys(kwargs, ['lines', 'proof_data'])
             self._require_sensitive_action_pin(kwargs, purpose='purchase_create')
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_create')
             wallet = self._mobile_wallet()
             purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
                 wallet.partner_id,
@@ -439,7 +440,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 kwargs.get('proof_filename') or _('preuve_paiement.pdf'),
                 kwargs.get('proof_data'),
                 payment_reference=kwargs.get('payment_reference'),
-                idempotency_key=kwargs.get('idempotency_key'),
+                idempotency_key=idempotency_key,
             )
             return self._json_response({
                 'purchase_id': purchase.id,
@@ -704,6 +705,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         try:
             self._require_keys(kwargs, ['lines'])
             self._require_sensitive_action_pin(kwargs, purpose='qr_issue')
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_issue')
             wallet = self._mobile_wallet()
             requests = []
             for line in kwargs.get('lines') or []:
@@ -717,7 +719,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 qr = request.env['acpec.fuel.qr'].sudo().issue_from_available(
                     wallet,
                     requests,
-                    idempotency_key=kwargs.get('idempotency_key'),
+                    idempotency_key=idempotency_key,
                 )
                 payload = self._qr_payload(qr)
             return self._json_response(payload)
@@ -768,6 +770,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         try:
             self._require_keys(kwargs, ['public_code', 'lines'])
             self._require_sensitive_action_pin(kwargs, purpose='qr_retirer')
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_retirer')
             wallet = self._mobile_wallet()
             qr = request.env['acpec.fuel.qr'].sudo().search([
                 ('public_code', '=', kwargs.get('public_code')),
@@ -778,7 +781,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
             child = qr.action_retirer_to_child(
                 kwargs.get('lines') or [],
-                idempotency_key=kwargs.get('idempotency_key'),
+                idempotency_key=idempotency_key,
             )
             source_payload = self._qr_payload(qr)
             child_payload = self._qr_payload(child)
@@ -795,6 +798,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         try:
             self._require_keys(kwargs, ['public_code'])
             self._require_sensitive_action_pin(kwargs, purpose='qr_separer')
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_separer')
             wallet = self._mobile_wallet()
             qr = request.env['acpec.fuel.qr'].sudo().search([
                 ('public_code', '=', kwargs.get('public_code')),
@@ -804,7 +808,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 raise ValidationError(_('QR introuvable.'))
 
             child = qr.action_separer_valid_to_child(
-                idempotency_key=kwargs.get('idempotency_key'),
+                idempotency_key=idempotency_key,
             )
             source_payload = self._qr_payload(qr)
             child_payload = self._qr_payload(child)
@@ -894,7 +898,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             recipient_phone  (str, obligatoire) — numéro de téléphone/login du destinataire
             lines            (list, obligatoire) — liste de {face_line_id, carnet_qty}
             note             (str, optionnel)
-            idempotency_key  (str, optionnel)
+            idempotency_key  (str, obligatoire)
 
         Règles métier vérifiées :
             - Le destinataire existe, appartient à la même société, a le groupe FuelToken Client.
@@ -937,7 +941,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
 
             # ── 2. Idempotence (vérification avant création) ─────────────────
-            idempotency_key = self._get_clean_str(kwargs, 'idempotency_key') or False
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_transfer')
             if idempotency_key:
                 existing = request.env['acpec.fuel.carnet.transfer'].sudo().search([
                     ('source_wallet_id', '=', wallet.id),

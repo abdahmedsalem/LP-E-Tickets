@@ -25,6 +25,13 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
         },
     }
 
+    def _require_idempotency_key(self, params, purpose='sensitive_action'):
+        raw_value = (params or {}).get('idempotency_key')
+        idempotency_key = str(raw_value).strip() if raw_value not in (None, False) else False
+        if not idempotency_key:
+            raise ValidationError('idempotency_key est obligatoire pour cette action sensible.')
+        return idempotency_key
+
     def _controller_env(self):
         """Return an Odoo env usable from HTTP routes and lightweight tests."""
         test_env = getattr(self, '_test_env', None)

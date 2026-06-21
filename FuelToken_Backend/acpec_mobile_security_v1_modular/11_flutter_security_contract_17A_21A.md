@@ -102,3 +102,19 @@ Les endpoints suivants restent en authentification simple, sans PIN serveur :
 - /api/acpec/fueltoken/v1/admin/carnet-types/list
 
 Règle doctrinale : toute mutation de valeur économique doit passer par _require_sensitive_action_pin(...). Les lectures, previews et checks non mutatifs restent en authentification mobile simple.
+
+
+## Additif patch23A — idempotency_key obligatoire sur mutations économiques
+
+Les endpoints suivants exigent désormais idempotency_key en plus du device trusted et du PIN serveur action_code :
+
+- /api/acpec/fueltoken/v1/mobile/purchases/create
+- /api/acpec/fueltoken/v1/mobile/qr/issue
+- /api/acpec/fueltoken/v1/mobile/qr/retirer
+- /api/acpec/fueltoken/v1/mobile/qr/separer
+- /api/acpec/fueltoken/v1/mobile/carnets/transfer
+- /api/acpec/fueltoken/v1/station/qr/use
+
+Les endpoints de lecture, détail, profil, historique et check non mutatif restent sans idempotency_key obligatoire.
+
+Ce patch ne remplace pas le futur request_hash. Il rend seulement la clé obligatoire là où le moteur métier accepte déjà une clé idempotente.
