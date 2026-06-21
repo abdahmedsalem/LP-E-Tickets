@@ -467,12 +467,28 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return user
 
     def _get_sensitive_action_pin(self, params):
+        """Return the canonical server-side PIN for a sensitive action.
+
+        V1 accepts exactly one request key: ``action_code``.
+        Historical aliases (``action_pin``, ``pin``, ``secret_code``) are
+        deliberately rejected.  In particular, ``secret_code`` is reserved for
+        signup / initial mobile PIN setup and must not be reused as an action
+        confirmation field.
+        """
         params = params or {}
-        for key in ('action_code', 'action_pin', 'pin', 'secret_code'):
-            value = self._get_clean_str(params, key)
-            if value:
-                return value
-        raise ValidationError('Code PIN de confirmation requis pour cette action sensible.')
+        forbidden_aliases = ('action_pin', 'pin', 'secret_code')
+        used_aliases = [
+            key for key in forbidden_aliases
+            if params.get(key) not in (None, False, '')
+        ]
+        if used_aliases:
+            raise ValidationError(
+                "Clé PIN action invalide: utilisez uniquement action_code."
+            )
+        pin = params.get('action_code')
+        if pin in (None, False, ''):
+            raise ValidationError('action_code requis pour confirmer cette action sensible.')
+        return str(pin)
 
     def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action'):
         """Require trusted device + server-side mobile PIN for a concrete sensitive action.

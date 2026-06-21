@@ -162,3 +162,10 @@ Les anciennes décisions ouvertes sont clôturées ainsi :
 |---|---|
 | OPEN-CLIENT-001 | Volume cible clients mobiles : max 5000. `res.users` par client accepté en V1 avec provisioning contrôlé. |
 | OPEN-MANAGER-001 | `manager_field_validation_enabled=False` par défaut. La validation manager trusted est désactivée sauf activation explicite. |
+
+
+## Additif Patch23D — PIN d'action sensible
+
+INV-PIN-004: une action sensible accepte uniquement le champ `action_code` comme PIN serveur.
+FORBID-PIN-001: `action_pin`, `pin` et `secret_code` sont interdits comme alias de confirmation d'action sensible.
+FORBID-PIN-002: `secret_code` reste strictement réservé au signup / initialisation du PIN mobile et ne doit jamais être réutilisé comme nom de champ d'action sensible.

@@ -197,3 +197,8 @@ Les modèles runtime qui stockent désormais request_hash :
 - acpec.fuel.qr
 - acpec.fuel.carnet.transfer
 - acpec.fuel.transaction
+
+
+## Additif Patch23D — action_code canonique
+
+Le backend accepte désormais uniquement `action_code` pour la confirmation PIN serveur des actions sensibles. Les alias `action_pin`, `pin` et `secret_code` sont rejetés par validation afin d'éviter les chemins ambigus et les risques de logs génériques sur `secret_code`.
