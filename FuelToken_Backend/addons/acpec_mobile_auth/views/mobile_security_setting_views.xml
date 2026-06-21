@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_acpec_mobile_security_setting_tree" model="ir.ui.view">
+        <field name="name">acpec.mobile.security.setting.tree</field>
+        <field name="model">acpec.mobile.security.setting</field>
+        <field name="arch" type="xml">
+            <list string="Paramètres de sécurité mobile" create="true" edit="true">
+                <field name="key" string="Clé"/>
+                <field name="value" string="Valeur"/>
+                <field name="active" string="Actif"/>
+                <field name="write_uid" string="Dernière modification par"/>
+                <field name="write_date" string="Dernière modification le"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_security_setting_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.security.setting.form</field>
+        <field name="model">acpec.mobile.security.setting</field>
+        <field name="arch" type="xml">
+            <form string="Paramètre de sécurité mobile">
+                <sheet>
+                    <group string="Paramètre">
+                        <field name="key" string="Clé"/>
+                        <field name="value" string="Valeur"/>
+                        <field name="active" string="Actif"/>
+                    </group>
+                    <group string="Audit">
+                        <field name="create_uid" string="Créé par" readonly="1"/>
+                        <field name="create_date" string="Créé le" readonly="1"/>
+                        <field name="write_uid" string="Modifié par" readonly="1"/>
+                        <field name="write_date" string="Modifié le" readonly="1"/>
+                    </group>
+                    <group string="Note">
+                        <field name="note" string="Note" placeholder="Motif, contexte ou note opérationnelle liée à ce paramètre de sécurité."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_security_setting_search" model="ir.ui.view">
+        <field name="name">acpec.mobile.security.setting.search</field>
+        <field name="model">acpec.mobile.security.setting</field>
+        <field name="arch" type="xml">
+            <search string="Paramètres de sécurité mobile">
+                <filter name="active" string="Actifs" domain="[('active', '=', True)]"/>
+                <filter name="inactive" string="Inactifs" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="group_by_active" string="Regrouper par actif" context="{'group_by': 'active'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_acpec_mobile_security_setting" model="ir.actions.act_window">
+        <field name="name">Paramètres de sécurité mobile</field>
+        <field name="res_model">acpec.mobile.security.setting</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_acpec_mobile_security_setting_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configurez les paramètres de sécurité mobile.
+            </p>
+            <p>
+                Ces paramètres remplacent les anciennes valeurs ir.config_parameter.
+                Les secrets SMS ne sont volontairement pas gérés ici.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mobile_auth_security_settings"
+              name="Paramètres de sécurité"
+              parent="acpec_mobile_auth.menu_mobile_auth_configuration"
+              action="action_acpec_mobile_security_setting"
+              sequence="10"
+              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+</odoo>
