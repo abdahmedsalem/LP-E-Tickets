@@ -149,6 +149,199 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
                 self.assertTrue(policy.otp_dev_mode_enabled())
 
+    def _public_controller_request_context(self, remote_addr='127.0.0.1'):
+        fake_request = SimpleNamespace(
+            env=self.env,
+            cr=self.env.cr,
+            httprequest=SimpleNamespace(
+                headers={},
+                remote_addr=remote_addr,
+                access_route=[remote_addr],
+                environ={'REMOTE_ADDR': remote_addr},
+            ),
+        )
+
+        def fake_translate(message, *args, **kwargs):
+            return message
+
+        return patch.multiple(
+            'odoo.addons.acpec_mobile_auth.controllers.api_common',
+            request=fake_request,
+            _=fake_translate,
+        ), patch.multiple(
+            'odoo.addons.acpec_mobile_auth.controllers.api_public',
+            request=fake_request,
+            _=fake_translate,
+        ), patch.multiple(
+            'odoo.addons.acpec_mobile_auth_otp.controllers.api_otp',
+            request=fake_request,
+            _=fake_translate,
+        )
+
+    def _run_public_controller_call(self, callback):
+        common_patch, public_patch, otp_patch = self._public_controller_request_context()
+        with common_patch, public_patch, otp_patch:
+            return callback()
+
+    def _assert_public_error_is_not_enumerating(self, result):
+        self.assertFalse(result['ok'])
+        serialized = str(result).lower()
+        forbidden_terms = [
+            'account_exists',
+            'otp_not_found',
+            'already exists',
+            'introuvable',
+            'not found',
+            'déjà existant',
+            'existe déjà',
+            'compte mobile introuvable',
+        ]
+        for term in forbidden_terms:
+            self.assertNotIn(term, serialized)
+
+    def test_signup_existing_account_uses_generic_public_error(self):
+        self._create_mobile_user(
+            login='46009101',
+            mobile_phone='46009101',
+        )
+        controller = AcpecMobileAuthApiPublic()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.signup(
+                    name='Existing Signup',
+                    signup_identifier='46009101',
+                    secret_code='1234',
+                    company_id=self.env.company.id,
+                ))
+
+        self._assert_public_error_is_not_enumerating(result)
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertNotIn('debug_reason', result['error'])
+
+    def test_request_otp_register_existing_account_uses_generic_public_error(self):
+        self._create_mobile_user(
+            login='46009102',
+            mobile_phone='46009102',
+        )
+        controller = AcpecMobileAuthOtpApi()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.request_otp(
+                    identifier='46009102',
+                    purpose='register',
+                ))
+
+        self._assert_public_error_is_not_enumerating(result)
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertNotIn('debug_reason', result['error'])
+
+    def test_request_otp_login_unknown_identifier_uses_generic_success(self):
+        controller = AcpecMobileAuthOtpApi()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.request_otp(
+                    identifier='46999999',
+                    purpose='login',
+                ))
+
+        self.assertTrue(result['ok'])
+        serialized = str(result).lower()
+        self.assertIn('si les informations sont valides', serialized)
+        self.assertNotIn('introuvable', serialized)
+        self.assertNotIn('not found', serialized)
+        self.assertNotIn('compte mobile', serialized)
+        self.assertNotIn('debug_reason', result)
+
+    def test_verify_otp_unknown_challenge_uses_generic_public_error(self):
+        controller = AcpecMobileAuthOtpApi()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.verify_otp(
+                    challenge_id=999999999,
+                    code='123456',
+                ))
+
+        self._assert_public_error_is_not_enumerating(result)
+        self.assertEqual(result['error']['code'], 'OTP_INVALID_OR_EXPIRED')
+        self.assertNotIn('debug_reason', result['error'])
+
+    def test_verify_otp_register_duplicate_account_uses_generic_public_error(self):
+        controller = AcpecMobileAuthOtpApi()
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+
+        challenge, code = otp_model.request_otp(
+            '46009103',
+            purpose='register',
+            request_ip='127.0.0.1',
+        )
+
+        self._create_mobile_user(
+            login='46009103',
+            mobile_phone='46009103',
+        )
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.verify_otp(
+                    challenge_id=challenge.id,
+                    code=code,
+                    name='Duplicate Register',
+                    secret_code='1234',
+                    company_id=self.env.company.id,
+                ))
+
+        self._assert_public_error_is_not_enumerating(result)
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertNotIn('debug_reason', result['error'])
+
+    def test_request_otp_login_unknown_identifier_debug_reason_is_runtime_gated(self):
+        controller = AcpecMobileAuthOtpApi()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.request_otp(
+                    identifier='46999998',
+                    purpose='login',
+                ))
+                self.assertTrue(result['ok'])
+                self.assertNotIn('debug_reason', result)
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value='1'):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.request_otp(
+                    identifier='46999997',
+                    purpose='login',
+                ))
+                self.assertTrue(result['ok'])
+                self.assertEqual(result.get('debug_reason'), 'user_not_found')
+
+    def test_verify_otp_unknown_challenge_debug_reason_is_runtime_gated(self):
+        controller = AcpecMobileAuthOtpApi()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.verify_otp(
+                    challenge_id=999999998,
+                    code='123456',
+                ))
+                self.assertFalse(result['ok'])
+                self.assertEqual(result['error']['code'], 'OTP_INVALID_OR_EXPIRED')
+                self.assertNotIn('debug_reason', result['error'])
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value='1'):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.verify_otp(
+                    challenge_id=999999997,
+                    code='123456',
+                ))
+                self.assertFalse(result['ok'])
+                self.assertEqual(result['error']['code'], 'OTP_INVALID_OR_EXPIRED')
+                self.assertEqual(result['error'].get('debug_reason'), 'otp_not_found')
+
     def test_otp_antiflood_zero_values_require_runtime_gate(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
