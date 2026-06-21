@@ -97,13 +97,14 @@ class TestSensitiveActionPin(TransactionCase):
                 purpose='pending_device',
             )
 
-    def test_sensitive_action_pin_accepts_backward_compatible_pin_keys(self):
-        user, session = self._trusted_session()
-        controller = self._controller_for_session(session)
-
+    def test_sensitive_action_pin_rejects_legacy_pin_aliases(self):
+        controller = AcpecMobileAuthApiCommon()
         for key in ('action_pin', 'pin', 'secret_code'):
-            allowed_user = controller._require_sensitive_action_pin(
-                {key: '1234'},
-                purpose='compat_%s' % key,
-            )
-            self.assertEqual(allowed_user.id, user.id)
+            with self.assertRaises(ValidationError):
+                controller._get_sensitive_action_pin({key: '1234'})
+
+        with self.assertRaises(ValidationError):
+            controller._get_sensitive_action_pin({
+                'action_code': '1234',
+                'secret_code': '1234',
+            })

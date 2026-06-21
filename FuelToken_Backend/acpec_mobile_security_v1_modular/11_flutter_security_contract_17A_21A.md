@@ -45,12 +45,11 @@ Champ recommandé :
 }
 ```
 
-Clés acceptées pour compatibilité backend :
+Clé unique acceptée par le backend pour confirmer une action sensible :
 
 - `action_code`
-- `action_pin`
-- `pin`
-- `secret_code`
+
+Les alias `action_pin`, `pin` et `secret_code` sont interdits sur les actions sensibles et doivent produire une erreur de validation. `secret_code` reste réservé au signup / initialisation du PIN mobile ; il ne doit jamais être réutilisé comme nom de champ de confirmation d'action.
 
 Flutter doit utiliser `action_code` pour éviter la confusion avec le PIN local de déverrouillage app.
 

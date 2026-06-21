@@ -39,3 +39,9 @@
 - Clarification : `secret_code` initialise le PIN serveur ; les actions sensibles utilisent `action_code`.
 - Clarification : `_require_sensitive_action_pin()` englobe session Bearer, compte approved, device trusted et PIN serveur.
 - Points restants explicités : tests fonctionnels runtime, audit métier détaillé, codes d'erreur API normalisés.
+
+## Patch23D — action_code canonique
+
+- Suppression de la compatibilité backend `action_pin` / `pin` / `secret_code` pour les PIN d'action sensible.
+- `action_code` devient la seule clé acceptée.
+- `secret_code` reste réservé au signup / initialisation du PIN mobile.
