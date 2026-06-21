@@ -958,7 +958,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 ], limit=1)
                 if existing:
                     if existing.request_hash and existing.request_hash != request_hash:
-                        raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
                     if existing.state == 'confirmed':
                         return self._json_response(self._transfer_payload(existing))
 
