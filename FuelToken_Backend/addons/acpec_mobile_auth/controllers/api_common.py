@@ -15,6 +15,55 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
+    SENSITIVE_LOG_KEYS = frozenset({
+        'access_token',
+        'refresh_token',
+        'authorization',
+        'validation_key',
+        'validation-token',
+        'sms_validation_key',
+        'sms_token',
+        'token',
+        'otp',
+        'otp_code',
+        'otp_dev_code',
+        'dev_otp_code',
+        'code',
+        'secret_code',
+        'action_code',
+        'action_pin',
+        'pin',
+        'mobile_pin',
+        'password',
+    })
+    REDACTED_LOG_VALUE = '***REDACTED***'
+
+    def _redact_for_log(self, value):
+        """Return a log-safe copy/string with secrets removed."""
+        if isinstance(value, dict):
+            safe = {}
+            for key, item in value.items():
+                key_text = str(key).strip().lower()
+                if key_text in self.SENSITIVE_LOG_KEYS:
+                    safe[key] = self.REDACTED_LOG_VALUE
+                else:
+                    safe[key] = self._redact_for_log(item)
+            return safe
+
+        if isinstance(value, (list, tuple)):
+            return [self._redact_for_log(item) for item in value]
+
+        if isinstance(value, set):
+            return [self._redact_for_log(item) for item in sorted(value, key=lambda item: str(item))]
+
+        text = str(value)
+        for key in sorted(self.SENSITIVE_LOG_KEYS, key=len, reverse=True):
+            text = re.sub(
+                r'(?i)(%s\s*[:=]\s*)[^,\s\}\]\)]+' % re.escape(key),
+                r'\1%s' % self.REDACTED_LOG_VALUE,
+                text,
+            )
+        return text
 
     def _api_env(self):
         test_env = getattr(self, '_test_env', None)
@@ -50,18 +99,18 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     def _handle_exception_response(self, exc):
         if isinstance(exc, MobileAuthRateLimitError):
-            _logger.warning(str(exc))
+            _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('RATE_LIMITED', str(exc))
         if isinstance(exc, ValidationError):
-            _logger.warning(str(exc))
+            _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('VALIDATION_ERROR', str(exc))
         if isinstance(exc, AccessError):
-            _logger.warning(str(exc))
+            _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('ACCESS_ERROR', str(exc))
-        _logger.exception('Unhandled API error')
+        _logger.exception('Unhandled API error: %s', self._redact_for_log(str(exc)))
         return self._error_response(
             'SERVER_ERROR',
-            str(exc) or _('An unexpected server error occurred.'),
+            _('An unexpected server error occurred.'),
         )
 
     def _require_keys(self, params, required_keys):

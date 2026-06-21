@@ -83,6 +83,47 @@ class AcpecSmsGateway(models.AbstractModel):
         return 'fr'
 
     @api.model
+    def _safe_phone_suffix(self, phone):
+        digits = re.sub(r'\D+', '', phone or '')
+        return digits[-2:] if digits else ''
+
+    @api.model
+    def _redact_sms_log_value(self, value):
+        sensitive_keys = {
+            'validation_key',
+            'validation-token',
+            'token',
+            'sms_token',
+            'sms_validation_key',
+            'code',
+            'otp',
+            'otp_code',
+            'secret_code',
+            'access_token',
+            'refresh_token',
+        }
+        if isinstance(value, dict):
+            return {
+                key: '***REDACTED***'
+                if str(key).strip().lower() in sensitive_keys
+                else self._redact_sms_log_value(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [self._redact_sms_log_value(item) for item in value]
+
+        text = str(value)
+        for key in sorted(sensitive_keys, key=len, reverse=True):
+            text = re.sub(
+                r'(?i)(%s\s*[:=]\s*)[^,\s\}\]\)]+' % re.escape(key),
+                r'\1***REDACTED***',
+                text,
+            )
+        if len(text) > 500:
+            text = text[:500] + '...'
+        return text
+
+    @api.model
     def send_validation_sms(self, phone, code=None, lang=None):
         config = self._get_sms_config()
         if config['provider'] != 'chinguisoft':
@@ -110,10 +151,11 @@ class AcpecSmsGateway(models.AbstractModel):
         body = response.text or ''
         if response.status_code >= 400:
             _logger.warning(
-                'Chinguisoft SMS request failed: status=%s url=%s body=%s',
+                'Chinguisoft SMS request failed: status=%s provider=%s phone_suffix=%s body=%s',
                 response.status_code,
-                url,
-                body,
+                config['provider'],
+                self._safe_phone_suffix(normalized_phone),
+                self._redact_sms_log_value(body),
             )
             raise ValidationError(_('L envoi SMS a echoue via Chinguisoft (code HTTP %s).') % response.status_code)
 
@@ -125,5 +167,10 @@ class AcpecSmsGateway(models.AbstractModel):
             except Exception:
                 data = {'raw_response': body}
 
-        _logger.info('Chinguisoft SMS sent to %s with response %s', normalized_phone, data)
+        _logger.info(
+            'Chinguisoft SMS sent: provider=%s phone_suffix=%s response=%s',
+            config['provider'],
+            self._safe_phone_suffix(normalized_phone),
+            self._redact_sms_log_value(data),
+        )
         return data

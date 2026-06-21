@@ -1,19 +1,15 @@
-import logging
-
 from odoo import http, _, fields
 from odoo.http import request
 from odoo.exceptions import AccessError
 
 from .api_common import AcpecMobileAuthApiCommon
 
-_logger = logging.getLogger(__name__)
 
 
 class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
     @http.route('/api/acpec/mobile_auth/v1/version-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def version_check(self, **kwargs):
-        _logger.info("version_check: %s", kwargs)
         try:
             self._require_keys(kwargs, ['platform', 'app_version'])
 
@@ -111,7 +107,6 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             return self._json_response(data)
         except Exception as exc:
-            _logger.exception("Signup API Error")
             return self._handle_exception_response(exc)
 
     @http.route([
