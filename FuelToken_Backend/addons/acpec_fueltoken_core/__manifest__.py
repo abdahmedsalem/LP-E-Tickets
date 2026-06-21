@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Core',
-    'version': '1.0.0',
+    'version': '1.0.1',
     'category': 'ACPEC/FuelToken',
     'summary': 'Cœur FuelToken: faces agrégées, wallet calculé, QR, station et transactions',
     'author': 'ACPEC SARL',

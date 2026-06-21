@@ -55,6 +55,7 @@ class AcpecFuelTransaction(models.Model):
     station_id = fields.Many2one('acpec.fuel.station', string='Station', index=True)
     transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert', index=True)
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
+    request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     line_ids = fields.One2many('acpec.fuel.transaction.line', 'transaction_id', string='Lignes')
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
     qty_total = fields.Integer(string='Quantité', compute='_compute_totals', store=True)
@@ -74,7 +75,7 @@ class AcpecFuelTransaction(models.Model):
             rec.qty_total = sum(rec.line_ids.mapped('qty'))
 
     @api.model
-    def log(self, transaction_type, company, wallet=False, purchase=False, qr=False, parent_qr=False, station=False, transfer=False, lines=False, note=False, idempotency_key=False):
+    def log(self, transaction_type, company, wallet=False, purchase=False, qr=False, parent_qr=False, station=False, transfer=False, lines=False, note=False, idempotency_key=False, request_hash=False):
         vals = {
             'transaction_type': transaction_type,
             'company_id': company.id,
@@ -86,6 +87,7 @@ class AcpecFuelTransaction(models.Model):
             'transfer_id': transfer.id if transfer else False,
             'note': note or False,
             'idempotency_key': idempotency_key or False,
+            'request_hash': request_hash or False,
         }
         tx = self.sudo().create(vals)
         for line in lines or []:

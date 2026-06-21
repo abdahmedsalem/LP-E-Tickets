@@ -84,7 +84,6 @@ class AcpecFuelStation(models.Model):
 
         forbidden_groups = (
             'base.group_user',
-            'base.group_portal',
             'base.group_public',
             'acpec_fueltoken_base.group_fuel_admin',
         )

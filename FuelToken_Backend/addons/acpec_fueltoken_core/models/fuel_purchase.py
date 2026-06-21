@@ -32,7 +32,7 @@ class AcpecFuelPurchaseCore(models.Model):
                     for line in purchase.line_ids
                 ],
                 note=_("Demande d'achat soumise"),
-                idempotency_key=purchase.idempotency_key,
+                idempotency_key=purchase.idempotency_key, request_hash=purchase.request_hash,
             )
         return res
 
@@ -106,7 +106,7 @@ class AcpecFuelPurchaseCore(models.Model):
                         purchase=purchase,
                         lines=tx_lines,
                         note=_("Achat approuve - tickets crees"),
-                        idempotency_key=purchase.idempotency_key,
+                        idempotency_key=purchase.idempotency_key, request_hash=purchase.request_hash,
                     )
                 purchase.sudo().write({'fuel_value_created': True})
         return True

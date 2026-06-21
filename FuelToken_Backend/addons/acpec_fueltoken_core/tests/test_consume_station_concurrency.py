@@ -72,6 +72,7 @@ class _ConsumeFixtureMixin:
         On passe les groupes mobiles directement au create(), comme le flux OTP.
         """
         xmlids = (
+            'base.group_portal',
             'acpec_mobile_auth.group_mobile_auth_user',
             'acpec_fueltoken_base.group_fuel_station',
         )
@@ -88,6 +89,7 @@ class _ConsumeFixtureMixin:
         if group_ids:
             vals['group_ids'] = [(6, 0, group_ids)]
         vals.setdefault('mobile_phone', mobile_phone)
+        vals.setdefault('mobile_only', True)
         vals.setdefault('mobile_state', 'approved')
         vals.setdefault(
             'password',

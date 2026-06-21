@@ -34,6 +34,7 @@ class AcpecFuelQr(models.Model):
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
     face_qty_total = fields.Integer(string='Faces', compute='_compute_totals', store=True)
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
+    request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
 
     _public_code_unique = models.Constraint(
         'UNIQUE(public_code)',
@@ -65,10 +66,12 @@ class AcpecFuelQr(models.Model):
             self.env.cr.execute('SELECT id FROM acpec_fuel_qr WHERE id IN %s FOR UPDATE', [tuple(self.ids)])
 
     @api.model
-    def issue_from_available(self, wallet, requests, idempotency_key=False):
+    def issue_from_available(self, wallet, requests, idempotency_key=False, request_hash=False):
         if idempotency_key:
             existing = self.sudo().search([('wallet_id', '=', wallet.id), ('idempotency_key', '=', idempotency_key)], limit=1)
             if existing:
+                if existing.request_hash and request_hash and existing.request_hash != request_hash:
+                    raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
                 return existing
         with self.env.cr.savepoint():
             # Verrou pessimiste sur le wallet pour éviter la double émission
@@ -77,7 +80,7 @@ class AcpecFuelQr(models.Model):
                 (wallet.id,),
             )
             wallet.invalidate_recordset()
-            qr = self.sudo().create({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False})
+            qr = self.sudo().create({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False, 'request_hash': request_hash or False})
             allocations = self.env['acpec.fuel.face.line'].sudo().reserve_available(wallet, requests)
             tx_lines = []
             for allocation in allocations:
@@ -170,7 +173,7 @@ class AcpecFuelQr(models.Model):
         self.write({'state': 'expired'})
         self.env['acpec.fuel.transaction'].log('expiration_qr', self.company_id, wallet=self.wallet_id, qr=self, lines=tx_lines, note=_('QR entièrement expiré.'))
 
-    def action_consume_by_station(self, station, user=False, idempotency_key=False):
+    def action_consume_by_station(self, station, user=False, idempotency_key=False, request_hash=False):
         self.ensure_one()
         Tx = self.env['acpec.fuel.transaction'].sudo()
         # Check idempotency before locking
@@ -181,6 +184,8 @@ class AcpecFuelQr(models.Model):
                 ('idempotency_key', '=', idempotency_key),
             ], limit=1)
             if existing:
+                if existing.request_hash and request_hash and existing.request_hash != request_hash:
+                    raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
                 return existing
         with self.env.cr.savepoint():
             # Lock the QR
@@ -224,10 +229,10 @@ class AcpecFuelQr(models.Model):
             return Tx.log(
                 'consommation_station', self.company_id,
                 wallet=self.wallet_id, qr=self, station=station,
-                lines=tx_lines, idempotency_key=idempotency_key
+                lines=tx_lines, idempotency_key=idempotency_key, request_hash=request_hash
             )
 
-    def action_retirer_to_child(self, lines, idempotency_key=False):
+    def action_retirer_to_child(self, lines, idempotency_key=False, request_hash=False):
         self.ensure_one()
         Tx = self.env['acpec.fuel.transaction'].sudo()
         if idempotency_key:
@@ -237,6 +242,8 @@ class AcpecFuelQr(models.Model):
                 ('idempotency_key', '=', idempotency_key),
             ], limit=1)
             if existing and existing.qr_id:
+                if existing.request_hash and request_hash and existing.request_hash != request_hash:
+                    raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
                 return existing.qr_id
 
         if not lines:
@@ -329,11 +336,12 @@ class AcpecFuelQr(models.Model):
                 parent_qr=self,
                 lines=tx_lines,
                 idempotency_key=idempotency_key,
+                request_hash=request_hash,
                 note=_('Retrait partiel de tickets vers un nouveau QR.'),
             )
             return qr_child
 
-    def action_separer_valid_to_child(self, idempotency_key=False):
+    def action_separer_valid_to_child(self, idempotency_key=False, request_hash=False):
         self.ensure_one()
         Tx = self.env['acpec.fuel.transaction'].sudo()
         if idempotency_key:
@@ -343,6 +351,8 @@ class AcpecFuelQr(models.Model):
                 ('idempotency_key', '=', idempotency_key),
             ], limit=1)
             if existing and existing.qr_id:
+                if existing.request_hash and request_hash and existing.request_hash != request_hash:
+                    raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
                 return existing.qr_id
 
         with self.env.cr.savepoint():
@@ -417,6 +427,7 @@ class AcpecFuelQr(models.Model):
                 parent_qr=self,
                 lines=tx_lines,
                 idempotency_key=idempotency_key,
+                request_hash=request_hash,
                 note=_('Separation des tickets non expires vers un nouveau QR.'),
             )
             return qr_child

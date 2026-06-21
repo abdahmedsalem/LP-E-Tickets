@@ -188,3 +188,32 @@ Les endpoints suivants exigent désormais idempotency_key en plus du device trus
 Les endpoints de lecture, détail, profil, historique et check non mutatif restent sans idempotency_key obligatoire.
 
 Ce patch ne remplace pas le futur request_hash. Il rend seulement la clé obligatoire là où le moteur métier accepte déjà une clé idempotente.
+
+
+## Additif patch23B — request_hash idempotence forte
+
+Patch23B ajoute un request_hash déterministe côté backend pour les mutations économiques sensibles déjà protégées par idempotency_key.
+
+Règle appliquée :
+
+- même idempotency_key + même request_hash : retry/replay autorisé selon l'objet existant ;
+- même idempotency_key + request_hash différent : refus idempotency_conflict.
+
+Le request_hash est calculé côté backend à partir du payload métier stable. Les champs secrets ou techniques suivants sont exclus du hash :
+
+- action_code
+- action_pin
+- pin
+- secret_code
+- idempotency_key
+- access_token
+- refresh_token
+- token
+- password
+
+Les modèles runtime qui stockent désormais request_hash :
+
+- acpec.fuel.purchase
+- acpec.fuel.qr
+- acpec.fuel.carnet.transfer
+- acpec.fuel.transaction
