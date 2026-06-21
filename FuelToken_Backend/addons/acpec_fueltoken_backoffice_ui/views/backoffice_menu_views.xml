@@ -291,6 +291,13 @@
         <field name="sequence">70</field>
     </record>
 
+    <record id="acpec_mobile_auth.menu_mobile_auth_security_settings" model="ir.ui.menu">
+        <field name="name">Parametres de securite mobile</field>
+        <field name="parent_id" ref="acpec_fueltoken_base.menu_acpec_fueltoken_config"/>
+        <field name="sequence">75</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <record id="acpec_mobile_auth_otp.menu_mobile_auth_otp" model="ir.ui.menu">
         <field name="name">Vérifications OTP</field>
         <field name="parent_id" ref="acpec_fueltoken_base.menu_acpec_fueltoken_config"/>
