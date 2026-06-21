@@ -25,6 +25,7 @@ Ce module ne fait pas partie du métier FuelToken. Il sert uniquement de console
 - Le login mot de passe est désactivé par défaut. Le `secret_code` est désormais un PIN de confirmation mobile, pas un mot de passe Odoo.
 - Le mode OTP dev local n’est activé par ce module que si `ACPEC_FUELTOKEN_TEST_MODE=1` est défini.
 - Même si `acpec_mobile_auth.otp_dev_mode=True` existe en base, le retour API de `otp_dev_code` reste bloqué hors runtime local/test explicitement autorisé.
+- Les valeurs OTP anti-flood à `0` (`cooldown` et limites) ne sont effectives que dans ce runtime local/test explicitement autorisé.
 - Les achats créés par API sont soumis, mais doivent être validés dans le backend pour générer les faces disponibles.
 - La consommation station nécessite un utilisateur lié à une station active (`acpec.fuel.station`).
 

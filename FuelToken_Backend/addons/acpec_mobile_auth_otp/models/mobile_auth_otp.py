@@ -92,33 +92,20 @@ class AcpecMobileAuthOtp(models.Model):
     def _request_cooldown_seconds(self):
         return self.env["acpec.mobile.security.policy"].sudo().otp_request_cooldown_seconds()
     @api.model
-    def _rate_limit_int(self, key, default):
-        policy = self.env["acpec.mobile.security.policy"].sudo()
-        specs = {
-            "acpec_mobile_auth.otp_limit_identifier_per_minute": policy.OTP_LIMIT_IDENTIFIER_PER_MINUTE,
-            "acpec_mobile_auth.otp_limit_identifier_per_day": policy.OTP_LIMIT_IDENTIFIER_PER_DAY,
-            "acpec_mobile_auth.otp_limit_ip_per_hour": policy.OTP_LIMIT_IP_PER_HOUR,
-            "acpec_mobile_auth.otp_limit_register_ip_per_day": policy.OTP_LIMIT_REGISTER_IP_PER_DAY,
-        }
-        spec = specs.get(key)
-        if spec:
-            return policy.get_int(spec)
-        return policy.get_int_param(key, default, min_value=0)
-    @api.model
     def _otp_limit_identifier_per_minute(self):
-        return self._rate_limit_int('acpec_mobile_auth.otp_limit_identifier_per_minute', 1)
+        return self.env["acpec.mobile.security.policy"].sudo().otp_limit_identifier_per_minute()
 
     @api.model
     def _otp_limit_identifier_per_day(self):
-        return self._rate_limit_int('acpec_mobile_auth.otp_limit_identifier_per_day', 10)
+        return self.env["acpec.mobile.security.policy"].sudo().otp_limit_identifier_per_day()
 
     @api.model
     def _otp_limit_ip_per_hour(self):
-        return self._rate_limit_int('acpec_mobile_auth.otp_limit_ip_per_hour', 30)
+        return self.env["acpec.mobile.security.policy"].sudo().otp_limit_ip_per_hour()
 
     @api.model
     def _otp_limit_register_ip_per_day(self):
-        return self._rate_limit_int('acpec_mobile_auth.otp_limit_register_ip_per_day', 100)
+        return self.env["acpec.mobile.security.policy"].sudo().otp_limit_register_ip_per_day()
 
     @api.model
     def _rate_limit_message(self):

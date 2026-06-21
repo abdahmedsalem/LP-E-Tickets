@@ -149,6 +149,43 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
                 self.assertTrue(policy.otp_dev_mode_enabled())
 
+    def test_otp_antiflood_zero_values_require_runtime_gate(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_ip_per_hour', '0')
+        icp.set_param('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
+
+        policy = self.env['acpec.mobile.security.policy'].sudo()
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                self.assertEqual(policy.otp_request_cooldown_seconds(), 60)
+                self.assertEqual(policy.otp_limit_identifier_per_minute(), 1)
+                self.assertEqual(policy.otp_limit_identifier_per_day(), 10)
+                self.assertEqual(policy.otp_limit_ip_per_hour(), 30)
+                self.assertEqual(policy.otp_limit_register_ip_per_day(), 100)
+                self.assertEqual(otp_model._request_cooldown_seconds(), 60)
+                self.assertEqual(otp_model._otp_limit_identifier_per_minute(), 1)
+                self.assertEqual(otp_model._otp_limit_identifier_per_day(), 10)
+                self.assertEqual(otp_model._otp_limit_ip_per_hour(), 30)
+                self.assertEqual(otp_model._otp_limit_register_ip_per_day(), 100)
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value='1'):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                self.assertEqual(policy.otp_request_cooldown_seconds(), 0)
+                self.assertEqual(policy.otp_limit_identifier_per_minute(), 0)
+                self.assertEqual(policy.otp_limit_identifier_per_day(), 0)
+                self.assertEqual(policy.otp_limit_ip_per_hour(), 0)
+                self.assertEqual(policy.otp_limit_register_ip_per_day(), 0)
+                self.assertEqual(otp_model._request_cooldown_seconds(), 0)
+                self.assertEqual(otp_model._otp_limit_identifier_per_minute(), 0)
+                self.assertEqual(otp_model._otp_limit_identifier_per_day(), 0)
+                self.assertEqual(otp_model._otp_limit_ip_per_hour(), 0)
+                self.assertEqual(otp_model._otp_limit_register_ip_per_day(), 0)
+
     def test_request_otp_route_hides_dev_code_without_runtime_gate(self):
         icp = self.env['ir.config_parameter'].sudo()
         icp.set_param('acpec_mobile_auth.otp_dev_mode', 'True')
