@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class AcpecMobileSecuritySetting(models.Model):
@@ -47,3 +47,39 @@ class AcpecMobileSecuritySetting(models.Model):
         if not record:
             return None
         return record.value if record.value not in (False, None) else ''
+
+    @api.model
+    def _security_setting_keys(self):
+        return [key for key, _label in self.SETTING_KEYS]
+
+    @api.model
+    def _migrate_from_ir_config_parameter(self):
+        """Copy legacy ICP mobile security values into the dedicated table.
+
+        This migration is intentionally non-destructive:
+        - it copies only known mobile security keys;
+        - it never overwrites an existing dedicated setting, active or inactive;
+        - it never deletes the legacy ir.config_parameter values;
+        - it does not migrate SMS_* secrets.
+        """
+        icp = self.env['ir.config_parameter'].sudo()
+        migrated = 0
+
+        for key in self._security_setting_keys():
+            existing = self.sudo().search([('key', '=', key)], limit=1)
+            if existing:
+                continue
+
+            value = icp.get_param(key)
+            if value in (False, None, ''):
+                continue
+
+            self.sudo().create({
+                'key': key,
+                'value': str(value),
+                'active': True,
+                'note': 'Migrated from ir.config_parameter by Patch29C.',
+            })
+            migrated += 1
+
+        return migrated

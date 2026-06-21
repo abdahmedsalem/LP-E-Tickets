@@ -5,6 +5,26 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.acpec_mobile_auth.controllers.api_public import AcpecMobileAuthApiPublic
+
+MOBILE_SECURITY_SETTING_TEST_KEYS = [
+    'acpec_mobile_auth.access_token_minutes',
+    'acpec_mobile_auth.refresh_token_days',
+    'acpec_mobile_auth.refresh_token_grace_seconds',
+    'acpec_mobile_auth.mobile_pin_lock_seconds',
+    'acpec_mobile_auth.mobile_pin_max_attempts',
+    'acpec_mobile_auth.mobile_pin_hard_block_attempts',
+    'acpec_mobile_auth.otp_code_length',
+    'acpec_mobile_auth.otp_expiration_minutes',
+    'acpec_mobile_auth.otp_max_attempts',
+    'acpec_mobile_auth.otp_request_cooldown_seconds',
+    'acpec_mobile_auth.otp_limit_identifier_per_minute',
+    'acpec_mobile_auth.otp_limit_identifier_per_day',
+    'acpec_mobile_auth.otp_limit_ip_per_hour',
+    'acpec_mobile_auth.otp_limit_register_ip_per_day',
+    'acpec_mobile_auth.otp_dev_mode',
+]
+
+
 from odoo.addons.acpec_mobile_auth_otp.controllers.api_otp import AcpecMobileAuthOtpApi
 
 
@@ -13,6 +33,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
     def setUp(self):
         super().setUp()
+        self.env['acpec.mobile.security.setting'].sudo().search([
+            ('key', 'in', MOBILE_SECURITY_SETTING_TEST_KEYS),
+        ]).unlink()
         # Keep legacy OTP tests independent from historical rows in the dev DB.
         # Dedicated rate-limit tests override these values explicitly.
         icp = self.env['ir.config_parameter'].sudo()
