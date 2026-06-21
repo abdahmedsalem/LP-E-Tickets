@@ -163,6 +163,18 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         try:
             user = self._trusted_admin_user(kwargs, purpose='carnet_type_create')
             self._require_keys(kwargs, ['face_count', 'face_value'])
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_create')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_create')
+
+            existing = request.env['acpec.fuel.carnet.type'].sudo().search([
+                ('admin_create_idempotency_key', '=', idempotency_key),
+            ], limit=1)
+            if existing:
+                if existing.admin_create_request_hash and existing.admin_create_request_hash != request_hash:
+                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                self._check_record_company_allowed(user, existing)
+                return self._json_response(self._carnet_payload(existing))
+
             company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
             company = self._require_allowed_company(user, company_id)
             rec = request.env['acpec.fuel.carnet.type'].sudo().create({
@@ -171,6 +183,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
                 'validity_days': self._get_optional_int(kwargs, 'validity_days', 365),
                 'company_id': company.id,
                 'active': self._get_bool_param(kwargs.get('active'), default=True),
+                'admin_create_idempotency_key': idempotency_key,
+                'admin_create_request_hash': request_hash,
             })
             if kwargs.get('name'):
                 rec.write({'name': kwargs.get('name')})
@@ -185,10 +199,18 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         try:
             user = self._trusted_admin_user(kwargs, purpose='carnet_type_update')
             self._require_keys(kwargs, ['carnet_type_id'])
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_update')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_update')
             rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
             if not rec:
                 raise ValidationError(_('Type de carnet introuvable.'))
             self._check_record_company_allowed(user, rec)
+
+            if rec.admin_update_idempotency_key == idempotency_key:
+                if rec.admin_update_request_hash and rec.admin_update_request_hash != request_hash:
+                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                return self._json_response(self._carnet_payload(rec))
+
             vals = {}
             for key in ('name', 'code'):
                 if key in kwargs:
@@ -200,8 +222,11 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
                 vals['face_value'] = self._get_optional_float(kwargs, 'face_value', 0)
             if 'active' in kwargs:
                 vals['active'] = self._get_bool_param(kwargs.get('active'))
-            if vals:
-                rec.write(vals)
+            vals.update({
+                'admin_update_idempotency_key': idempotency_key,
+                'admin_update_request_hash': request_hash,
+            })
+            rec.write(vals)
             return self._json_response(self._carnet_payload(rec))
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -211,11 +236,23 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         try:
             user = self._trusted_admin_user(kwargs, purpose='carnet_type_delete')
             self._require_keys(kwargs, ['carnet_type_id'])
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_delete')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_delete')
             rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
             if not rec:
                 raise ValidationError(_('Type de carnet introuvable.'))
             self._check_record_company_allowed(user, rec)
-            rec.write({'active': False})
+
+            if rec.admin_delete_idempotency_key == idempotency_key:
+                if rec.admin_delete_request_hash and rec.admin_delete_request_hash != request_hash:
+                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                return self._json_response({'id': rec.id, 'active': rec.active})
+
+            rec.write({
+                'active': False,
+                'admin_delete_idempotency_key': idempotency_key,
+                'admin_delete_request_hash': request_hash,
+            })
             return self._json_response({'id': rec.id, 'active': rec.active})
         except Exception as exc:
             return self._handle_exception_response(exc)
