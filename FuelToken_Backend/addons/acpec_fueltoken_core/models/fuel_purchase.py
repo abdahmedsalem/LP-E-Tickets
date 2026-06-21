@@ -106,7 +106,8 @@ class AcpecFuelPurchaseCore(models.Model):
                         purchase=purchase,
                         lines=tx_lines,
                         note=_("Achat approuve - tickets crees"),
-                        idempotency_key=purchase.idempotency_key, request_hash=purchase.request_hash,
+                        idempotency_key=purchase.approval_idempotency_key or purchase.idempotency_key,
+                        request_hash=purchase.approval_request_hash or purchase.request_hash,
                     )
                 purchase.sudo().write({'fuel_value_created': True})
         return True
