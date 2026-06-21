@@ -31,6 +31,13 @@ class AcpecFuelStation(models.Model):
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     active = fields.Boolean(default=True)
 
+    create_idempotency_key = fields.Char(string='Cle idempotence creation admin', index=True, copy=False)
+    create_request_hash = fields.Char(string='Hash requête creation admin', index=True, copy=False)
+    update_idempotency_key = fields.Char(string='Cle idempotence modification admin', index=True, copy=False)
+    update_request_hash = fields.Char(string='Hash requête modification admin', index=True, copy=False)
+    disable_idempotency_key = fields.Char(string='Cle idempotence desactivation admin', index=True, copy=False)
+    disable_request_hash = fields.Char(string='Hash requête desactivation admin', index=True, copy=False)
+
     _user_unique = models.Constraint(
         'UNIQUE(user_id)',
         'Un utilisateur station ne peut être lié qu’à une seule station.',
