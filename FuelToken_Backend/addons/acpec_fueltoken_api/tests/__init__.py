@@ -6,3 +6,4 @@ from . import test_sensitive_action_pin_gate
 from . import test_purchase_create_runtime_policy
 from . import test_qr_issue_runtime_policy
 from . import test_qr_retirer_runtime_policy
+from . import test_qr_separer_runtime_policy
