@@ -1,5 +1,6 @@
 # ACPEC FuelToken Test
 
+Voir aussi : `docs/FRONTEND_COLLAB_TEST_BACKEND.md` pour la doctrine complète d’utilisation du backend collaboratif frontend/mobile.
 Console navigateur de test pour le bundle FuelToken courant.
 
 ## URL
