@@ -9,6 +9,7 @@
     'depends': ['acpec_fueltoken_base'],
     'data': [
         'security/ir.model.access.csv',
+        'security/fueltoken_catalog_rules.xml',
         'views/fuel_carnet_type_views.xml',
     ],
     'installable': True,

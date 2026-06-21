@@ -100,7 +100,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                     _('Le compte destinataire doit appartenir à la même société que le transfert.')
                 )
 
-    def action_confirm(self):
+    def action_confirm(self, actor_user=None):
         """Confirme le transfert : débite le wallet source, crédite le wallet dest.
 
         Règles métier appliquées :
@@ -112,6 +112,13 @@ class AcpecFuelCarnetTransfer(models.Model):
         - Deux transactions sont enregistrées : une par wallet (source et dest).
         """
         self.ensure_one()
+        actor_user = actor_user or self.env.user
+        actor_user = self.env['res.users'].sudo().browse(
+            actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
+        ).exists()
+        if not actor_user:
+            actor_user = self.env.user
+
         if self.state != 'draft':
             raise UserError(_('Seul un transfert en brouillon peut être confirmé.'))
         if not self.line_ids:
@@ -248,7 +255,7 @@ class AcpecFuelCarnetTransfer(models.Model):
             self.write({
                 'state': 'confirmed',
                 'confirmed_at': now,
-                'confirmed_by': self.env.user.id,
+                'confirmed_by': actor_user.id,
             })
         return True
 
