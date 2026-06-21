@@ -256,6 +256,17 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         self.assertIn(str(transfer.id), repr(second_response))
         self.assertEqual(transfer.state, "confirmed")
         self.assertEqual(transfer.confirmed_by.id, source_user.id)
+        self.assertEqual(transfer.mobile_session_id.id, _session.id)
+        self.assertEqual(transfer.device_uid, _session.device_uid)
+
+        txs = self.env['acpec.fuel.transaction'].sudo().search([
+            ('transfer_id', '=', transfer.id),
+        ])
+        self.assertEqual(len(txs), 2)
+        self.assertEqual(set(txs.mapped('actor_user_id').ids), {source_user.id})
+        self.assertEqual(set(txs.mapped('mobile_session_id').ids), {_session.id})
+        self.assertEqual(set(txs.mapped('device_uid')), {_session.device_uid})
+
         self.assertEqual(transfer.face_qty_total, carnet_type.face_count)
         self.assertTrue(transfer.request_hash)
 

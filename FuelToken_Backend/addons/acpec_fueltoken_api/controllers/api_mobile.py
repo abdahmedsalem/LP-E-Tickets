@@ -996,7 +996,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'request_hash': request_hash,
                     'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
                 })
-                transfer.action_confirm(actor_user=source_user)
+                mobile_session = self._get_mobile_session(required=True)
+                transfer.action_confirm_mobile(
+                    actor_user=source_user,
+                    mobile_session=mobile_session,
+                )
 
             return self._json_response(self._transfer_payload(transfer))
         except Exception as exc:
