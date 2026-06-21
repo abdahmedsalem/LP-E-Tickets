@@ -11,3 +11,4 @@ from . import test_secret_log_hygiene
 from . import test_mobile_security_settings_table
 from . import test_mobile_security_settings_migration
 from . import test_mobile_security_setting_backoffice
+from . import test_mobile_security_readiness
