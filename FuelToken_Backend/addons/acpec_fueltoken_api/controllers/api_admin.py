@@ -262,11 +262,25 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         try:
             user = self._trusted_admin_user(kwargs, purpose='purchase_approve')
             self._require_keys(kwargs, ['purchase_id'])
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_approve')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_approve')
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
             self._check_record_company_allowed(user, purchase)
-            purchase.with_user(user).action_approve()
+
+            if purchase.approval_idempotency_key == idempotency_key:
+                if purchase.approval_request_hash and purchase.approval_request_hash != request_hash:
+                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                if purchase.state == 'approved':
+                    return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
+
+            with request.env.cr.savepoint():
+                purchase.sudo().write({
+                    'approval_idempotency_key': idempotency_key,
+                    'approval_request_hash': request_hash,
+                })
+                purchase.with_user(user).action_approve()
             return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -276,13 +290,27 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         try:
             user = self._trusted_admin_user(kwargs, purpose='purchase_reject')
             self._require_keys(kwargs, ['purchase_id'])
+            idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_reject')
+            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_reject')
             purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
             self._check_record_company_allowed(user, purchase)
-            purchase.with_user(user).action_reject()
-            if kwargs.get('rejection_reason'):
-                purchase.sudo().write({'rejection_reason': kwargs.get('rejection_reason')})
+
+            if purchase.rejection_idempotency_key == idempotency_key:
+                if purchase.rejection_request_hash and purchase.rejection_request_hash != request_hash:
+                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                if purchase.state == 'rejected':
+                    return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
+
+            with request.env.cr.savepoint():
+                purchase.sudo().write({
+                    'rejection_idempotency_key': idempotency_key,
+                    'rejection_request_hash': request_hash,
+                })
+                purchase.with_user(user).action_reject()
+                if kwargs.get('rejection_reason'):
+                    purchase.sudo().write({'rejection_reason': kwargs.get('rejection_reason')})
             return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:
             return self._handle_exception_response(exc)
