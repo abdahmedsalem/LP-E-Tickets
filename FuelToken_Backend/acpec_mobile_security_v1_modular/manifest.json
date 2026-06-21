@@ -41,7 +41,7 @@
     "classify QR issue/retirer/separer endpoints",
     "classify station qr/use endpoint",
     "classify admin carnet-types create/update/delete endpoints",
-    "add strong request_hash idempotency where missing",
+    "request_hash idempotency delivered in patch23B; add runtime functional coverage",
     "add detailed business audit for sensitive actions"
   ]
 }

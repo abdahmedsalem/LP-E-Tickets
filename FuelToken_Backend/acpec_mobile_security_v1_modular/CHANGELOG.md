@@ -38,4 +38,4 @@
 - Ajout de `11_flutter_security_contract_17A_21A.md` pour l'intégration Flutter.
 - Clarification : `secret_code` initialise le PIN serveur ; les actions sensibles utilisent `action_code`.
 - Clarification : `_require_sensitive_action_pin()` englobe session Bearer, compte approved, device trusted et PIN serveur.
-- Points restants explicités : QR, station `qr/use`, carnet-types admin, idempotence forte `request_hash`, audit métier.
+- Points restants explicités : tests fonctionnels runtime, audit métier détaillé, codes d'erreur API normalisés.

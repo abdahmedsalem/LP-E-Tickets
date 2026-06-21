@@ -51,7 +51,7 @@ API_CATALOG_MOBILE_AUTH = [
     },
     {
         'group': 'Mobile Auth',
-        'label': 'Login alias compatible',
+        'label': 'Login alias legacy/dev — non cible production',
         'route': '/api/acpec/mobile_auth/v1/login',
         'method': 'POST',
         'payload': {

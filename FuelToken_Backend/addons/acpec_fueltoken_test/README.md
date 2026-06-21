@@ -21,7 +21,7 @@ Ce module ne fait pas partie du métier FuelToken. Il sert uniquement de console
 - Le module dépend de `acpec_fueltoken_api` et sert uniquement en développement ou recette.
 - Les appels protégés utilisent `Authorization: Bearer <access_token>`.
 - La console capture automatiquement `access_token` et `refresh_token` après `/verify-otp`. Les routes `/login` et `/password-login` sont conservées comme héritage/dev et ne doivent pas être utilisées comme voie normale.
-- `/login` est conservé comme alias hérité de `/password-login` pour compatibilité temporaire, mais le login mobile cible reste OTP -> Bearer tokens.
+- `/login` est conservé comme alias hérité de `/password-login` uniquement pour compatibilité dev/test temporaire. Le login mobile cible reste OTP -> Bearer tokens.
 - Le login mot de passe est désactivé par défaut. Le `secret_code` est désormais un PIN de confirmation mobile, pas un mot de passe Odoo.
 - Le mode OTP dev local n’est activé par ce module que si `ACPEC_FUELTOKEN_TEST_MODE=1` est défini.
 - Les achats créés par API sont soumis, mais doivent être validés dans le backend pour générer les faces disponibles.
@@ -44,4 +44,3 @@ Sans cette variable :
 - la page publique `/acpec/fueltoken/test` retourne 404.
 
 Ce module ne doit pas être présent dans l’`addons_path` de production.
-

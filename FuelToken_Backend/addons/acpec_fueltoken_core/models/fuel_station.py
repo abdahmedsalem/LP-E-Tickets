@@ -94,7 +94,7 @@ class AcpecFuelStation(models.Model):
         if forbidden:
             raise ValidationError(_(
                 'Un utilisateur mobile station ne doit être ni utilisateur interne Odoo, '
-                'ni portail, ni public, ni admin back-office FuelToken.'
+                'ni public, ni admin back-office FuelToken.'
             ))
 
         if 'mobile_state' in user._fields and user.mobile_state != 'approved':

@@ -117,7 +117,7 @@ Les endpoints suivants exigent désormais idempotency_key en plus du device trus
 
 Les endpoints de lecture, détail, profil, historique et check non mutatif restent sans idempotency_key obligatoire.
 
-Ce patch ne remplace pas le futur request_hash. Il rend seulement la clé obligatoire là où le moteur métier accepte déjà une clé idempotente.
+Ce patch a été complété par Patch23B : request_hash est désormais appliqué pour détecter la réutilisation d'une même idempotency_key avec un payload différent.
 
 
 ## Additif patch23B — request_hash idempotence forte
