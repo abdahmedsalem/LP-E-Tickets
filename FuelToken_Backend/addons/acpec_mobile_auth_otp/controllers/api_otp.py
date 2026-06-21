@@ -1,6 +1,6 @@
 from odoo import http, _, fields
 from odoo.http import request
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
 
@@ -31,16 +31,19 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     ('mobile_phone', '=', identifier_vals['phone']),
                 ], limit=1)
                 if existing_user:
-                    return self._error_response(
-                        'ACCOUNT_EXISTS',
-                        _('A mobile account already exists for this identifier.')
-                    )
+                    return self._public_signup_not_allowed_response(debug_reason='account_exists')
 
-            challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
-                identifier,
-                purpose=purpose,
-                request_ip=self._request_ip(),
-            )
+            try:
+                challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                    identifier,
+                    purpose=purpose,
+                    request_ip=self._request_ip(),
+                )
+            except AccessError as exc:
+                debug_reason = self._public_auth_debug_reason(exc)
+                if purpose == 'register':
+                    return self._public_signup_not_allowed_response(debug_reason=debug_reason)
+                return self._public_otp_request_accepted_response(debug_reason=debug_reason)
             data = {
                 'challenge_id': challenge.id,
                 'challenge_ref': challenge.name,
@@ -78,8 +81,13 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 raise ValidationError(_('challenge_id ou identifier est requis.'))
             challenge = request.env['acpec.mobile.auth.otp'].sudo().search(domain, order='id desc', limit=1)
             if not challenge:
-                return self._error_response('OTP_NOT_FOUND', _('Challenge OTP introuvable.'))
-            user = challenge.verify(code)
+                return self._public_otp_invalid_response(debug_reason='otp_not_found')
+            try:
+                user = challenge.verify(code)
+            except (AccessError, ValidationError) as exc:
+                return self._public_otp_invalid_response(
+                    debug_reason=self._public_auth_debug_reason(exc)
+                )
             if challenge.purpose == 'register':
                 name = self._get_clean_str(kwargs, 'name')
                 secret_code = self._get_clean_str(kwargs, 'secret_code')
@@ -96,16 +104,21 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
                 account_request = False
                 if not user:
-                    with request.env.cr.savepoint():
-                        partner, user, account_request = self._create_mobile_signup_account(
-                            name=name,
-                            signup_identifier=identifier_vals['signup_identifier'],
-                            secret_code=secret_code,
-                            company=company,
-                            email=email,
-                            note=note,
+                    try:
+                        with request.env.cr.savepoint():
+                            partner, user, account_request = self._create_mobile_signup_account(
+                                name=name,
+                                signup_identifier=identifier_vals['signup_identifier'],
+                                secret_code=secret_code,
+                                company=company,
+                                email=email,
+                                note=note,
+                            )
+                            challenge.sudo().write({'user_id': user.id})
+                    except (AccessError, ValidationError) as exc:
+                        return self._public_signup_not_allowed_response(
+                            debug_reason=self._public_auth_debug_reason(exc)
                         )
-                        challenge.sudo().write({'user_id': user.id})
                 else:
                     account_request = request.env['acpec.mobile.auth.account.request'].sudo().search([
                         ('user_id', '=', user.id),

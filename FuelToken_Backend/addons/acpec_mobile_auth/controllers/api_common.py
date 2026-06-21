@@ -130,6 +130,54 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 )
             )
 
+    def _public_auth_debug_allowed(self):
+        return request.env['acpec.mobile.security.policy'].sudo().otp_dev_runtime_allowed()
+
+    def _with_public_auth_debug(self, payload, debug_reason=False):
+        if debug_reason and self._public_auth_debug_allowed():
+            if isinstance(payload, dict) and isinstance(payload.get('error'), dict):
+                payload['error']['debug_reason'] = debug_reason
+            elif isinstance(payload, dict):
+                payload['debug_reason'] = debug_reason
+        return payload
+
+    def _public_auth_debug_reason(self, exc):
+        message = (str(exc) or '').lower()
+        if 'demande de compte' in message and 'attente' in message:
+            return 'pending_account_request_exists'
+        if 'déjà' in message or 'already exists' in message:
+            return 'account_exists'
+        if 'introuvable' in message or 'not found' in message:
+            return 'user_not_found'
+        if 'inactif' in message or 'inactive' in message:
+            return 'user_inactive'
+        if 'non approuvé' in message or 'not approved' in message:
+            return 'user_not_approved'
+        if 'rejeté' in message or 'rejected' in message:
+            return 'user_rejected'
+        if 'expir' in message or 'expired' in message:
+            return 'otp_expired'
+        if 'otp' in message and ('invalide' in message or 'invalid' in message):
+            return 'otp_invalid'
+        return 'public_auth_refused'
+
+    def _public_otp_request_accepted_response(self, debug_reason=False):
+        return self._with_public_auth_debug(self._json_response({
+            'message': _('Si les informations sont valides, un code de vérification sera envoyé.'),
+        }), debug_reason=debug_reason)
+
+    def _public_otp_invalid_response(self, debug_reason=False):
+        return self._with_public_auth_debug(self._error_response(
+            'OTP_INVALID_OR_EXPIRED',
+            _('Code de vérification invalide ou expiré.'),
+        ), debug_reason=debug_reason)
+
+    def _public_signup_not_allowed_response(self, debug_reason=False):
+        return self._with_public_auth_debug(self._error_response(
+            'SIGNUP_NOT_ALLOWED',
+            _('Impossible de finaliser l’inscription avec ces informations.'),
+        ), debug_reason=debug_reason)
+
     def _mobile_manager_guard(self):
         """Guard for JSON-RPC mobile admin/manager routes.
 

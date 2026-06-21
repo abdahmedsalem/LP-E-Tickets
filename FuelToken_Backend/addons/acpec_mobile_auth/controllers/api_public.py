@@ -2,6 +2,7 @@ import logging
 
 from odoo import http, _, fields
 from odoo.http import request
+from odoo.exceptions import AccessError
 
 from .api_common import AcpecMobileAuthApiCommon
 
@@ -71,10 +72,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             existing_user = request.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
             if existing_user:
-                return self._error_response(
-                    'ACCOUNT_EXISTS',
-                    _('A mobile account already exists for this identifier.')
-                )
+                return self._public_signup_not_allowed_response(debug_reason='account_exists')
 
             data = {
                 'name': name,
@@ -86,11 +84,16 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             }
 
             if identifier_vals['signup_identifier_type'] == 'phone':
-                challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
-                    identifier_vals['phone'],
-                    purpose='register',
-                    request_ip=self._request_ip(),
-                )
+                try:
+                    challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
+                        identifier_vals['phone'],
+                        purpose='register',
+                        request_ip=self._request_ip(),
+                    )
+                except AccessError as exc:
+                    return self._public_signup_not_allowed_response(
+                        debug_reason=self._public_auth_debug_reason(exc)
+                    )
                 data.update({
                     'otp_challenge_id': challenge.id,
                     'otp_challenge_ref': challenge.name,
