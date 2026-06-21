@@ -15,6 +15,20 @@ Contract rule:
 
 Do not validate the SMS OTP with the `secret_code` rule, and do not relax `secret_code` to 6 digits. The Odoo user password is generated as a long random unusable value; mobile login remains OTP -> Bearer tokens.
 
+## OTP anti-flood zero values and runtime gate
+
+The following parameters accept `0` for local frontend/mobile collaboration and automated tests only:
+
+- `acpec_mobile_auth.otp_request_cooldown_seconds`
+- `acpec_mobile_auth.otp_limit_identifier_per_minute`
+- `acpec_mobile_auth.otp_limit_identifier_per_day`
+- `acpec_mobile_auth.otp_limit_ip_per_hour`
+- `acpec_mobile_auth.otp_limit_register_ip_per_day`
+
+A zero value is effective only when the runtime is explicitly local/test, for example with `ACPEC_FUELTOKEN_TEST_MODE=1` or Odoo `--test-enable`.
+
+In production, a zero value falls back to the safe default and does not disable OTP anti-flood protection.
+
 ## OTP rate limits
 
 The public OTP endpoints are protected against SMS pumping with sliding-window limits based on existing OTP challenges:

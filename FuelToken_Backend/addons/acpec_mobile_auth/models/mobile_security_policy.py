@@ -79,6 +79,20 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
         return self.get_int_param(key, default, min_value=min_value, max_value=max_value)
 
     @api.model
+    def get_otp_antiflood_int(self, spec):
+        """Return an OTP anti-flood setting with production-safe zero handling.
+
+        Values set to 0 are useful for local frontend/mobile collaboration and
+        automated tests, but they must not disable OTP anti-flood protections in
+        production by a simple database parameter change.
+        """
+        key, default, _min_value, _max_value = spec
+        value = self.get_int(spec)
+        if value <= 0 and not self.otp_dev_runtime_allowed():
+            return default
+        return value
+
+    @api.model
     def get_bool(self, key, default=False):
         raw = self._get_param(key)
         if raw in (False, None, ""):
@@ -119,23 +133,23 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
 
     @api.model
     def otp_request_cooldown_seconds(self):
-        return self.get_int(self.OTP_REQUEST_COOLDOWN_SECONDS)
+        return self.get_otp_antiflood_int(self.OTP_REQUEST_COOLDOWN_SECONDS)
 
     @api.model
     def otp_limit_identifier_per_minute(self):
-        return self.get_int(self.OTP_LIMIT_IDENTIFIER_PER_MINUTE)
+        return self.get_otp_antiflood_int(self.OTP_LIMIT_IDENTIFIER_PER_MINUTE)
 
     @api.model
     def otp_limit_identifier_per_day(self):
-        return self.get_int(self.OTP_LIMIT_IDENTIFIER_PER_DAY)
+        return self.get_otp_antiflood_int(self.OTP_LIMIT_IDENTIFIER_PER_DAY)
 
     @api.model
     def otp_limit_ip_per_hour(self):
-        return self.get_int(self.OTP_LIMIT_IP_PER_HOUR)
+        return self.get_otp_antiflood_int(self.OTP_LIMIT_IP_PER_HOUR)
 
     @api.model
     def otp_limit_register_ip_per_day(self):
-        return self.get_int(self.OTP_LIMIT_REGISTER_IP_PER_DAY)
+        return self.get_otp_antiflood_int(self.OTP_LIMIT_REGISTER_IP_PER_DAY)
 
     @api.model
     def otp_dev_mode_enabled(self):
