@@ -8,6 +8,7 @@
     'license': 'OPL-1',
     'depends': [
         'acpec_fueltoken_reports',
+        'acpec_mobile_auth',
         'acpec_mobile_auth_otp',
     ],
     'data': [
