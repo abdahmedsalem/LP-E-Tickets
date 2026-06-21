@@ -10,6 +10,7 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
 
     ACCESS_TOKEN_MINUTES = ("acpec_mobile_auth.access_token_minutes", 15, 5, 60)
     REFRESH_TOKEN_DAYS = ("acpec_mobile_auth.refresh_token_days", 30, 1, 90)
+    REFRESH_TOKEN_GRACE_SECONDS = ("acpec_mobile_auth.refresh_token_grace_seconds", 30, 0, 120)
 
     MOBILE_PIN_LOCK_SECONDS = ("acpec_mobile_auth.mobile_pin_lock_seconds", 60, 30, 3600)
     MOBILE_PIN_MAX_ATTEMPTS = ("acpec_mobile_auth.mobile_pin_max_attempts", 5, 1, 10)
@@ -77,7 +78,14 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
         )
 
     @api.model
+    def _get_dedicated_setting_value(self, key):
+        return self.env['acpec.mobile.security.setting'].sudo().get_active_value(key)
+
+    @api.model
     def _get_param(self, key):
+        dedicated_value = self._get_dedicated_setting_value(key)
+        if dedicated_value is not None:
+            return dedicated_value
         return self.env["ir.config_parameter"].sudo().get_param(key)
 
     @api.model
@@ -127,6 +135,10 @@ class AcpecMobileSecurityPolicy(models.AbstractModel):
     @api.model
     def refresh_token_days(self):
         return self.get_int(self.REFRESH_TOKEN_DAYS)
+
+    @api.model
+    def refresh_token_grace_seconds(self):
+        return self.get_int(self.REFRESH_TOKEN_GRACE_SECONDS)
 
     @api.model
     def mobile_pin_lock_seconds(self):

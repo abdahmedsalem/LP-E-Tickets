@@ -193,15 +193,7 @@ class AcpecMobileSession(models.Model):
 
     @api.model
     def _refresh_token_grace_seconds(self):
-        value = self.env['ir.config_parameter'].sudo().get_param(
-            'acpec_mobile_auth.refresh_token_grace_seconds',
-            default='30',
-        )
-        try:
-            seconds = int(value)
-        except (TypeError, ValueError):
-            seconds = 30
-        return max(0, min(seconds, 120))
+        return self.env["acpec.mobile.security.policy"].sudo().refresh_token_grace_seconds()
 
     @api.model
     def _refresh_successor_device_vals(self, session, device_vals=None):
