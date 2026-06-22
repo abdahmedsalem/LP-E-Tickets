@@ -28,7 +28,7 @@ class PurchaseConfirmationArgs {
   final List<PurchaseConfirmationLine> lines;
   final String? proofPath;
   final Uint8List? proofBytes;
-  final Future<void> Function() onConfirm;
+  final Future<void> Function(String actionCode) onConfirm;
 }
 
 class PurchaseConfirmationLine {
@@ -60,13 +60,13 @@ class _PurchaseConfirmationScreenState
     var completed = false;
     setState(() => _confirming = true);
     try {
-      final ok = await showSensitiveActionPinDialog(
+      final actionCode = await showSensitiveActionCodeDialog(
         context,
         title: 'Vérification du PIN',
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
-      if (!ok || !mounted) return;
-      await widget.args.onConfirm();
+      if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      await widget.args.onConfirm(actionCode);
       if (!mounted) return;
       completed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {

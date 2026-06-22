@@ -25,6 +25,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _detailHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
 const _detailHeaderGap = 18.0;
@@ -133,10 +134,17 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
     }
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
+    final actionCode = await showSensitiveActionCodeDialog(
+      context,
+      title: 'Vérification du PIN',
+      description: 'Saisissez votre PIN pour confirmer cette opération.',
+    );
+    if (actionCode == null || actionCode.isEmpty || !mounted) return;
     setState(() => _separating = true);
     try {
       final raw = await OdooFueltokenFacade().qrSeparer({
         'public_code': qr.publicCode,
+        'action_code': actionCode,
         'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
       });
       if (raw is! Map) {

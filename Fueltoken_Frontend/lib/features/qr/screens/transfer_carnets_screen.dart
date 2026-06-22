@@ -359,10 +359,11 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
             recipientPhone: phone,
             recipientName: recipientName,
             lines: confirmLines,
-            onConfirm: () async {
+            onConfirm: (actionCode) async {
               final raw = await OdooFueltokenFacade().carnetsTransfer({
                 'recipient_phone': phone,
                 'lines': apiLines,
+                'action_code': actionCode,
                 'idempotency_key': 'ft-transfer-${const Uuid().v4()}',
               });
               final data = raw is Map && raw['data'] is Map

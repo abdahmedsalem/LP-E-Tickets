@@ -22,6 +22,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../shared/widgets/mini_qr.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _scanBackground = Colors.white;
 const _scanInk = Color(0xFF1F2430);
@@ -144,8 +145,15 @@ class _ScanScreenState extends State<ScanScreen> {
           'Connexion serveur ACPEC requise pour consommer un QR.',
         );
       }
+      final actionCode = await showSensitiveActionCodeDialog(
+        context,
+        title: 'Vérification du PIN',
+        description: 'Saisissez votre PIN pour confirmer cette opération.',
+      );
+      if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final raw = await OdooFueltokenFacade().stationQrUse({
         'public_code': trimmed,
+        'action_code': actionCode,
         'idempotency_key': const Uuid().v4(),
       });
       final qr = AcpecQrMapper.fromStationUseResult(

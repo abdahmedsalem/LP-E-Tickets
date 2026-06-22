@@ -121,7 +121,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
   Future<void> _submit() async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
-    final confirmed = await Navigator.of(context).push<bool>(
+    final actionCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
@@ -162,13 +162,13 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (actionCode != null && actionCode.isNotEmpty) {
       if (!mounted) return;
-      await _performSubmit();
+      await _performSubmit(actionCode);
     }
   }
 
-  Future<void> _performSubmit() async {
+  Future<void> _performSubmit(String actionCode) async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
     final user = context.read<AuthBloc>().state.user;
@@ -178,6 +178,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
     try {
       final raw = await OdooFueltokenFacade().qrSeparer({
         'public_code': parent.publicCode,
+        'action_code': actionCode,
         'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
       });
       if (raw is! Map) {

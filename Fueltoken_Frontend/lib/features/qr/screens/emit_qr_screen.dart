@@ -491,7 +491,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         )
         .toList(growable: false);
 
-    final confirmed = await Navigator.of(context).push<bool>(
+    final actionCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
@@ -527,8 +527,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (actionCode != null && actionCode.isNotEmpty) {
       await _performEmit(
+        actionCode: actionCode,
         totalQty: totalQty,
         totalAmount: totalAmount,
         successLines: successLines,
@@ -537,6 +538,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   Future<void> _performEmit({
+    required String actionCode,
     required int totalQty,
     required int totalAmount,
     required List<QrGenerationSuccessLine> successLines,
@@ -552,6 +554,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         }
         final raw = await OdooFueltokenFacade().qrIssue({
           'lines': linesPayload,
+          'action_code': actionCode,
           'idempotency_key': 'ft-qr-${const Uuid().v4()}',
         });
         AcpecQrMapper.fromRpcIssueEnvelope(

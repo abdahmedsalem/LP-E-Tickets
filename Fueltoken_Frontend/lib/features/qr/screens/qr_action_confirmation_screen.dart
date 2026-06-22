@@ -63,15 +63,15 @@ class _QrActionConfirmationScreenState
     if (_confirming) return;
     setState(() => _confirming = true);
     try {
-      final ok = await showSensitiveActionPinDialog(
+      final actionCode = await showSensitiveActionCodeDialog(
         context,
         title: 'Vérification du PIN',
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
-      if (!ok || !mounted) return;
+      if (actionCode == null || actionCode.isEmpty || !mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.of(context).pop(true);
+          Navigator.of(context).pop(actionCode);
         }
       });
     } finally {

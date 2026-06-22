@@ -22,6 +22,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 
 const _retirerHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
 const _retirerHeaderGap = 18.0;
@@ -217,11 +218,19 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       return;
     }
 
+    final actionCode = await showSensitiveActionCodeDialog(
+      context,
+      title: 'Vérification du PIN',
+      description: 'Saisissez votre PIN pour confirmer cette opération.',
+    );
+    if (actionCode == null || actionCode.isEmpty || !mounted) return;
+
     setState(() => _submitting = true);
     try {
       final raw = await OdooFueltokenFacade().qrRetirer({
         'public_code': parent.publicCode,
         'lines': picks,
+        'action_code': actionCode,
         'idempotency_key': 'ft-qr-retirer-${const Uuid().v4()}',
       });
       if (raw is! Map) {
