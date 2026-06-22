@@ -66,3 +66,22 @@ Limites assumées :
 - Pas encore de révocation automatique des anciennes sessions actives au nouvel OTP.
 
 <!-- PATCH32B_CHANGELOG_END -->
+
+<!-- PATCH32D_CHANGELOG_START -->
+
+## Patch32D — Backend session lifecycle après device UID stable
+
+- Ajout d’une rotation automatique des anciennes sessions actives lors d’un OTP login avec `device_uid` stable `ft-*`.
+- Une seule session active est conservée pour un couple `user_id + device_uid` stable après un nouveau login OTP.
+- Les anciennes sessions actives sont passées en `rotated` avec `rotated_to_session_id` vers la nouvelle session.
+- Les placeholders historiques non fiables comme `flutter-android-local` sont exclus pour compatibilité.
+- Le refresh token conserve sa logique existante de rotation avec fenêtre de grâce.
+- Aucun nettoyage global automatique des anciennes sessions historiques n’est exécuté.
+
+Validation :
+
+- Test ciblé `TestMobileDeviceTrustBackoffice` : 0 échec, 0 erreur.
+- Test élargi : 208 tests, 0 échec, 0 erreur.
+- Probe fonctionnel shell : les anciennes sessions `ft-android-*` du même user/device passent en `rotated`, et une seule session active reste.
+
+<!-- PATCH32D_CHANGELOG_END -->

@@ -355,3 +355,18 @@ Doctrine de la worklist :
 Cette worklist ne remplace pas encore un vrai modèle stable `acpec.mobile.device`.
 
 <!-- PATCH32B_DEVICE_TRUST_BACKOFFICE_UX_END -->
+
+<!-- PATCH32D_DEVICE_TRUST_BOUNDARY_START -->
+
+## Patch32D — Frontière entre device stable, OTP login et trust
+
+Le `device_uid` stable `ft-*` permet de réduire l’empilement des sessions actives, mais il ne devient pas une preuve suffisante pour réapprouver automatiquement un device.
+
+Règle retenue :
+
+- OTP login + même `device_uid` stable : rotation des anciennes sessions actives du même couple `user_id + device_uid` ;
+- nouvelle session OTP : `device_trust_state = pending_trust` ;
+- refresh token sur même device : peut conserver le trust existant, car il prouve une continuité par possession du refresh token ;
+- OTP seul : ne doit pas hériter automatiquement du trust, car le `device_uid` n’est pas un secret.
+
+<!-- PATCH32D_DEVICE_TRUST_BOUNDARY_END -->

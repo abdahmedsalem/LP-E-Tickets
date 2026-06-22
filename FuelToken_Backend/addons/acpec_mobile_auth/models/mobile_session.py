@@ -284,6 +284,52 @@ class AcpecMobileSession(models.Model):
                 raise AccessError(_('Ce compte n’est pas autorisé à utiliser l’application mobile FuelToken.'))
 
     @api.model
+    def _is_stable_device_uid(self, device_uid):
+        """Return True for Patch32C stable Flutter install identifiers.
+
+        Legacy placeholders such as ``flutter-android-local`` are deliberately
+        excluded because they do not identify a real installation.
+        """
+        value = (device_uid or '').strip()
+        return bool(value and value.startswith('ft-'))
+
+    @api.model
+    def _rotate_prior_active_sessions_for_device_login(self, user, device_uid, new_session, now):
+        """Rotate older active sessions for the same stable device.
+
+        OTP login creates a fresh audited session line.  For stable Patch32C
+        device identifiers, older active sessions for the same user/device must
+        no longer remain active.  No refresh grace is granted here: this is an
+        OTP login replacement, not a refresh-token race.
+        """
+        if not user or not user.exists() or not new_session or not new_session.exists():
+            return self.browse()
+
+        device_uid = (device_uid or '').strip()
+        if not self._is_stable_device_uid(device_uid):
+            return self.browse()
+
+        prior_sessions = self.sudo().search([
+            ('id', '!=', new_session.id),
+            ('user_id', '=', user.id),
+            ('device_uid', '=', device_uid),
+            ('state', '=', 'active'),
+        ])
+
+        if prior_sessions:
+            prior_sessions.with_context(skip_device_approval_candidate_sync=True).write({
+                'state': 'rotated',
+                'rotated_at': now,
+                'rotated_to_session_id': new_session.id,
+                'refresh_grace_until': False,
+                'refresh_grace_used_at': False,
+                'last_seen_at': now,
+            })
+            self._sync_device_approval_candidates({(user.id, device_uid)})
+
+        return prior_sessions
+
+    @api.model
     def create_for_user(self, user, device_vals=None):
         self._check_mobile_only_user(user)
         device_vals = device_vals or {}
@@ -309,6 +355,12 @@ class AcpecMobileSession(models.Model):
             'device_trust_state': 'pending_trust',
         }
         session = self.sudo().create(vals)
+        self._rotate_prior_active_sessions_for_device_login(
+            user.sudo(),
+            session.device_uid,
+            session,
+            now,
+        )
         return {
             'session': session,
             'access_token': access_token,
