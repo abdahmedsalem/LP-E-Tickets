@@ -23,6 +23,7 @@ import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -557,8 +558,14 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           'action_code': actionCode,
           'idempotency_key': 'ft-qr-${const Uuid().v4()}',
         });
-        AcpecQrMapper.fromRpcIssueEnvelope(
+        final guarded = acpecRpcMapOrThrow(
           raw,
+          fallbackMessage: 'Émission QR refusée par le serveur.',
+          publicErrorMessage:
+              'L’émission du QR a échoué. Réessayez ou contactez l’administrateur.',
+        );
+        AcpecQrMapper.fromRpcIssueEnvelope(
+          guarded,
           ownerId: user.id,
           ownerName: user.name,
           companyId: AppEnvironment.companyIdForUser(user),

@@ -18,6 +18,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/models/station_qr_check_result.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../shared/widgets/mini_qr.dart';
@@ -156,8 +157,14 @@ class _ScanScreenState extends State<ScanScreen> {
         'action_code': actionCode,
         'idempotency_key': const Uuid().v4(),
       });
-      final qr = AcpecQrMapper.fromStationUseResult(
+      final guarded = acpecRpcMapOrThrow(
         raw,
+        fallbackMessage: 'Consommation QR refusée par le serveur.',
+        publicErrorMessage:
+            'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
+      );
+      final qr = AcpecQrMapper.fromStationUseResult(
+        guarded,
         scannedPublicCode: trimmed,
         stationUserId: user.id,
         stationUserName: user.name,

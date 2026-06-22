@@ -16,6 +16,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../transfer_carnets_logic.dart';
 import 'transfer_confirmation_screen.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
@@ -281,6 +282,16 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
 
   Future<void> _submit() async {
     final phone = _normalizeRecipientPhone(_phoneController.text.trim());
+    final currentUser = context.read<AuthBloc>().state.user;
+    final currentPhone = _normalizeRecipientPhone(currentUser?.phone ?? '');
+
+    if (currentPhone.isNotEmpty && phone == currentPhone) {
+      AppMessage.warning(
+        context,
+        'Vous ne pouvez pas transférer des carnets vers votre propre compte.',
+      );
+      return;
+    }
     if (phone.isEmpty) {
       AppMessage.warning(context, 'Saisissez le téléphone du destinataire.');
       return;
@@ -366,14 +377,12 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                 'action_code': actionCode,
                 'idempotency_key': 'ft-transfer-${const Uuid().v4()}',
               });
-              final data = raw is Map && raw['data'] is Map
-                  ? Map<String, dynamic>.from(raw['data'] as Map)
-                  : raw is Map
-                  ? Map<String, dynamic>.from(raw)
-                  : <String, dynamic>{};
-              if (data.isEmpty) {
-                throw Exception('Réponse de transfert invalide.');
-              }
+              final data = acpecRpcMapOrThrow(
+                raw,
+                fallbackMessage: 'Transfert refusé par le serveur.',
+                publicErrorMessage:
+                    'Le transfert a échoué. Réessayez ou contactez l’administrateur.',
+              );
               final responseName = data['dest_partner']?.toString().trim();
               if (responseName != null && responseName.isNotEmpty) {
                 confirmedRecipientName = responseName;

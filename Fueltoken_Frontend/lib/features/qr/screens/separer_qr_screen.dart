@@ -17,6 +17,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
@@ -181,12 +182,12 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         'action_code': actionCode,
         'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
       });
-      if (raw is! Map) {
-        throw Exception('Réponse QR invalide.');
-      }
-      final payload = raw['data'] is Map
-          ? Map<String, dynamic>.from(raw['data'] as Map)
-          : Map<String, dynamic>.from(raw);
+      final payload = acpecRpcMapOrThrow(
+        raw,
+        fallbackMessage: 'Séparation QR refusée par le serveur.',
+        publicErrorMessage:
+            'La séparation du QR a échoué. Réessayez ou contactez l’administrateur.',
+      );
 
       final newQrRaw = payload['new_qr'];
       final sourceRaw = payload['source'];

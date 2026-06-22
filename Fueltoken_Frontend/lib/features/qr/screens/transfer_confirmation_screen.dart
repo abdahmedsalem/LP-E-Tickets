@@ -74,7 +74,6 @@ class _TransferConfirmationScreenState
   Future<void> _onConfirm() async {
     if (_confirming) return;
     var completed = false;
-    setState(() => _confirming = true);
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
@@ -82,6 +81,7 @@ class _TransferConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      setState(() => _confirming = true);
       await widget.args.onConfirm(actionCode);
       if (!mounted) return;
       completed = true;

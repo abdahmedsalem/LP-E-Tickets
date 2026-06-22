@@ -61,7 +61,6 @@ class _QrActionConfirmationScreenState
 
   Future<void> _confirm() async {
     if (_confirming) return;
-    setState(() => _confirming = true);
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
@@ -69,6 +68,7 @@ class _QrActionConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      setState(() => _confirming = true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.of(context).pop(actionCode);

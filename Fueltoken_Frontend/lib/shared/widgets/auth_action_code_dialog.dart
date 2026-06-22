@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/auth/login_session_cache.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/validation/password_validators.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
@@ -31,19 +30,6 @@ Future<String?> showSensitiveActionCodeDialog(
       return null;
     }
 
-    final storedPin = await LoginSessionCache.lastPin();
-    if (storedPin == null || storedPin.isEmpty) {
-      if (context.mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (_) => const AlertDialog(
-            title: Text('PIN introuvable'),
-            content: Text('Reconnectez-vous pour continuer.'),
-          ),
-        );
-      }
-      return null;
-    }
     if (!context.mounted) return null;
 
     bool busy = false;
@@ -82,18 +68,8 @@ Future<String?> showSensitiveActionCodeDialog(
                 busy = true;
                 errorText = null;
               });
-              try {
-                if (pin != storedPin) {
-                  throw StateError('PIN incorrect.');
-                }
-                if (dialogContext.mounted) {
-                  await closeDialog(pin);
-                }
-              } catch (e) {
-                setState(() {
-                  errorText = e.toString().replaceFirst('Exception: ', '');
-                  busy = false;
-                });
+              if (dialogContext.mounted) {
+                await closeDialog(pin);
               }
             }
 
