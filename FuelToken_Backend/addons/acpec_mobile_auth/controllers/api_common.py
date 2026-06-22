@@ -11,6 +11,16 @@ from odoo.http import request
 _logger = logging.getLogger(__name__)
 
 
+class MobileSensitiveActionError(AccessError):
+    """Erreur sensible avec message public et raison technique auditée."""
+
+    def __init__(self, code, public_message, debug_reason=False):
+        super().__init__(public_message)
+        self.acpec_sensitive_code = code
+        self.acpec_public_message = public_message
+        self.acpec_debug_reason = debug_reason or public_message
+
+
 class AcpecMobileAuthApiCommon(http.Controller):
 
     EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -37,6 +47,24 @@ class AcpecMobileAuthApiCommon(http.Controller):
         'password',
     })
     REDACTED_LOG_VALUE = '***REDACTED***'
+
+    SENSITIVE_PUBLIC_MESSAGES = {
+        'purchase_create': "La demande d’achat a échoué. Réessayez ou contactez l’administrateur.",
+        'qr_issue': "L’émission du QR a échoué. Réessayez ou contactez l’administrateur.",
+        'qr_retirer': "Le retrait du QR a échoué. Réessayez ou contactez l’administrateur.",
+        'qr_separer': "La séparation du QR a échoué. Réessayez ou contactez l’administrateur.",
+        'carnet_transfer': "Le transfert a échoué. Réessayez ou contactez l’administrateur.",
+        'station_qr_use': "La consommation du QR a échoué. Réessayez ou contactez l’administrateur.",
+        'admin_sensitive_action': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'carnet_type_create': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'carnet_type_update': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'carnet_type_delete': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'purchase_approve': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'purchase_reject': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'station_create': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'station_update': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        'station_disable': "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+    }
 
     def _redact_for_log(self, value):
         """Return a log-safe copy/string with secrets removed."""
@@ -98,6 +126,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return payload
 
     def _handle_exception_response(self, exc):
+        if isinstance(exc, MobileSensitiveActionError):
+            _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
+            return self._error_response(exc.acpec_sensitive_code, exc.acpec_public_message)
         if isinstance(exc, MobileAuthRateLimitError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('RATE_LIMITED', str(exc))
@@ -112,6 +143,159 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'SERVER_ERROR',
             _('An unexpected server error occurred.'),
         )
+
+    def _sensitive_public_message(self, purpose):
+        # Ces messages sont déjà en français. Ne pas appeler _() ici :
+        # ce helper est aussi utilisé depuis des contrôleurs/tests qui ne sont
+        # pas des records Odoo et n'ont pas toujours env.uid disponible.
+        return self.SENSITIVE_PUBLIC_MESSAGES.get(
+            purpose or 'sensitive_action',
+            "L’action sensible a échoué. Réessayez ou contactez l’administrateur.",
+        )
+
+    def _request_path(self):
+        try:
+            return request.httprequest.path or False
+        except Exception:
+            return False
+
+    def _request_ip(self):
+        try:
+            return request.httprequest.remote_addr or False
+        except Exception:
+            return False
+
+    def _request_user_agent(self):
+        try:
+            return request.httprequest.headers.get('User-Agent') or False
+        except Exception:
+            return False
+
+    def _action_code_present(self, params):
+        value = (params or {}).get('action_code')
+        return value not in (None, False, '')
+
+    def _action_code_format_valid(self, params):
+        value = (params or {}).get('action_code')
+        value = str(value).strip() if value not in (None, False) else ''
+        return bool(value.isdigit() and len(value) == 4)
+
+    def _idempotency_key_for_audit(self, params):
+        value = (params or {}).get('idempotency_key')
+        value = str(value).strip() if value not in (None, False) else ''
+        return value or False
+
+    def _log_mobile_security_audit_event(
+        self, *,
+        event_type,
+        code,
+        purpose=False,
+        public_message=False,
+        debug_reason=False,
+        user=False,
+        session=False,
+        params=False,
+        severity='warning',
+        success=False,
+        blocked=True,
+        failed_count_before=False,
+        failed_count_after=False,
+        target_model=False,
+        target_res_id=False,
+        business_ref=False,
+    ):
+        try:
+            env = self._api_env()
+            audit_model = env['acpec.mobile.security.audit.log'].sudo()
+
+            user = user.sudo() if user and user.exists() else False
+            session = session.sudo() if session and session.exists() else False
+
+            audit_public_message = public_message
+            if audit_public_message is False:
+                audit_public_message = False if success else self._sensitive_public_message(purpose)
+
+            audit_model.log_event(
+                event_type=event_type,
+                severity=severity,
+                code=code,
+                public_message=audit_public_message or False,
+                debug_reason=debug_reason or False,
+                user_id=user.id if user else False,
+                partner_id=user.partner_id.id if user and user.partner_id else False,
+                company_id=user.company_id.id if user and user.company_id else False,
+                session_id=session.id if session else False,
+                device_uid=session.device_uid if session else False,
+                device_name=session.device_name if session else False,
+                device_trust_state=session.device_trust_state if session else False,
+                endpoint=self._request_path(),
+                operation=purpose or False,
+                idempotency_key=self._idempotency_key_for_audit(params),
+                ip_address=self._request_ip(),
+                user_agent=self._request_user_agent(),
+                success=bool(success),
+                blocked=bool(blocked),
+                action_code_present=self._action_code_present(params),
+                action_code_format_valid=self._action_code_format_valid(params),
+                failed_count_before=failed_count_before if failed_count_before is not False else False,
+                failed_count_after=failed_count_after if failed_count_after is not False else False,
+                target_model=target_model or False,
+                target_res_id=target_res_id or False,
+                business_ref=business_ref or False,
+            )
+        except Exception:
+            _logger.exception('Impossible d’écrire le journal d’audit sécurité mobile')
+            if getattr(self, '_test_env', None) is not None:
+                raise
+
+    def _raise_sensitive_action_error(
+        self, *,
+        code,
+        debug_reason,
+        purpose=False,
+        event_type='sensitive_action_denied',
+        user=False,
+        session=False,
+        params=False,
+        severity='warning',
+        failed_count_before=False,
+        failed_count_after=False,
+    ):
+        public_message = self._sensitive_public_message(purpose)
+        self._log_mobile_security_audit_event(
+            event_type=event_type,
+            severity=severity,
+            code=code,
+            purpose=purpose,
+            public_message=public_message,
+            debug_reason=debug_reason,
+            user=user,
+            session=session,
+            params=params,
+            success=False,
+            blocked=True,
+            failed_count_before=failed_count_before,
+            failed_count_after=failed_count_after,
+        )
+        raise MobileSensitiveActionError(code, public_message, debug_reason)
+
+    def _classify_pin_failure(self, exc, user, failed_count_before=False):
+        debug_reason = str(exc)
+        failed_count_after = user.mobile_pin_failed_count or 0
+
+        if user.mobile_pin_required or not user.mobile_pin_set:
+            return 'pin_hard_blocked', 'PIN_RESET_REQUIRED', 'critical', failed_count_after
+
+        if user.mobile_pin_locked_until:
+            return 'pin_locked', 'ACTION_CODE_LOCKED', 'warning', failed_count_after
+
+        if failed_count_after and failed_count_after > (failed_count_before or 0):
+            return 'invalid_action_code', 'INVALID_ACTION_CODE', 'warning', failed_count_after
+
+        if 'défini' in debug_reason or 'defini' in debug_reason:
+            return 'pin_reset_required', 'PIN_RESET_REQUIRED', 'warning', failed_count_after
+
+        return 'sensitive_action_denied', 'ACTION_CODE_DENIED', 'warning', failed_count_after
 
     def _require_keys(self, params, required_keys):
         missing_keys = [key for key in required_keys if key not in params]
@@ -590,13 +774,145 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action'):
         """Require trusted device + server-side mobile PIN for a concrete sensitive action.
 
-        This must be called inside the sensitive endpoint itself. Do not expose a
-        generic public /verify-pin route: a valid PIN is meaningful only when it
-        is bound to a concrete authenticated action.
+        Le PIN/action_code brut n’est jamais stocké dans l’audit. Le mobile
+        reçoit uniquement un message public générique, tandis que la raison
+        technique est conservée dans acpec.mobile.security.audit.log.
         """
-        user = self._require_trusted_sensitive()
-        pin = self._get_sensitive_action_pin(params or {})
-        user.check_mobile_pin(pin, purpose=purpose)
+        params = params or {}
+
+        session = self._get_mobile_session(required=True)
+        user = session.user_id.sudo()
+        self._assert_mobile_only_user(user)
+
+        if not session.device_uid:
+            self._raise_sensitive_action_error(
+                code='DEVICE_MISSING_UID',
+                event_type='device_missing_uid',
+                purpose=purpose,
+                debug_reason='Device mobile non identifié.',
+                user=user,
+                session=session,
+                params=params,
+            )
+
+        if session.device_trust_state != 'trusted':
+            if session.device_trust_state == 'pending_trust':
+                self._raise_sensitive_action_error(
+                    code='DEVICE_PENDING_TRUST',
+                    event_type='device_pending_trust',
+                    purpose=purpose,
+                    debug_reason='Device mobile en attente de validation.',
+                    user=user,
+                    session=session,
+                    params=params,
+                )
+
+            if session.device_trust_state == 'blocked':
+                self._raise_sensitive_action_error(
+                    code='DEVICE_BLOCKED',
+                    event_type='device_blocked',
+                    purpose=purpose,
+                    debug_reason='Device mobile bloqué.',
+                    user=user,
+                    session=session,
+                    params=params,
+                    severity='error',
+                )
+
+            self._raise_sensitive_action_error(
+                code='DEVICE_NOT_TRUSTED',
+                event_type='device_not_trusted',
+                purpose=purpose,
+                debug_reason='Device mobile non approuvé.',
+                user=user,
+                session=session,
+                params=params,
+            )
+
+        try:
+            pin = self._get_sensitive_action_pin(params)
+        except ValidationError as exc:
+            reason = str(exc)
+            code = 'MISSING_ACTION_CODE'
+            event_type = 'missing_action_code'
+
+            forbidden_alias_used = any(
+                params.get(key) not in (None, False, '')
+                for key in ('action_pin', 'pin', 'secret_code')
+            )
+            if forbidden_alias_used:
+                code = 'INVALID_ACTION_CODE_KEY'
+                event_type = 'invalid_action_code_key'
+
+            self._raise_sensitive_action_error(
+                code=code,
+                event_type=event_type,
+                purpose=purpose,
+                debug_reason=reason,
+                user=user,
+                session=session,
+                params=params,
+            )
+
+        user.invalidate_recordset([
+            'mobile_pin_failed_count',
+            'mobile_pin_locked_until',
+            'mobile_pin_set',
+            'mobile_pin_required',
+        ])
+        failed_count_before = user.mobile_pin_failed_count or 0
+
+        try:
+            user.check_mobile_pin(pin, purpose=purpose)
+        except AccessError as exc:
+            user.invalidate_recordset([
+                'mobile_pin_failed_count',
+                'mobile_pin_locked_until',
+                'mobile_pin_set',
+                'mobile_pin_required',
+            ])
+
+            event_type, code, severity, failed_count_after = self._classify_pin_failure(
+                exc,
+                user,
+                failed_count_before=failed_count_before,
+            )
+
+            self._raise_sensitive_action_error(
+                code=code,
+                event_type=event_type,
+                severity=severity,
+                purpose=purpose,
+                debug_reason=str(exc),
+                user=user,
+                session=session,
+                params=params,
+                failed_count_before=failed_count_before,
+                failed_count_after=failed_count_after,
+            )
+
+        user.invalidate_recordset([
+            'mobile_pin_failed_count',
+            'mobile_pin_locked_until',
+        ])
+        failed_count_after = user.mobile_pin_failed_count or 0
+
+        self._log_mobile_security_audit_event(
+            event_type='sensitive_action_allowed',
+            severity='info',
+            code='ACTION_CODE_VALID',
+            purpose=purpose,
+            public_message=False,
+            debug_reason='Action code validé par le backend.',
+            user=user,
+            session=session,
+            params=params,
+            success=True,
+            blocked=False,
+            failed_count_before=failed_count_before,
+            failed_count_after=failed_count_after,
+        )
+
         return user
 
     def _mobile_profile_payload(self, user, session=False):

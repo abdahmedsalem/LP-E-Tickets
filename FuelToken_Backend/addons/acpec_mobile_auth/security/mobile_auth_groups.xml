@@ -4,7 +4,12 @@
         <field name="name">Mobile Auth User</field>
 </record>
 
+    <record id="group_mobile_security_auditor" model="res.groups">
+        <field name="name">Auditeur sécurité mobile</field>
+    </record>
+
     <record id="group_mobile_auth_admin" model="res.groups">
         <field name="name">Mobile Auth Admin</field>
+        <field name="implied_ids" eval="[(4, ref('acpec_mobile_auth.group_mobile_security_auditor'))]"/>
 </record>
 </odoo>

@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_mobile_auth_root" name="Mobile Auth" sequence="5" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-    <menuitem id="menu_mobile_auth_operations" name="Operations" parent="menu_mobile_auth_root" sequence="10" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <menuitem id="menu_mobile_auth_root" name="Mobile Auth" sequence="5" groups="acpec_mobile_auth.group_mobile_auth_admin,acpec_mobile_auth.group_mobile_security_auditor"/>
+    <menuitem id="menu_mobile_auth_operations" name="Opérations" parent="menu_mobile_auth_root" sequence="10" groups="acpec_mobile_auth.group_mobile_auth_admin,acpec_mobile_auth.group_mobile_security_auditor"/>
     <menuitem id="menu_mobile_auth_configuration" name="Configuration" parent="menu_mobile_auth_root" sequence="90" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-    <menuitem id="menu_mobile_auth_account_requests" name="Account Requests" parent="menu_mobile_auth_operations" action="action_acpec_mobile_auth_account_request" sequence="10" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <menuitem id="menu_mobile_auth_account_requests" name="Demandes de comptes" parent="menu_mobile_auth_operations" action="action_acpec_mobile_auth_account_request" sequence="10" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
     <record id="menu_mobile_auth_account_requests" model="ir.ui.menu">
         <field name="active" eval="False"/>
     </record>
-    <menuitem id="menu_mobile_auth_version_policies" name="Version Policies" parent="menu_mobile_auth_configuration" action="action_acpec_mobile_app_version_policy" sequence="20" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-    <menuitem id="menu_mobile_auth_sessions" name="Mobile Sessions" parent="menu_mobile_auth_operations" action="action_acpec_mobile_session" sequence="20" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <menuitem id="menu_mobile_auth_version_policies" name="Politiques de version" parent="menu_mobile_auth_configuration" action="action_acpec_mobile_app_version_policy" sequence="20" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <menuitem id="menu_mobile_auth_sessions" name="Sessions mobiles" parent="menu_mobile_auth_operations" action="action_acpec_mobile_session" sequence="20" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <menuitem id="menu_mobile_security_audit_log" name="Journal d’audit sécurité" parent="menu_mobile_auth_operations" action="action_acpec_mobile_security_audit_log" sequence="80" groups="acpec_mobile_auth.group_mobile_security_auditor"/>
 </odoo>
