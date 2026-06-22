@@ -116,9 +116,10 @@
         <field name="name">acpec.mobile.session.list</field>
         <field name="model">acpec.mobile.session</field>
         <field name="arch" type="xml">
-            <list>
+            <list create="0">
                 <field name="name"/>
-                <field name="user_id"/>
+                <field name="mobile_user_label"/>
+                <field name="mobile_phone"/>
                 <field name="partner_id"/>
                 <field name="company_id"/>
                 <field name="device_uid"/>
@@ -137,7 +138,7 @@
         <field name="name">acpec.mobile.session.form</field>
         <field name="model">acpec.mobile.session</field>
         <field name="arch" type="xml">
-            <form>
+            <form create="0">
                 <header>
                     <button name="action_trust_device" type="object" string="Trust Device"
                             invisible="not device_uid or device_trust_state == 'trusted'"
@@ -162,6 +163,8 @@
                         <group>
                             <field name="name" readonly="1"/>
                             <field name="user_id" readonly="1"/>
+                            <field name="mobile_user_label" readonly="1"/>
+                            <field name="mobile_phone" readonly="1"/>
                             <field name="partner_id" readonly="1"/>
                             <field name="company_id" readonly="1"/>
                         </group>
@@ -194,10 +197,39 @@
         </field>
     </record>
 
+    <record id="view_acpec_mobile_session_search" model="ir.ui.view">
+        <field name="name">acpec.mobile.session.search</field>
+        <field name="model">acpec.mobile.session</field>
+        <field name="arch" type="xml">
+            <search string="Recherche sessions mobile">
+                <field name="name" string="Session"/>
+                <field name="user_id" string="Utilisateur"/>
+                <field name="mobile_user_label" string="Utilisateur mobile"/>
+                <field name="mobile_phone" string="Téléphone mobile"/>
+                <field name="partner_id" string="Contact"/>
+                <field name="device_uid" string="Identifiant device"/>
+                <field name="device_name" string="Nom device"/>
+
+                <filter name="approval_candidate" string="Candidats approbation" domain="[('is_device_approval_candidate', '=', True)]"/>
+                <filter name="pending_trust" string="Devices en attente" domain="[('device_trust_state', '=', 'pending_trust')]"/>
+                <filter name="trusted" string="Devices approuvés" domain="[('device_trust_state', '=', 'trusted')]"/>
+                <filter name="blocked" string="Devices bloqués" domain="[('device_trust_state', '=', 'blocked')]"/>
+                <filter name="active" string="Sessions actives" domain="[('state', '=', 'active')]"/>
+
+                <separator/>
+                <filter name="group_by_user" string="Regrouper par utilisateur" context="{'group_by': 'user_id'}"/>
+                <filter name="group_by_mobile_user_label" string="Regrouper par utilisateur mobile" context="{'group_by': 'mobile_user_label'}"/>
+                <filter name="group_by_device_uid" string="Regrouper par device UID" context="{'group_by': 'device_uid'}"/>
+                <filter name="group_by_trust_state" string="Regrouper par état device" context="{'group_by': 'device_trust_state'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="action_acpec_mobile_session" model="ir.actions.act_window">
-        <field name="name">Mobile Sessions</field>
+        <field name="name">Sessions mobile</field>
         <field name="res_model">acpec.mobile.session</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_acpec_mobile_session_search"/>
     </record>
 
 </odoo>

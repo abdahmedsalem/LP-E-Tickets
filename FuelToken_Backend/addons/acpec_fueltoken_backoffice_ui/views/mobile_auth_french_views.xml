@@ -20,6 +20,15 @@
         <field name="model">acpec.mobile.session</field>
         <field name="inherit_id" ref="acpec_mobile_auth.view_acpec_mobile_session_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_trust_device']" position="attributes">
+                <attribute name="string">Approuver le device</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_block_device']" position="attributes">
+                <attribute name="string">Bloquer le device</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_reset_device_trust']" position="attributes">
+                <attribute name="string">Remettre en attente</attribute>
+            </xpath>
             <xpath expr="//button[@name='action_revoke']" position="attributes">
                 <attribute name="string">Révoquer</attribute>
             </xpath>

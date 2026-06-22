@@ -45,3 +45,24 @@
 - Suppression de la compatibilité backend `action_pin` / `pin` / `secret_code` pour les PIN d'action sensible.
 - `action_code` devient la seule clé acceptée.
 - `secret_code` reste réservé au signup / initialisation du PIN mobile.
+
+<!-- PATCH32B_CHANGELOG_START -->
+
+## Patch32B — Back-office Device Trust UX
+
+- Ajout de la worklist **Devices à approuver**.
+- Ajout d’une logique de candidature `is_device_approval_candidate`.
+- Déduplication UX par couple `user_id + device_uid`.
+- Domaine défensif : session active, `pending_trust`, `device_uid` présent, utilisateur `mobile_only`, utilisateur `approved`.
+- Ajout des champs d’affichage `mobile_phone` et `mobile_user_label`.
+- Francisation des boutons back-office device trust.
+- Tests ciblés back-office device trust exécutés avec succès : 0 échec, 0 erreur.
+
+Limites assumées :
+
+- Pas encore de modèle stable `acpec.mobile.device`.
+- Pas encore de `device_install_uid` Flutter stable.
+- Pas encore de refonte du lifecycle session/token.
+- Pas encore de révocation automatique des anciennes sessions actives au nouvel OTP.
+
+<!-- PATCH32B_CHANGELOG_END -->

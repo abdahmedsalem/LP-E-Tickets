@@ -195,3 +195,20 @@ Retrait rôle ou passage device en `pending_trust` :
 - blocage user/device efface current + previous refresh ;
 - erreur réseau ne logout pas.
 ```
+
+<!-- PATCH32B_SESSION_LIFECYCLE_BOUNDARY_START -->
+
+## Patch32B — Limite explicite sur le lifecycle session
+
+Patch32B ne modifie pas le cycle de vie des sessions mobiles.
+
+Non inclus en Patch32B :
+
+- pas de révocation automatique des anciennes sessions actives lors d’un nouvel OTP ;
+- pas de contrainte stricte “une seule session active par device” ;
+- pas de réutilisation/rotation OTP-aware d’une session longue existante ;
+- pas d’héritage automatique du trust entre sessions.
+
+Ces sujets sont reportés à un patch lifecycle dédié après stabilisation du `device_install_uid` côté Flutter.
+
+<!-- PATCH32B_SESSION_LIFECYCLE_BOUNDARY_END -->

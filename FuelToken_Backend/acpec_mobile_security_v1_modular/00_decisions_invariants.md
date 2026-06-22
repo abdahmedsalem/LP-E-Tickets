@@ -169,3 +169,21 @@ Les anciennes décisions ouvertes sont clôturées ainsi :
 INV-PIN-004: une action sensible accepte uniquement le champ `action_code` comme PIN serveur.
 FORBID-PIN-001: `action_pin`, `pin` et `secret_code` sont interdits comme alias de confirmation d'action sensible.
 FORBID-PIN-002: `secret_code` reste strictement réservé au signup / initialisation du PIN mobile et ne doit jamais être réutilisé comme nom de champ d'action sensible.
+
+<!-- PATCH32B_DEVICE_TRUST_BACKOFFICE_UX_START -->
+
+## Patch32B — Décision : worklist back-office device trust
+
+Patch32B ne transforme pas encore `device_uid` ou `mobile_session_id` en clé d’unicité métier forte.
+
+Décision retenue :
+
+- `acpec.mobile.session` reste un objet de session/token et d’audit.
+- La file **Devices à approuver** est une worklist back-office, pas l’historique complet des sessions.
+- La déduplication de cette worklist est UX/back-office, pas une contrainte de cycle de vie session.
+- Une seule session candidate est conservée par couple `user_id + device_uid`.
+- La candidate est la dernière session active du couple, uniquement si elle est encore en `pending_trust`.
+
+Limite assumée : tant que Flutter envoie des valeurs temporaires comme `flutter-android-local`, le backend ne doit pas bâtir une doctrine forte d’identité device sur `device_uid`.
+
+<!-- PATCH32B_DEVICE_TRUST_BACKOFFICE_UX_END -->

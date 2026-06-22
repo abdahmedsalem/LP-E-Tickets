@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from odoo import fields
 from odoo.exceptions import AccessError
+from odoo.tools.safe_eval import safe_eval
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -75,7 +77,7 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertEqual(session.device_trust_state, 'trusted')
         self.assertTrue(session.device_trusted_at)
         self.assertFalse(session.device_blocked_at)
-        self.assertTrue(session.message_ids.filtered(lambda msg: 'marqué trusted' in (msg.body or '')))
+        self.assertTrue(session.message_ids.filtered(lambda msg: 'Device mobile approuvé' in (msg.body or '')))
 
         session.with_user(admin).action_block_device()
         session.invalidate_recordset(['device_trust_state', 'device_blocked_at'])
@@ -90,7 +92,7 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertEqual(session.device_trust_state, 'pending_trust')
         self.assertFalse(session.device_trusted_at)
         self.assertFalse(session.device_blocked_at)
-        self.assertTrue(session.message_ids.filtered(lambda msg: 'réinitialisée' in (msg.body or '')))
+        self.assertTrue(session.message_ids.filtered(lambda msg: 'Confiance device remise en attente' in (msg.body or '')))
 
     def test_regular_internal_user_cannot_change_device_trust(self):
         session = self._create_session()
@@ -120,3 +122,94 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertIn('device_blocked_at', form_arch)
         self.assertIn('device_trust_note', form_arch)
         self.assertIn('acpec_mobile_auth.group_mobile_auth_admin', form_arch)
+
+    def test_mobile_identity_fields_are_available_for_device_worklist(self):
+        user = self._create_mobile_user('device-label-32b@example.com')
+        user.write({
+            'name': 'Test Mobile 32B',
+            'mobile_phone': '32342008',
+        })
+
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'device-label-32b',
+            'device_name': 'Android 32B',
+            'platform': 'android',
+        })
+        session = token_data['session']
+        session.invalidate_recordset(['mobile_phone', 'mobile_user_label'])
+
+        self.assertEqual(session.mobile_phone, '32342008')
+        self.assertEqual(session.mobile_user_label, 'Test Mobile 32B - 32342008')
+
+    def test_device_approval_candidate_keeps_latest_active_pending_session_only(self):
+        user = self._create_mobile_user('device-candidate-32b@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'same-device-32b',
+            'device_name': 'Android 32B',
+            'platform': 'android',
+        })['session']
+        latest = Session.create_for_user(user, {
+            'device_uid': 'same-device-32b',
+            'device_name': 'Android 32B',
+            'platform': 'android',
+        })['session']
+
+        first.invalidate_recordset(['is_device_approval_candidate'])
+        latest.invalidate_recordset(['is_device_approval_candidate'])
+
+        self.assertFalse(first.is_device_approval_candidate)
+        self.assertTrue(latest.is_device_approval_candidate)
+
+    def test_device_approval_candidate_is_cleared_when_latest_active_is_trusted(self):
+        user = self._create_mobile_user('device-candidate-trusted-32b@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        old_pending = Session.create_for_user(user, {
+            'device_uid': 'trusted-latest-device-32b',
+            'device_name': 'Android 32B',
+            'platform': 'android',
+        })['session']
+        latest = Session.create_for_user(user, {
+            'device_uid': 'trusted-latest-device-32b',
+            'device_name': 'Android 32B',
+            'platform': 'android',
+        })['session']
+
+        latest.write({
+            'device_trust_state': 'trusted',
+            'device_trusted_at': fields.Datetime.now(),
+        })
+
+        old_pending.invalidate_recordset(['is_device_approval_candidate'])
+        latest.invalidate_recordset(['is_device_approval_candidate'])
+
+        self.assertFalse(old_pending.is_device_approval_candidate)
+        self.assertFalse(latest.is_device_approval_candidate)
+
+    def test_devices_to_approve_action_uses_defensive_candidate_domain(self):
+        action = self.env.ref(
+            'acpec_fueltoken_backoffice_ui.action_backoffice_mobile_devices_to_approve',
+            raise_if_not_found=False,
+        )
+        if not action:
+            return
+
+        domain = safe_eval(action.domain)
+        context = safe_eval(action.context)
+
+        self.assertIn(('is_device_approval_candidate', '=', True), domain)
+        self.assertIn(('device_trust_state', '=', 'pending_trust'), domain)
+        self.assertIn(('state', '=', 'active'), domain)
+        self.assertIn(('device_uid', '!=', False), domain)
+        self.assertIn(('device_uid', '!=', ''), domain)
+        self.assertIn(('user_id.mobile_only', '=', True), domain)
+        self.assertIn(('user_id.mobile_state', '=', 'approved'), domain)
+
+        self.assertEqual(context.get('search_default_approval_candidate'), 1)
+        self.assertEqual(context.get('search_default_group_by_mobile_user_label'), 1)
+        self.assertEqual(
+            action.search_view_id,
+            self.env.ref('acpec_mobile_auth.view_acpec_mobile_session_search'),
+        )
