@@ -62,13 +62,16 @@ class AppUser extends Equatable {
     if (name.isEmpty) {
       name = u['username']?.toString() ?? 'Utilisateur';
     }
-    final telRaw = _safeText(u['telephone']);
-    final telDigits = telRaw.replaceAll(RegExp(r'\D'), '');
+    final telRaw = _firstSafeText([
+      u['mobile_phone'],
+      u['phone'],
+      u['mobile'],
+      u['telephone'],
+    ]);
+    final localDigits = localMrDigitsFromFull(telRaw);
     String phone = '';
-    if (telDigits.length == 8) {
-      phone = fullMrPhoneFromLocal8(telDigits);
-    } else if (telRaw.isNotEmpty) {
-      phone = telRaw.startsWith('+') ? telRaw : '+$telRaw';
+    if (kMrLocalPhoneDigits.hasMatch(localDigits)) {
+      phone = localDigits;
     }
 
     final type = u['type_utilisateur']?.toString() ?? 'Client';
@@ -168,16 +171,15 @@ class AppUser extends Equatable {
     }
 
     final telRaw = _firstSafeText([
+      u['mobile_phone'],
       u['phone'],
       u['mobile'],
       u['telephone'],
     ]);
-    final telDigits = telRaw.replaceAll(RegExp(r'\D'), '');
+    final localDigits = localMrDigitsFromFull(telRaw);
     String phone = '';
-    if (telDigits.length == 8) {
-      phone = fullMrPhoneFromLocal8(telDigits);
-    } else if (telRaw.isNotEmpty) {
-      phone = telRaw.startsWith('+') ? telRaw : '+$telRaw';
+    if (kMrLocalPhoneDigits.hasMatch(localDigits)) {
+      phone = localDigits;
     }
 
     DateTime created = DateTime.now();
