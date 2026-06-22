@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart'
-    show debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 
+import '../../core/auth/device_install_store.dart';
 import '../../core/auth/odoo_session_store.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/validation/contact_validators.dart';
@@ -50,7 +50,8 @@ class OdooAuthService {
         final message = _acpecErrorMessage(top);
         if (top['error'] is Map) {
           final errorMap = Map<String, dynamic>.from(top['error'] as Map);
-          final code = errorMap['code']?.toString() ?? top['code']?.toString() ?? '';
+          final code =
+              errorMap['code']?.toString() ?? top['code']?.toString() ?? '';
           if (code == 'PASSWORD_LOGIN_DISABLED') {
             throw Exception(
               'La connexion par PIN legacy est désactivée. Utilisez le flux OTP.',
@@ -150,9 +151,17 @@ class OdooAuthService {
       throw Exception('Refresh token absent.');
     }
     try {
+      final platform = DeviceInstallStore.currentPlatformName();
+      final deviceUid = await DeviceInstallStore.readOrCreate();
       final result = await _api.callRouteWithoutSession(
         route,
-        params: <String, dynamic>{'refresh_token': refresh},
+        params: <String, dynamic>{
+          'refresh_token': refresh,
+          'device_uid': deviceUid,
+          'device_name': kIsWeb ? 'Flutter Web' : 'Flutter $platform',
+          'platform': platform,
+          'app_version': 'dev',
+        },
         extraHeaders: <String, String>{'X-ACPEC-Refresh-Token': refresh},
       );
       _ensureAcpecEnvelopeSuccess(result);
@@ -214,7 +223,8 @@ class OdooAuthService {
     }
 
     final idForRpc = localMrDigitsFromFull(identifier);
-    final platform = _currentPlatformName();
+    final platform = DeviceInstallStore.currentPlatformName();
+    final deviceUid = await DeviceInstallStore.readOrCreate();
     try {
       final result = await _api.callRoute(
         route,
@@ -224,7 +234,7 @@ class OdooAuthService {
           'identifier': idForRpc,
           'code': code.trim(),
           'purpose': 'login',
-          'device_uid': 'flutter-$platform-local',
+          'device_uid': deviceUid,
           'device_name': kIsWeb ? 'Flutter Web' : 'Flutter $platform',
           'platform': platform,
           'app_version': 'dev',
@@ -236,11 +246,6 @@ class OdooAuthService {
     } on OdooJsonRpcException catch (e) {
       throw Exception(e.message);
     }
-  }
-
-  static String _currentPlatformName() {
-    if (kIsWeb) return 'web';
-    return defaultTargetPlatform.toString().split('.').last;
   }
 
   /// Demande d'inscription Odoo ACPEC qui déclenche un OTP SMS pour un numéro.
