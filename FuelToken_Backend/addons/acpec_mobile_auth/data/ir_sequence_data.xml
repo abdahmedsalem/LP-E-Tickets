@@ -20,4 +20,13 @@
         <field name="padding">6</field>
         <field name="company_id" eval="False"/>
     </record>
+
+    <record id="seq_acpec_mobile_security_audit_log" model="ir.sequence">
+        <field name="name">Journal audit sécurité mobile</field>
+        <field name="code">acpec.mobile.security.audit.log</field>
+        <field name="prefix">MSAUD/%(year)s/</field>
+        <field name="padding">6</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
 </odoo>

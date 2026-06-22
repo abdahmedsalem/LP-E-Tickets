@@ -186,9 +186,26 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
             return controller.transfer_list(**(payload or {}))
 
     def _assert_error_contains(self, response, expected):
-        self.assertIn(expected, repr(response))
         self.assertIn("success", repr(response))
         self.assertIn("False", repr(response))
+
+        error = response.get("error", {}) if isinstance(response, dict) else {}
+        code = error.get("code")
+        public_message = error.get("message") or ""
+
+        sensitive_expected_codes = {
+            "action_code": ("MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
+            "Device mobile en attente de validation": ("DEVICE_PENDING_TRUST",),
+            "PIN mobile invalide": ("INVALID_ACTION_CODE", "ACTION_CODE_DENIED"),
+            "Clé PIN action invalide": ("INVALID_ACTION_CODE_KEY",),
+        }
+
+        if expected in sensitive_expected_codes:
+            self.assertIn(code, sensitive_expected_codes[expected])
+            self.assertNotIn(expected, public_message)
+            return
+
+        self.assertIn(expected, repr(response))
 
     def _transfer_by_key(self, source_wallet, key):
         return self.env["acpec.fuel.carnet.transfer"].sudo().search([

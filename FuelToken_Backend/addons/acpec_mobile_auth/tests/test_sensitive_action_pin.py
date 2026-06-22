@@ -2,7 +2,7 @@
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
-from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
+from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon, MobileSensitiveActionError
 
 
 @tagged("post_install", "-at_install")
@@ -78,8 +78,11 @@ class TestSensitiveActionPin(TransactionCase):
         user, session = self._trusted_session()
         controller = self._controller_for_session(session)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(MobileSensitiveActionError) as cm:
             controller._require_sensitive_action_pin({}, purpose='missing_pin')
+
+        self.assertEqual(cm.exception.acpec_sensitive_code, 'MISSING_ACTION_CODE')
+        self.assertNotIn('action_code requis', str(cm.exception))
 
     def test_sensitive_action_pin_rejects_wrong_code(self):
         user, session = self._trusted_session()
