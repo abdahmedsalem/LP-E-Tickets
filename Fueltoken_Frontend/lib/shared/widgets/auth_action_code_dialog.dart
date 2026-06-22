@@ -3,13 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/auth/login_session_cache.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/validation/password_validators.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 
-/// Demande le PIN du compte actuellement connecté avant une action sensible.
-Future<bool> showSensitiveActionPinDialog(
+/// Demande le PIN du compte actuellement connecté et retourne le code à envoyer comme action_code.
+Future<String?> showSensitiveActionCodeDialog(
   BuildContext context, {
   required String title,
   required String description,
@@ -28,36 +27,23 @@ Future<bool> showSensitiveActionPinDialog(
           ),
         );
       }
-      return false;
+      return null;
     }
 
-    final storedPin = await LoginSessionCache.lastPin();
-    if (storedPin == null || storedPin.isEmpty) {
-      if (context.mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (_) => const AlertDialog(
-            title: Text('PIN introuvable'),
-            content: Text('Reconnectez-vous pour continuer.'),
-          ),
-        );
-      }
-      return false;
-    }
-    if (!context.mounted) return false;
+    if (!context.mounted) return null;
 
     bool busy = false;
     bool obscure = true;
     String? errorText;
 
-    final result = await showDialog<bool>(
+    final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.58),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
-            Future<void> closeDialog(bool value) async {
+            Future<void> closeDialog(String? value) async {
               FocusManager.instance.primaryFocus?.unfocus();
               try {
                 await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
@@ -82,18 +68,8 @@ Future<bool> showSensitiveActionPinDialog(
                 busy = true;
                 errorText = null;
               });
-              try {
-                if (pin != storedPin) {
-                  throw StateError('PIN incorrect.');
-                }
-                if (dialogContext.mounted) {
-                  await closeDialog(true);
-                }
-              } catch (e) {
-                setState(() {
-                  errorText = e.toString().replaceFirst('Exception: ', '');
-                  busy = false;
-                });
+              if (dialogContext.mounted) {
+                await closeDialog(pin);
               }
             }
 
@@ -182,7 +158,7 @@ Future<bool> showSensitiveActionPinDialog(
                               onPressed: busy
                                   ? null
                                   : () async {
-                                      await closeDialog(false);
+                                      await closeDialog(null);
                                     },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
@@ -252,7 +228,7 @@ Future<bool> showSensitiveActionPinDialog(
       },
     );
 
-    return result ?? false;
+    return result;
   } finally {
     // PATCH6: controller.dispose() disabled here; Android IME/TextField may still read it while dialog closes.
   }
@@ -269,6 +245,21 @@ Future<bool> showSensitiveActionAuthCodeDialog(
     title: title,
     description: description,
   );
+}
+
+
+/// Compatibilité ancienne API : vérifie le PIN mais ne transporte pas le code.
+Future<bool> showSensitiveActionPinDialog(
+  BuildContext context, {
+  required String title,
+  required String description,
+}) async {
+  final code = await showSensitiveActionCodeDialog(
+    context,
+    title: title,
+    description: description,
+  );
+  return code != null && code.isNotEmpty;
 }
 
 class _PinCodeBoxes extends StatelessWidget {

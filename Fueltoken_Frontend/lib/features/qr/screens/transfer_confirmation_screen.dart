@@ -37,7 +37,7 @@ class TransferConfirmationArgs {
   final String? note;
 
   /// Callback appelé quand l'utilisateur confirme.
-  final Future<void> Function() onConfirm;
+  final Future<void> Function(String actionCode) onConfirm;
 }
 
 class TransferConfirmationLine {
@@ -74,15 +74,15 @@ class _TransferConfirmationScreenState
   Future<void> _onConfirm() async {
     if (_confirming) return;
     var completed = false;
-    setState(() => _confirming = true);
     try {
-      final ok = await showSensitiveActionPinDialog(
+      final actionCode = await showSensitiveActionCodeDialog(
         context,
         title: 'Vérification du PIN',
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
-      if (!ok || !mounted) return;
-      await widget.args.onConfirm();
+      if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      setState(() => _confirming = true);
+      await widget.args.onConfirm(actionCode);
       if (!mounted) return;
       completed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {

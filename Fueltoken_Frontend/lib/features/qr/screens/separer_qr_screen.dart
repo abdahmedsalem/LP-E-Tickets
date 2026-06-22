@@ -17,6 +17,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
@@ -121,7 +122,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
   Future<void> _submit() async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
-    final confirmed = await Navigator.of(context).push<bool>(
+    final actionCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
@@ -162,13 +163,13 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (actionCode != null && actionCode.isNotEmpty) {
       if (!mounted) return;
-      await _performSubmit();
+      await _performSubmit(actionCode);
     }
   }
 
-  Future<void> _performSubmit() async {
+  Future<void> _performSubmit(String actionCode) async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
     final user = context.read<AuthBloc>().state.user;
@@ -178,14 +179,15 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
     try {
       final raw = await OdooFueltokenFacade().qrSeparer({
         'public_code': parent.publicCode,
+        'action_code': actionCode,
         'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
       });
-      if (raw is! Map) {
-        throw Exception('Réponse QR invalide.');
-      }
-      final payload = raw['data'] is Map
-          ? Map<String, dynamic>.from(raw['data'] as Map)
-          : Map<String, dynamic>.from(raw);
+      final payload = acpecRpcMapOrThrow(
+        raw,
+        fallbackMessage: 'Séparation QR refusée par le serveur.',
+        publicErrorMessage:
+            'La séparation du QR a échoué. Réessayez ou contactez l’administrateur.',
+      );
 
       final newQrRaw = payload['new_qr'];
       final sourceRaw = payload['source'];

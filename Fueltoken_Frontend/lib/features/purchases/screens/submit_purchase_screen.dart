@@ -258,7 +258,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               lines: confirmLines,
               proofPath: proofPath,
               proofBytes: proofBytes,
-              onConfirm: () async {
+              onConfirm: (actionCode) async {
                 // Appel API réel: les erreurs remontent au confirmation screen
                 if (!AppEnvironment.useAcpecLiveData) {
                   throw Exception(
@@ -305,6 +305,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   'proof_filename': fileName,
                   'proof_data': base64Encode(proofBytes),
                   'payment_reference': payRef,
+                  'action_code': actionCode,
                   'idempotency_key': idem,
                 });
                 final parsed = AcpecPurchasesMapper.parseCreateResult(raw);

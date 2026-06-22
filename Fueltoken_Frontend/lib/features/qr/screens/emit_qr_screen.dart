@@ -23,6 +23,7 @@ import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -491,7 +492,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         )
         .toList(growable: false);
 
-    final confirmed = await Navigator.of(context).push<bool>(
+    final actionCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
@@ -527,8 +528,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (actionCode != null && actionCode.isNotEmpty) {
       await _performEmit(
+        actionCode: actionCode,
         totalQty: totalQty,
         totalAmount: totalAmount,
         successLines: successLines,
@@ -537,6 +539,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   Future<void> _performEmit({
+    required String actionCode,
     required int totalQty,
     required int totalAmount,
     required List<QrGenerationSuccessLine> successLines,
@@ -552,10 +555,17 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         }
         final raw = await OdooFueltokenFacade().qrIssue({
           'lines': linesPayload,
+          'action_code': actionCode,
           'idempotency_key': 'ft-qr-${const Uuid().v4()}',
         });
-        AcpecQrMapper.fromRpcIssueEnvelope(
+        final guarded = acpecRpcMapOrThrow(
           raw,
+          fallbackMessage: 'Émission QR refusée par le serveur.',
+          publicErrorMessage:
+              'L’émission du QR a échoué. Réessayez ou contactez l’administrateur.',
+        );
+        AcpecQrMapper.fromRpcIssueEnvelope(
+          guarded,
           ownerId: user.id,
           ownerName: user.name,
           companyId: AppEnvironment.companyIdForUser(user),
