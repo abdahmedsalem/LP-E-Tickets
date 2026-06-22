@@ -213,3 +213,86 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             action.search_view_id,
             self.env.ref('acpec_mobile_auth.view_acpec_mobile_session_search'),
         )
+
+    def test_create_for_user_rotates_prior_active_session_for_stable_device_uid(self):
+        user = self._create_mobile_user('session-lifecycle-32d@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'ft-android-session-lifecycle-32d',
+            'device_name': 'Android 32D',
+            'platform': 'android',
+        })['session']
+        second = Session.create_for_user(user, {
+            'device_uid': 'ft-android-session-lifecycle-32d',
+            'device_name': 'Android 32D',
+            'platform': 'android',
+        })['session']
+
+        first.invalidate_recordset([
+            'state',
+            'rotated_at',
+            'rotated_to_session_id',
+            'refresh_grace_until',
+            'refresh_grace_used_at',
+            'is_device_approval_candidate',
+        ])
+        second.invalidate_recordset([
+            'state',
+            'device_trust_state',
+            'is_device_approval_candidate',
+        ])
+
+        self.assertEqual(first.state, 'rotated')
+        self.assertEqual(first.rotated_to_session_id, second)
+        self.assertFalse(first.refresh_grace_until)
+        self.assertFalse(first.refresh_grace_used_at)
+
+        self.assertEqual(second.state, 'active')
+        self.assertEqual(second.device_trust_state, 'pending_trust')
+        self.assertFalse(first.is_device_approval_candidate)
+        self.assertTrue(second.is_device_approval_candidate)
+
+    def test_create_for_user_does_not_rotate_legacy_flutter_placeholder_uid(self):
+        user = self._create_mobile_user('legacy-device-lifecycle-32d@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'flutter-android-local',
+            'device_name': 'Legacy Android',
+            'platform': 'android',
+        })['session']
+        second = Session.create_for_user(user, {
+            'device_uid': 'flutter-android-local',
+            'device_name': 'Legacy Android',
+            'platform': 'android',
+        })['session']
+
+        first.invalidate_recordset(['state', 'rotated_to_session_id'])
+        second.invalidate_recordset(['state'])
+
+        self.assertEqual(first.state, 'active')
+        self.assertFalse(first.rotated_to_session_id)
+        self.assertEqual(second.state, 'active')
+
+    def test_create_for_user_does_not_rotate_other_stable_device_uid(self):
+        user = self._create_mobile_user('other-device-lifecycle-32d@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'ft-android-device-a-32d',
+            'device_name': 'Android A',
+            'platform': 'android',
+        })['session']
+        second = Session.create_for_user(user, {
+            'device_uid': 'ft-android-device-b-32d',
+            'device_name': 'Android B',
+            'platform': 'android',
+        })['session']
+
+        first.invalidate_recordset(['state', 'rotated_to_session_id'])
+        second.invalidate_recordset(['state'])
+
+        self.assertEqual(first.state, 'active')
+        self.assertFalse(first.rotated_to_session_id)
+        self.assertEqual(second.state, 'active')

@@ -212,3 +212,26 @@ Non inclus en Patch32B :
 Ces sujets sont reportés à un patch lifecycle dédié après stabilisation du `device_install_uid` côté Flutter.
 
 <!-- PATCH32B_SESSION_LIFECYCLE_BOUNDARY_END -->
+
+<!-- PATCH32D_BACKEND_SESSION_LIFECYCLE_START -->
+
+## Patch32D — Lifecycle session après OTP login avec device stable
+
+Patch32D corrige le comportement futur des sessions créées par OTP login lorsque le mobile envoie un `device_uid` stable issu de Patch32C.
+
+Décision retenue :
+
+- un login OTP continue de créer une nouvelle ligne `acpec.mobile.session` pour garder une trace d’audit claire ;
+- si `device_uid` est stable au format `ft-*`, les anciennes sessions actives du même couple `user_id + device_uid` sont passées en `rotated` ;
+- `rotated_to_session_id` pointe vers la nouvelle session active ;
+- aucune fenêtre de grâce refresh n’est accordée aux anciennes sessions rotatées par OTP login ;
+- les anciens placeholders non fiables comme `flutter-android-local` restent exclus de cette rotation automatique.
+
+Limites assumées :
+
+- pas de nettoyage global automatique des anciennes sessions historiques ;
+- pas de réutilisation de la même ligne session ;
+- pas d’héritage automatique du trust device après OTP login ;
+- le refresh token garde sa logique existante de rotation avec grâce contrôlée.
+
+<!-- PATCH32D_BACKEND_SESSION_LIFECYCLE_END -->
