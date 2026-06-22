@@ -48,16 +48,18 @@ String localMrDigitsFromFull(String phoneFull) {
   return d;
 }
 
-/// Pour login : accepte « 45000003 », « +222 45 00 00 03 », etc.
+/// Pour login mobile FuelToken : retourne toujours 8 chiffres locaux.
+/// Tolère une saisie accidentelle avec +222/222, mais ne la propage jamais.
 String normalizePhoneIdentifierForLookup(String raw) {
   final t = raw.trim();
   if (t.contains('@')) return t.toLowerCase();
+
   var d = t.replaceAll(RegExp(r'\D'), '');
   if (d.startsWith('222')) {
     d = d.substring(3);
   }
   if (kMrLocalPhoneDigits.hasMatch(d)) {
-    return '$kMauritaniaPhonePrefix$d';
+    return d;
   }
   return t.replaceAll(' ', '');
 }

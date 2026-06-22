@@ -45,15 +45,15 @@ class AuthRepository {
     if (t.contains('@')) return t.toLowerCase();
 
     // Doctrine Mauritanie UI/cache : l'utilisateur manipule toujours 8 chiffres.
-    // Les préfixes techniques (+222 / 222) sont ajoutés seulement côté SMS/API si besoin.
-    final digits = t.replaceAll(RegExp(r'\\D'), '');
+    // Aucun préfixe +222 n'est utilisé pour le login mobile FuelToken.
+    final digits = t.replaceAll(RegExp(r'\D'), '');
     if (digits.length == 8) return digits;
     if (digits.length == 11 && digits.startsWith('222')) {
       return digits.substring(3);
     }
 
     final normalized = normalizePhoneIdentifierForLookup(t);
-    final normalizedDigits = normalized.replaceAll(RegExp(r'\\D'), '');
+    final normalizedDigits = normalized.replaceAll(RegExp(r'\D'), '');
     if (normalizedDigits.length == 8) return normalizedDigits;
     if (normalizedDigits.length == 11 && normalizedDigits.startsWith('222')) {
       return normalizedDigits.substring(3);
@@ -64,9 +64,18 @@ class AuthRepository {
 
   String _cacheIdentifierForUser(AppUser user) {
     final phone = user.phone.trim();
-    if (_isUsableIdentifier(phone)) return _cacheIdentifier(phone);
-    final email = user.email.trim();
-    if (_isUsableIdentifier(email)) return _cacheIdentifier(email);
+    if (!_isUsableIdentifier(phone)) return '';
+
+    final localDigits = localMrDigitsFromFull(phone);
+    if (kMrLocalPhoneDigits.hasMatch(localDigits)) {
+      return localDigits;
+    }
+
+    final cached = _cacheIdentifier(phone);
+    if (kMrLocalPhoneDigits.hasMatch(cached)) {
+      return cached;
+    }
+
     return '';
   }
 
@@ -133,7 +142,10 @@ class AuthRepository {
         ),
       );
       _current = user;
-      await LoginSessionCache.saveLastIdentifier(_cacheIdentifier(identifier));
+      final cachedIdentifier = _cacheIdentifierForUser(user);
+      if (cachedIdentifier.isNotEmpty) {
+        await LoginSessionCache.saveLastIdentifier(cachedIdentifier);
+      }
       return user;
     } catch (e) {
       throw Exception(ErrorPresenter.message(e));
@@ -251,7 +263,10 @@ class AuthRepository {
         _users.add(user);
       }
       _current = user;
-      await LoginSessionCache.saveLastIdentifier(_cacheIdentifier(identifier));
+      final cachedIdentifier = _cacheIdentifierForUser(user);
+      if (cachedIdentifier.isNotEmpty) {
+        await LoginSessionCache.saveLastIdentifier(cachedIdentifier);
+      }
       return user;
     } catch (e) {
       throw Exception(ErrorPresenter.message(e));

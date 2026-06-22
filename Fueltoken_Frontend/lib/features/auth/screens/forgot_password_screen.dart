@@ -40,7 +40,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   String get _phoneFull =>
-      fullMrPhoneFromLocal8(_phoneLocal.text.replaceAll(RegExp(r'\D'), ''));
+      _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;

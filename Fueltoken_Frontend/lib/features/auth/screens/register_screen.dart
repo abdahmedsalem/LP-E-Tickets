@@ -48,7 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String get _phoneFull =>
-      fullMrPhoneFromLocal8(_phoneLocal.text.replaceAll(RegExp(r'\D'), ''));
+      _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
 
   Future<void> _onCreateAccount() async {
     if (!_formKey.currentState!.validate()) return;
