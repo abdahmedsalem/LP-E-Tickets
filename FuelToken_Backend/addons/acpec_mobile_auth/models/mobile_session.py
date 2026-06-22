@@ -17,6 +17,26 @@ class AcpecMobileSession(models.Model):
     user_id = fields.Many2one('res.users', required=True, index=True, ondelete='cascade')
     partner_id = fields.Many2one('res.partner', related='user_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='user_id.company_id', store=True, readonly=True, index=True)
+    mobile_phone = fields.Char(
+        string='Téléphone mobile',
+        compute='_compute_mobile_identity_fields',
+        store=True,
+        readonly=True,
+        index=True,
+    )
+    mobile_user_label = fields.Char(
+        string='Utilisateur mobile',
+        compute='_compute_mobile_identity_fields',
+        store=True,
+        readonly=True,
+        index=True,
+    )
+    is_device_approval_candidate = fields.Boolean(
+        string='Device à approuver',
+        readonly=True,
+        copy=False,
+        index=True,
+    )
     access_token_hash = fields.Char(required=True, index=True, copy=False)
     refresh_token_hash = fields.Char(required=True, index=True, copy=False)
     device_uid = fields.Char(index=True)
@@ -31,9 +51,9 @@ class AcpecMobileSession(models.Model):
     ip_address = fields.Char()
     user_agent = fields.Char()
     device_trust_state = fields.Selection([
-        ('pending_trust', 'Pending Trust'),
-        ('trusted', 'Trusted'),
-        ('blocked', 'Blocked'),
+        ('pending_trust', 'En attente'),
+        ('trusted', 'Approuvé'),
+        ('blocked', 'Bloqué'),
     ], default='pending_trust', required=True, index=True, tracking=True)
     device_trusted_at = fields.Datetime(readonly=True, copy=False)
     device_blocked_at = fields.Datetime(readonly=True, copy=False)
@@ -67,13 +87,141 @@ class AcpecMobileSession(models.Model):
         'Refresh token hash must be unique.',
     )
 
+    @api.depends(
+        'user_id',
+        'user_id.name',
+        'user_id.login',
+        'user_id.mobile_phone',
+        'user_id.phone',
+        'user_id.partner_id',
+        'user_id.partner_id.name',
+        'user_id.partner_id.phone',
+    )
+    def _compute_mobile_identity_fields(self):
+        for session in self:
+            user = session.user_id
+            partner = user.partner_id if user else self.env['res.partner']
+            login = (user.login or '').strip() if user else ''
+
+            mobile_phone = (
+                user.mobile_phone
+                or user.phone
+                or partner.phone
+                or (login if login.isdigit() else False)
+            ) if user else False
+
+            user_name = (
+                user.name
+                or partner.name
+                or login
+            ) if user else ''
+
+            user_name = (user_name or '').strip()
+            mobile_phone = (mobile_phone or '').strip()
+
+            session.mobile_phone = mobile_phone or False
+
+            if user_name and mobile_phone:
+                session.mobile_user_label = '%s - %s' % (user_name, mobile_phone)
+            else:
+                session.mobile_user_label = user_name or mobile_phone or False
+
+    @api.model
+    def _device_approval_candidate_base_domain(self):
+        return [
+            ('device_trust_state', '=', 'pending_trust'),
+            ('state', '=', 'active'),
+            ('device_uid', '!=', False),
+            ('device_uid', '!=', ''),
+            ('user_id.mobile_only', '=', True),
+            ('user_id.mobile_state', '=', 'approved'),
+        ]
+
+    def _device_approval_candidate_keys(self):
+        keys = set()
+        for session in self:
+            if session.user_id and session.device_uid:
+                keys.add((session.user_id.id, session.device_uid))
+        return keys
+
+    @api.model
+    def _sync_device_approval_candidates(self, keys=None):
+        Session = self.sudo()
+
+        if keys is None:
+            sessions = Session.search([
+                ('device_uid', '!=', False),
+                ('device_uid', '!=', ''),
+                ('user_id', '!=', False),
+            ])
+            keys = sessions._device_approval_candidate_keys()
+
+        keys = {key for key in (keys or set()) if key and key[0] and key[1]}
+
+        for user_id, device_uid in keys:
+            scoped_domain = [
+                ('user_id', '=', user_id),
+                ('device_uid', '=', device_uid),
+            ]
+            scoped = Session.search(scoped_domain)
+
+            latest_active = Session.search(
+                scoped_domain + [
+                    ('state', '=', 'active'),
+                    ('device_uid', '!=', False),
+                    ('device_uid', '!=', ''),
+                    ('user_id.mobile_only', '=', True),
+                    ('user_id.mobile_state', '=', 'approved'),
+                ],
+                order='create_date desc, id desc',
+                limit=1,
+            )
+
+            candidate = latest_active if (
+                latest_active
+                and latest_active.device_trust_state == 'pending_trust'
+            ) else Session.browse()
+
+            to_clear = scoped.filtered(
+                lambda session: session.is_device_approval_candidate and session != candidate
+            )
+            if to_clear:
+                to_clear.with_context(skip_device_approval_candidate_sync=True).write({
+                    'is_device_approval_candidate': False,
+                })
+
+            if candidate and not candidate.is_device_approval_candidate:
+                candidate.with_context(skip_device_approval_candidate_sync=True).write({
+                    'is_device_approval_candidate': True,
+                })
+
     @api.model_create_multi
     def create(self, vals_list):
         sequence = self.env['ir.sequence']
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = sequence.next_by_code('acpec.mobile.session') or 'New'
-        return super().create(vals_list)
+        sessions = super().create(vals_list)
+        sessions._sync_device_approval_candidates(sessions._device_approval_candidate_keys())
+        return sessions
+
+    def write(self, vals):
+        tracked_fields = {
+            'user_id',
+            'device_uid',
+            'state',
+            'device_trust_state',
+        }
+        should_sync = bool(tracked_fields.intersection(vals))
+        keys_before = self._device_approval_candidate_keys() if should_sync else set()
+
+        result = super().write(vals)
+
+        if should_sync and not self.env.context.get('skip_device_approval_candidate_sync'):
+            keys_after = self._device_approval_candidate_keys()
+            self._sync_device_approval_candidates(keys_before | keys_after)
+
+        return result
 
     @api.model
     def _hash_token(self, token):
@@ -345,7 +493,7 @@ class AcpecMobileSession(models.Model):
                 'device_blocked_at': False,
             })
             session.message_post(
-                body='Device mobile marqué trusted par %s. Device UID: %s'
+                body='Device mobile approuvé par %s. Device UID: %s'
                 % (self.env.user.display_name, session.device_uid)
             )
         return True
@@ -373,7 +521,7 @@ class AcpecMobileSession(models.Model):
                 'device_blocked_at': False,
             })
             session.message_post(
-                body='Confiance device réinitialisée par %s. Device UID: %s'
+                body='Confiance device remise en attente par %s. Device UID: %s'
                 % (self.env.user.display_name, session.device_uid or 'n/a')
             )
         return True

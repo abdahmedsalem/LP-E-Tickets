@@ -334,3 +334,24 @@ Si l'utilisateur a un rôle sensible station/manager et dépasse max_sensitive_r
 - blocage device révoque sessions ;
 - dépassement max_active_devices_per_user bloque nouvel enrôlement ou impose back-office.
 ```
+
+<!-- PATCH32B_DEVICE_TRUST_BACKOFFICE_UX_START -->
+
+## Patch32B — Back-office Device Trust UX
+
+Patch32B améliore uniquement l’ergonomie back-office de la file **Devices à approuver**.
+
+Doctrine de la worklist :
+
+- une session candidate doit être active ;
+- elle doit être en `pending_trust` ;
+- elle doit porter un `device_uid` non vide ;
+- elle doit être liée à un utilisateur `mobile_only` ;
+- elle doit être liée à un utilisateur mobile `approved` ;
+- une seule candidate est conservée par couple `user_id + device_uid` ;
+- la candidate est la dernière session active du couple, uniquement si cette dernière est encore en `pending_trust` ;
+- si la dernière session active est `trusted` ou `blocked`, aucune ancienne session `pending_trust` du même couple ne doit rester candidate.
+
+Cette worklist ne remplace pas encore un vrai modèle stable `acpec.mobile.device`.
+
+<!-- PATCH32B_DEVICE_TRUST_BACKOFFICE_UX_END -->

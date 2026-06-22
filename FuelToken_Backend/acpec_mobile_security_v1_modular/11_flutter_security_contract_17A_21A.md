@@ -146,3 +146,19 @@ Les modèles runtime qui stockent désormais request_hash :
 - acpec.fuel.qr
 - acpec.fuel.carnet.transfer
 - acpec.fuel.transaction
+
+<!-- PATCH32C_FLUTTER_DEVICE_INSTALL_UID_PREP_START -->
+
+## Suite prévue après Patch32B — `device_install_uid` Flutter
+
+Patch32B ne doit pas bâtir une politique de trust forte sur les valeurs temporaires `flutter-android-local`, `flutter-web-local` ou équivalentes.
+
+Suite prévue :
+
+- Patch32C côté Flutter : générer un `device_install_uid` stable par installation mobile ;
+- stocker cet identifiant localement ;
+- prévoir un reset debug pour faciliter les tests avec un seul téléphone ;
+- envoyer cet identifiant aux flux OTP, refresh et appels API utiles ;
+- seulement après cela, durcir le backend autour d’un cycle device/session plus propre.
+
+<!-- PATCH32C_FLUTTER_DEVICE_INSTALL_UID_PREP_END -->
