@@ -861,6 +861,12 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'confirmed_at': fields.Datetime.to_string(transfer.confirmed_at) if transfer.confirmed_at else False,
             'note': transfer.note or False,
             'lines': [{
+                'face_line_id': line.face_line_id.id,
+                'dest_face_line_id': line.dest_face_line_id.id if line.dest_face_line_id else False,
+                'carnet_no': line.face_line_id.carnet_no,
+                'carnet_short_code': line.face_line_id.carnet_short_code,
+                'lot_short_code': line.face_line_id.lot_short_code,
+                'carnet_sequence': line.face_line_id.carnet_sequence,
                 'carnet_type_code': line.carnet_type_id.code,
                 'carnet_type_name': line.carnet_type_id.name,
                 'face_value': line.face_value,
