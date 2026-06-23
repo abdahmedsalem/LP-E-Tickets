@@ -21,6 +21,21 @@ class MobileSensitiveActionError(AccessError):
         self.acpec_debug_reason = debug_reason or public_message
 
 
+class MobileSignupNotAllowedError(ValidationError):
+    """Refus signup/register non énumérant.
+
+    Le message public reste générique. La raison technique est conservée
+    pour l'audit interne et peut être exposée publiquement seulement via
+    debug_reason lorsque le runtime public-auth debug l'autorise.
+    """
+
+    def __init__(self, debug_reason, company=False, public_debug_reason=False):
+        super().__init__(debug_reason)
+        self.acpec_debug_reason = debug_reason or 'mobile_signup_not_allowed'
+        self.acpec_company = company
+        self.acpec_public_debug_reason = public_debug_reason or False
+
+
 class AcpecMobileAuthApiCommon(http.Controller):
 
     EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -132,6 +147,10 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if isinstance(exc, MobileAuthRateLimitError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('RATE_LIMITED', str(exc))
+        if isinstance(exc, MobileSignupNotAllowedError):
+            _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
+            public_debug_reason = exc.acpec_public_debug_reason or self._public_auth_debug_reason(exc)
+            return self._public_signup_not_allowed_response(debug_reason=public_debug_reason)
         if isinstance(exc, ValidationError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('VALIDATION_ERROR', str(exc))
@@ -194,6 +213,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         debug_reason=False,
         user=False,
         session=False,
+        company=False,
         params=False,
         severity='warning',
         success=False,
@@ -210,6 +230,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
             user = user.sudo() if user and user.exists() else False
             session = session.sudo() if session and session.exists() else False
+            company = company.sudo() if company and company.exists() else False
 
             audit_public_message = public_message
             if audit_public_message is False:
@@ -223,7 +244,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 debug_reason=debug_reason or False,
                 user_id=user.id if user else False,
                 partner_id=user.partner_id.id if user and user.partner_id else False,
-                company_id=user.company_id.id if user and user.company_id else False,
+                company_id=(user.company_id.id if user and user.company_id else (company.id if company else False)),
                 session_id=session.id if session else False,
                 device_uid=session.device_uid if session else False,
                 device_name=session.device_name if session else False,
@@ -411,6 +432,66 @@ class AcpecMobileAuthApiCommon(http.Controller):
             _('Impossible de finaliser l’inscription avec ces informations.'),
         ), debug_reason=debug_reason)
 
+    def _audit_mobile_signup_denial(
+        self, *,
+        debug_reason,
+        params=False,
+        company=False,
+        public_debug_reason=False,
+    ):
+        """Audit internal signup/register denial without raising afterward.
+
+        Important: callers must use this from controller except/return paths,
+        not from inside savepoints followed by raise, otherwise the audit row
+        can be lost by rollback.
+        """
+        public_message = _('Impossible de finaliser l’inscription avec ces informations.')
+        company = company.sudo() if company and company.exists() else False
+        self._log_mobile_security_audit_event(
+            event_type='mobile_signup_not_allowed',
+            severity='warning',
+            code='SIGNUP_NOT_ALLOWED',
+            purpose='register',
+            public_message=public_message,
+            debug_reason=debug_reason or public_debug_reason or 'mobile_signup_not_allowed',
+            company=company,
+            params=params,
+            success=False,
+            blocked=True,
+            target_model='res.company' if company else False,
+            target_res_id=company.id if company else False,
+            business_ref=company.display_name if company else False,
+        )
+
+    def _mobile_signup_not_allowed_response(
+        self,
+        exc=False,
+        *,
+        params=False,
+        company=False,
+        debug_reason=False,
+        public_debug_reason=False,
+    ):
+        """Log internal technical denial then return generic public payload."""
+        if exc:
+            debug_reason = getattr(exc, 'acpec_debug_reason', False) or str(exc)
+            company = company or getattr(exc, 'acpec_company', False)
+            public_debug_reason = (
+                getattr(exc, 'acpec_public_debug_reason', False)
+                or public_debug_reason
+                or self._public_auth_debug_reason(exc)
+            )
+
+        self._audit_mobile_signup_denial(
+            debug_reason=debug_reason,
+            params=params,
+            company=company,
+            public_debug_reason=public_debug_reason,
+        )
+        return self._public_signup_not_allowed_response(
+            debug_reason=public_debug_reason or self._public_auth_debug_reason(Exception(debug_reason or ''))
+        )
+
     def _mobile_manager_guard(self):
         """Guard for JSON-RPC mobile admin/manager routes.
 
@@ -480,7 +561,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if not company:
             raise ValidationError(_('Company not found.'))
         if not company.acpec_mobile_auth_enabled:
-            raise ValidationError(_('This company does not accept mobile application registration.'))
+            raise MobileSignupNotAllowedError(
+                _('This company does not accept mobile application registration.'),
+                company=company,
+                public_debug_reason='signup_not_allowed',
+            )
         return company
 
     def _validate_secret_code(self, secret_code):
@@ -560,7 +645,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         existing_user = user_model.search(user_domain, limit=1)
         if existing_user:
-            raise ValidationError(_('A mobile account already exists for this identifier.'))
+            raise MobileSignupNotAllowedError(
+                _('A mobile account already exists for this identifier.'),
+                company=company,
+                public_debug_reason='account_exists',
+            )
 
         partner_vals = {
             'name': name,

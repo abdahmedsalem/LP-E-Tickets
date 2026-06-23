@@ -2,7 +2,7 @@ from odoo import http, _, fields
 from odoo.http import request
 from odoo.exceptions import AccessError, ValidationError
 
-from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
+from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon, MobileSignupNotAllowedError
 
 
 class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
@@ -31,7 +31,11 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     ('mobile_phone', '=', identifier_vals['phone']),
                 ], limit=1)
                 if existing_user:
-                    return self._public_signup_not_allowed_response(debug_reason='account_exists')
+                    return self._mobile_signup_not_allowed_response(
+                        params=kwargs,
+                        debug_reason='A mobile account already exists for this identifier.',
+                        public_debug_reason='account_exists',
+                    )
 
             try:
                 challenge, code = request.env['acpec.mobile.auth.otp'].sudo().request_otp(
@@ -42,7 +46,11 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             except AccessError as exc:
                 debug_reason = self._public_auth_debug_reason(exc)
                 if purpose == 'register':
-                    return self._public_signup_not_allowed_response(debug_reason=debug_reason)
+                    return self._mobile_signup_not_allowed_response(
+                        params=kwargs,
+                        debug_reason=str(exc),
+                        public_debug_reason=debug_reason,
+                    )
                 return self._public_otp_request_accepted_response(debug_reason=debug_reason)
             data = {
                 'challenge_id': challenge.id,
@@ -137,7 +145,10 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 if not secret_code:
                     return self._error_response('SECRET_CODE_REQUIRED', _('Secret code is required.'))
 
-                company = self._get_company(company_id)
+                try:
+                    company = self._get_company(company_id)
+                except MobileSignupNotAllowedError as exc:
+                    return self._mobile_signup_not_allowed_response(exc, params=kwargs)
                 identifier_vals = self._parse_signup_identifier(challenge.identifier or identifier)
 
                 account_request = False
@@ -153,9 +164,18 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                                 note=note,
                             )
                             challenge.sudo().write({'user_id': user.id})
+                    except MobileSignupNotAllowedError as exc:
+                        return self._mobile_signup_not_allowed_response(
+                            exc,
+                            params=kwargs,
+                            company=company,
+                        )
                     except (AccessError, ValidationError) as exc:
-                        return self._public_signup_not_allowed_response(
-                            debug_reason=self._public_auth_debug_reason(exc)
+                        return self._mobile_signup_not_allowed_response(
+                            params=kwargs,
+                            company=company,
+                            debug_reason=str(exc),
+                            public_debug_reason=self._public_auth_debug_reason(exc),
                         )
                 else:
                     account_request = request.env['acpec.mobile.auth.account.request'].sudo().search([

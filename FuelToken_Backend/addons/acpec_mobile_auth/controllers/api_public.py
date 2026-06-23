@@ -2,7 +2,7 @@ from odoo import http, _, fields
 from odoo.http import request
 from odoo.exceptions import AccessError
 
-from .api_common import AcpecMobileAuthApiCommon
+from .api_common import AcpecMobileAuthApiCommon, MobileSignupNotAllowedError
 
 
 
@@ -51,7 +51,10 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             identifier_vals = self._parse_signup_identifier(signup_identifier)
             self._validate_secret_code(secret_code)
-            company = self._get_company(company_id)
+            try:
+                company = self._get_company(company_id)
+            except MobileSignupNotAllowedError as exc:
+                return self._mobile_signup_not_allowed_response(exc, params=kwargs)
 
             if identifier_vals['signup_identifier_type'] == 'phone':
                 request.env['acpec.mobile.auth.otp'].sudo()._check_request_rate_limits(
@@ -68,7 +71,12 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             existing_user = request.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
             if existing_user:
-                return self._public_signup_not_allowed_response(debug_reason='account_exists')
+                return self._mobile_signup_not_allowed_response(
+                    params=kwargs,
+                    company=company,
+                    debug_reason='A mobile account already exists for this identifier.',
+                    public_debug_reason='account_exists',
+                )
 
             data = {
                 'name': name,
@@ -87,8 +95,11 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                         request_ip=self._request_ip(),
                     )
                 except AccessError as exc:
-                    return self._public_signup_not_allowed_response(
-                        debug_reason=self._public_auth_debug_reason(exc)
+                    return self._mobile_signup_not_allowed_response(
+                        params=kwargs,
+                        company=company,
+                        debug_reason=str(exc),
+                        public_debug_reason=self._public_auth_debug_reason(exc),
                     )
                 data.update({
                     'otp_challenge_id': challenge.id,
