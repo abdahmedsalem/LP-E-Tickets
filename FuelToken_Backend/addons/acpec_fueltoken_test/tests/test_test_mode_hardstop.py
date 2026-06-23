@@ -9,19 +9,24 @@ from odoo.addons.acpec_fueltoken_test.tools.test_mode import (
 
 
 @tagged('post_install', '-at_install')
-class TestFuelTokenTestModeHardStop(TransactionCase):
+class TestFuelTokenTestModeGate(TransactionCase):
 
-    def test_fueltoken_test_mode_rejects_production_runtime(self):
+    def test_fueltoken_test_mode_is_false_in_production_even_with_dev_flag(self):
         with patch.dict(os.environ, {
             'ACPEC_ENV': 'prod',
-            'ACPEC_FUELTOKEN_TEST_MODE': '1',
+            'ODOO_ENV': '',
+            'ENV': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
+            'ACPEC_FUELTOKEN_TEST_MODE': '',
         }, clear=False):
-            with self.assertRaises(RuntimeError):
-                is_fueltoken_test_mode_enabled()
+            self.assertFalse(is_fueltoken_test_mode_enabled())
 
-    def test_fueltoken_test_mode_can_be_enabled_outside_production(self):
+    def test_fueltoken_test_mode_can_be_enabled_by_explicit_dev_gate(self):
         with patch.dict(os.environ, {
             'ACPEC_ENV': 'dev',
-            'ACPEC_FUELTOKEN_TEST_MODE': '1',
+            'ODOO_ENV': '',
+            'ENV': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
+            'ACPEC_FUELTOKEN_TEST_MODE': '',
         }, clear=False):
             self.assertTrue(is_fueltoken_test_mode_enabled())

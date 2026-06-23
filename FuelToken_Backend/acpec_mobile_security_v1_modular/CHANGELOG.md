@@ -1,5 +1,16 @@
 # Changelog
 
+## Patch36A - Runtime dev/prod fail-closed
+
+- Ajout du gate unique runtime_allows_dev_relax().
+- Runtime strict par defaut si environnement absent, inconnu ou production.
+- ACPEC_FUELTOKEN_TEST_MODE devient legacy/tripwire readiness, sans effet actif.
+- ACPEC_FUELTOKEN_DEV_MODE=1 n'ouvre le mode dev que si ACPEC_ENV, ODOO_ENV ou ENV vaut local, dev ou test.
+- Odoo --test-enable ne declenche plus le mode dev relax.
+- OTP dev: 000000 accepte uniquement en mode dev explicite, sans exposition publique de otp_dev_code ou dev_otp_code.
+- acpec_fueltoken_test mis en quarantaine: plus d'ecriture de parametres securite, plus d'override OTP.
+- Tests valides: cible 66 tests OK; elargi 227 tests OK.
+- Voir: refonte_runtime_dev_prod_fail_closed_patch36A.md.
 ## 2026-06-19 - clarification portal-type mobile_only après POC terrain
 
 - Maintien explicite de `base.group_portal` comme type Odoo obligatoire pour tout mobile user V1.

@@ -25,7 +25,7 @@ The following parameters accept `0` for local frontend/mobile collaboration and 
 - `acpec_mobile_auth.otp_limit_ip_per_hour`
 - `acpec_mobile_auth.otp_limit_register_ip_per_day`
 
-A zero value is effective only when the runtime is explicitly local/test, for example with `ACPEC_FUELTOKEN_TEST_MODE=1` or Odoo `--test-enable`.
+A zero value is effective only when the explicit dev gate is open: `ACPEC_ENV/ODOO_ENV/ENV=local|dev|test` and `ACPEC_FUELTOKEN_DEV_MODE=1`. Odoo `--test-enable` never opens the dev relax gate by itself.
 
 In production, a zero value falls back to the safe default and does not disable OTP anti-flood protection.
 

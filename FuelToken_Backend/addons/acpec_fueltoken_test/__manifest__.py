@@ -2,7 +2,7 @@
     'name': 'ACPEC FuelToken Test',
     'version': '19.0.1.3.0',
     'summary': 'Console navigateur de test pour les APIs FuelToken',
-    'description': 'Console navigateur locale pour tester les endpoints reels ACPEC Mobile Auth et FuelToken. Les comportements dangereux de test OTP sont inertes sauf si ACPEC_FUELTOKEN_TEST_MODE=1.',
+    'description': 'Console navigateur locale pour tester les endpoints reels ACPEC Mobile Auth et FuelToken. La console suit le gate dev explicite ACPEC_ENV/ODOO_ENV/ENV=local/dev/test + ACPEC_FUELTOKEN_DEV_MODE=1.',
     'category': 'Tools',
     'author': 'ACPEC SARL',
     'website': 'https://acpec.odoorim.com',

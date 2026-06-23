@@ -108,8 +108,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                     'otp_delivery': 'configured_provider',
                 })
                 if request.env['acpec.mobile.security.policy'].sudo().otp_dev_mode_enabled():
-                    data['otp_dev_code'] = code
-                    data['otp_delivery'] = 'dev_response'
+                    data['otp_delivery'] = 'dev_fixed_otp'
             else:
                 return self._error_response(
                     'PHONE_REQUIRED',

@@ -24,8 +24,8 @@ Ce module ne fait pas partie du métier FuelToken. Il sert uniquement de console
 - La console capture automatiquement `access_token` et `refresh_token` après `/verify-otp`. Les routes `/login` et `/password-login` sont conservées comme héritage/dev et ne doivent pas être utilisées comme voie normale.
 - `/login` est conservé comme alias hérité de `/password-login` uniquement pour compatibilité dev/test temporaire. Le login mobile cible reste OTP -> Bearer tokens.
 - Le login mot de passe est désactivé par défaut. Le `secret_code` est désormais un PIN de confirmation mobile, pas un mot de passe Odoo.
-- Le mode OTP dev local n’est activé par ce module que si `ACPEC_FUELTOKEN_TEST_MODE=1` est défini.
-- Même si `acpec_mobile_auth.otp_dev_mode=True` existe en base, le retour API de `otp_dev_code` reste bloqué hors runtime local/test explicitement autorisé.
+- Le mode OTP dev local n’est plus activé par ce module. Il dépend uniquement du gate backend explicite : `ACPEC_ENV/ODOO_ENV/ENV=local|dev|test` + `ACPEC_FUELTOKEN_DEV_MODE=1`.
+- Même si un ancien paramètre `acpec_mobile_auth.otp_dev_mode=True` existe en base, il est legacy et ne déclenche plus le mode dev. Les APIs ne retournent plus le code OTP dev en clair.
 - Les valeurs OTP anti-flood à `0` (`cooldown` et limites) ne sont effectives que dans ce runtime local/test explicitement autorisé.
 - Les achats créés par API sont soumis, mais doivent être validés dans le backend pour générer les carnets disponibles.
 - La consommation station nécessite un utilisateur lié à une station active (`acpec.fuel.station`).
@@ -36,11 +36,11 @@ Ce module est strictement réservé au développement local.
 
 Même si le module est installé, les comportements dangereux de test sont inertes sauf si la variable d’environnement suivante est explicitement activée :
 
-    ACPEC_FUELTOKEN_TEST_MODE=1
+    ACPEC_FUELTOKEN_DEV_MODE=1
 
 Sans cette variable :
 
-- l’OTP local fixe `000000` n’est pas utilisé ;
+- l’OTP dev fixe `000000` n’est pas utilisé ;
 - l’envoi SMS réel n’est pas remplacé ;
 - la validation OTP réelle reste active ;
 - `otp_dev_mode` n’est pas activé par le hook ;

@@ -16,7 +16,7 @@
                             <field name="sms_default_lang"/>
                         </group>
                     </setting>
-                    <setting string="OTP rate limits" help="Protect public OTP/SMS endpoints from abuse. Value 0 disables a limit only in explicit local/test runtime, such as ACPEC_FUELTOKEN_TEST_MODE=1 or --test-enable. In production, 0 falls back to safe defaults.">
+                    <setting string="OTP rate limits" help="Protect public OTP/SMS endpoints from abuse. Value 0 disables a limit only when the explicit dev gate is open: ACPEC_ENV/ODOO_ENV/ENV=local/dev/test + ACPEC_FUELTOKEN_DEV_MODE=1. In strict runtime, 0 falls back to safe defaults.">
                         <group>
                             <field name="otp_limit_identifier_per_minute"/>
                             <field name="otp_limit_identifier_per_day"/>

@@ -54,7 +54,13 @@ class TestSensitiveActionPin(TransactionCase):
         return controller
 
     def _set_security_param(self, key, value):
-        self.env['ir.config_parameter'].sudo().set_param(key, str(value))
+        settings = self.env['acpec.mobile.security.setting'].sudo()
+        settings.search([('key', '=', key)]).unlink()
+        settings.create({
+            'key': key,
+            'value': str(value),
+            'active': True,
+        })
 
     def _expect_access_error_without_savepoint(self, func, *args, **kwargs):
         try:

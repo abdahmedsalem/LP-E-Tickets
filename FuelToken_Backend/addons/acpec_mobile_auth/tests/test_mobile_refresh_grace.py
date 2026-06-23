@@ -37,10 +37,14 @@ class TestMobileRefreshGrace(TransactionCase):
         })
 
     def _set_grace_seconds(self, seconds):
-        self.env['ir.config_parameter'].sudo().set_param(
-            'acpec_mobile_auth.refresh_token_grace_seconds',
-            str(seconds),
-        )
+        settings = self.env['acpec.mobile.security.setting'].sudo()
+        key = 'acpec_mobile_auth.refresh_token_grace_seconds'
+        settings.search([('key', '=', key)]).unlink()
+        settings.create({
+            'key': key,
+            'value': str(seconds),
+            'active': True,
+        })
 
     def test_refresh_token_retry_is_allowed_once_during_grace(self):
         self._set_grace_seconds(30)
@@ -121,8 +125,5 @@ class TestMobileRefreshGrace(TransactionCase):
         self._set_grace_seconds(999)
         self.assertEqual(session_model._refresh_token_grace_seconds(), 120)
 
-        self.env['ir.config_parameter'].sudo().set_param(
-            'acpec_mobile_auth.refresh_token_grace_seconds',
-            'invalid',
-        )
+        self._set_grace_seconds('invalid')
         self.assertEqual(session_model._refresh_token_grace_seconds(), 30)

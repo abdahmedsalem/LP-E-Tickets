@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -51,7 +52,13 @@ class TestMobilePinResetOtp(TransactionCase):
         )
 
     def _set_security_param(self, key, value):
-        self.env['ir.config_parameter'].sudo().set_param(key, str(value))
+        settings = self.env['acpec.mobile.security.setting'].sudo()
+        settings.search([('key', '=', key)]).unlink()
+        settings.create({
+            'key': key,
+            'value': str(value),
+            'active': True,
+        })
 
     def _expect_access_error_without_savepoint(self, func, *args, **kwargs):
         try:
@@ -61,7 +68,17 @@ class TestMobilePinResetOtp(TransactionCase):
         self.fail('AccessError attendu mais non levé.')
 
     def _request_otp_dev(self, user, purpose='reset'):
-        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value='1'):
+        with patch.dict(os.environ, {
+            'ACPEC_ENV': 'dev',
+            'ODOO_ENV': '',
+            'ENV': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
+            'ACPEC_FUELTOKEN_TEST_MODE': '',
+            'SMS_PROVIDER': '',
+            'SMS_VALIDATION_KEY': '',
+            'SMS_TOKEN': '',
+            'SMS_URL': '',
+        }, clear=False):
             return self.env['acpec.mobile.auth.otp'].sudo().request_otp(
                 user.login,
                 purpose=purpose,
@@ -70,7 +87,18 @@ class TestMobilePinResetOtp(TransactionCase):
     def _call_verify_otp(self, **kwargs):
         fake_request = self._fake_request()
         controller = AcpecMobileAuthOtpApi()
-        with patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', fake_request), \
+        with patch.dict(os.environ, {
+            'ACPEC_ENV': 'dev',
+            'ODOO_ENV': '',
+            'ENV': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
+            'ACPEC_FUELTOKEN_TEST_MODE': '',
+            'SMS_PROVIDER': '',
+            'SMS_VALIDATION_KEY': '',
+            'SMS_TOKEN': '',
+            'SMS_URL': '',
+        }, clear=False), \
+             patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', fake_request), \
              patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', fake_request):
             return controller.verify_otp(**kwargs)
 
@@ -104,7 +132,6 @@ class TestMobilePinResetOtp(TransactionCase):
         self._set_security_param('acpec_mobile_auth.mobile_pin_max_attempts', 2)
         self._set_security_param('acpec_mobile_auth.mobile_pin_lock_seconds', 30)
         self._set_security_param('acpec_mobile_auth.mobile_pin_hard_block_attempts', 10)
-        self._set_security_param('acpec_mobile_auth.otp_dev_mode', 'True')
 
         user = self._create_mobile_user()
 

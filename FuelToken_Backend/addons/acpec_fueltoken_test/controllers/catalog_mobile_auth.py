@@ -32,7 +32,7 @@ API_CATALOG_MOBILE_AUTH = [
             'email': 'client.test@example.com',
             'note': 'Inscription mobile locale.',
         },
-        'note': 'Appelle le vrai endpoint signup. secret_code définit le PIN de confirmation mobile, pas le mot de passe Odoo. En local, le module test force l OTP à 000000 et retourne otp_dev_code.',
+        'note': 'Appelle le vrai endpoint signup. secret_code définit le PIN de confirmation mobile, pas le mot de passe Odoo. En mode dev explicite, le backend utilise l OTP fixe 000000 sans retourner le code OTP en clair.',
     },
     {
         'group': 'Mobile Auth',
@@ -73,7 +73,7 @@ API_CATALOG_MOBILE_AUTH = [
             'identifier': '46000099',
             'purpose': 'login',
         },
-        'note': 'Appelle le vrai endpoint request-otp. En local, le module test force l OTP à 000000 et retourne dev_otp_code.',
+        'note': 'Appelle le vrai endpoint request-otp. En mode dev explicite, le backend utilise l OTP fixe 000000 sans retourner le code OTP en clair.',
     },
     {
         'group': 'Mobile Auth OTP',

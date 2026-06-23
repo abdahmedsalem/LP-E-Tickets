@@ -52,19 +52,24 @@ class TestSecretLogHygiene(TransactionCase):
         self.assertIn('validation_key=', redacted)
         self.assertIn('***REDACTED***', redacted)
 
-    def test_otp_dev_runtime_rejects_test_mode_in_production(self):
+    def test_otp_dev_runtime_ignores_legacy_test_mode_in_production(self):
         policy = self.env['acpec.mobile.security.policy'].sudo()
         with patch.dict(os.environ, {
             'ACPEC_ENV': 'prod',
+            'ODOO_ENV': '',
+            'ENV': '',
             'ACPEC_FUELTOKEN_TEST_MODE': '1',
-        }, clear=False):
-            with self.assertRaises(RuntimeError):
-                policy.otp_dev_runtime_allowed()
-
-    def test_otp_dev_runtime_is_disabled_in_production_without_test_mode(self):
-        policy = self.env['acpec.mobile.security.policy'].sudo()
-        with patch.dict(os.environ, {
-            'ACPEC_ENV': 'production',
-            'ACPEC_FUELTOKEN_TEST_MODE': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
         }, clear=False):
             self.assertFalse(policy.otp_dev_runtime_allowed())
+
+    def test_otp_dev_runtime_allows_explicit_dev_gate(self):
+        policy = self.env['acpec.mobile.security.policy'].sudo()
+        with patch.dict(os.environ, {
+            'ACPEC_ENV': 'dev',
+            'ODOO_ENV': '',
+            'ENV': '',
+            'ACPEC_FUELTOKEN_TEST_MODE': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
+        }, clear=False):
+            self.assertTrue(policy.otp_dev_runtime_allowed())
