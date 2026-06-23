@@ -184,6 +184,20 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         payload.update(extra)
         return payload
 
+    def _payload_numeric(self, qr, key="station-qr-use-numeric-key", **extra):
+        payload = {
+            "qr_numeric_code": qr._qr_numeric_code_display(),
+            "action_code": "1234",
+            "idempotency_key": key,
+        }
+        payload.update(extra)
+        return payload
+
+    def _call_check_qr(self, controller, payload):
+        fake_request = SimpleNamespace(env=self.env)
+        with patch.object(api_station_module, "request", fake_request):
+            return controller.check_qr(**payload)
+
     def _call_use_qr(self, controller, payload):
         fake_request = SimpleNamespace(env=self.env)
         with patch.object(api_station_module, "request", fake_request):
@@ -217,6 +231,52 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             ("qr_id", "=", qr.id),
             ("idempotency_key", "=", key),
         ])
+
+    def test_station_qr_check_accepts_qr_numeric_code(self):
+        controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "numeric-check-37a",
+        )
+
+        response = self._call_check_qr(controller, {
+            "qr_numeric_code": qr._qr_numeric_code_display(),
+        })
+
+        self.assertIn(str(qr.id), repr(response))
+        self.assertIn("can_consume", repr(response))
+        self.assertIn("True", repr(response))
+
+    def test_station_qr_use_accepts_qr_numeric_code(self):
+        controller, _station_user, station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "numeric-use-37a",
+        )
+        key = "station-qr-numeric-use-37a"
+
+        response = self._call_use_qr(
+            controller,
+            self._payload_numeric(qr, key=key),
+        )
+
+        txs = self._tx_by_key(qr, key)
+        self.assertEqual(len(txs), 1)
+        tx = txs
+        self.assertIn(str(tx.id), repr(response))
+        self.assertEqual(tx.station_id.id, station.id)
+
+        qr.invalidate_recordset(["state", "consumed_station_id"])
+        self.assertEqual(qr.state, "consumed")
+        self.assertEqual(qr.consumed_station_id.id, station.id)
+
+    def test_station_qr_rejects_mixed_public_and_numeric_code(self):
+        controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "numeric-mixed-37a",
+        )
+        payload = self._payload_numeric(qr, key="station-qr-numeric-mixed-37a")
+        payload["public_code"] = qr.public_code
+
+        response = self._call_use_qr(controller, payload)
+
+        self._assert_error_contains(response, "QR graphique")
+        self.assertFalse(self._tx_by_key(qr, "station-qr-numeric-mixed-37a"))
 
     def test_station_qr_use_requires_action_code_only(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(

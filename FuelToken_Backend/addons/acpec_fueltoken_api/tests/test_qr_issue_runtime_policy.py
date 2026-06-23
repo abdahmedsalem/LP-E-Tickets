@@ -242,6 +242,10 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         self.assertEqual(qrs.state, "active")
         self.assertEqual(qrs.face_qty_total, 2)
         self.assertTrue(qrs.request_hash)
+        self.assertTrue(qrs.qr_numeric_code_hash)
+        self.assertRegex(qrs._qr_numeric_code_display(), r'^\d{4}-\d{4}-\d{4}$')
+        self.assertIn(qrs._qr_numeric_code_display(), repr(first_response))
+        self.assertNotIn(qrs.qr_numeric_code_hash, repr(first_response))
 
         face_line.invalidate_recordset(["qty_available"])
         self.assertEqual(face_line.qty_available, face_line.qty_initial - 2)

@@ -18,6 +18,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         return request.env['acpec.fuel.wallet'].sudo().get_or_create(user.partner_id, user.company_id)
 
     def _qr_payload(self, qr):
+        qr._ensure_qr_numeric_code_hash()
         grouped = {}
         for line in qr.line_ids:
             key = str(line.face_value)
@@ -26,6 +27,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'id': qr.id,
             'name': qr.name,
             'public_code': qr.public_code,
+            'qr_numeric_code': qr._qr_numeric_code_display(),
             'state': qr.state,
             'amount_total': qr.amount_total,
             'face_qty_total': qr.face_qty_total,
