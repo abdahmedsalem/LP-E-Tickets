@@ -65,6 +65,15 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             'agent_count': len(agents),
         }
 
+    def _resolve_qr_from_payload(self, params):
+        qr = request.env['acpec.fuel.qr'].sudo().resolve_qr_reference(
+            public_code=(params or {}).get('public_code'),
+            qr_numeric_code=(params or {}).get('qr_numeric_code'),
+        )
+        if not qr:
+            raise ValidationError(_('QR introuvable.'))
+        return qr
+
     def _qr_check_payload(self, qr, station):
         can_consume = True
         reason = False
@@ -105,11 +114,8 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/station/qr/check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def check_qr(self, **kwargs):
         try:
-            self._require_keys(kwargs, ['public_code'])
             station, user = self._station_user()
-            qr = request.env['acpec.fuel.qr'].sudo().search([('public_code', '=', kwargs.get('public_code'))], limit=1)
-            if not qr:
-                raise ValidationError(_('QR introuvable.'))
+            qr = self._resolve_qr_from_payload(kwargs)
             with request.env.cr.savepoint():
                 qr._lock_records()
                 qr.invalidate_recordset()
@@ -121,13 +127,13 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/station/qr/use', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def use_qr(self, **kwargs):
         try:
-            self._require_keys(kwargs, ['public_code'])
             station, user = self._trusted_station_user(kwargs, purpose='station_qr_use')
             idempotency_key = self._require_idempotency_key(kwargs, purpose='station_qr_use')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_qr_use')
-            qr = request.env['acpec.fuel.qr'].sudo().search([('public_code', '=', kwargs.get('public_code'))], limit=1)
-            if not qr:
-                raise ValidationError(_('QR introuvable.'))
+            qr = self._resolve_qr_from_payload(kwargs)
+            request_hash_params = dict(kwargs)
+            request_hash_params['public_code'] = qr.public_code
+            request_hash_params.pop('qr_numeric_code', None)
+            request_hash = self._compute_idempotency_request_hash(request_hash_params, purpose='station_qr_use')
             tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
             return self._json_response({
                 'transaction_id': tx.id,

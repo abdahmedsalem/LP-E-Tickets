@@ -1,3 +1,13 @@
+## Patch37A — Code QR numérique 12 chiffres — 2026-06-23
+
+- Ajout d'une représentation numérique saisissable du QR actif : Code QR numérique.
+- Format utilisateur : 12 chiffres groupés 4-4-4, par exemple 9873-9484-9383.
+- Stockage sécurisé : empreinte du Code QR numérique et paramètre interne non secret, sans stockage du code clair.
+- Payload mobile enrichi avec qr_numeric_code.
+- Endpoints station existants étendus pour accepter public_code ou qr_numeric_code, mais jamais les deux.
+- Consommation toujours centralisée dans acpec.fuel.qr.action_consume_by_station(...).
+- Tests ciblés validés : 19 post-tests, 0 failed, 0 error(s).
+
 # Changelog
 
 ## Patch36A - Runtime dev/prod fail-closed

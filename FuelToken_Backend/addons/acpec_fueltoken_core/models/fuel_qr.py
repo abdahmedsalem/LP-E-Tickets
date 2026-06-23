@@ -1,6 +1,11 @@
+import hashlib
+import hmac
 import logging
+import re
+import secrets
 
 from odoo import api, fields, models, _
+from odoo.tools import config
 from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
@@ -35,15 +40,141 @@ class AcpecFuelQr(models.Model):
     face_qty_total = fields.Integer(string='Faces', compute='_compute_totals', store=True)
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
+    qr_numeric_code_hash = fields.Char(
+        string='Empreinte du Code QR numérique',
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    qr_numeric_code_nonce = fields.Char(
+        string='Paramètre interne du Code QR numérique',
+        readonly=True,
+        copy=False,
+    )
 
     _public_code_unique = models.Constraint(
         'UNIQUE(public_code)',
         'Le code public du QR doit etre unique.',
     )
+    _qr_numeric_code_hash_unique = models.Constraint(
+        'UNIQUE(qr_numeric_code_hash)',
+        'Le Code QR numérique doit etre unique.',
+    )
     _idempotency_wallet_unique = models.Constraint(
         'UNIQUE(wallet_id, idempotency_key)',
         'Cette operation QR existe deja pour ce compte.',
     )
+    QR_NUMERIC_CODE_DIGITS = 12
+    QR_NUMERIC_CODE_GROUP_SIZE = 4
+
+    def _qr_numeric_code_secret(self):
+        secret = (
+            config.get('database.secret')
+            or config.get('admin_passwd')
+            or self.env.cr.dbname
+            or 'acpec-fueltoken'
+        )
+        return str(secret)
+
+    @api.model
+    def _normalize_qr_numeric_code(self, code):
+        digits = re.sub(r'\D', '', str(code or ''))
+        if len(digits) != self.QR_NUMERIC_CODE_DIGITS:
+            return False
+        return digits
+
+    @api.model
+    def _format_qr_numeric_code(self, code):
+        digits = self._normalize_qr_numeric_code(code)
+        if not digits:
+            return False
+        size = self.QR_NUMERIC_CODE_GROUP_SIZE
+        return '-'.join(digits[index:index + size] for index in range(0, len(digits), size))
+
+    @api.model
+    def _new_qr_numeric_code_nonce(self):
+        return secrets.token_hex(8)
+
+    @api.model
+    def _derive_qr_numeric_code_digits(self, public_code, nonce=False):
+        public_code = str(public_code or '').strip()
+        nonce = str(nonce or '').strip()
+        if not public_code:
+            return False
+        secret = self._qr_numeric_code_secret().encode('utf-8')
+        raw = ('qr_numeric_code:%s:%s' % (public_code, nonce)).encode('utf-8')
+        digest = hmac.new(secret, raw, hashlib.sha256).hexdigest()
+        number = int(digest, 16) % (10 ** self.QR_NUMERIC_CODE_DIGITS)
+        return ('%%0%sd' % self.QR_NUMERIC_CODE_DIGITS) % number
+
+    @api.model
+    def _hash_qr_numeric_code(self, code):
+        digits = self._normalize_qr_numeric_code(code)
+        if not digits:
+            return False
+        secret = self._qr_numeric_code_secret().encode('utf-8')
+        raw = ('qr_numeric_code_hash:%s' % digits).encode('utf-8')
+        return hmac.new(secret, raw, hashlib.sha256).hexdigest()
+
+    def _qr_numeric_code_display(self):
+        self.ensure_one()
+        if not self.qr_numeric_code_nonce or not self.qr_numeric_code_hash:
+            self._ensure_qr_numeric_code_hash()
+            self.invalidate_recordset(['qr_numeric_code_nonce', 'qr_numeric_code_hash'])
+        digits = self._derive_qr_numeric_code_digits(self.public_code, self.qr_numeric_code_nonce)
+        return self._format_qr_numeric_code(digits)
+
+    @api.model
+    def _build_unique_qr_numeric_code_values(self, public_code, exclude_id=False):
+        public_code = str(public_code or '').strip()
+        if not public_code:
+            return False, False
+        for _attempt in range(40):
+            nonce = self._new_qr_numeric_code_nonce()
+            digits = self._derive_qr_numeric_code_digits(public_code, nonce)
+            code_hash = self._hash_qr_numeric_code(digits)
+            if not code_hash:
+                continue
+            domain = [('qr_numeric_code_hash', '=', code_hash)]
+            if exclude_id:
+                domain.append(('id', '!=', exclude_id))
+            if not self.sudo().search(domain, limit=1):
+                return nonce, code_hash
+        raise ValidationError(_('Impossible de générer un Code QR numérique unique.'))
+
+    def _ensure_qr_numeric_code_hash(self):
+        for qr in self.sudo():
+            if not qr.public_code:
+                continue
+            if qr.qr_numeric_code_hash and qr.qr_numeric_code_nonce:
+                continue
+            nonce, code_hash = qr._build_unique_qr_numeric_code_values(qr.public_code, exclude_id=qr.id)
+            if code_hash:
+                qr.write({
+                    'qr_numeric_code_nonce': nonce,
+                    'qr_numeric_code_hash': code_hash,
+                })
+        return True
+
+    @api.model
+    def resolve_qr_reference(self, public_code=False, qr_numeric_code=False):
+        public_code = str(public_code or '').strip()
+        qr_numeric_code = str(qr_numeric_code or '').strip()
+
+        if bool(public_code) == bool(qr_numeric_code):
+            raise ValidationError(_('Transmettre soit le QR graphique, soit le Code QR numérique, mais pas les deux.'))
+
+        if public_code:
+            return self.sudo().search([('public_code', '=', public_code)], limit=1)
+
+        digits = self._normalize_qr_numeric_code(qr_numeric_code)
+        if not digits:
+            return self.browse()
+        code_hash = self._hash_qr_numeric_code(digits)
+        if not code_hash:
+            return self.browse()
+        return self.sudo().search([('qr_numeric_code_hash', '=', code_hash)], limit=1)
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -51,6 +182,10 @@ class AcpecFuelQr(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('acpec.fuel.qr') or 'New'
             if not vals.get('public_code'):
                 vals['public_code'] = self._create_unique_public_code(prefix='QR', size=24)
+            if vals.get('public_code') and (not vals.get('qr_numeric_code_hash') or not vals.get('qr_numeric_code_nonce')):
+                nonce, code_hash = self._build_unique_qr_numeric_code_values(vals['public_code'])
+                vals['qr_numeric_code_nonce'] = nonce
+                vals['qr_numeric_code_hash'] = code_hash
         return super().create(vals_list)
 
     @api.depends('line_ids.qty', 'line_ids.face_value', 'line_ids.expires_at')
