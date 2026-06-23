@@ -124,6 +124,8 @@ class AcpecFuelCarnetTransfer(models.Model):
 
         if self.state != 'draft':
             raise UserError(_('Seul un transfert en brouillon peut être confirmé.'))
+        if self.source_wallet_id == self.dest_wallet_id:
+            raise ValidationError(_('Le compte source et le compte destinataire doivent être différents.'))
         if not self.line_ids:
             raise UserError(_('Le transfert doit contenir au moins une ligne.'))
 
@@ -199,26 +201,20 @@ class AcpecFuelCarnetTransfer(models.Model):
                         "(type '%s' : %d faces/carnet, %d faces demandées — non multiple)."
                     ) % (src_face_line.carnet_type_id.code, face_count, qty_to_transfer))
 
-                # 5. Débiter le wallet source
-                # qty_initial est réduit pour maintenir l'invariant de conservation :
-                # qty_initial == qty_available + qty_qr_active + qty_qr_blocked + qty_consumed + qty_expired
-                src_face_line.write({
-                    'qty_initial': src_face_line.qty_initial - qty_to_transfer,
-                    'qty_available': src_face_line.qty_available - qty_to_transfer,
-                })
-
-                # 6. Créditer le wallet destinataire (conserve expiration et lien achat d'origine)
-                dest_face_line = FaceLine.credit_transferred(
-                    dest_wallet=self.dest_wallet_id,
-                    purchase_line=src_face_line.purchase_line_id,
-                    carnet_type=src_face_line.carnet_type_id,
-                    face_value=src_face_line.face_value,
-                    qty=qty_to_transfer,
-                    expires_at=src_face_line.expires_at,
-                )
-
-                # Traçabilité : lier la ligne de transfert à la face_line de destination
-                trf_line.sudo().write({'dest_face_line_id': dest_face_line.id})
+                # 5. Patch34C : transfert intact par deplacement du detenteur courant.
+                # Depuis Patch34A, 1 face_line = 1 carnet. Un transfert intact ne doit donc
+                # plus vider la source et creer une nouvelle face_line destination : cela
+                # dupliquerait l'identite du carnet. On deplace la meme ligne vers le wallet
+                # destinataire et on conserve carnet_no / carnet_short_code / expiration.
+                if qty_to_transfer != src_face_line.qty_initial:
+                    raise ValidationError(_(
+                        "Le transfert de '%s' doit porter sur la totalite du carnet "
+                        "(%d faces demandees, %d faces attendues)."
+                    ) % (
+                        src_face_line.carnet_type_id.code,
+                        qty_to_transfer,
+                        src_face_line.qty_initial,
+                    ))
 
                 src_tx_lines.append({
                     'face_line_id': src_face_line.id,
@@ -228,8 +224,17 @@ class AcpecFuelCarnetTransfer(models.Model):
                     'face_value': src_face_line.face_value,
                     'qty': qty_to_transfer,
                 })
+
+                src_face_line.write({
+                    'wallet_id': self.dest_wallet_id.id,
+                })
+
+                # Compatibilite historique : dest_face_line_id reste renseigne, mais pointe
+                # desormais vers la meme face_line deplacee, pas vers une copie.
+                trf_line.sudo().write({'dest_face_line_id': src_face_line.id})
+
                 dst_tx_lines.append({
-                    'face_line_id': dest_face_line.id,
+                    'face_line_id': src_face_line.id,
                     'purchase_id': src_face_line.purchase_id.id,
                     'purchase_line_id': src_face_line.purchase_line_id.id,
                     'transfer_id': self.id,

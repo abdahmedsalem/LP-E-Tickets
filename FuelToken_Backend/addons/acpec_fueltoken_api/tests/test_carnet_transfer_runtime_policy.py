@@ -287,15 +287,65 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         self.assertEqual(transfer.face_qty_total, carnet_type.face_count)
         self.assertTrue(transfer.request_hash)
 
-        face_line.invalidate_recordset(["qty_initial", "qty_available"])
-        self.assertEqual(face_line.qty_initial, 0)
-        self.assertEqual(face_line.qty_available, 0)
+        face_line.invalidate_recordset(["wallet_id", "qty_initial", "qty_available"])
+        self.assertEqual(face_line.wallet_id.id, dest_wallet.id)
+        self.assertEqual(face_line.qty_initial, carnet_type.face_count)
+        self.assertEqual(face_line.qty_available, carnet_type.face_count)
 
         dest_lines = self._dest_face_line_for_transfer(transfer)
         self.assertEqual(len(dest_lines), 1)
+        self.assertEqual(dest_lines.id, face_line.id)
         self.assertEqual(dest_lines.wallet_id.id, dest_wallet.id)
         self.assertEqual(dest_lines.qty_initial, carnet_type.face_count)
         self.assertEqual(dest_lines.qty_available, carnet_type.face_count)
+
+        tx_lines = txs.mapped("line_ids")
+        self.assertTrue(tx_lines)
+        self.assertEqual(set(tx_lines.mapped("face_line_id").ids), {face_line.id})
+
+    def test_transfer_carnets_moves_same_face_line_identity_to_destination_wallet(self):
+        (
+            controller, _source_user, _source_login, _recipient_user, recipient_login,
+            _session, carnet_type, _purchase, face_line, source_wallet, dest_wallet,
+        ) = self._controller_with_transfer_fixture(24340)
+        key = "carnet-transfer-move-identity-34c"
+        original_face_line_id = face_line.id
+        original_carnet_no = face_line.carnet_no
+        original_carnet_short_code = face_line.carnet_short_code
+        original_qty_initial = face_line.qty_initial
+        original_qty_available = face_line.qty_available
+
+        response = self._call_transfer_carnets(
+            controller,
+            self._payload(recipient_login, face_line, key=key),
+        )
+
+        transfer = self._transfer_by_key(source_wallet, key)
+        self.assertEqual(len(transfer), 1)
+        self.assertIn(str(transfer.id), repr(response))
+
+        face_line.invalidate_recordset([
+            "wallet_id",
+            "carnet_no",
+            "carnet_short_code",
+            "qty_initial",
+            "qty_available",
+        ])
+        self.assertEqual(face_line.id, original_face_line_id)
+        self.assertEqual(face_line.wallet_id.id, dest_wallet.id)
+        self.assertEqual(face_line.carnet_no, original_carnet_no)
+        self.assertEqual(face_line.carnet_short_code, original_carnet_short_code)
+        self.assertEqual(face_line.qty_initial, original_qty_initial)
+        self.assertEqual(face_line.qty_available, original_qty_available)
+
+        dest_lines = self._dest_face_line_for_transfer(transfer)
+        self.assertEqual(dest_lines.id, original_face_line_id)
+
+        source_remaining = self.env["acpec.fuel.face.line"].sudo().search([
+            ("id", "=", original_face_line_id),
+            ("wallet_id", "=", source_wallet.id),
+        ])
+        self.assertFalse(source_remaining)
 
     def test_transfer_carnets_rejects_same_key_with_different_payload(self):
         (

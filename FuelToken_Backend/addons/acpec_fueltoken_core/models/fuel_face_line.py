@@ -131,7 +131,7 @@ class AcpecFuelFaceLine(models.Model):
 
             if requested_face_line_id:
                 if requested_face_line_id in seen_explicit_face_line_ids:
-                    raise ValidationError(_('Un carnet ne peut apparaitre qu'une seule fois dans un meme QR.'))
+                    raise ValidationError(_("Un carnet ne peut apparaitre qu'une seule fois dans un meme QR."))
                 seen_explicit_face_line_ids.add(requested_face_line_id)
 
                 self.env.cr.execute(
