@@ -17,12 +17,14 @@ class RegisterOtpRouteArgs {
     required this.name,
     required this.phoneFull,
     required this.pin,
+    required this.companyId,
     this.challengeId,
   });
 
   final String name;
   final String phoneFull;
   final String pin;
+  final int companyId;
   final int? challengeId;
 }
 
@@ -70,6 +72,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         code: clean,
         name: widget.args.name,
         pin: widget.args.pin,
+        companyId: widget.args.companyId,
         challengeId: _challengeId,
       );
       final payload = body['data'] is Map
