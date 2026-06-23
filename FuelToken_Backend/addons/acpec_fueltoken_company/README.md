@@ -120,7 +120,7 @@ Elle ne valide pas les utilisateurs mobiles. Les membres non prêts sont signal�
     transfer = distributor.action_distribute_to_member(
         member_partner,
         [
-            {'face_line_id': 10, 'carnet_qty': 2},
+            {'face_line_id': 10, 'carnet_qty': 1},
         ],
         note='Distribution mensuelle',
         idempotency_key='WEB-123',
@@ -199,14 +199,14 @@ Le bouton **Préparer wallets membres** est disponible sur un Compte Société a
 
 Le module `acpec_fueltoken_company` contient uniquement le métier backend société.
 
-Le futur module/espace `FuelToken_WebClient` ou `acpec_fueltoken_company_portal` devra contenir uniquement :
+Le module `acpec_fueltoken_company_portal` existe déjà et doit rester une interface fine appelant le contrat backend Patch34F. Tout futur `FuelToken_WebClient` devra respecter le même contrat et porter uniquement :
 
 - contrôleurs HTTP/JSON web ;
 - pages portail société ;
 - formulaire de distribution ;
 - historique et lecture des soldes.
 
-Il ne doit pas dupliquer les règles de distribution. Il doit appeler les méthodes backend ci-dessus.
+Il ne doit pas dupliquer les règles de distribution. Il doit appeler les méthodes backend ci-dessus. En sélection explicite, il doit envoyer une ligne par carnet avec `face_line_id` et `carnet_qty = 1`.
 
 ## Dépendances
 
@@ -272,6 +272,14 @@ groupes passent donc par la table standard `res_groups_users_rel` pour vérifier
 - l’accès portail standard ;
 - l’absence de groupes internes / mobile / station / back-office ;
 - le statut mobile actif et approuvé des membres avant distribution.
+
+## Patch34F — Contrat Company Portal carnets
+
+- Le futur Company Portal doit utiliser `face_line_id` comme clé technique du carnet source.
+- En sélection explicite portail, une ligne représente un carnet source : `{'face_line_id': X, 'carnet_qty': 1}`.
+- Pour distribuer plusieurs carnets, envoyer plusieurs lignes avec des `face_line_id` différents.
+- Le champ `carnet_qty` reste conservé pour compatibilité backend/wizard, mais le portail ne doit pas l’utiliser pour regrouper plusieurs carnets sur un même `face_line_id`.
+- Le portail ne doit pas créer directement les transferts ni modifier les wallets ; il doit appeler les méthodes backend de distribution.
 
 ## Version 1.4.0 — distribution back-office contrôlée
 

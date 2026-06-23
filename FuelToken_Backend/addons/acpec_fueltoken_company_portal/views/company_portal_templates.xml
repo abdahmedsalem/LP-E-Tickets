@@ -129,7 +129,10 @@
                                     </thead>
                                     <tbody>
                                         <tr t-foreach="ticket_rows" t-as="row">
-                                            <td class="fw-semibold"><span t-esc="row['line'].carnet_type_id.display_name"/></td>
+                                            <td class="fw-semibold">
+                                                <span t-esc="row['line'].carnet_short_code or row['line'].carnet_no or row['line'].id"/>
+                                                <div class="small ft-muted" t-esc="row['line'].carnet_type_id.display_name"/>
+                                            </td>
                                             <td class="text-end"><span t-esc="row['line'].qty_available"/></td>
                                             <td class="text-end"><span t-esc="row['transferable_carnet_count']"/></td>
                                             <td class="text-end"><span t-esc="row['line'].amount_available"/> <span t-esc="row['line'].currency_id.name"/></td>
@@ -613,36 +616,38 @@
                                 </div>
                                 <div t-if="carnet_rows">
                                     <div class="row g-2 fw-semibold small ft-muted px-2 mb-2 d-none d-lg-flex">
-                                        <div class="col-lg-4">Type de carnet</div>
-                                        <div class="col-lg-3">Stock disponible</div>
-                                        <div class="col-lg-2 text-center">Nombre de carnets</div>
-                                        <div class="col-lg-2 text-end">Montant estimé</div>
+                                        <div class="col-lg-5">Carnet source</div>
+                                        <div class="col-lg-2">Tickets</div>
+                                        <div class="col-lg-2">Expiration</div>
+                                        <div class="col-lg-2 text-end">Montant</div>
                                         <div class="col-lg-1 text-end">Actions</div>
                                     </div>
                                     <div class="ft-lines">
                                         <div class="ft-line-row" t-foreach="distribution_line_slots" t-as="slot" t-att-data-line-index="slot['index']" t-att-style="not slot['visible'] and 'display: none;' or None">
                                             <div class="row g-2 align-items-center">
-                                                <div class="col-lg-4">
-                                                    <select class="form-select ft-carnet-select" t-att-name="'line_%s_carnet_type_id' % slot['index']">
-                                                        <option value="">Choisir un type...</option>
+                                                <div class="col-lg-5">
+                                                    <select class="form-select ft-carnet-select" t-att-name="'line_%s_face_line_id' % slot['index']">
+                                                        <option value="">Choisir un carnet...</option>
                                                         <option t-foreach="carnet_rows" t-as="option"
-                                                                t-att-value="option['carnet_type'].id"
-                                                                t-att-selected="option['carnet_type'].id == slot['carnet_type_id'] and 'selected' or None"
+                                                                t-att-value="option['face_line_id']"
+                                                                t-att-selected="option['face_line_id'] == slot['face_line_id'] and 'selected' or None"
                                                                 t-att-data-face-count="option['face_count']"
-                                                                t-att-data-carnets="option['transferable_carnet_count']"
+                                                                t-att-data-carnets="1"
                                                                 t-att-data-tickets="option['qty_available']"
                                                                 t-att-data-amount-per-carnet="option['amount_per_carnet']"
-                                                                t-att-data-currency="option['currency_name']">
-                                                            <t t-esc="option['carnet_type'].display_name"/>
+                                                                t-att-data-currency="option['currency_name']"
+                                                                t-att-data-expires-at="option['expires_at']">
+                                                            <t t-esc="option['label']"/>
                                                         </option>
                                                     </select>
                                                 </div>
-                                                <div class="col-lg-3">
-                                                    <div class="small fw-semibold"><span class="ft-line-tickets">—</span> tickets disponibles</div>
-                                                    <div class="small ft-muted"><span class="ft-line-carnets">—</span> carnets disponibles</div>
+                                                <div class="col-lg-2">
+                                                    <div class="small fw-semibold"><span class="ft-line-tickets">—</span> tickets</div>
+                                                    <div class="small ft-muted"><span class="ft-line-carnets">—</span> carnet</div>
                                                 </div>
                                                 <div class="col-lg-2">
-                                                    <input type="number" min="0" step="1" class="form-control text-center ft-line-qty" t-att-name="'line_%s_qty' % slot['index']" t-att-value="slot['qty']"/>
+                                                    <div class="small ft-muted ft-line-expires">—</div>
+                                                    <input type="hidden" class="ft-line-qty" value="1"/>
                                                 </div>
                                                 <div class="col-lg-2 text-lg-end fw-semibold">
                                                     <span class="ft-line-amount">0</span> <span class="ft-line-currency" t-esc="selected_distribution_totals['currency_name']"/>
@@ -653,8 +658,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn ft-add-line mt-2 px-3"><i class="fa fa-plus me-2"/>Ajouter une ligne</button>
-                                    <div class="small ft-muted mt-3"><i class="fa fa-info-circle me-1"/>Les stocks sont mis à jour au moment de la validation.</div>
+                                    <button type="button" class="btn ft-add-line mt-2 px-3"><i class="fa fa-plus me-2"/>Ajouter un carnet</button>
+                                    <div class="small ft-muted mt-3"><i class="fa fa-info-circle me-1"/>Chaque ligne correspond à un carnet source individuel. Les stocks sont revérifiés au moment de la validation.</div>
                                 </div>
                             </div>
                         </div>
@@ -736,30 +741,28 @@
         }
         function updateLine(row) {
             var select = row.querySelector('.ft-carnet-select');
-            var qtyInput = row.querySelector('.ft-line-qty');
             var option = select && select.options[select.selectedIndex];
-            var qty = intValue(qtyInput && qtyInput.value);
             if (!option || !option.value) {
                 row.querySelector('.ft-line-tickets').textContent = '—';
                 row.querySelector('.ft-line-carnets').textContent = '—';
                 row.querySelector('.ft-line-amount').textContent = '0';
+                row.querySelector('.ft-line-currency').textContent = currencyFallback;
+                var emptyExpires = row.querySelector('.ft-line-expires');
+                if (emptyExpires) { emptyExpires.textContent = '—'; }
                 return {tickets: 0, carnets: 0, amount: 0, currency: currencyFallback};
             }
-            var maxCarnets = intValue(option.getAttribute('data-carnets'));
-            if (qty > maxCarnets) {
-                qty = maxCarnets;
-                if (qtyInput) { qtyInput.value = String(qty); }
-            }
             var faceCount = intValue(option.getAttribute('data-face-count'));
-            var ticketsAvailable = intValue(option.getAttribute('data-tickets'));
+            var ticketsAvailable = intValue(option.getAttribute('data-tickets')) || faceCount;
             var amountPerCarnet = numberValue(option.getAttribute('data-amount-per-carnet'));
             var currency = option.getAttribute('data-currency') || currencyFallback;
-            var amount = qty * amountPerCarnet;
+            var expiresAt = option.getAttribute('data-expires-at') || '—';
             row.querySelector('.ft-line-tickets').textContent = String(ticketsAvailable);
-            row.querySelector('.ft-line-carnets').textContent = String(maxCarnets);
-            row.querySelector('.ft-line-amount').textContent = fmtAmount(amount);
+            row.querySelector('.ft-line-carnets').textContent = '1';
+            row.querySelector('.ft-line-amount').textContent = fmtAmount(amountPerCarnet);
             row.querySelector('.ft-line-currency').textContent = currency;
-            return {tickets: qty * faceCount, carnets: qty, amount: amount, currency: currency};
+            var expires = row.querySelector('.ft-line-expires');
+            if (expires) { expires.textContent = expiresAt; }
+            return {tickets: ticketsAvailable, carnets: 1, amount: amountPerCarnet, currency: currency};
         }
         function updateTotals() {
             var totals = {tickets: 0, carnets: 0, amount: 0, currency: currencyFallback};
@@ -891,8 +894,8 @@
                     <table class="table align-middle mb-0">
                         <thead>
                             <tr>
+                                <th>Carnet source</th>
                                 <th>Type de carnet</th>
-                                <th class="text-end">Carnets</th>
                                 <th class="text-end">Tickets</th>
                                 <th class="text-end">Montant</th>
                                 <th>Expiration</th>
@@ -900,8 +903,11 @@
                         </thead>
                         <tbody>
                             <tr t-foreach="transfer.line_ids" t-as="line">
+                                <td>
+                                    <span t-esc="line.face_line_id.carnet_short_code or line.face_line_id.carnet_no or line.face_line_id.id"/>
+                                    <div class="small text-muted" t-if="line.face_line_id.carnet_no" t-esc="line.face_line_id.carnet_no"/>
+                                </td>
                                 <td><span t-esc="line.carnet_type_id.display_name"/></td>
-                                <td class="text-end"><span t-esc="line.carnet_qty"/></td>
                                 <td class="text-end"><span t-esc="line.qty_faces"/></td>
                                 <td class="text-end"><span t-esc="line.amount_total"/> <span t-esc="line.currency_id.name"/></td>
                                 <td>
