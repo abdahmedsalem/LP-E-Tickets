@@ -169,6 +169,10 @@
                             <field name="partner_id" readonly="1"/>
                             <field name="purchase_id" readonly="1"/>
                             <field name="purchase_line_id" readonly="1"/>
+                            <field name="carnet_no" readonly="1" string="Reference carnet"/>
+                            <field name="carnet_short_code" readonly="1" string="Carnet"/>
+                            <field name="lot_short_code" readonly="1" string="Code lot"/>
+                            <field name="carnet_sequence" readonly="1" string="N° carnet"/>
                             <field name="carnet_type_id" readonly="1"/>
                         </group>
                         <group string="Tickets">

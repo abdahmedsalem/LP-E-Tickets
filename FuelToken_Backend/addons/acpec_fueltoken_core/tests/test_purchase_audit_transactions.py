@@ -99,11 +99,21 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
         self.assertTrue(purchase.fuel_value_created)
         self.assertEqual(len(submitted_txs), 1)
         self.assertEqual(len(approved_txs), 1)
-        self.assertEqual(len(face_lines), 1)
+        expected_carnet_qty = purchase.line_ids.carnet_qty
+        expected_faces_per_carnet = purchase.line_ids.face_count
         expected_qty = purchase.line_ids.generated_face_qty
         expected_amount = purchase.line_ids.amount_total
-        self.assertEqual(face_lines.qty_initial, expected_qty)
-        self.assertEqual(face_lines.qty_available, expected_qty)
+
+        self.assertEqual(len(face_lines), expected_carnet_qty)
+        self.assertEqual(sum(face_lines.mapped('qty_initial')), expected_qty)
+        self.assertEqual(sum(face_lines.mapped('qty_available')), expected_qty)
+        self.assertTrue(all(qty == expected_faces_per_carnet for qty in face_lines.mapped('qty_initial')))
+        self.assertTrue(all(qty == expected_faces_per_carnet for qty in face_lines.mapped('qty_available')))
+        self.assertEqual(len(set(face_lines.mapped('lot_short_code'))), 1)
+        self.assertEqual(len(set(face_lines.mapped('carnet_short_code'))), expected_carnet_qty)
+        self.assertTrue(all(face_lines.mapped('carnet_no')))
+
         self.assertEqual(approved_txs.qty_total, expected_qty)
         self.assertEqual(approved_txs.amount_total, expected_amount)
-        self.assertEqual(approved_txs.line_ids.face_line_id, face_lines)
+        self.assertEqual(len(approved_txs.line_ids), expected_carnet_qty)
+        self.assertEqual(set(approved_txs.line_ids.mapped('face_line_id').ids), set(face_lines.ids))

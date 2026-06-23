@@ -1,4 +1,5 @@
 from odoo import fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class AcpecFuelPurchaseCore(models.Model):
@@ -67,30 +68,49 @@ class AcpecFuelPurchaseCore(models.Model):
             with self.env.cr.savepoint():
                 wallet = wallet_model.get_or_create(purchase.partner_id, purchase.company_id)
                 tx_lines = []
-                for line in purchase.line_ids:
+                purchase_ref = (purchase.name or ('PUR-%s' % purchase.id)).replace('/', '-')
+                for line_index, line in enumerate(purchase.line_ids.sorted('id'), start=1):
                     expires_at = False
                     if line.carnet_type_id.validity_days:
                         expires_at = fields.Datetime.add(
                             purchase.approved_at or fields.Datetime.now(),
                             days=line.carnet_type_id.validity_days,
                         )
-                    face_line = face_model.create({
-                        'wallet_id': wallet.id,
-                        'purchase_id': purchase.id,
-                        'purchase_line_id': line.id,
-                        'carnet_type_id': line.carnet_type_id.id,
-                        'face_value': line.face_value,
-                        'qty_initial': line.generated_face_qty,
-                        'qty_available': line.generated_face_qty,
-                        'expires_at': expires_at,
-                    })
-                    tx_lines.append({
-                        'purchase_id': purchase.id,
-                        'purchase_line_id': line.id,
-                        'face_line_id': face_line.id,
-                        'face_value': line.face_value,
-                        'qty': line.generated_face_qty,
-                    })
+
+                    carnet_qty = int(line.carnet_qty or 0)
+                    face_count = int(line.face_count or line.carnet_type_id.face_count or 0)
+                    if carnet_qty <= 0:
+                        raise ValidationError(_('Le nombre de carnets doit etre positif.'))
+                    if face_count <= 0:
+                        raise ValidationError(_('Le nombre de tickets par carnet doit etre positif.'))
+
+                    lot_short_code = face_model._generate_lot_short_code(purchase.company_id)
+                    for carnet_sequence in range(1, carnet_qty + 1):
+                        carnet_suffix = 'C%03d' % carnet_sequence
+                        carnet_no = '%s-L%02d-%s' % (purchase_ref, line_index, carnet_suffix)
+                        carnet_short_code = '%s-%s' % (lot_short_code, carnet_suffix)
+
+                        face_line = face_model.create({
+                            'wallet_id': wallet.id,
+                            'purchase_id': purchase.id,
+                            'purchase_line_id': line.id,
+                            'carnet_type_id': line.carnet_type_id.id,
+                            'face_value': line.face_value,
+                            'qty_initial': face_count,
+                            'qty_available': face_count,
+                            'expires_at': expires_at,
+                            'carnet_no': carnet_no,
+                            'lot_short_code': lot_short_code,
+                            'carnet_short_code': carnet_short_code,
+                            'carnet_sequence': carnet_sequence,
+                        })
+                        tx_lines.append({
+                            'purchase_id': purchase.id,
+                            'purchase_line_id': line.id,
+                            'face_line_id': face_line.id,
+                            'face_value': line.face_value,
+                            'qty': face_count,
+                        })
 
                 if not tx_model.search([
                     ('purchase_id', '=', purchase.id),

@@ -1,3 +1,5 @@
+import secrets
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from odoo.tools import float_compare
@@ -5,8 +7,8 @@ from odoo.tools import float_compare
 
 class AcpecFuelFaceLine(models.Model):
     _name = 'acpec.fuel.face.line'
-    _description = 'Ligne de tickets'
-    _order = 'expires_at, id'
+    _description = 'Carnet de tickets'
+    _order = 'expires_at, lot_short_code, carnet_sequence, id'
 
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True, ondelete='restrict')
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
@@ -23,13 +25,46 @@ class AcpecFuelFaceLine(models.Model):
     qty_consumed = fields.Integer(string='Consommee', default=0)
     qty_expired = fields.Integer(string='Expiree', default=0)
     expires_at = fields.Datetime(string='Expiration')
+    carnet_no = fields.Char(string='Reference complete carnet', index=True, copy=False, readonly=True)
+    lot_short_code = fields.Char(string='Code court lot', index=True, copy=False, readonly=True)
+    carnet_short_code = fields.Char(string='Code court carnet', index=True, copy=False, readonly=True)
+    carnet_sequence = fields.Integer(string='Numero carnet', index=True, copy=False, readonly=True)
     amount_available = fields.Monetary(string='Montant disponible', compute='_compute_amounts')
     amount_total = fields.Monetary(string='Montant initial', compute='_compute_amounts')
 
-    _purchase_line_unique = models.Constraint(
-        'UNIQUE(purchase_line_id, wallet_id)',
-        "Une ligne d'achat ne peut avoir qu'une seule ligne de faces par compte Tickets Carburant.",
+    _carnet_no_unique = models.Constraint(
+        'UNIQUE(company_id, carnet_no)',
+        'La reference complete du carnet doit etre unique par societe.',
     )
+    _carnet_short_code_unique = models.Constraint(
+        'UNIQUE(company_id, carnet_short_code)',
+        'Le code court du carnet doit etre unique par societe.',
+    )
+
+    def init(self):
+        super().init()
+        self.env.cr.execute("""
+            SELECT conname
+              FROM pg_constraint
+             WHERE conrelid = 'acpec_fuel_face_line'::regclass
+               AND contype = 'u'
+               AND pg_get_constraintdef(oid) = 'UNIQUE (purchase_line_id, wallet_id)'
+        """)
+        for (constraint_name,) in self.env.cr.fetchall():
+            safe_name = constraint_name.replace('"', '""')
+            self.env.cr.execute(
+                'ALTER TABLE acpec_fuel_face_line DROP CONSTRAINT IF EXISTS "%s"' % safe_name
+            )
+
+    @api.model
+    def _generate_lot_short_code(self, company, size=5, max_attempts=100):
+        alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        domain_company = [('company_id', '=', company.id)] if company else []
+        for _attempt in range(max_attempts):
+            code = ''.join(secrets.choice(alphabet) for _ in range(size))
+            if not self.sudo().search_count(domain_company + [('lot_short_code', '=', code)]):
+                return code
+        raise ValidationError(_('Impossible de generer un code court lot unique.'))
 
     @api.depends('face_value', 'qty_available', 'qty_initial')
     def _compute_amounts(self):
