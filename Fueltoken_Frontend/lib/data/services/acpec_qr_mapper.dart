@@ -244,6 +244,10 @@ class AcpecQrMapper {
     if (publicCode.isEmpty) {
       throw Exception('Réponse QR sans public_code.');
     }
+    final qrNumericCode =
+        row['qr_numeric_code']?.toString().trim() ??
+        row['qrNumericCode']?.toString().trim() ??
+        '';
     final id = row['id']?.toString() ?? row['qr_id']?.toString() ?? publicCode;
     final state = _state(
       _pickQrStateRaw(row) ??
@@ -321,6 +325,7 @@ class AcpecQrMapper {
     return QrToken(
       id: id,
       publicCode: publicCode,
+      qrNumericCode: qrNumericCode.isEmpty ? null : qrNumericCode,
       internalRef: row['name']?.toString() ?? row['display_name']?.toString(),
       ownerId: ownerId,
       ownerName: ownerName,
@@ -430,6 +435,8 @@ class AcpecQrMapper {
 
     for (final k in [
       'public_code',
+      'qr_numeric_code',
+      'qrNumericCode',
       'state',
       'status',
       'date',

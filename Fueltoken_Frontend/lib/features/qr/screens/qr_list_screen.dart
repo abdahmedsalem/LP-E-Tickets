@@ -209,8 +209,11 @@ class _QrListShell extends StatelessWidget {
       children: [
         const HistoryAlignedPageHeader(title: 'Mes QR'),
         const SizedBox(height: 18),
-        Padding(
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 26),
+          clipBehavior: Clip.none,
           child: filterRow,
         ),
         const SizedBox(height: 18),

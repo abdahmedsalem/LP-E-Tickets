@@ -370,9 +370,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                             );
                             if (!context.mounted) return;
                             if (nextCode != null && nextCode.isNotEmpty) {
-                              router.go(
-                                '/qr/${Uri.encodeComponent(nextCode)}',
-                              );
+                              router.go('/qr/${Uri.encodeComponent(nextCode)}');
                             } else {
                               await _refresh();
                             }
@@ -401,7 +399,9 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                           label: const Text(
                             'Séparer la partie active dans un nouveau QR',
                           ),
-                          onPressed: _separating ? null : () => _separateBlockedQr(qr),
+                          onPressed: _separating
+                              ? null
+                              : () => _separateBlockedQr(qr),
                         ),
                       ),
                   ],
@@ -478,6 +478,7 @@ class _HeroQrCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = qr.state == QrState.active;
     final showBadge = qr.state != QrState.active;
+    final qrNumericCode = qr.qrNumericCode?.trim() ?? '';
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
       child: Column(
@@ -551,10 +552,13 @@ class _HeroQrCard extends StatelessWidget {
               ),
             ),
           ),
+          if (qrNumericCode.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _QrNumericCodePanel(code: qrNumericCode, isActive: isActive),
+          ],
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 14),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -603,6 +607,69 @@ class _HeroQrCard extends StatelessWidget {
     1,
     0,
   ];
+}
+
+class _QrNumericCodePanel extends StatelessWidget {
+  const _QrNumericCodePanel({required this.code, required this.isActive});
+
+  final String code;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final codeColor = isActive ? AppColors.ink : AppColors.muted;
+    final helper = isActive
+        ? 'Scannez le QR ou saisissez ce code lors de la consommation.'
+        : 'Ce code suit le même état que le QR graphique.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Code QR numérique',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+              letterSpacing: -0.1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            code,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: codeColor,
+              letterSpacing: 1.2,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            helper,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.muted,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // Composition
@@ -748,10 +815,7 @@ class _CompositionLineRow extends StatelessWidget {
 }
 
 class _DetailInfoRow extends StatelessWidget {
-  const _DetailInfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailInfoRow({required this.label, required this.value});
 
   final String label;
   final String value;
