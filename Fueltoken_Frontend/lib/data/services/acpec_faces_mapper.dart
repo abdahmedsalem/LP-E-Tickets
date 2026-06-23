@@ -216,7 +216,11 @@ class AcpecFacesMapper {
 
       faceLines.add(
         FaceLine(
-          id: row['id']?.toString() ?? 'acpec-face-$i',
+          id:
+              row['face_line_id']?.toString() ??
+              row['faceLineId']?.toString() ??
+              row['id']?.toString() ??
+              'acpec-face-$i',
           lotId:
               row['purchase_id']?.toString() ??
               row['lot_id']?.toString() ??
@@ -243,6 +247,19 @@ class AcpecFacesMapper {
                           : (row['label']?.toString().trim().isNotEmpty == true
                                 ? row['label'].toString().trim()
                                 : ''))),
+          carnetNo:
+              row['carnet_no']?.toString() ?? row['carnetNo']?.toString() ?? '',
+          lotShortCode:
+              row['lot_short_code']?.toString() ??
+              row['lotShortCode']?.toString() ??
+              '',
+          carnetShortCode:
+              row['carnet_short_code']?.toString() ??
+              row['carnetShortCode']?.toString() ??
+              '',
+          carnetSequence: _parseAmount(
+            row['carnet_sequence'] ?? row['carnetSequence'] ?? 0,
+          ),
           carnetFaceCount: faceCount,
           faceValue: fv,
           initialQty: initialQty,

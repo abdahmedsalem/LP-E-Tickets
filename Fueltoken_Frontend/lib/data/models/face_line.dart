@@ -1,8 +1,10 @@
 import 'package:equatable/equatable.dart';
 
-/// acpec.fuel.face.line — aggregated face line per (lot, ticket type, face value).
-/// Conservation invariant:
-///   initialQty = availableQty + qrActiveQty + qrBlockedQty + consumedQty + expiredQty
+/// acpec.fuel.face.line — carnet individualisé disponible côté mobile.
+///
+/// Doctrine backend Patch34A+ :
+///   1 face_line = 1 carnet.
+/// `id` doit correspondre à `face_line_id` quand il est fourni par l'API.
 class FaceLine extends Equatable {
   final String id;
   final String lotId;
@@ -11,6 +13,10 @@ class FaceLine extends Equatable {
   final String carnetTypeId;
   final String carnetTypeCode;
   final String carnetTypeName;
+  final String carnetNo;
+  final String lotShortCode;
+  final String carnetShortCode;
+  final int carnetSequence;
   final int carnetFaceCount;
   final int faceValue;
   final int initialQty;
@@ -30,6 +36,10 @@ class FaceLine extends Equatable {
     required this.carnetTypeId,
     required this.carnetTypeCode,
     this.carnetTypeName = '',
+    this.carnetNo = '',
+    this.lotShortCode = '',
+    this.carnetShortCode = '',
+    this.carnetSequence = 0,
     this.carnetFaceCount = 0,
     required this.faceValue,
     required this.initialQty,
@@ -65,6 +75,10 @@ class FaceLine extends Equatable {
       carnetTypeId: carnetTypeId,
       carnetTypeCode: carnetTypeCode,
       carnetTypeName: carnetTypeName,
+      carnetNo: carnetNo,
+      lotShortCode: lotShortCode,
+      carnetShortCode: carnetShortCode,
+      carnetSequence: carnetSequence,
       carnetFaceCount: carnetFaceCount,
       faceValue: faceValue,
       initialQty: initialQty,
@@ -82,6 +96,14 @@ class FaceLine extends Equatable {
   List<Object?> get props => [
     id,
     lotId,
+    purchaseLineId,
+    carnetTypeId,
+    carnetTypeCode,
+    carnetTypeName,
+    carnetNo,
+    lotShortCode,
+    carnetShortCode,
+    carnetSequence,
     faceValue,
     carnetFaceCount,
     initialQty,
