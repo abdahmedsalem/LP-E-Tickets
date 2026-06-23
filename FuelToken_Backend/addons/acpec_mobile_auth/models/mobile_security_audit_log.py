@@ -21,6 +21,7 @@ class AcpecMobileSecurityAuditLog(models.Model):
     event_type = fields.Selection([
         ('sensitive_action_denied', 'Action sensible refusée'),
         ('sensitive_action_allowed', 'Action sensible autorisée'),
+        ('mobile_signup_not_allowed', 'Inscription mobile refusée'),
         ('invalid_action_code', 'Code d’action invalide'),
         ('missing_action_code', 'Code d’action manquant'),
         ('invalid_action_code_key', 'Clé de code d’action invalide'),

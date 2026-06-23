@@ -222,7 +222,22 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         for term in forbidden_terms:
             self.assertNotIn(term, serialized)
 
+    def _assert_latest_signup_denial_audit(self, debug_term=False, company=False):
+        audit = self.env['acpec.mobile.security.audit.log'].sudo().search([
+            ('event_type', '=', 'mobile_signup_not_allowed'),
+            ('code', '=', 'SIGNUP_NOT_ALLOWED'),
+        ], order='id desc', limit=1)
+        self.assertTrue(audit)
+        self.assertFalse(audit.success)
+        self.assertTrue(audit.blocked)
+        self.assertIn('Impossible de finaliser', audit.public_message or '')
+        if debug_term:
+            self.assertIn(debug_term, audit.debug_reason or '')
+        if company:
+            self.assertEqual(audit.company_id, company)
+
     def test_signup_existing_account_uses_generic_public_error(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
         self._create_mobile_user(
             login='46009101',
             mobile_phone='46009101',
@@ -241,6 +256,28 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
+        self._assert_latest_signup_denial_audit('A mobile account already exists', company=self.env.company)
+
+    def test_signup_disabled_company_audits_technical_reason_without_public_leak(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': False})
+        controller = AcpecMobileAuthApiPublic()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.signup(
+                    name='Disabled Company Signup',
+                    signup_identifier='46009104',
+                    secret_code='1234',
+                    company_id=self.env.company.id,
+                ))
+
+        self._assert_public_error_is_not_enumerating(result)
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertNotIn('debug_reason', result['error'])
+        self._assert_latest_signup_denial_audit(
+            'This company does not accept mobile application registration',
+            company=self.env.company,
+        )
 
     def test_request_otp_register_existing_account_uses_generic_public_error(self):
         self._create_mobile_user(
@@ -259,6 +296,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
+        self._assert_latest_signup_denial_audit('A mobile account already exists')
 
     def test_request_otp_login_unknown_identifier_uses_generic_success(self):
         controller = AcpecMobileAuthOtpApi()
@@ -293,6 +331,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertNotIn('debug_reason', result['error'])
 
     def test_verify_otp_register_duplicate_account_uses_generic_public_error(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
         controller = AcpecMobileAuthOtpApi()
         otp_model = self.env['acpec.mobile.auth.otp'].sudo()
 
@@ -320,6 +359,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
+        self._assert_latest_signup_denial_audit('A mobile account already exists', company=self.env.company)
 
     def test_request_otp_login_unknown_identifier_debug_reason_is_runtime_gated(self):
         controller = AcpecMobileAuthOtpApi()
