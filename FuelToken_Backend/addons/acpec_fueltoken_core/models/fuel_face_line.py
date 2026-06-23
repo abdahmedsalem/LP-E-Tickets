@@ -115,14 +115,60 @@ class AcpecFuelFaceLine(models.Model):
     def reserve_available(self, wallet, requests):
         allocations = []
         now = fields.Datetime.now()
+        has_explicit_requests = any(int(request.get('face_line_id') or 0) for request in requests)
+        has_legacy_requests = any(not int(request.get('face_line_id') or 0) for request in requests)
+        if has_explicit_requests and has_legacy_requests:
+            raise ValidationError(_('Un QR ne peut pas melanger selection explicite de carnets et allocation automatique.'))
+
+        seen_explicit_face_line_ids = set()
         for request in requests:
+            requested_face_line_id = int(request.get('face_line_id') or 0)
             requested_face_value = request.get('face_value')
             requested_carnet_type_id = int(request.get('carnet_type_id') or 0)
             remaining = int(request['qty'])
             if remaining <= 0:
                 raise ValidationError(_('La quantite a emettre doit etre positive.'))
+
+            if requested_face_line_id:
+                if requested_face_line_id in seen_explicit_face_line_ids:
+                    raise ValidationError(_('Un carnet ne peut apparaitre qu'une seule fois dans un meme QR.'))
+                seen_explicit_face_line_ids.add(requested_face_line_id)
+
+                self.env.cr.execute(
+                    """
+                    SELECT id
+                      FROM acpec_fuel_face_line
+                     WHERE id = %s
+                       AND wallet_id = %s
+                     FOR UPDATE
+                    """,
+                    (requested_face_line_id, wallet.id),
+                )
+                row = self.env.cr.fetchone()
+                if not row:
+                    raise ValidationError(_('Carnet indisponible ou non autorise.'))
+
+                line = self.sudo().browse(row[0]).exists()
+                line.invalidate_recordset(['qty_available', 'qty_qr_active', 'expires_at'])
+                if not line:
+                    raise ValidationError(_('Carnet indisponible ou non autorise.'))
+                if line.company_id != wallet.company_id:
+                    raise ValidationError(_('Carnet indisponible ou non autorise.'))
+                if line.expires_at and line.expires_at <= now:
+                    raise ValidationError(_('Carnet expire.'))
+                if line.qty_available < remaining:
+                    label = line.carnet_short_code or line.carnet_no or line.id
+                    raise ValidationError(_('Quantite disponible insuffisante pour %s.') % label)
+
+                line.write({
+                    'qty_available': line.qty_available - remaining,
+                    'qty_qr_active': line.qty_qr_active + remaining,
+                })
+                allocations.append({'face_line': line, 'qty': remaining})
+                continue
+
             if not requested_carnet_type_id and requested_face_value is None:
-                raise ValidationError(_('Chaque ligne doit contenir carnet_type_id ou face_value.'))
+                raise ValidationError(_('Chaque ligne doit contenir face_line_id, carnet_type_id ou face_value.'))
 
             if requested_carnet_type_id:
                 self.env.cr.execute(

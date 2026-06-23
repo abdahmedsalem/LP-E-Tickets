@@ -408,6 +408,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'breakdown_by_carnet_type': self._wallet_breakdown_by_carnet_type(wallet),
                 'near_expiration_faces': [{
                     'id': line.id,
+                    'face_line_id': line.id,
+                    'carnet_no': line.carnet_no,
+                    'lot_short_code': line.lot_short_code,
+                    'carnet_short_code': line.carnet_short_code,
+                    'carnet_sequence': line.carnet_sequence,
                     'purchase': line.purchase_id.name,
                     'carnet_type': line.carnet_type_id.code,
                     'face_value': line.face_value,
@@ -671,7 +676,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             lines = request.env['acpec.fuel.face.line'].sudo().search([
                 ('wallet_id', '=', wallet.id),
                 ('qty_available', '>', 0),
-            ], order='expires_at, id')
+            ], order='expires_at, lot_short_code, carnet_sequence, id')
             items = []
             for line in lines:
                 if transferable_only and not line.is_transferable_carnet_line():
@@ -679,6 +684,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 carnet = line.carnet_type_id
                 items.append({
                     'id': line.id,
+                    'face_line_id': line.id,
+                    'carnet_no': line.carnet_no,
+                    'lot_short_code': line.lot_short_code,
+                    'carnet_short_code': line.carnet_short_code,
+                    'carnet_sequence': line.carnet_sequence,
                     'purchase': line.purchase_id.name,
                     'purchase_id': line.purchase_id.id,
                     'purchase_line_id': line.purchase_line_id.id,
@@ -711,13 +721,24 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_issue')
             wallet = self._mobile_wallet()
             requests = []
+            has_explicit_lines = False
+            has_legacy_lines = False
             for line in kwargs.get('lines') or []:
                 req = {'qty': int(line.get('qty') or 0)}
-                if line.get('carnet_type_id'):
+                if line.get('face_line_id'):
+                    req['face_line_id'] = int(line.get('face_line_id'))
+                    has_explicit_lines = True
+                elif line.get('carnet_type_id'):
                     req['carnet_type_id'] = int(line.get('carnet_type_id'))
-                else:
+                    has_legacy_lines = True
+                elif line.get('face_value') is not None:
                     req['face_value'] = float(line.get('face_value'))
+                    has_legacy_lines = True
+                else:
+                    raise ValidationError('Chaque ligne doit contenir face_line_id, carnet_type_id ou face_value.')
                 requests.append(req)
+            if has_explicit_lines and has_legacy_lines:
+                raise ValidationError('Un QR ne peut pas melanger selection explicite de carnets et allocation automatique.')
             with request.env.cr.savepoint():
                 qr = request.env['acpec.fuel.qr'].sudo().issue_from_available(
                     wallet,

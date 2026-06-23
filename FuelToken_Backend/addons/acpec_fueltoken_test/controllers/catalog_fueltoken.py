@@ -115,11 +115,11 @@ API_CATALOG_FUELTOKEN = [
         'route': '/api/acpec/fueltoken/v1/mobile/qr/issue',
         'method': 'POST',
         'payload': {
-            'lines': [{'carnet_type_id': 1, 'qty': 1}],
+            'lines': [{'face_line_id': 1, 'qty': 1}],
             'idempotency_key': 'TEST-QR-ISSUE-001',
         },
         'requires_token': True,
-        'note': 'Émet un QR depuis les faces disponibles du wallet. carnet_type_id est recommandé.',
+        'note': 'Émet un QR depuis les carnets disponibles du wallet. face_line_id est recommande apres appel a "Lister les faces disponibles".',
     },
     {
         'group': 'FuelToken Mobile',

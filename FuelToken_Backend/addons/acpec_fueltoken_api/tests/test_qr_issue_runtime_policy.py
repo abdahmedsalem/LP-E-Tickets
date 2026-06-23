@@ -136,6 +136,18 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         payload.update(extra)
         return payload
 
+    def _payload_face_line(self, face_line, key="qr-issue-explicit-face-line-key", qty=1, **extra):
+        payload = {
+            "lines": [{
+                "face_line_id": face_line.id,
+                "qty": qty,
+            }],
+            "action_code": "1234",
+            "idempotency_key": key,
+        }
+        payload.update(extra)
+        return payload
+
     def _call_issue_qr(self, controller, payload):
         fake_request = SimpleNamespace(env=self.env)
         with patch.object(api_mobile_module, "request", fake_request):
@@ -233,6 +245,78 @@ class TestQrIssueRuntimePolicy(TransactionCase):
 
         face_line.invalidate_recordset(["qty_available"])
         self.assertEqual(face_line.qty_available, face_line.qty_initial - 2)
+
+    def test_issue_qr_can_use_explicit_face_line_id(self):
+        controller, user, _session, carnet_type, purchase, _face_line, wallet = self._controller_with_stock(
+            "qr-explicit-face-line-34b@example.com",
+            carnet_qty=2,
+        )
+        face_lines = self.env["acpec.fuel.face.line"].sudo().search([
+            ("purchase_id", "=", purchase.id),
+        ], order="carnet_sequence,id")
+        self.assertEqual(len(face_lines), 2)
+        selected = face_lines[1]
+        untouched = face_lines[0]
+        selected_initial_available = selected.qty_available
+        untouched_initial_available = untouched.qty_available
+
+        response = self._call_issue_qr(
+            controller,
+            self._payload_face_line(selected, key="qr-explicit-face-line-34b", qty=3),
+        )
+
+        qrs = self._qr_by_key(wallet, "qr-explicit-face-line-34b")
+        self.assertEqual(len(qrs), 1)
+        self.assertIn(str(qrs.id), repr(response))
+        self.assertEqual(qrs.face_qty_total, 3)
+        self.assertEqual(qrs.line_ids.face_line_id.id, selected.id)
+
+        selected.invalidate_recordset(["qty_available", "qty_qr_active"])
+        untouched.invalidate_recordset(["qty_available", "qty_qr_active"])
+        self.assertEqual(selected.qty_available, selected_initial_available - 3)
+        self.assertEqual(selected.qty_qr_active, 3)
+        self.assertEqual(untouched.qty_available, untouched_initial_available)
+        self.assertEqual(untouched.qty_qr_active, 0)
+
+    def test_issue_qr_rejects_explicit_foreign_face_line_id(self):
+        controller, user, _session, carnet_type, _purchase, _face_line, wallet = self._controller_with_stock(
+            "qr-explicit-foreign-owner-34b@example.com",
+            carnet_qty=1,
+        )
+        other_controller, other_user, _other_session, _other_carnet_type, _other_purchase, other_face_line, _other_wallet = self._controller_with_stock(
+            "qr-explicit-foreign-source-34b@example.com",
+            carnet_qty=1,
+        )
+
+        response = self._call_issue_qr(
+            controller,
+            self._payload_face_line(other_face_line, key="qr-explicit-foreign-34b", qty=1),
+        )
+
+        self._assert_error_contains(response, "Carnet indisponible")
+        self.assertFalse(self._qr_by_key(wallet, "qr-explicit-foreign-34b"))
+
+    def test_issue_qr_rejects_mixed_explicit_and_automatic_lines(self):
+        controller, user, _session, carnet_type, purchase, _face_line, wallet = self._controller_with_stock(
+            "qr-mixed-lines-34b@example.com",
+            carnet_qty=2,
+        )
+        face_line = self.env["acpec.fuel.face.line"].sudo().search([
+            ("purchase_id", "=", purchase.id),
+        ], order="carnet_sequence,id", limit=1)
+        payload = {
+            "lines": [
+                {"face_line_id": face_line.id, "qty": 1},
+                {"carnet_type_id": carnet_type.id, "qty": 1},
+            ],
+            "action_code": "1234",
+            "idempotency_key": "qr-mixed-lines-34b",
+        }
+
+        response = self._call_issue_qr(controller, payload)
+
+        self._assert_error_contains(response, "melanger")
+        self.assertFalse(self._qr_by_key(wallet, "qr-mixed-lines-34b"))
 
     def test_issue_qr_rejects_same_key_with_different_payload(self):
         controller, user, _session, carnet_type, _purchase, _face_line, wallet = self._controller_with_stock(
