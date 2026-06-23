@@ -473,7 +473,7 @@ class AcpecFuelQr(models.Model):
                 'face_line_id': line.id,
                 'face_value': line.face_value,
                 'qty': qty,
-            }], note=_('Expiration de faces disponibles.'))
+            }], note=_('Expiration de tickets disponibles.'))
         qrs = self.sudo().search([('state', 'in', ['active', 'blocked'])])
         for qr in qrs:
             try:
@@ -493,7 +493,7 @@ class AcpecFuelQrLine(models.Model):
 
     qr_id = fields.Many2one('acpec.fuel.qr', string='QR', required=True, ondelete='cascade', index=True)
     source_qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne source split', index=True)
-    face_line_id = fields.Many2one('acpec.fuel.face.line', string='Ligne de faces', required=True, index=True, ondelete='restrict')
+    face_line_id = fields.Many2one('acpec.fuel.face.line', string='Carnet', required=True, index=True, ondelete='restrict')
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d’achat', required=True, index=True)
     purchase_line_id = fields.Many2one('acpec.fuel.purchase.line', string='Ligne d’achat', required=True, index=True)
     company_id = fields.Many2one('res.company', related='qr_id.company_id', store=True, readonly=True)

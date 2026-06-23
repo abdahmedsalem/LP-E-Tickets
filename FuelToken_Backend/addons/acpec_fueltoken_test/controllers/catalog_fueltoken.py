@@ -30,7 +30,7 @@ API_CATALOG_FUELTOKEN = [
             'idempotency_key': 'TEST-PURCHASE-001',
         },
         'requires_token': True,
-        'note': 'Après création, la commande est soumise. Elle doit être validée dans le backend pour générer les faces disponibles.',
+        'note': 'Après création, la commande est soumise. Elle doit être validée dans le backend pour générer les carnets disponibles.',
     },
     {
         'group': 'FuelToken Mobile',
@@ -75,12 +75,12 @@ API_CATALOG_FUELTOKEN = [
     },
     {
         'group': 'FuelToken Mobile',
-        'label': 'Lister les faces disponibles',
+        'label': 'Lister les carnets disponibles',
         'route': '/api/acpec/fueltoken/v1/mobile/faces',
         'method': 'POST',
         'payload': {},
         'requires_token': True,
-        'note': 'Affiche les lignes de faces disponibles après validation backend d’une commande.',
+        'note': 'Affiche les carnets disponibles après validation backend d’une commande.',
     },
     {
         'group': 'FuelToken Mobile',
@@ -94,7 +94,7 @@ API_CATALOG_FUELTOKEN = [
             'idempotency_key': 'TEST-CARNET-TRANSFER-001',
         },
         'requires_token': True,
-        'note': 'Teste le transfert de carnets complets. Utiliser un face_line_id retourne par "Lister les faces disponibles" et le login/telephone du destinataire.',
+        'note': 'Teste le transfert de carnets complets. Utiliser un face_line_id retourne par "Lister les carnets disponibles" et le login/telephone du destinataire.',
     },
     {
         'group': 'FuelToken Mobile',
@@ -119,7 +119,7 @@ API_CATALOG_FUELTOKEN = [
             'idempotency_key': 'TEST-QR-ISSUE-001',
         },
         'requires_token': True,
-        'note': 'Émet un QR depuis les carnets disponibles du wallet. face_line_id est recommande apres appel a "Lister les faces disponibles".',
+        'note': 'Émet un QR depuis les carnets disponibles du wallet. face_line_id est recommande apres appel a "Lister les carnets disponibles".',
     },
     {
         'group': 'FuelToken Mobile',

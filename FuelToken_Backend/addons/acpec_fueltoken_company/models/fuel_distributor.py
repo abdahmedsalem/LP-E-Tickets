@@ -430,20 +430,20 @@ class AcpecFuelDistributor(models.Model):
                 raise ValidationError(_("Paramètre 'carnet_qty' doit être un entier positif."))
             if face_line_id in seen_face_line_ids:
                 raise ValidationError(_(
-                    'Une même ligne de tickets ne peut pas apparaître plusieurs fois dans une distribution.'
+                    'Un même carnet ne peut pas apparaître plusieurs fois dans une distribution.'
                 ))
             seen_face_line_ids.add(face_line_id)
 
             face_line = FaceLine.browse(face_line_id).exists()
             if not face_line:
-                raise ValidationError(_('Ligne de tickets introuvable: %s.') % face_line_id)
+                raise ValidationError(_('Carnet introuvable: %s.') % face_line_id)
             if face_line.wallet_id != company_wallet:
                 raise ValidationError(_(
-                    "La ligne de tickets '%s' n’appartient pas au wallet du Compte Société."
+                    "Le carnet '%s' n’appartient pas au wallet du Compte Société."
                 ) % (face_line.carnet_type_id.code or face_line.id))
             if not face_line.is_transferable_carnet_line():
                 raise ValidationError(_(
-                    "La ligne de tickets '%s' n’est pas transférable en carnets intacts."
+                    "Le carnet '%s' n’est pas transférable en carnets intacts."
                 ) % (face_line.carnet_type_id.code or face_line.id))
             if carnet_qty > face_line.transferable_carnet_count():
                 raise ValidationError(_(

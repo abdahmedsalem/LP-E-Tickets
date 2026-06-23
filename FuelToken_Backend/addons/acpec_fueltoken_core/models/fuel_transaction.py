@@ -110,7 +110,7 @@ class AcpecFuelTransactionLine(models.Model):
     currency_id = fields.Many2one('res.currency', related='transaction_id.currency_id', store=True, readonly=True)
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d’achat', index=True)
     purchase_line_id = fields.Many2one('acpec.fuel.purchase.line', string='Ligne d’achat', index=True)
-    face_line_id = fields.Many2one('acpec.fuel.face.line', string='Ligne de faces', index=True)
+    face_line_id = fields.Many2one('acpec.fuel.face.line', string='Carnet', index=True)
     qr_id = fields.Many2one('acpec.fuel.qr', string='QR', index=True)
     qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne QR', index=True)
     transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert', index=True)

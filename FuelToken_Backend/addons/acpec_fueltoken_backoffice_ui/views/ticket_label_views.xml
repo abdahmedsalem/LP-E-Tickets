@@ -218,7 +218,7 @@
                 <attribute name="string">Tickets</attribute>
             </field>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_line_id']" position="attributes">
-                <attribute name="string">Ligne de tickets</attribute>
+                <attribute name="string">Carnet</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
@@ -240,7 +240,7 @@
         <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_transaction_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_line_id']" position="attributes">
-                <attribute name="string">Ligne de tickets</attribute>
+                <attribute name="string">Carnet</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
@@ -272,7 +272,7 @@
                 <attribute name="string">Tickets</attribute>
             </field>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_line_id']" position="attributes">
-                <attribute name="string">Ligne de tickets source</attribute>
+                <attribute name="string">Carnet source</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
                 <attribute name="string">Valeur du ticket</attribute>
@@ -286,7 +286,7 @@
                 <attribute name="string">Tickets transférés</attribute>
             </xpath>
             <xpath expr="//field[@name='line_ids']//list/field[@name='dest_face_line_id']" position="attributes">
-                <attribute name="string">Ligne de tickets destination</attribute>
+                <attribute name="string">Carnet destination</attribute>
             </xpath>
             <xpath expr="//sheet/notebook" position="after">
                 <group string="Technique">
