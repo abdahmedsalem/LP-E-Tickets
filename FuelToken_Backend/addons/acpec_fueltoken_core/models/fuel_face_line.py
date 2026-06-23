@@ -237,7 +237,14 @@ class AcpecFuelFaceLine(models.Model):
 
     @api.model
     def credit_transferred(self, dest_wallet, purchase_line, carnet_type, face_value, qty, expires_at):
-        """Crédite dest_wallet de qty faces issues d'un transfert.
+        """Legacy helper kept for compatibility.
+
+        Crédite dest_wallet de qty faces issues d'un transfert en créant ou
+        réutilisant une face_line destination.
+
+        Depuis Patch34C, les transferts de carnets intacts doivent déplacer la
+        même face_line vers le wallet destinataire au lieu de créer une copie.
+        Ne pas utiliser ce helper pour les transferts de carnets intacts.
 
         Cherche une face_line existante (purchase_line_id, wallet_id).
         Si elle existe, augmente qty_initial et qty_available.

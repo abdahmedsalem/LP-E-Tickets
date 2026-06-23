@@ -101,15 +101,17 @@ class AcpecFuelCarnetTransfer(models.Model):
                 )
 
     def action_confirm(self, actor_user=None):
-        """Confirme le transfert : débite le wallet source, crédite le wallet dest.
+        """Confirme le transfert d'un carnet intact.
 
         Règles métier appliquées :
-        - Le transfert porte sur des carnets complets (qty_faces multiple de face_count).
-        - Les faces doivent être disponibles (qty_available), donc ni en QR actif ni bloquées.
-        - La ligne de faces ne doit pas être expirée.
-        - L'expiration d'origine est conservée sur la face_line de destination.
-        - Le lien vers le lot d'achat d'origine est conservé.
-        - Deux transactions sont enregistrées : une par wallet (source et dest).
+        - Depuis Patch34A, une face_line représente un carnet.
+        - Le transfert intact déplace la même face_line vers le wallet destinataire.
+        - Aucune nouvelle face_line destination n'est créée.
+        - Le carnet doit être intact : disponible en totalité, sans QR actif,
+          sans blocage, sans consommation et sans expiration.
+        - L'identité carnet est conservée : carnet_no, lot_short_code, carnet_short_code.
+        - dest_face_line_id reste renseigné pour compatibilité, mais pointe vers la même face_line.
+        - Deux transactions sont enregistrées : une par wallet source et destination.
         """
         self.ensure_one()
         if not actor_user:
@@ -141,7 +143,7 @@ class AcpecFuelCarnetTransfer(models.Model):
             # Verrou pessimiste sur toutes les face_lines source pour éviter les conflits concurrents
             src_face_line_ids = tuple(self.line_ids.mapped('face_line_id').ids)
             if not src_face_line_ids:
-                raise ValidationError(_('Aucune ligne de faces valide dans le transfert.'))
+                raise ValidationError(_('Aucun carnet valide dans le transfert.'))
             self.env.cr.execute(
                 'SELECT id FROM acpec_fuel_face_line WHERE id IN %s FOR UPDATE',
                 [src_face_line_ids],
@@ -159,13 +161,13 @@ class AcpecFuelCarnetTransfer(models.Model):
                 # 1. Vérifier appartenance au wallet source
                 if src_face_line.wallet_id != self.source_wallet_id:
                     raise ValidationError(_(
-                        "La ligne de faces '%s' n'appartient pas au compte source."
+                        "Le carnet '%s' n'appartient pas au compte source."
                     ) % src_face_line.carnet_type_id.code)
 
                 # 2. Vérifier non-expiration
                 if src_face_line.expires_at and src_face_line.expires_at <= now:
                     raise ValidationError(_(
-                        "La ligne de faces '%s' est expirée et ne peut pas être transférée."
+                        "Le carnet '%s' est expiré et ne peut pas être transféré."
                     ) % src_face_line.carnet_type_id.code)
 
                 if (
@@ -294,7 +296,7 @@ class AcpecFuelCarnetTransferLine(models.Model):
         'res.currency', related='transfer_id.currency_id', store=True, readonly=True,
     )
     face_line_id = fields.Many2one(
-        'acpec.fuel.face.line', string='Ligne de faces source',
+        'acpec.fuel.face.line', string='Carnet source',
         required=True, index=True, ondelete='restrict',
     )
     carnet_type_id = fields.Many2one(
@@ -318,7 +320,7 @@ class AcpecFuelCarnetTransferLine(models.Model):
         string='Montant', compute='_compute_qty', store=True,
     )
     dest_face_line_id = fields.Many2one(
-        'acpec.fuel.face.line', string='Ligne de faces dest.',
+        'acpec.fuel.face.line', string='Carnet destination',
         readonly=True, copy=False, index=True,
     )
 

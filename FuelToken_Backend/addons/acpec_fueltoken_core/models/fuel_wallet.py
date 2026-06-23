@@ -13,7 +13,7 @@ class AcpecFuelWallet(models.Model):
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
     balance = fields.Monetary(string='Solde disponible', compute='_compute_quantities', store=False)
-    qty_available = fields.Integer(string='Faces disponibles', compute='_compute_quantities', store=False)
+    qty_available = fields.Integer(string='Tickets disponibles', compute='_compute_quantities', store=False)
     qty_qr_active = fields.Integer(string='Faces en QR actif', compute='_compute_quantities', store=False)
     qty_qr_blocked = fields.Integer(string='Faces en QR bloqué', compute='_compute_quantities', store=False)
     qty_consumed = fields.Integer(string='Faces consommées', compute='_compute_quantities', store=False)
@@ -22,7 +22,7 @@ class AcpecFuelWallet(models.Model):
     amount_qr_blocked = fields.Monetary(string='Montant en QR bloqué', compute='_compute_quantities', store=False)
     amount_consumed = fields.Monetary(string='Montant consommé', compute='_compute_quantities', store=False)
     amount_expired = fields.Monetary(string='Montant expiré', compute='_compute_quantities', store=False)
-    face_line_ids = fields.One2many('acpec.fuel.face.line', 'wallet_id', string='Lignes de faces')
+    face_line_ids = fields.One2many('acpec.fuel.face.line', 'wallet_id', string='Carnets')
 
     _partner_company_unique = models.Constraint(
         'UNIQUE(partner_id, company_id)',

@@ -248,7 +248,7 @@ Cas acceptés :
 
 - société `is_company = True` avec accès portail actif, sans groupe interne/mobile, avec membres individuels ;
 - préparation wallets membres pour membres déjà mobiles actifs/approuvés ;
-- distribution société active vers membre déclaré, mobile actif/approuvé, avec ligne de tickets transférable.
+- distribution société active vers membre déclaré, mobile actif/approuvé, avec carnet transférable.
 
 Cas refusés :
 
@@ -313,7 +313,7 @@ Correction de robustesse sur l’assistant de distribution back-office :
 - le champ `face_line_id` est sauvegardé avec `force_save="1"` dans la vue ;
 - les lignes transitoires vides ou incomplètes ne provoquent plus d’erreur technique `Missing required value`.
 
-La règle métier ne change pas : toute ligne réellement distribuée doit toujours référencer une ligne de tickets source.
+La règle métier ne change pas : toute ligne réellement distribuée doit toujours référencer un carnet source.
 
 ## v1.4.2 — Libellés Ticket dans la distribution société
 
@@ -331,7 +331,7 @@ La règle métier ne change pas : toute ligne réellement distribuée doit toujo
 - Le wizard de distribution société ne pré-remplit plus les lignes avec tous les soldes disponibles.
 - L’opérateur saisit explicitement les types de carnets et les quantités à distribuer.
 - Le choix du bénéficiaire interdit la création rapide, la création/édition et l’ouverture du contact depuis le wizard.
-- Les colonnes techniques `Wallet` et `Ligne de tickets source` restent disponibles en audit mais sont masquées par défaut.
+- Les colonnes techniques `Wallet` et `Carnet source` restent disponibles en audit mais sont masquées par défaut.
 - Les colonnes redondantes `Tickets disponibles`, `Tickets par carnet`, `Valeur du ticket` et `Tickets à distribuer` sont masquées par défaut selon leur utilité métier.
 - Les colonnes `Carnets à distribuer`, `Tickets à distribuer` et `Montant` affichent des totaux en bas de liste.
 - Le backend alloue automatiquement les carnets demandés sur les lignes techniques disponibles du wallet société, par ordre d’expiration puis ID.

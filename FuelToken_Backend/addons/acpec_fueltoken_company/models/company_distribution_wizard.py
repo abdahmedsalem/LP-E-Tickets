@@ -232,7 +232,7 @@ class AcpecFuelDistributorDistributionWizardLine(models.TransientModel):
     )
     face_line_id = fields.Many2one(
         'acpec.fuel.face.line',
-        string='Ligne de tickets source',
+        string='Carnet source',
         compute='_compute_source_face_line',
         readonly=True,
         help='Première ligne technique disponible pour ce type de carnet. Champ d’audit uniquement.',

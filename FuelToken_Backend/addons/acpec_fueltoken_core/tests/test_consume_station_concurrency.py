@@ -45,7 +45,7 @@ class _ConsumeFixtureMixin:
     ainsi le QR tel qu'il existe reellement en production.
     """
 
-    QR_FACE_QTY = 4  # faces emises dans le QR de test (< faces disponibles)
+    QR_FACE_QTY = 4  # tickets emis dans le QR de test (< tickets disponibles)
 
     def _unique_carnet_type(self, env, company):
         """Type de carnet isole : le code est calcule depuis face_count/face_value
@@ -118,7 +118,7 @@ class _ConsumeFixtureMixin:
         env['acpec.fuel.purchase.line'].sudo().create({
             'purchase_id': purchase.id,
             'carnet_type_id': carnet_type.id,
-            'carnet_qty': 1,  # 1 carnet * 10 faces = 10 faces disponibles
+            'carnet_qty': 1,  # 1 carnet * 10 tickets = 10 tickets disponibles
         })
         attachment = env['ir.attachment'].sudo().create({
             'name': 'preuve.pdf',
