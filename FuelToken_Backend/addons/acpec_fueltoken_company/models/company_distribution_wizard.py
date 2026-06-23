@@ -108,6 +108,10 @@ class AcpecFuelDistributorDistributionWizard(models.TransientModel):
         if not self.source_wallet_id:
             raise ValidationError(_('Le Compte Société ne dispose d’aucun wallet source.'))
 
+        # Back-office wizard allocation by carnet type.
+        # Under Patch34A normal data, each face_line is one carnet and
+        # transferable_carnet_count() is normally 1. Higher counts are kept
+        # only for legacy aggregated lines.
         remaining = int(carnet_qty or 0)
         if remaining <= 0:
             return []

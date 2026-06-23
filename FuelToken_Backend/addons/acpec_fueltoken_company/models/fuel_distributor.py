@@ -410,7 +410,13 @@ class AcpecFuelDistributor(models.Model):
         """Normalize lines for acpec.fuel.carnet.transfer.line.
 
         Expected input from backend/webclient:
-        [{'face_line_id': 10, 'carnet_qty': 2}, ...]
+        Depuis Patch34A, en sélection explicite, une ligne doit normalement
+        représenter un carnet source :
+        [{'face_line_id': 10, 'carnet_qty': 1}, ...]
+
+        carnet_qty > 1 reste toléré uniquement pour compatibilité backend/wizard
+        et anciennes lignes agrégées. Le futur Company Portal doit envoyer
+        une ligne par carnet avec carnet_qty = 1.
         """
         self.ensure_one()
         if not lines:
@@ -523,6 +529,7 @@ class AcpecFuelDistributor(models.Model):
         """Backend method for controlled company distribution to one member.
 
         This is the method that TicketsCarburant_WebClient / portal should call later.
+        The portal should send one explicit line per carnet source: face_line_id + carnet_qty = 1.
         It uses the existing acpec.fuel.carnet.transfer engine and does not
         duplicate transfer accounting logic.
         """
