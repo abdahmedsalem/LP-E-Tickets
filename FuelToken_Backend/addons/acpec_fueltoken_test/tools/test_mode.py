@@ -1,32 +1,46 @@
 import os
 
 
-_TRUE_VALUES = {'1', 'true', 'yes', 'on', 'dev', 'test'}
+_TRUE_VALUES = {'1', 'true', 'yes', 'y', 'on'}
 _RUNTIME_ENV_KEYS = ('ACPEC_ENV', 'ODOO_ENV', 'ENV')
+_DEV_ENV_VALUES = {'local', 'dev', 'test'}
 _PRODUCTION_ENV_VALUES = {'prod', 'production'}
 
 
+def _normalize(value):
+    return str(value or '').strip().casefold()
+
+
 def _env_bool(key):
-    return (os.getenv(key) or '').strip().lower() in _TRUE_VALUES
+    return _normalize(os.getenv(key)) in _TRUE_VALUES
+
+
+def runtime_env_label():
+    values = [
+        _normalize(os.getenv(key))
+        for key in _RUNTIME_ENV_KEYS
+        if os.getenv(key) not in (None, '')
+    ]
+    if not values:
+        return 'PRODUCTION'
+    if any(value in _PRODUCTION_ENV_VALUES for value in values):
+        return 'PRODUCTION'
+    if any(value not in _DEV_ENV_VALUES for value in values):
+        return 'UNKNOWN'
+    if any(value in _DEV_ENV_VALUES for value in values):
+        return 'DEV_LIKE'
+    return 'PRODUCTION'
 
 
 def is_production_runtime():
-    return any(
-        (os.getenv(key) or '').strip().lower() in _PRODUCTION_ENV_VALUES
-        for key in _RUNTIME_ENV_KEYS
-    )
+    return runtime_env_label() == 'PRODUCTION'
 
 
 def is_fueltoken_test_mode_enabled():
-    """Return True only when the local FuelToken test module is explicitly enabled.
+    """Console availability helper only; does not define security policy.
 
-    This module contains dangerous local-test behavior: fixed OTP, disabled SMS
-    sending and a public browser test console. The mere fact that the module is
-    installed must never activate those behaviors in production.
+    Patch36A removes the legacy test flag from the security path.
+    The legacy console is available only when the same explicit dev gate is open:
+    ACPEC_ENV/ODOO_ENV/ENV in local/dev/test + ACPEC_FUELTOKEN_DEV_MODE=1.
     """
-    enabled = _env_bool('ACPEC_FUELTOKEN_TEST_MODE')
-    if enabled and is_production_runtime():
-        raise RuntimeError(
-            'ACPEC_FUELTOKEN_TEST_MODE is forbidden when runtime environment is production.'
-        )
-    return enabled
+    return runtime_env_label() == 'DEV_LIKE' and _env_bool('ACPEC_FUELTOKEN_DEV_MODE')

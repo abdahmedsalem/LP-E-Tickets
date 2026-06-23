@@ -13,10 +13,17 @@ class TestOtpResConfigSettingsSecurityTable(TransactionCase):
     def _clear_setting(self, key):
         self.security_settings.search([('key', '=', key)]).unlink()
 
-    def test_otp_rate_limit_settings_read_from_policy_with_icp_fallback(self):
-        key = 'acpec_mobile_auth.otp_limit_identifier_per_minute'
+    def _set_setting(self, key, value):
         self._clear_setting(key)
-        self.icp.set_param(key, '7')
+        self.security_settings.create({
+            'key': key,
+            'value': str(value),
+            'active': True,
+        })
+
+    def test_otp_rate_limit_settings_read_from_dedicated_table(self):
+        key = 'acpec_mobile_auth.otp_limit_identifier_per_minute'
+        self._set_setting(key, '7')
 
         values = self.settings_model.get_values()
 

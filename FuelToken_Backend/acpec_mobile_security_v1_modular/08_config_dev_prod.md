@@ -235,3 +235,28 @@ refresh_token = ***masked***
 - max_active_devices_per_user dépassé bloque nouvel enrôlement ou impose back-office ;
 - flags obsolètes new_device_requires_* absents ou ignorés comme non normatifs.
 ```
+
+---
+
+## Patch36A - Runtime dev/prod fail-closed
+
+Patch36A remplace la logique historique de relaxation implicite par un gate explicite.
+
+Le mode dev relax est autorise uniquement si:
+
+- ACPEC_ENV, ODOO_ENV ou ENV vaut local, dev ou test;
+- ACPEC_FUELTOKEN_DEV_MODE vaut 1.
+
+Regles principales:
+
+- absence de variable runtime = strict / production;
+- environnement inconnu = strict + readiness critique;
+- ACPEC_FUELTOKEN_TEST_MODE est legacy et ne doit plus activer aucun comportement;
+- Odoo --test-enable ne doit jamais ouvrir le dev relax;
+- le mode OTP dev accepte 000000 mais ne retourne jamais le code en clair;
+- en strict, 000000 est refuse et les limites antiflood a zero reviennent a des valeurs sures;
+- acpec_fueltoken_test est une console legacy/dev, pas une source de verite securite.
+
+Document detaille:
+
+refonte_runtime_dev_prod_fail_closed_patch36A.md

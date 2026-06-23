@@ -61,14 +61,11 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 'delivery': 'configured_provider',
             }
             if request.env['acpec.mobile.security.policy'].sudo().otp_dev_mode_enabled():
-                data['dev_otp_code'] = code
-                data['delivery'] = 'dev_response'
+                data['delivery'] = 'dev_fixed_otp'
             data['otp_challenge_id'] = data['challenge_id']
             data['otp_challenge_ref'] = data['challenge_ref']
             data['otp_expires_at'] = data['expires_at']
             data['otp_delivery'] = data['delivery']
-            if 'dev_otp_code' in data:
-                data['otp_dev_code'] = data['dev_otp_code']
             return self._json_response(data)
         except Exception as exc:
             return self._handle_exception_response(exc)

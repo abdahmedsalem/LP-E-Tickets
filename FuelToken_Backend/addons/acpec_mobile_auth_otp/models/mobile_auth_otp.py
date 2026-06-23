@@ -19,6 +19,8 @@ OTP_SMS_CODE_LENGTH_MAX = 6
 
 
 class AcpecMobileAuthOtp(models.Model):
+    DEV_FIXED_OTP_CODE = '000000'
+
     _name = 'acpec.mobile.auth.otp'
     _description = 'ACPEC Mobile OTP Challenge'
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -74,13 +76,16 @@ class AcpecMobileAuthOtp(models.Model):
     @api.model
     def _otp_code_length(self):
         return self.env["acpec.mobile.security.policy"].sudo().otp_code_length()
-    @api.model
-    def _otp_code_length(self):
-        return self.env["acpec.mobile.security.policy"].sudo().otp_code_length()
+
     @api.model
     def _new_code(self):
+        if self._otp_dev_mode():
+            return self.DEV_FIXED_OTP_CODE
         length = self._otp_code_length()
-        return str(secrets.randbelow(10 ** length)).zfill(length)
+        code = self.DEV_FIXED_OTP_CODE
+        while code == self.DEV_FIXED_OTP_CODE:
+            code = str(secrets.randbelow(10 ** length)).zfill(length)
+        return code
 
     @api.model
     def _expiration_minutes(self):
@@ -343,14 +348,15 @@ class AcpecMobileAuthOtp(models.Model):
 
     @api.model
     def _otp_dev_mode(self):
-        return self.env["acpec.mobile.security.policy"].sudo().otp_dev_mode_enabled()
+        return self.env["acpec.mobile.security.policy"].sudo().runtime_allows_dev_relax()
+
     def _send_otp_code(self, code):
         self.ensure_one()
         phone = self._sms_recipient_phone()
+        if self._otp_dev_mode():
+            self.message_post(body=_('OTP dev prêt pour %s : aucun SMS réel envoyé.') % (phone or self.identifier,))
+            return True
         if not self._sms_gateway_configured():
-            if self._otp_dev_mode():
-                self.message_post(body=_('OTP pret pour %s (mode dev sans SMS).') % (phone or self.identifier,))
-                return True
             raise ValidationError(_('La configuration SMS Chinguisoft est incomplete.'))
         sms_gateway = self.env['acpec.sms.gateway'].sudo()
         sms_gateway.send_validation_sms(phone, code=code, lang=self._sms_lang())
@@ -373,6 +379,16 @@ class AcpecMobileAuthOtp(models.Model):
             raise ValidationError(
                 _('Le code OTP doit contenir exactement %s chiffres.') % expected_length
             )
+        if code == self.DEV_FIXED_OTP_CODE and not self._otp_dev_mode():
+            attempt_count = self.attempt_count + 1
+            vals = {'attempt_count': attempt_count}
+            if attempt_count >= self.max_attempts:
+                vals.update({
+                    'state': 'blocked',
+                    'blocked_until': now + relativedelta(minutes=15),
+                })
+            self.write(vals)
+            raise AccessError(_('Code OTP invalide.'))
         expected_hash = self.otp_hash or ''
         given_hash = self._hash_otp(code, self.salt) or ''
         if not hmac.compare_digest(given_hash, expected_hash):
