@@ -294,6 +294,7 @@ class OdooAuthService {
     required String code,
     required String name,
     required String pin,
+    required int companyId,
     int? challengeId,
   }) async {
     final route = OdooAuthRpcConfig.verifyOtpRoute;
@@ -312,6 +313,7 @@ class OdooAuthService {
         'code': code.trim(),
         'name': name.trim(),
         'secret_code': pin,
+        'company_id': companyId,
       },
     );
     _ensureAcpecEnvelopeSuccess(result);

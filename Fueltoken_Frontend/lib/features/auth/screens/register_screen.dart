@@ -47,8 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (mounted) setState(() {});
   }
 
-  String get _phoneFull =>
-      _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
+  String get _phoneFull => _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
 
   Future<void> _onCreateAccount() async {
     if (!_formKey.currentState!.validate()) return;
@@ -79,6 +78,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           name: _name.text.trim(),
           phoneFull: _phoneFull,
           pin: _pin.text,
+          companyId: OdooAuthRpcConfig.signupDefaultCompanyId,
           challengeId: challengeId,
         ),
       );
