@@ -180,14 +180,6 @@ class AppRouter {
             return RegisterVerifyOtpScreen(args: x);
           },
         ),
-        GoRoute(
-          path: '/signup/pending',
-          builder: (_, _) {
-            return const Scaffold(
-              body: Center(child: Text('Compte actif. Connectez-vous.')),
-            );
-          },
-        ),
 
         // Client shell, 5 tabs
         StatefulShellRoute.indexedStack(

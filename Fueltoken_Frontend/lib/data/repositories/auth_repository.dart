@@ -136,10 +136,7 @@ class AuthRepository {
   Future<AppUser> _loginOdoo(String identifier, String pin) async {
     try {
       final user = AcpecRoleOverrides.apply(
-        await OdooAuthService.instance.login(
-          identifier: identifier,
-          pin: pin,
-        ),
+        await OdooAuthService.instance.login(identifier: identifier, pin: pin),
       );
       _current = user;
       final cachedIdentifier = _cacheIdentifierForUser(user);
@@ -228,7 +225,8 @@ class AuthRepository {
   Future<Map<String, dynamic>> requestLoginOtp({
     required String identifier,
   }) async {
-    if (!OdooApiConfig.isConfigured || OdooAuthRpcConfig.requestOtpRoute.isEmpty) {
+    if (!OdooApiConfig.isConfigured ||
+        OdooAuthRpcConfig.requestOtpRoute.isEmpty) {
       throw Exception('Connexion OTP ACPEC indisponible.');
     }
     try {
@@ -245,7 +243,8 @@ class AuthRepository {
     required String code,
     int? challengeId,
   }) async {
-    if (!OdooApiConfig.isConfigured || OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
+    if (!OdooApiConfig.isConfigured ||
+        OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
       throw Exception('Vérification OTP ACPEC indisponible.');
     }
     try {
@@ -308,20 +307,23 @@ class AuthRepository {
     required String pin,
     Map<String, dynamic>? tokens,
   }) async {
-    final access = tokens?['access']?.toString() ?? '';
-    final refresh = tokens?['refresh']?.toString() ?? '';
+    final access = tokens?['access']?.toString().trim() ?? '';
+    final refresh = tokens?['refresh']?.toString().trim() ?? '';
     final hasJwt = access.isNotEmpty && refresh.isNotEmpty;
-    if (hasJwt) {
-      // Session mobile ACPEC/Odoo : les tokens retournés par verify-otp doivent
-      // rester dans OdooSessionStore, car c'est ce store que la restauration au
-      // démarrage lit après F5 / réouverture de l'application.
-      await OdooSessionStore.saveAccessToken(access);
-      await OdooSessionStore.saveRefreshToken(refresh);
+    if (!hasJwt) {
       await AuthTokenStore.clear();
-    } else {
-      await AuthTokenStore.clear();
-      // Inscription / session Odoo : conserver session_id et tokens déjà capturés.
+      throw Exception(
+        'Compte créé. Activation en attente par le back-office. '
+        'Connectez-vous après approbation.',
+      );
     }
+
+    // Session mobile ACPEC/Odoo : les tokens retournés par verify-otp doivent
+    // rester dans OdooSessionStore, car c'est ce store que la restauration au
+    // démarrage lit après F5 / réouverture de l'application.
+    await OdooSessionStore.saveAccessToken(access);
+    await OdooSessionStore.saveRefreshToken(refresh);
+    await AuthTokenStore.clear();
     await Future.delayed(const Duration(milliseconds: 100));
     if (pin.length != kSecretCodeLength) {
       throw Exception('Le PIN doit avoir 4 chiffres.');

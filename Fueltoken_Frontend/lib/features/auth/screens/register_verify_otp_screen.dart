@@ -80,6 +80,15 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
           : Map<String, dynamic>.from(body as Map);
       final user = AppUser.fromOdooProfileMap(payload, envelope: body);
       final tokens = _extractTokens(body);
+      final hasTokens = _hasSessionTokens(tokens);
+
+      if (!hasTokens) {
+        throw Exception(
+          'Inscription incomplète : session mobile absente. '
+          'Réessayez ou contactez l’administrateur.',
+        );
+      }
+
       if (!mounted) return;
       context.read<AuthBloc>().add(
         AuthRemoteRegistrationCompleted(
@@ -97,6 +106,12 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  bool _hasSessionTokens(Map<String, dynamic>? tokens) {
+    final access = tokens?['access']?.toString().trim() ?? '';
+    final refresh = tokens?['refresh']?.toString().trim() ?? '';
+    return access.isNotEmpty && refresh.isNotEmpty;
   }
 
   Map<String, dynamic>? _extractTokens(Map<String, dynamic> body) {
