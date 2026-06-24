@@ -732,6 +732,88 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(enrollment_session.device_trust_state, 'pending_trust')
         self.assertTrue(enrollment_session.is_device_approval_candidate)
 
+
+    def test_register_otp_validates_payload_before_verification(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+
+        otp_controller = AcpecMobileAuthOtpApi()
+        otp_controller._require_keys = lambda params, keys: None
+        otp_controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
+        otp_controller._get_optional_int = lambda params, key, default=False: int(params.get(key) or default)
+        otp_controller._get_company = lambda company_id=False: self.env.company
+        dummy_httprequest = SimpleNamespace(
+            remote_addr='127.0.0.1',
+            headers={'User-Agent': 'pytest'},
+        )
+        dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
+
+        cases = [
+            ('32524656', {'name': ''}, 'NAME_REQUIRED'),
+            ('32524657', {'secret_code': ''}, 'SECRET_CODE_REQUIRED'),
+            ('32524658', {'secret_code': '12ab'}, 'SECRET_CODE_INVALID'),
+        ]
+
+        for identifier, overrides, expected_code in cases:
+            with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                    patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+                request_result = otp_controller.request_otp(
+                    identifier=identifier,
+                    purpose='register',
+                )
+
+            self.assertTrue(request_result['ok'])
+            request_data = request_result['data']
+            device_uid = 'ft-android-test-register-preverify-%s' % identifier
+
+            payload = {
+                'challenge_id': request_data['otp_challenge_id'],
+                'identifier': identifier,
+                'code': '000000',
+                'name': 'Client OTP',
+                'secret_code': '1234',
+                'company_id': self.env.company.id,
+                'device_uid': device_uid,
+                'device_name': 'Flutter Android',
+                'platform': 'android',
+                'app_version': 'test',
+            }
+            payload.update(overrides)
+
+            with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                    patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+                invalid_result = otp_controller.verify_otp(**payload)
+
+            self.assertFalse(invalid_result['ok'])
+            if expected_code:
+                self.assertEqual(invalid_result['error']['code'], expected_code)
+            self.assertFalse(self.env['res.users'].sudo().search([('login', '=', identifier)], limit=1))
+            self.assertFalse(self.env['acpec.mobile.auth.account.request'].sudo().search([
+                ('signup_identifier', '=', identifier),
+            ], limit=1))
+
+            payload.update({
+                'name': 'Client OTP',
+                'secret_code': '1234',
+            })
+            with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                    patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+                verify_result = otp_controller.verify_otp(**payload)
+
+            self.assertTrue(verify_result['ok'])
+            user = self.env['res.users'].sudo().search([('login', '=', identifier)], limit=1)
+            self.assertTrue(user)
+            self.assertEqual(user.mobile_state, 'self_registered')
+            self.assertEqual(verify_result['data']['device_uid'], device_uid)
+
+            account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
+                ('user_id', '=', user.id),
+            ], order='id desc', limit=1)
+            self.assertTrue(account_request)
+            self.assertEqual(account_request.name_display, 'Client OTP')
+            self.assertNotEqual(account_request.name, 'Client OTP')
+
+
     def test_signup_route_returns_register_otp_payload_for_phone(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
         icp = self.env['ir.config_parameter'].sudo()

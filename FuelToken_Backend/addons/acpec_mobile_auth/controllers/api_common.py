@@ -694,7 +694,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         request_model = request.env['acpec.mobile.auth.account.request'].sudo()
         request_vals = {
-            'name': name,
             'name_display': name,
             'signup_identifier': identifier_vals['signup_identifier'],
             'signup_identifier_type': identifier_vals['signup_identifier_type'],

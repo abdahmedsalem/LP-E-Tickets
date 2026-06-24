@@ -114,15 +114,65 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 # Validate the new PIN before consuming the OTP.
                 reset_user._validate_mobile_pin(reset_secret_code)
 
+            register_name = False
+            register_secret_code = False
+            register_email = False
+            register_note = False
+            register_company_id = False
+            register_company = False
+
             if challenge.purpose == 'register':
+                register_name = self._get_clean_str(kwargs, 'name')
+                register_secret_code = self._get_clean_str(kwargs, 'secret_code')
+                register_email = self._get_clean_str(kwargs, 'email')
+                register_note = self._get_clean_str(kwargs, 'note')
+                audit_company = request.env.company
+
+                try:
+                    register_company_id = self._get_optional_int(kwargs, 'company_id', False)
+                except (TypeError, ValueError, ValidationError):
+                    return self._mobile_signup_not_allowed_response(
+                        params=kwargs,
+                        company=audit_company,
+                        debug_reason='register_otp_invalid_company_id_before_otp_consumption',
+                        public_debug_reason='signup_not_allowed',
+                    )
+
+                if register_company_id:
+                    candidate_company = request.env['res.company'].sudo().browse(register_company_id)
+                    if candidate_company.exists():
+                        audit_company = candidate_company
+
                 device_uid = self._get_clean_str(kwargs, 'device_uid')
                 session_model = request.env['acpec.mobile.session'].sudo()
                 if not session_model._is_stable_device_uid(device_uid):
                     return self._mobile_signup_not_allowed_response(
                         params=kwargs,
-                        company=request.env.company,
+                        company=audit_company,
                         debug_reason='register_otp_missing_or_unstable_device_uid_before_otp_consumption',
                         public_debug_reason='signup_not_allowed',
+                    )
+
+                if not register_name:
+                    return self._error_response('NAME_REQUIRED', 'Name is required.')
+                if not register_secret_code:
+                    return self._error_response('SECRET_CODE_REQUIRED', 'Secret code is required.')
+
+                try:
+                    request.env['res.users'].sudo()._validate_mobile_pin(register_secret_code)
+                except ValidationError:
+                    return self._error_response(
+                        'SECRET_CODE_INVALID',
+                        'Le PIN mobile doit contenir exactement 4 chiffres.',
+                    )
+
+                try:
+                    register_company = self._get_company(register_company_id)
+                except MobileSignupNotAllowedError as exc:
+                    return self._mobile_signup_not_allowed_response(
+                        exc,
+                        params=kwargs,
+                        company=audit_company,
                     )
 
             try:
@@ -145,20 +195,11 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 return self._json_response(payload)
 
             if challenge.purpose == 'register':
-                name = self._get_clean_str(kwargs, 'name')
-                secret_code = self._get_clean_str(kwargs, 'secret_code')
-                email = self._get_clean_str(kwargs, 'email')
-                note = self._get_clean_str(kwargs, 'note')
-                company_id = self._get_optional_int(kwargs, 'company_id', False)
-                if not name:
-                    return self._error_response('NAME_REQUIRED', _('Name is required.'))
-                if not secret_code:
-                    return self._error_response('SECRET_CODE_REQUIRED', _('Secret code is required.'))
-
-                try:
-                    company = self._get_company(company_id)
-                except MobileSignupNotAllowedError as exc:
-                    return self._mobile_signup_not_allowed_response(exc, params=kwargs)
+                name = register_name
+                secret_code = register_secret_code
+                email = register_email
+                note = register_note
+                company = register_company
                 identifier_vals = self._parse_signup_identifier(challenge.identifier or identifier)
 
                 account_request = False
