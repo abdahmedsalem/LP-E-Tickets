@@ -17,6 +17,14 @@ class AppUser extends Equatable {
 
   /// Nom de la station ou de la société affecté à cet utilisateur station.
   final String? stationName;
+
+  /// État de confiance du device mobile côté backend ACPEC.
+  ///
+  /// Absence de valeur = ancien payload / mode local : ne bloque pas l'application.
+  /// Valeurs attendues côté backend : trusted, pending_trust, pending_approval, rejected, blocked.
+  final String? deviceTrustState;
+  final bool? deviceTrustRequiredForSensitive;
+
   final DateTime createdAt;
 
   const AppUser({
@@ -28,9 +36,10 @@ class AppUser extends Equatable {
     this.companyId,
     this.stationId,
     this.stationName,
+    this.deviceTrustState,
+    this.deviceTrustRequiredForSensitive,
     required this.createdAt,
   });
-
 
   static String _safeText(dynamic value) {
     if (value == null || value == false) return '';
@@ -47,6 +56,111 @@ class AppUser extends Equatable {
       if (s.isNotEmpty) return s;
     }
     return '';
+  }
+
+  static Map<String, dynamic>? _mapOrNull(dynamic value) {
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return null;
+  }
+
+  static List<Map<String, dynamic>?> _candidateTrustMaps(
+    Map<String, dynamic> userPayload, {
+    Map<String, dynamic>? raw,
+    Map<String, dynamic>? envelope,
+  }) {
+    final maps = <Map<String, dynamic>?>[
+      userPayload,
+      raw,
+      envelope,
+      _mapOrNull(userPayload['device']),
+      _mapOrNull(userPayload['mobile_device']),
+      _mapOrNull(raw?['user']),
+      _mapOrNull(raw?['data']),
+      _mapOrNull(raw?['device']),
+      _mapOrNull(raw?['mobile_device']),
+      _mapOrNull(envelope?['user']),
+      _mapOrNull(envelope?['data']),
+      _mapOrNull(envelope?['device']),
+      _mapOrNull(envelope?['mobile_device']),
+    ];
+    final envelopeData = _mapOrNull(envelope?['data']);
+    maps.add(_mapOrNull(envelopeData?['user']));
+    maps.add(_mapOrNull(envelopeData?['device']));
+    maps.add(_mapOrNull(envelopeData?['mobile_device']));
+    return maps;
+  }
+
+  static String? _firstSafeTextInMaps(
+    List<Map<String, dynamic>?> maps,
+    List<String> keys,
+  ) {
+    for (final map in maps) {
+      if (map == null) continue;
+      for (final key in keys) {
+        final value = _safeText(map[key]);
+        if (value.isNotEmpty) return value;
+      }
+    }
+    return null;
+  }
+
+  static bool? _safeBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final s = _safeText(value).toLowerCase();
+    if (s.isEmpty) return null;
+    if (['true', '1', 'yes', 'y', 'oui'].contains(s)) return true;
+    if (['false', '0', 'no', 'n', 'non'].contains(s)) return false;
+    return null;
+  }
+
+  static bool? _firstBoolInMaps(
+    List<Map<String, dynamic>?> maps,
+    List<String> keys,
+  ) {
+    for (final map in maps) {
+      if (map == null) continue;
+      for (final key in keys) {
+        final value = _safeBool(map[key]);
+        if (value != null) return value;
+      }
+    }
+    return null;
+  }
+
+  static String? _resolveDeviceTrustState(
+    Map<String, dynamic> userPayload, {
+    Map<String, dynamic>? raw,
+    Map<String, dynamic>? envelope,
+  }) {
+    return _firstSafeTextInMaps(
+      _candidateTrustMaps(userPayload, raw: raw, envelope: envelope),
+      const [
+        'device_trust_state',
+        'deviceTrustState',
+        'mobile_device_trust_state',
+        'mobileDeviceTrustState',
+      ],
+    );
+  }
+
+  static bool? _resolveDeviceTrustRequiredForSensitive(
+    Map<String, dynamic> userPayload, {
+    Map<String, dynamic>? raw,
+    Map<String, dynamic>? envelope,
+  }) {
+    return _firstBoolInMaps(
+      _candidateTrustMaps(userPayload, raw: raw, envelope: envelope),
+      const [
+        'device_trust_required_for_sensitive',
+        'deviceTrustRequiredForSensitive',
+        'mobile_device_trust_required_for_sensitive',
+        'mobileDeviceTrustRequiredForSensitive',
+      ],
+    );
   }
 
   /// Profil issu du flux d’inscription (JWT) ou du profil Odoo.
@@ -106,6 +220,9 @@ class AppUser extends Equatable {
     }
     final snRaw = u['station_name'] ?? u['company_name'] ?? u['partner_name'];
     final stationName = snRaw?.toString().trim();
+    final deviceTrustState = _resolveDeviceTrustState(u);
+    final deviceTrustRequiredForSensitive =
+        _resolveDeviceTrustRequiredForSensitive(u);
 
     return AppUser(
       id: id,
@@ -120,6 +237,8 @@ class AppUser extends Equatable {
       stationName: role == UserRole.station
           ? (stationName?.isNotEmpty == true ? stationName : null)
           : null,
+      deviceTrustState: deviceTrustState,
+      deviceTrustRequiredForSensitive: deviceTrustRequiredForSensitive,
       createdAt: created,
     );
   }
@@ -150,7 +269,20 @@ class AppUser extends Equatable {
     if (u.containsKey('id_utilisateur') ||
         (u.containsKey('first_name') && u.containsKey('email'))) {
       final base = AppUser.fromOtpApiUserJson(u);
-      return base.copyWith(role: _higherPrivilegeRole(base.role, resolvedRole));
+      return base.copyWith(
+        role: _higherPrivilegeRole(base.role, resolvedRole),
+        deviceTrustState: _resolveDeviceTrustState(
+          u,
+          raw: raw,
+          envelope: envelope,
+        ),
+        deviceTrustRequiredForSensitive:
+            _resolveDeviceTrustRequiredForSensitive(
+              u,
+              raw: raw,
+              envelope: envelope,
+            ),
+      );
     }
 
     final idRaw = u['id'] ?? u['user_id'] ?? u['uid'];
@@ -203,6 +335,17 @@ class AppUser extends Equatable {
     }
     final snRaw2 = u['station_name'] ?? u['company_name'] ?? u['partner_name'];
     final stationName2 = snRaw2?.toString().trim();
+    final deviceTrustState = _resolveDeviceTrustState(
+      u,
+      raw: raw,
+      envelope: envelope,
+    );
+    final deviceTrustRequiredForSensitive =
+        _resolveDeviceTrustRequiredForSensitive(
+          u,
+          raw: raw,
+          envelope: envelope,
+        );
 
     return AppUser(
       id: id,
@@ -217,9 +360,19 @@ class AppUser extends Equatable {
       stationName: resolvedRole == UserRole.station
           ? (stationName2?.isNotEmpty == true ? stationName2 : null)
           : null,
+      deviceTrustState: deviceTrustState,
+      deviceTrustRequiredForSensitive: deviceTrustRequiredForSensitive,
       createdAt: created,
     );
   }
+
+  bool get isDeviceTrusted {
+    final state = deviceTrustState?.trim().toLowerCase();
+    if (state == null || state.isEmpty) return true;
+    return state == 'trusted';
+  }
+
+  bool get isDeviceActivationPending => !isDeviceTrusted;
 
   AppUser copyWith({
     String? name,
@@ -228,6 +381,8 @@ class AppUser extends Equatable {
     String? stationId,
     String? companyId,
     String? stationName,
+    String? deviceTrustState,
+    bool? deviceTrustRequiredForSensitive,
   }) {
     return AppUser(
       id: id,
@@ -238,6 +393,10 @@ class AppUser extends Equatable {
       companyId: companyId ?? this.companyId,
       stationId: stationId ?? this.stationId,
       stationName: stationName ?? this.stationName,
+      deviceTrustState: deviceTrustState ?? this.deviceTrustState,
+      deviceTrustRequiredForSensitive:
+          deviceTrustRequiredForSensitive ??
+          this.deviceTrustRequiredForSensitive,
       createdAt: createdAt,
     );
   }
@@ -251,6 +410,9 @@ class AppUser extends Equatable {
     role,
     companyId,
     stationId,
+    stationName,
+    deviceTrustState,
+    deviceTrustRequiredForSensitive,
   ];
 
   /// Garde le rôle le plus élevé (ex. profil « client » + drapeaux ACPEC admin).

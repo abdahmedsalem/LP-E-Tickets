@@ -20,6 +20,16 @@ class AuthHydrateRequested extends AuthEvent {
   const AuthHydrateRequested();
 }
 
+/// Rafraîchissement manuel depuis l’écran d’activation en attente.
+///
+/// Ne repasse pas par la logique de démarrage/PIN local :
+/// - si le device reste non trusted, on reste sur l’écran d’attente ;
+/// - si le device devient trusted, le router ouvre l’écran métier adapté ;
+/// - si la session est expirée, retour login.
+class AuthActivationRefreshRequested extends AuthEvent {
+  const AuthActivationRefreshRequested();
+}
+
 class AuthLoginRequested extends AuthEvent {
   final String identifier; // email ou téléphone
   final String pin;
@@ -203,6 +213,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     : _repo = repo ?? AuthRepository.instance,
       super(const AuthState(status: AuthStatus.unauthenticated)) {
     on<AuthHydrateRequested>(_onHydrate);
+    on<AuthActivationRefreshRequested>(_onActivationRefresh);
     on<AuthLoginRequested>(_onLogin);
     on<AuthLoginOtpRequested>(_onLoginOtpRequested);
     on<AuthLoginOtpVerified>(_onLoginOtpVerified);
@@ -233,6 +244,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // ouvrir directement Home, mais elle ne doit pas non plus être révoquée.
     // On garde la session mobile et on force seulement la création du PIN local.
     emit(AuthState(status: AuthStatus.pinSetupRequired, user: user));
+  }
+
+  Future<void> _onActivationRefresh(
+    AuthActivationRefreshRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        status: AuthStatus.authenticating,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
+    try {
+      final user = await _repo.tryRestoreRemoteSession();
+      if (user == null) {
+        emit(
+          const AuthState(
+            status: AuthStatus.unauthenticated,
+            loginInfoMessage:
+                'Votre session a expiré. Reconnectez-vous pour continuer.',
+          ),
+        );
+        return;
+      }
+      emit(AuthState(status: AuthStatus.authenticated, user: user));
+    } catch (err) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.authenticated,
+          errorMessage: ErrorPresenter.message(err),
+        ),
+      );
+    }
   }
 
   Future<void> _onSessionExpired(
