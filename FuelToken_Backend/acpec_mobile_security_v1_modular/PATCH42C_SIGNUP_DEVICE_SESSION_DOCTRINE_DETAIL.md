@@ -600,3 +600,60 @@ La règle clé est :
 Pas de device_uid stable => pas de consommation OTP, pas de user, pas de session,
 payload public SIGNUP_NOT_ALLOWED, détail technique en audit back-office.
 ```
+
+---
+
+## 21. Additif Patch42D — validations register avant consommation OTP
+
+Patch42D complète l’atomicité Patch42C.
+
+Règle ajoutée :
+
+```text
+Pour purpose = register, les validations payload bloquantes connues doivent être faites avant challenge.verify(code).
+```
+
+Ordre cible :
+
+```text
+1. lire name, secret_code, company_id et device_uid ;
+2. déterminer la société d’audit si company_id est fourni ;
+3. refuser device_uid absent/non stable avant consommation OTP ;
+4. refuser name manquant avant consommation OTP ;
+5. refuser secret_code manquant ou invalide avant consommation OTP ;
+6. résoudre la société cible avant consommation OTP ;
+7. seulement ensuite appeler challenge.verify(code).
+```
+
+Règle d’implémentation :
+
+```text
+Aucune validation pre-verify ne doit laisser remonter une exception non capturée.
+Les erreurs contrôlées doivent être retournées par réponse JSON.
+Les refus signup audités doivent passer par _mobile_signup_not_allowed_response(...) afin de préserver l’audit back-office avant le return.
+Pas de raise volontaire dans le flux contrôleur.
+Pas d’assert runtime dans le flux contrôleur.
+```
+
+Effet attendu :
+
+```text
+Un OTP register valide ne doit pas être consommé si le payload register est incomplet ou invalide.
+Le même challenge doit rester réutilisable après correction du payload.
+```
+
+Patch42D ne change pas la doctrine account.request de Patch42C :
+
+```text
+account.request.state = approved signifie demande traitée/clôturée,
+tandis que res.users.mobile_state = self_registered signifie compte créé mais accès métier non encore approuvé.
+```
+
+Correction complémentaire figée par Patch42D :
+
+```text
+account.request.name est une référence technique générée par séquence et doit rester unique.
+Le nom humain du client doit être stocké dans account.request.name_display.
+Deux clients peuvent avoir le même nom humain.
+L'identité métier mobile repose sur signup_identifier / phone / login.
+```
