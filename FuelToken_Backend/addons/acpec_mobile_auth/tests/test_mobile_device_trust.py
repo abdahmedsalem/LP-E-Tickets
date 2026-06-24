@@ -131,6 +131,110 @@ class TestMobileDeviceTrust(TransactionCase):
         self.assertEqual(new_session.device_trust_state, 'pending_trust')
         self.assertFalse(new_session.device_trusted_at)
 
+    def test_relogin_same_stable_device_inherits_trusted_after_logout(self):
+        user = self._create_mobile_user('trusted-relogin-41a@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+        device_uid = 'ft-test-relogin-41a'
+
+        first = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'device_name': 'Android 41A',
+            'platform': 'android',
+        })
+        first_session = first['session']
+        self.assertEqual(first_session.device_trust_state, 'pending_trust')
+
+        first_session.action_trust_device()
+        first_session.action_revoke()
+
+        second = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'device_name': 'Android 41A',
+            'platform': 'android',
+        })
+        second_session = second['session']
+
+        self.assertNotEqual(second_session, first_session)
+        self.assertEqual(second_session.device_uid, device_uid)
+        self.assertEqual(second_session.device_trust_state, 'trusted')
+        self.assertTrue(second_session.device_trusted_at)
+        self.assertFalse(second_session.is_device_approval_candidate)
+
+    def test_relogin_same_stable_device_inherits_blocked_state(self):
+        user = self._create_mobile_user('blocked-relogin-41a@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+        device_uid = 'ft-test-blocked-41a'
+
+        first = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })
+        first_session = first['session']
+        first_session.action_block_device()
+        first_session.action_revoke()
+
+        second = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })
+        second_session = second['session']
+
+        self.assertEqual(second_session.device_trust_state, 'blocked')
+        self.assertTrue(second_session.device_blocked_at)
+        self.assertFalse(second_session.is_device_approval_candidate)
+
+    def test_reset_device_trust_prevents_future_relogin_inheritance(self):
+        user = self._create_mobile_user('reset-relogin-41a@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+        device_uid = 'ft-test-reset-41a'
+
+        first = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })
+        first_session = first['session']
+        first_session.action_trust_device()
+        first_session.action_reset_device_trust()
+        first_session.action_revoke()
+
+        second = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })
+        second_session = second['session']
+
+        self.assertEqual(second_session.device_trust_state, 'pending_trust')
+        self.assertFalse(second_session.device_trusted_at)
+        self.assertTrue(second_session.is_device_approval_candidate)
+
+    def test_rejected_user_does_not_inherit_trusted_device_on_relogin(self):
+        user = self._create_mobile_user('rejected-relogin-41a@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+        device_uid = 'ft-test-rejected-relogin-41a'
+
+        first = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })
+        first_session = first['session']
+        first_session.action_trust_device()
+
+        user.sudo().write({'mobile_state': 'rejected'})
+
+        with self.assertRaises(AccessError):
+            Session.create_for_user(user, {
+                'device_uid': device_uid,
+                'platform': 'android',
+            })
+
+        new_active = Session.search([
+            ('user_id', '=', user.id),
+            ('device_uid', '=', device_uid),
+            ('id', '!=', first_session.id),
+            ('state', '=', 'active'),
+        ], limit=1)
+        self.assertFalse(new_active)
+
     def test_profile_payload_exposes_device_trust_state(self):
         user, token_data = self._create_session('profile-device-20a@example.com', 'profile-device-20a')
         session = token_data['session']
