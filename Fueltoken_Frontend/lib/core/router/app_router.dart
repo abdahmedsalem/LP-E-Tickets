@@ -20,6 +20,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
 import '../../features/auth/screens/session_pin_lock_screen.dart';
+import '../../features/auth/screens/activation_pending_screen.dart';
 import '../../features/home/screens/client_shell_scaffold.dart';
 import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/user_home_screen.dart';
@@ -55,6 +56,10 @@ class AppRouter {
             auth.status == AuthStatus.pinSetupRequired;
         final loc = state.matchedLocation;
         final atPinLockRoute = loc == '/session-pin-lock';
+        final atActivationPendingRoute = loc == '/activation-pending';
+        final hasUser = auth.user != null;
+        final deviceActivationPending =
+            hasUser && auth.user!.isDeviceActivationPending;
         final atAuthRoute = {
           '/login',
           '/session-pin-lock',
@@ -64,6 +69,16 @@ class AppRouter {
           '/forgot-password/verify-otp',
           '/forgot-password/reset',
         }.contains(loc);
+
+        if (deviceActivationPending) {
+          if (!atActivationPendingRoute) return '/activation-pending';
+          return null;
+        }
+        if (atActivationPendingRoute) {
+          if (loggedIn && auth.user != null) return _homeFor(auth.user!.role);
+          if (locked && auth.user != null) return '/session-pin-lock';
+          return '/login';
+        }
 
         if (locked && !atPinLockRoute) return '/session-pin-lock';
         if (!locked && atPinLockRoute) {
@@ -114,6 +129,10 @@ class AppRouter {
       },
       routes: [
         GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+        GoRoute(
+          path: '/activation-pending',
+          builder: (_, _) => const ActivationPendingScreen(),
+        ),
         GoRoute(
           path: '/session-pin-lock',
           builder: (_, _) => const SessionPinLockScreen(),
@@ -275,7 +294,7 @@ class AppRouter {
             child: StationConsumptionHistoryScreen(),
           ),
         ),
- 
+
         // Station shell: home, scan, profile
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
