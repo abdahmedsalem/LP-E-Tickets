@@ -134,7 +134,7 @@ class AcpecMobileSession(models.Model):
             ('device_uid', '!=', False),
             ('device_uid', '!=', ''),
             ('user_id.mobile_only', '=', True),
-            ('user_id.mobile_state', '=', 'approved'),
+            ('user_id.mobile_state', 'in', ['approved', 'self_registered']),
         ]
 
     def _device_approval_candidate_keys(self):
@@ -171,7 +171,7 @@ class AcpecMobileSession(models.Model):
                     ('device_uid', '!=', False),
                     ('device_uid', '!=', ''),
                     ('user_id.mobile_only', '=', True),
-                    ('user_id.mobile_state', '=', 'approved'),
+                    ('user_id.mobile_state', 'in', ['approved', 'self_registered']),
                 ],
                 order='create_date desc, id desc',
                 limit=1,
@@ -252,7 +252,7 @@ class AcpecMobileSession(models.Model):
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
 
         mobile_state = getattr(user, 'mobile_state', False)
-        if mobile_state != 'approved':
+        if mobile_state not in ('approved', 'self_registered'):
             if mobile_state == 'pending':
                 raise AccessError(_('Compte mobile en attente d’approbation.'))
             if mobile_state == 'rejected':

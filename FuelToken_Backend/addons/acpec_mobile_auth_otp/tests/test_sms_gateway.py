@@ -660,7 +660,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         user = self.env['res.users'].sudo().search([('login', '=', '32524655')], limit=1)
         self.assertTrue(user)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'pending')
+        self.assertEqual(user.mobile_state, 'self_registered')
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)
         self.assertTrue(user.mobile_pin_hash)
@@ -673,8 +673,13 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(account_request)
         self.assertEqual(account_request.state, 'pending')
 
-        with self.assertRaises(AccessError):
-            self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        enrollment_session_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'register-device-enrollment-39a-32524655',
+            'platform': 'android',
+        })
+        enrollment_session = enrollment_session_data['session']
+        self.assertEqual(enrollment_session.state, 'active')
+        self.assertEqual(enrollment_session.device_trust_state, 'pending_trust')
 
         account_request.action_approve()
         self.assertEqual(user.mobile_state, 'approved')
@@ -793,7 +798,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524657')], limit=1)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'pending')
+        self.assertEqual(user.mobile_state, 'self_registered')
         self.assertTrue(user.mobile_pin_set_at)
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)
@@ -863,7 +868,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524656')], limit=1)
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'pending')
+        self.assertEqual(user.mobile_state, 'self_registered')
         self.assertTrue(user.mobile_pin_set_at)
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)

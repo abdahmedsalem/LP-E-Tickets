@@ -11,15 +11,16 @@ from odoo.exceptions import AccessDenied, AccessError, UserError, ValidationErro
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
-    mobile_phone = fields.Char(string='Mobile Phone', index=True)
+    mobile_phone = fields.Char(string='Téléphone mobile', index=True)
     mobile_state = fields.Selection([
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('blocked', 'Blocked'),
-    ], string='Mobile State', default='pending',)
+        ('pending', 'En attente'),
+        ('self_registered', 'Auto-inscrit'),
+        ('approved', 'Approuvé'),
+        ('rejected', 'Rejeté'),
+        ('blocked', 'Bloqué'),
+    ], string='État mobile', default='pending',)
     mobile_only = fields.Boolean(
-        string='Mobile Only',
+        string='Utilisateur mobile uniquement',
         default=False,
         index=True,
         copy=False,
@@ -522,7 +523,7 @@ class ResUsers(models.Model):
         self._check_acpec_mobile_user_separation()
 
         should_revoke_mobile_sessions = (
-            ('mobile_state' in vals and vals.get('mobile_state') != 'approved')
+            ('mobile_state' in vals and vals.get('mobile_state') not in ('approved', 'self_registered'))
             or vals.get('active') is False
         )
         if should_revoke_mobile_sessions:

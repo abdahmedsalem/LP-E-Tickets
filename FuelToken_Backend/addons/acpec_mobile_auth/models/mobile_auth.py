@@ -91,7 +91,6 @@ class AcpecMobileAuthAccountRequest(models.Model):
         for xmlid in (
             'base.group_portal',
             'acpec_mobile_auth.group_mobile_auth_user',
-            'acpec_fueltoken_base.group_fuel_user',
         ):
             group = self.env.ref(xmlid, raise_if_not_found=False)
             if group:
