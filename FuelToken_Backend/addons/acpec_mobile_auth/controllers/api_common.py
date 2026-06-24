@@ -426,6 +426,12 @@ class AcpecMobileAuthApiCommon(http.Controller):
             _('Code de vérification invalide ou expiré.'),
         ), debug_reason=debug_reason)
 
+    def _public_account_not_found_response(self, debug_reason=False):
+        return self._with_public_auth_debug(self._error_response(
+            'ACCOUNT_NOT_FOUND',
+            _('Aucun compte mobile n’est associé à ce numéro. Veuillez vous inscrire pour créer un compte.'),
+        ), debug_reason=debug_reason)
+
     def _public_signup_not_allowed_response(self, debug_reason=False):
         return self._with_public_auth_debug(self._error_response(
             'SIGNUP_NOT_ALLOWED',
