@@ -423,6 +423,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                     name='Duplicate Register',
                     secret_code='1234',
                     company_id=self.env.company.id,
+                    device_uid='ft-android-test-duplicate-register-46009103',
+                    device_name='Flutter Android',
+                    platform='android',
+                    app_version='test',
                 ))
 
         self._assert_public_error_is_not_enumerating(result)
@@ -620,11 +624,6 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
     def test_register_otp_creates_account_only_after_verification(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
-        icp = self.env['ir.config_parameter'].sudo()
-        icp.set_param('SMS_PROVIDER', '')
-        icp.set_param('SMS_VALIDATION_KEY', '')
-        icp.set_param('SMS_TOKEN', '')
-        icp.set_param('SMS_URL', '')
         self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
 
         otp_controller = AcpecMobileAuthOtpApi()
@@ -655,7 +654,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
                 patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
-            verify_result = otp_controller.verify_otp(
+            no_device_result = otp_controller.verify_otp(
                 challenge_id=request_data['otp_challenge_id'],
                 identifier='32524655',
                 code='000000',
@@ -664,16 +663,52 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 company_id=self.env.company.id,
             )
 
+        self.assertFalse(no_device_result['ok'])
+        self.assertEqual(no_device_result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertEqual(
+            no_device_result['error']['message'],
+            'Impossible de finaliser l’inscription avec ces informations.',
+        )
+        self._assert_latest_signup_denial_audit(
+            'register_otp_missing_or_unstable_device_uid_before_otp_consumption',
+            company=self.env.company,
+        )
+        self.assertFalse(self.env['res.users'].sudo().search([('login', '=', '32524655')], limit=1))
+        self.assertFalse(self.env['acpec.mobile.auth.account.request'].sudo().search([
+            ('signup_identifier', '=', '32524655'),
+        ], limit=1))
+
+        device_uid = 'ft-android-test-register-32524655'
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+            verify_result = otp_controller.verify_otp(
+                challenge_id=request_data['otp_challenge_id'],
+                identifier='32524655',
+                code='000000',
+                name='Client OTP',
+                secret_code='1234',
+                company_id=self.env.company.id,
+                device_uid=device_uid,
+                device_name='Flutter Android',
+                platform='android',
+                app_version='test',
+            )
+
         self.assertTrue(verify_result['ok'])
         session_data = verify_result['data']
-        self.assertNotIn('access_token', session_data)
-        self.assertNotIn('refresh_token', session_data)
+        self.assertTrue(session_data['access_token'])
+        self.assertTrue(session_data['refresh_token'])
+        self.assertTrue(session_data['session_ref'])
         self.assertTrue(session_data['pending_approval'])
         self.assertTrue(session_data['account_request_id'])
+        self.assertEqual(session_data['device_uid'], device_uid)
+        self.assertEqual(session_data['device_trust_state'], 'pending_trust')
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524655')], limit=1)
         self.assertTrue(user)
         self.assertTrue(user.active)
+        self.assertEqual(user.login, '32524655')
+        self.assertEqual(user.mobile_phone, '32524655')
         self.assertEqual(user.mobile_state, 'self_registered')
         self.assertTrue(user.mobile_pin_set)
         self.assertFalse(user.mobile_pin_required)
@@ -685,20 +720,17 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             ('user_id', '=', user.id),
         ], order='id desc', limit=1)
         self.assertTrue(account_request)
-        self.assertEqual(account_request.state, 'pending')
+        self.assertEqual(account_request.state, 'approved')
+        self.assertTrue(account_request.reviewed_at)
 
-        enrollment_session_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
-            'device_uid': 'register-device-enrollment-39a-32524655',
-            'platform': 'android',
-        })
-        enrollment_session = enrollment_session_data['session']
+        enrollment_session = self.env['acpec.mobile.session'].sudo().search([
+            ('name', '=', session_data['session_ref']),
+        ], limit=1)
+        self.assertTrue(enrollment_session)
         self.assertEqual(enrollment_session.state, 'active')
+        self.assertEqual(enrollment_session.device_uid, device_uid)
         self.assertEqual(enrollment_session.device_trust_state, 'pending_trust')
-
-        account_request.action_approve()
-        self.assertEqual(user.mobile_state, 'approved')
-        approved_session = self.env['acpec.mobile.session'].sudo().create_for_user(user)
-        self.assertTrue(approved_session['access_token'])
+        self.assertTrue(enrollment_session.is_device_approval_candidate)
 
     def test_signup_route_returns_register_otp_payload_for_phone(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
@@ -748,20 +780,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
     def test_signup_then_verify_register_otp_activates_user(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
-        icp = self.env['ir.config_parameter'].sudo()
-        icp.set_param('SMS_PROVIDER', 'chinguisoft')
-        icp.set_param('SMS_VALIDATION_KEY', 'test-validation-key')
-        icp.set_param('SMS_TOKEN', 'test-validation-token')
-        icp.set_param('SMS_URL', 'https://chinguisoft.com/api/sms/validation')
-        icp.set_param('SMS_DEFAULT_LANG', 'fr')
         self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
-
-        class FakeResponse:
-            status_code = 200
-            text = '{"status": "ok", "message_id": "sms-test-1"}'
-
-            def json(self):
-                return {'status': 'ok', 'message_id': 'sms-test-1'}
 
         controller = AcpecMobileAuthApiPublic()
         otp_controller = AcpecMobileAuthOtpApi()
@@ -769,7 +788,6 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
         controller._get_optional_int = lambda params, key, default=False: int(params.get(key) or default)
         controller._get_company = lambda company_id=False: self.env.company
-        # Patch36A: dev OTP is controlled by runtime env, not by legacy DB/config bool.
         dummy_httprequest = SimpleNamespace(
             remote_addr='127.0.0.1',
             headers={'User-Agent': 'pytest'},
@@ -778,8 +796,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
 
         with patch('odoo.addons.acpec_mobile_auth.controllers.api_public.request', dummy_request), \
                 patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
-                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request), \
-                patch('odoo.addons.acpec_mobile_auth_otp.models.sms_gateway.requests.post', return_value=FakeResponse()):
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
             signup_result = controller.signup(
                 name='Client OTP',
                 signup_identifier='32524657',
@@ -791,6 +808,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         signup_data = signup_result['data']
         challenge_id = signup_data['otp_challenge_id']
         otp_code = '000000'
+        device_uid = 'ft-android-test-register-32524657'
 
         with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
                 patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
@@ -802,16 +820,25 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 secret_code='1234',
                 company_id=self.env.company.id,
                 email='client2@example.com',
+                device_uid=device_uid,
+                device_name='Flutter Android',
+                platform='android',
+                app_version='test',
             )
 
         self.assertTrue(verify_result['ok'])
         session_data = verify_result['data']
-        self.assertNotIn('access_token', session_data)
-        self.assertNotIn('refresh_token', session_data)
+        self.assertTrue(session_data['access_token'])
+        self.assertTrue(session_data['refresh_token'])
+        self.assertTrue(session_data['session_ref'])
         self.assertTrue(session_data['pending_approval'])
+        self.assertEqual(session_data['device_uid'], device_uid)
+        self.assertEqual(session_data['device_trust_state'], 'pending_trust')
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524657')], limit=1)
         self.assertTrue(user.active)
+        self.assertEqual(user.login, '32524657')
+        self.assertEqual(user.mobile_phone, '32524657')
         self.assertEqual(user.mobile_state, 'self_registered')
         self.assertTrue(user.mobile_pin_set_at)
         self.assertTrue(user.mobile_pin_set)
@@ -822,14 +849,23 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         with self.assertRaises(AccessError):
             user.check_mobile_pin('9999')
 
+        account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
+            ('user_id', '=', user.id),
+        ], order='id desc', limit=1)
+        self.assertTrue(account_request)
+        self.assertEqual(account_request.state, 'approved')
+
+        session = self.env['acpec.mobile.session'].sudo().search([
+            ('name', '=', session_data['session_ref']),
+        ], limit=1)
+        self.assertTrue(session)
+        self.assertEqual(session.device_uid, device_uid)
+        self.assertEqual(session.device_trust_state, 'pending_trust')
+        self.assertTrue(session.is_device_approval_candidate)
+
     def test_signup_then_verify_register_otp_e2e_without_sms_provider(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
-        icp = self.env['ir.config_parameter'].sudo()
         self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
-        icp.set_param('SMS_PROVIDER', '')
-        icp.set_param('SMS_VALIDATION_KEY', '')
-        icp.set_param('SMS_TOKEN', '')
-        icp.set_param('SMS_URL', '')
 
         controller = AcpecMobileAuthApiPublic()
         otp_controller = AcpecMobileAuthOtpApi()
@@ -837,7 +873,6 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
         controller._get_optional_int = lambda params, key, default=False: int(params.get(key) or default)
         controller._get_company = lambda company_id=False: self.env.company
-        # Patch36A: dev OTP is controlled by runtime env, not by legacy DB/config bool.
         dummy_httprequest = SimpleNamespace(
             remote_addr='127.0.0.1',
             headers={'User-Agent': 'pytest'},
@@ -862,6 +897,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             self.assertNotIn('otp_dev_code', signup_data)
             self.assertTrue(signup_data['otp_challenge_id'])
 
+            device_uid = 'ft-android-test-register-32524656'
             verify_result = otp_controller.verify_otp(
                 challenge_id=signup_data['otp_challenge_id'],
                 identifier='32524656',
@@ -870,18 +906,26 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 secret_code='1234',
                 company_id=self.env.company.id,
                 email='client-e2e@example.com',
+                device_uid=device_uid,
+                device_name='Flutter Android',
+                platform='android',
+                app_version='test',
             )
 
         self.assertTrue(verify_result['ok'])
         session_data = verify_result['data']
-        self.assertNotIn('access_token', session_data)
-        self.assertNotIn('refresh_token', session_data)
-        self.assertNotIn('session_ref', session_data)
+        self.assertTrue(session_data['access_token'])
+        self.assertTrue(session_data['refresh_token'])
+        self.assertTrue(session_data['session_ref'])
         self.assertTrue(session_data['pending_approval'])
         self.assertTrue(session_data['account_request_id'])
+        self.assertEqual(session_data['device_uid'], device_uid)
+        self.assertEqual(session_data['device_trust_state'], 'pending_trust')
 
         user = self.env['res.users'].sudo().search([('login', '=', '32524656')], limit=1)
         self.assertTrue(user.active)
+        self.assertEqual(user.login, '32524656')
+        self.assertEqual(user.mobile_phone, '32524656')
         self.assertEqual(user.mobile_state, 'self_registered')
         self.assertTrue(user.mobile_pin_set_at)
         self.assertTrue(user.mobile_pin_set)
@@ -894,8 +938,15 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             ('user_id', '=', user.id),
         ], order='id desc', limit=1)
         self.assertTrue(account_request)
-        self.assertEqual(account_request.state, 'pending')
+        self.assertEqual(account_request.state, 'approved')
 
+        session = self.env['acpec.mobile.session'].sudo().search([
+            ('name', '=', session_data['session_ref']),
+        ], limit=1)
+        self.assertTrue(session)
+        self.assertEqual(session.device_uid, device_uid)
+        self.assertEqual(session.device_trust_state, 'pending_trust')
+        self.assertTrue(session.is_device_approval_candidate)
 
     def test_legacy_mobile_user_migration_requires_new_pin_without_touching_internal_users(self):
         mobile_baseline_group_ids = []

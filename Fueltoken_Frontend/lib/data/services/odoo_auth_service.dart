@@ -305,6 +305,8 @@ class OdooAuthService {
       );
     }
     final idForRpc = localMrDigitsFromFull(identifier);
+    final platform = DeviceInstallStore.currentPlatformName();
+    final deviceUid = await DeviceInstallStore.readOrCreate();
     final result = await _api.callRoute(
       route,
       params: {
@@ -314,6 +316,11 @@ class OdooAuthService {
         'name': name.trim(),
         'secret_code': pin,
         'company_id': companyId,
+        'purpose': 'register',
+        'device_uid': deviceUid,
+        'device_name': kIsWeb ? 'Flutter Web' : 'Flutter $platform',
+        'platform': platform,
+        'app_version': 'dev',
       },
     );
     _ensureAcpecEnvelopeSuccess(result);

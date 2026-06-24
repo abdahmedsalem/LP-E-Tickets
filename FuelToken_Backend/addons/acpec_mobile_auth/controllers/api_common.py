@@ -435,7 +435,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _public_signup_not_allowed_response(self, debug_reason=False):
         return self._with_public_auth_debug(self._error_response(
             'SIGNUP_NOT_ALLOWED',
-            _('Impossible de finaliser l’inscription avec ces informations.'),
+            'Impossible de finaliser l’inscription avec ces informations.',
         ), debug_reason=debug_reason)
 
     def _audit_mobile_signup_denial(
@@ -451,7 +451,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         not from inside savepoints followed by raise, otherwise the audit row
         can be lost by rollback.
         """
-        public_message = _('Impossible de finaliser l’inscription avec ces informations.')
+        public_message = 'Impossible de finaliser l’inscription avec ces informations.'
         company = company.sudo() if company and company.exists() else False
         self._log_mobile_security_audit_event(
             event_type='mobile_signup_not_allowed',

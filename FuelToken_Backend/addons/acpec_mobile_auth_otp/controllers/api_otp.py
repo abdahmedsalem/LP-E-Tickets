@@ -114,6 +114,17 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 # Validate the new PIN before consuming the OTP.
                 reset_user._validate_mobile_pin(reset_secret_code)
 
+            if challenge.purpose == 'register':
+                device_uid = self._get_clean_str(kwargs, 'device_uid')
+                session_model = request.env['acpec.mobile.session'].sudo()
+                if not session_model._is_stable_device_uid(device_uid):
+                    return self._mobile_signup_not_allowed_response(
+                        params=kwargs,
+                        company=request.env.company,
+                        debug_reason='register_otp_missing_or_unstable_device_uid_before_otp_consumption',
+                        public_debug_reason='signup_not_allowed',
+                    )
+
             try:
                 user = challenge.verify(code)
             except (AccessError, ValidationError) as exc:
@@ -190,12 +201,21 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     'mobile_state': 'self_registered',
                 })
 
-                payload = self._mobile_profile_payload(user)
+                if account_request and account_request.state == 'pending':
+                    # Patch42C closes the account request because OTP registration
+                    # finalized the account creation. Do not call action_approve():
+                    # device trust and business access remain pending separately.
+                    account_request.write({
+                        'state': 'approved',
+                        'reviewed_at': fields.Datetime.now(),
+                    })
+
+                payload = self._create_mobile_session_payload(user, kwargs)
                 payload.update({
                     'auth_method': 'otp',
                     'pending_approval': True,
                     'account_request_id': account_request.id if account_request else False,
-                    'message': 'Compte mobile créé. Connectez-vous pour enregistrer votre appareil.',
+                    'message': 'Compte mobile créé. Appareil en attente de validation.',
                 })
                 return self._json_response(payload)
             payload = self._create_mobile_session_payload(user, kwargs)
