@@ -180,11 +180,12 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         ('state', '=', 'pending'),
                     ], order='id desc', limit=1)
 
-                # Registration OTP proves phone control, not administrative approval.
-                # The user remains pending and receives no mobile session token here.
+                # L’OTP d’inscription prouve le contrôle du numéro et crée
+                # un compte mobile connectable pour enrôler l’appareil.
+                # Il n’accorde aucun accès métier Tickets Carburant.
                 user.sudo().write({
                     'active': True,
-                    'mobile_state': 'pending',
+                    'mobile_state': 'self_registered',
                 })
 
                 payload = self._mobile_profile_payload(user)
@@ -192,7 +193,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     'auth_method': 'otp',
                     'pending_approval': True,
                     'account_request_id': account_request.id if account_request else False,
-                    'message': 'Compte mobile créé. En attente d’approbation.',
+                    'message': 'Compte mobile créé. Connectez-vous pour enregistrer votre appareil.',
                 })
                 return self._json_response(payload)
             payload = self._create_mobile_session_payload(user, kwargs)

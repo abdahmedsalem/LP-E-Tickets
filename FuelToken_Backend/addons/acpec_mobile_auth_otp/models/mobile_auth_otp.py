@@ -287,7 +287,7 @@ class AcpecMobileAuthOtp(models.Model):
             mobile_state = getattr(user, 'mobile_state', False)
             if not user.active:
                 raise AccessError(_('Compte mobile inactif.'))
-            if not is_station and mobile_state not in (False, 'approved'):
+            if not is_station and mobile_state not in (False, 'approved', 'self_registered'):
                 raise AccessError(_('Compte mobile non approuvé.'))
         now = fields.Datetime.now()
         self.sudo().search([

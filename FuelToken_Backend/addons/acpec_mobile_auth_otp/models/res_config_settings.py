@@ -77,10 +77,10 @@ class ResConfigSettings(models.TransientModel):
         res = super().get_values()
         policy = self._get_mobile_security_policy()
         res.update({
-            'otp_limit_identifier_per_minute': policy.otp_limit_identifier_per_minute(),
-            'otp_limit_identifier_per_day': policy.otp_limit_identifier_per_day(),
-            'otp_limit_ip_per_hour': policy.otp_limit_ip_per_hour(),
-            'otp_limit_register_ip_per_day': policy.otp_limit_register_ip_per_day(),
+            'otp_limit_identifier_per_minute': policy.get_int(policy.OTP_LIMIT_IDENTIFIER_PER_MINUTE),
+            'otp_limit_identifier_per_day': policy.get_int(policy.OTP_LIMIT_IDENTIFIER_PER_DAY),
+            'otp_limit_ip_per_hour': policy.get_int(policy.OTP_LIMIT_IP_PER_HOUR),
+            'otp_limit_register_ip_per_day': policy.get_int(policy.OTP_LIMIT_REGISTER_IP_PER_DAY),
         })
         return res
 

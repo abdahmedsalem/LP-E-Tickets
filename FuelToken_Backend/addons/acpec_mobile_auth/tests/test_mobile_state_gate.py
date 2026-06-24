@@ -88,3 +88,37 @@ class TestMobileStateGate(TransactionCase):
 
         self.assertEqual(session.state, 'revoked')
         self.assertTrue(session.revoked_at)
+
+    def test_self_registered_mobile_user_can_create_session_for_device_enrollment(self):
+        user = self._create_mobile_user(
+            'self-registered-mobile-39a@example.com',
+            'self_registered',
+        )
+
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'self-registered-device-39a',
+            'platform': 'android',
+        })
+        session = token_data['session']
+
+        self.assertEqual(session.state, 'active')
+        self.assertEqual(session.device_trust_state, 'pending_trust')
+        session.invalidate_recordset(['is_device_approval_candidate'])
+        self.assertTrue(session.is_device_approval_candidate)
+
+    def test_self_registered_state_does_not_revoke_active_session(self):
+        user = self._create_mobile_user(
+            'self-registered-no-revoke-39a@example.com',
+            'self_registered',
+        )
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'self-registered-no-revoke-device-39a',
+            'platform': 'android',
+        })
+        session = token_data['session']
+
+        user.sudo().write({'mobile_state': 'self_registered'})
+        session.invalidate_recordset(['state', 'revoked_at'])
+
+        self.assertEqual(session.state, 'active')
+        self.assertFalse(session.revoked_at)

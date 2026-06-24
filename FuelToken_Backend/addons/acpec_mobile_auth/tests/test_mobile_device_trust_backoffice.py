@@ -205,7 +205,7 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertIn(('device_uid', '!=', False), domain)
         self.assertIn(('device_uid', '!=', ''), domain)
         self.assertIn(('user_id.mobile_only', '=', True), domain)
-        self.assertIn(('user_id.mobile_state', '=', 'approved'), domain)
+        self.assertIn(('user_id.mobile_state', 'in', ['approved', 'self_registered']), domain)
 
         self.assertEqual(context.get('search_default_approval_candidate'), 1)
         self.assertEqual(context.get('search_default_group_by_mobile_user_label'), 1)
