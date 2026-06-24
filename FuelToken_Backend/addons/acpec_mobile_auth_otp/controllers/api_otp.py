@@ -51,6 +51,8 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         debug_reason=str(exc),
                         public_debug_reason=debug_reason,
                     )
+                if purpose in ('login', 'reset') and debug_reason == 'user_not_found':
+                    return self._public_account_not_found_response(debug_reason=debug_reason)
                 return self._public_otp_request_accepted_response(debug_reason=debug_reason)
             data = {
                 'challenge_id': challenge.id,

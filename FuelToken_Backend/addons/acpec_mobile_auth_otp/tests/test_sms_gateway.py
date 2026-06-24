@@ -355,7 +355,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertNotIn('debug_reason', result['error'])
         self._assert_latest_signup_denial_audit('A mobile account already exists')
 
-    def test_request_otp_login_unknown_identifier_uses_generic_success(self):
+    def test_request_otp_login_unknown_identifier_returns_account_not_found(self):
         controller = AcpecMobileAuthOtpApi()
 
         with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
@@ -365,13 +365,25 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                     purpose='login',
                 ))
 
-        self.assertTrue(result['ok'])
-        serialized = str(result).lower()
-        self.assertIn('si les informations sont valides', serialized)
-        self.assertNotIn('introuvable', serialized)
-        self.assertNotIn('not found', serialized)
-        self.assertNotIn('compte mobile', serialized)
-        self.assertNotIn('debug_reason', result)
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
+        self.assertEqual(result['error']['message'], 'Aucun compte mobile n’est associé à ce numéro. Veuillez vous inscrire pour créer un compte.')
+        self.assertNotIn('debug_reason', result['error'])
+
+    def test_request_otp_reset_unknown_identifier_returns_account_not_found(self):
+        controller = AcpecMobileAuthOtpApi()
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                result = self._run_public_controller_call(lambda: controller.request_otp(
+                    identifier='46999998',
+                    purpose='reset',
+                ))
+
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
+        self.assertEqual(result['error']['message'], 'Aucun compte mobile n’est associé à ce numéro. Veuillez vous inscrire pour créer un compte.')
+        self.assertNotIn('debug_reason', result['error'])
 
     def test_verify_otp_unknown_challenge_uses_generic_public_error(self):
         controller = AcpecMobileAuthOtpApi()
@@ -432,8 +444,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             identifier='unknown-login-runtime-gated@example.com',
             purpose='login',
         ))
-        self.assertTrue(result['ok'])
-        self.assertNotIn('debug_reason', result)
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
+        self.assertNotIn('debug_reason', result['error'])
 
         os.environ['ACPEC_ENV'] = 'dev'
         os.environ['ACPEC_FUELTOKEN_DEV_MODE'] = '1'
@@ -442,8 +455,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             identifier='unknown-login-runtime-gated@example.com',
             purpose='login',
         ))
-        self.assertTrue(result['ok'])
-        self.assertEqual(result.get('debug_reason'), 'user_not_found')
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
+        self.assertEqual(result['error'].get('debug_reason'), 'user_not_found')
 
     def test_verify_otp_unknown_challenge_debug_reason_is_runtime_gated(self):
 
