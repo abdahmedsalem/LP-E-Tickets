@@ -51,6 +51,17 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
                 return str(value).strip()
         return default
 
+
+    @api.model
+    def _fueltoken_company_count(self):
+        company_model = self.env['res.company'].sudo()
+        if 'acpec_fueltoken_enabled' not in company_model._fields:
+            return None
+        helper = getattr(company_model, '_fueltoken_company_count', None)
+        if helper:
+            return helper()
+        return company_model.search_count([('acpec_fueltoken_enabled', '=', True)])
+
     @api.model
     def _resolved_sms_config(self):
         # Patch36A: readiness does not read ir.config_parameter.
@@ -124,6 +135,29 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
                 'critical',
                 'Odoo test_enable est actif sans ACPEC_ENV=test explicite ; test_enable ne peut jamais activer le relax dev.',
                 'test_enable',
+            ))
+
+        fueltoken_company_count = self._fueltoken_company_count()
+        if fueltoken_company_count is None:
+            issues.append(self._issue(
+                'FUELTOKEN_COMPANY_FLAG_MISSING',
+                'critical',
+                'Le champ société FuelToken acpec_fueltoken_enabled est absent ; installer/mettre à jour acpec_fueltoken_base.',
+                'res.company.acpec_fueltoken_enabled',
+            ))
+        elif fueltoken_company_count < 1:
+            issues.append(self._issue(
+                'FUELTOKEN_COMPANY_MISSING',
+                'critical',
+                'Aucune société ne porte Tickets Carburant ; exactement une société FuelToken est obligatoire.',
+                'res.company.acpec_fueltoken_enabled',
+            ))
+        elif fueltoken_company_count > 1:
+            issues.append(self._issue(
+                'FUELTOKEN_COMPANY_NOT_UNIQUE',
+                'critical',
+                'Plusieurs sociétés portent Tickets Carburant ; une seule société FuelToken est autorisée.',
+                'res.company.acpec_fueltoken_enabled',
             ))
 
         if self._raw_bool(policy.OTP_DEV_MODE_KEY, default=False):

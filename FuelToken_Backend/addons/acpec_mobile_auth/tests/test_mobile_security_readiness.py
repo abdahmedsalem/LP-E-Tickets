@@ -20,6 +20,18 @@ class TestMobileSecurityReadiness(TransactionCase):
             'acpec_mobile_auth.otp_limit_register_ip_per_day',
         ]
         self.settings.search([('key', 'in', self.keys)]).unlink()
+        self._ensure_single_fueltoken_company()
+
+    def _ensure_single_fueltoken_company(self):
+        Company = self.env['res.company'].sudo()
+        if 'acpec_fueltoken_enabled' not in Company._fields:
+            return False
+        Company.search([
+            ('acpec_fueltoken_enabled', '=', True),
+            ('id', '!=', self.env.company.id),
+        ]).write({'acpec_fueltoken_enabled': False})
+        self.env.company.sudo().write({'acpec_fueltoken_enabled': True})
+        return self.env.company.sudo()
 
     def _runtime_env(self, acpec_env, dev_mode='', legacy_test_mode=''):
         return {
@@ -62,6 +74,37 @@ class TestMobileSecurityReadiness(TransactionCase):
             {'test_enable': False},
         ):
             return self.readiness.check_mobile_security_readiness()
+
+    def test_fueltoken_company_missing_is_reported_as_critical(self):
+        Company = self.env['res.company'].sudo()
+        Company.search([('acpec_fueltoken_enabled', '=', True)]).write({
+            'acpec_fueltoken_enabled': False,
+        })
+
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+        result = self._check(env)
+
+        self.assertFalse(result['ready'])
+        self.assertIn('FUELTOKEN_COMPANY_MISSING', self._codes(result))
+
+    def test_fueltoken_company_not_unique_is_reported_as_critical(self):
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+        def _fake_fueltoken_company_count(_readiness):
+            return 2
+
+        with patch.object(
+            type(self.readiness),
+            '_fueltoken_company_count',
+            _fake_fueltoken_company_count,
+        ):
+            result = self._check(env)
+
+        self.assertFalse(result['ready'])
+        self.assertIn('FUELTOKEN_COMPANY_NOT_UNIQUE', self._codes(result))
 
     def test_dev_gate_allows_zero_antiflood_without_sms_readiness_failure(self):
         self._set_setting('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
