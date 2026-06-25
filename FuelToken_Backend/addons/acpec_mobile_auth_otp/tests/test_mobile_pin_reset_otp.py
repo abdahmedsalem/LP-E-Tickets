@@ -23,7 +23,7 @@ class TestMobilePinResetOtp(TransactionCase):
             if self.env.ref(xmlid, raise_if_not_found=False)
         ]
 
-    def _create_mobile_user(self, login='reset-pin-otp-30d@example.com'):
+    def _create_mobile_user(self, login='reset-pin-otp-30d@example.com', mobile_phone='32524658'):
         user_model = self.env['res.users'].sudo().with_context(
             acpec_mobile_allow_password_write=True,
             no_reset_password=True,
@@ -32,7 +32,7 @@ class TestMobilePinResetOtp(TransactionCase):
             'name': login,
             'login': login,
             'email': login,
-            'mobile_phone': '32524658',
+            'mobile_phone': mobile_phone,
             'active': True,
             'mobile_only': True,
             'mobile_state': 'approved',
@@ -212,8 +212,11 @@ class TestMobilePinResetOtp(TransactionCase):
 
     def test_verify_otp_reset_rejects_other_pin_aliases_without_consuming_otp(self):
         aliases = ('pin', 'action_pin', 'new_pin')
-        for alias in aliases:
-            user = self._create_mobile_user('reset-alias-%s-30d@example.com' % alias.replace('_', '-'))
+        for idx, alias in enumerate(aliases, start=1):
+            user = self._create_mobile_user(
+                'reset-alias-%s-30d@example.com' % alias.replace('_', '-'),
+                mobile_phone='3252465%s' % idx,
+            )
             challenge, code = self._request_otp_dev(user, purpose='reset')
 
             self._call_verify_otp(
