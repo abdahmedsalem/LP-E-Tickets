@@ -145,6 +145,13 @@ class AcpecMobileSession(models.Model):
         return keys
 
     @api.model
+    def _normalize_stable_device_uid_or_raise(self, device_uid):
+        device_uid = (device_uid or '').strip()
+        if not self._is_stable_device_uid(device_uid):
+            raise ValidationError(_('Identifiant appareil mobile invalide.'))
+        return device_uid
+
+    @api.model
     def _sync_device_approval_candidates(self, keys=None):
         Session = self.sudo()
 
@@ -199,6 +206,7 @@ class AcpecMobileSession(models.Model):
     def create(self, vals_list):
         sequence = self.env['ir.sequence']
         for vals in vals_list:
+            vals['device_uid'] = self._normalize_stable_device_uid_or_raise(vals.get('device_uid'))
             if vals.get('name', 'New') == 'New':
                 vals['name'] = sequence.next_by_code('acpec.mobile.session') or 'New'
         sessions = super().create(vals_list)
@@ -206,6 +214,10 @@ class AcpecMobileSession(models.Model):
         return sessions
 
     def write(self, vals):
+        if 'device_uid' in vals:
+            vals = dict(vals)
+            vals['device_uid'] = self._normalize_stable_device_uid_or_raise(vals.get('device_uid'))
+
         tracked_fields = {
             'user_id',
             'device_uid',
@@ -285,13 +297,22 @@ class AcpecMobileSession(models.Model):
 
     @api.model
     def _is_stable_device_uid(self, device_uid):
-        """Return True for Patch32C stable Flutter install identifiers.
+        """Return True for a usable mobile installation identifier.
 
-        Legacy placeholders such as ``flutter-android-local`` are deliberately
-        excluded because they do not identify a real installation.
+        The mobile app normally sends Patch32C identifiers prefixed with
+        ``ft-``.  The backend cannot cryptographically attest that prefix in
+        V1, but it can fail closed on absent values and known legacy/local
+        placeholders that do not identify a real installation.
         """
         value = (device_uid or '').strip()
-        return bool(value and value.startswith('ft-'))
+        if not value:
+            return False
+        return value not in (
+            'flutter-android-local',
+            'flutter-ios-local',
+            'flutter-web-local',
+            'web-local',
+        )
 
     @api.model
     def _latest_device_trust_source_for_login(self, user, device_uid):
@@ -331,6 +352,36 @@ class AcpecMobileSession(models.Model):
             'device_blocked_at': source.device_blocked_at if state == 'blocked' else False,
             'device_trust_note': source.device_trust_note or False,
         }
+
+    @api.model
+    def _assert_device_uid_can_open_session(self, user, device_uid):
+        """Fail closed before opening or rotating a mobile session.
+
+        INV-T7: every mobile session requires a stable device_uid.
+        INV-D7/INV-T6: a blocked user/device pair cannot open or refresh
+        a session.  The refusal happens before token creation so no usable
+        runtime session is emitted for a blocked device.
+        """
+        device_uid = self._normalize_stable_device_uid_or_raise(device_uid)
+        source = self._latest_device_trust_source_for_login(user.sudo(), device_uid)
+        if source and source.device_trust_state == 'blocked':
+            raise AccessError(_('Appareil mobile bloqué.'))
+        return device_uid
+
+    @api.model
+    def _is_session_runtime_usable(self, session, now=None):
+        if not session or not session.exists():
+            return False
+        if session.state != 'active':
+            return False
+        now = now or fields.Datetime.now()
+        if session.expires_at and session.expires_at <= now:
+            return False
+        if not self._is_stable_device_uid(session.device_uid):
+            return False
+        if session.device_trust_state == 'blocked':
+            return False
+        return True
 
     def _same_user_device_sessions(self):
         """Return all session rows for the same stable user/device pair."""
@@ -389,7 +440,10 @@ class AcpecMobileSession(models.Model):
         now = fields.Datetime.now()
         expires_at = now + relativedelta(minutes=self._access_minutes())
         refresh_expires_at = now + relativedelta(days=self._refresh_days())
-        device_uid = (device_vals.get('device_uid') or '').strip()
+        device_uid = self._assert_device_uid_can_open_session(
+            user.sudo(),
+            device_vals.get('device_uid'),
+        )
         trust_vals = self._device_trust_values_for_login(user.sudo(), device_uid)
 
         vals = {
@@ -400,7 +454,7 @@ class AcpecMobileSession(models.Model):
             'refresh_expires_at': refresh_expires_at,
             'last_seen_at': now,
             'state': 'active',
-            'device_uid': device_uid or False,
+            'device_uid': device_uid,
             'device_name': device_vals.get('device_name') or False,
             'platform': device_vals.get('platform') if device_vals.get('platform') in ('android', 'ios', 'web', 'other') else False,
             'app_version': device_vals.get('app_version') or False,
@@ -432,9 +486,7 @@ class AcpecMobileSession(models.Model):
         if not session:
             return self.browse()
         now = fields.Datetime.now()
-        if session.state != 'active':
-            return self.browse()
-        if session.expires_at and session.expires_at <= now:
+        if not self._is_session_runtime_usable(session, now=now):
             # L'access token est court. Son expiration ne doit pas expirer
             # la session longue tant que refresh_expires_at reste valide.
             return self.browse()
@@ -473,6 +525,10 @@ class AcpecMobileSession(models.Model):
         refresh_expires_at = now + relativedelta(days=self._refresh_days())
 
         successor_device_vals = self._refresh_successor_device_vals(session, device_vals=device_vals)
+        successor_device_vals['device_uid'] = self._assert_device_uid_can_open_session(
+            session.user_id.sudo(),
+            successor_device_vals.get('device_uid'),
+        )
         old_device_uid = session.device_uid or False
         new_device_uid = successor_device_vals.get('device_uid') or False
         same_device = bool(old_device_uid and new_device_uid and old_device_uid == new_device_uid)
@@ -516,6 +572,12 @@ class AcpecMobileSession(models.Model):
         if session.refresh_expires_at and session.refresh_expires_at <= now:
             session.sudo().write({'state': 'expired'})
             raise AccessError(_('Refresh token expiré.'))
+        if not self._is_stable_device_uid(session.device_uid):
+            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            raise AccessError(_('Identifiant appareil mobile invalide.'))
+        if session.device_trust_state == 'blocked':
+            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            raise AccessError(_('Appareil mobile bloqué.'))
         try:
             self._check_mobile_only_user(session.user_id.sudo())
         except AccessError as exc:
@@ -592,8 +654,8 @@ class AcpecMobileSession(models.Model):
         self._check_device_trust_admin()
         now = fields.Datetime.now()
         for session in self:
-            if not session.device_uid:
-                raise UserError('Impossible de faire confiance à une session sans identifiant device.')
+            if not session._is_stable_device_uid(session.device_uid):
+                raise UserError('Impossible de faire confiance à une session sans identifiant device stable.')
             scope = session._same_user_device_sessions()
             scope.write({
                 'device_trust_state': 'trusted',
@@ -611,10 +673,17 @@ class AcpecMobileSession(models.Model):
         now = fields.Datetime.now()
         for session in self:
             scope = session._same_user_device_sessions()
-            scope.write({
+            vals = {
                 'device_trust_state': 'blocked',
                 'device_blocked_at': now,
-            })
+            }
+            active_scope = scope.filtered(lambda item: item.state == 'active')
+            if active_scope:
+                vals.update({
+                    'state': 'revoked',
+                    'revoked_at': now,
+                })
+            scope.write(vals)
             session.message_post(
                 body='Device mobile bloqué par %s. Device UID: %s'
                 % (self.env.user.display_name, session.device_uid or 'n/a')

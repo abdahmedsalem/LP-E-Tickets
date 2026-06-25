@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
@@ -78,16 +78,22 @@ class TestMobileDeviceTrust(TransactionCase):
         self.assertEqual(session.device_trust_state, 'trusted')
         self.assertTrue(session.device_trusted_at)
 
-    def test_sensitive_guard_rejects_session_without_device_uid(self):
-        user, token_data = self._create_session('no-device-20a@example.com', device_uid=False)
-        session = token_data['session']
+    def test_create_for_user_requires_stable_device_uid(self):
+        user = self._create_mobile_user('no-device-43a@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
 
-        controller = self._controller_for_session(session)
-        with self.assertRaises(AccessError):
-            controller._require_trusted_sensitive()
+        for device_uid in (False, '', 'flutter-android-local'):
+            with self.assertRaises(ValidationError):
+                Session.create_for_user(user, {
+                    'device_uid': device_uid,
+                    'device_name': 'Android test',
+                    'platform': 'android',
+                })
 
-        with self.assertRaises(UserError):
-            session.action_trust_device()
+        self.assertFalse(Session.search([
+            ('user_id', '=', user.id),
+            ('state', '=', 'active'),
+        ], limit=1))
 
     def test_sensitive_guard_rejects_blocked_device(self):
         user, token_data = self._create_session('blocked-device-20a@example.com')
@@ -101,6 +107,22 @@ class TestMobileDeviceTrust(TransactionCase):
 
         self.assertEqual(session.device_trust_state, 'blocked')
         self.assertTrue(session.device_blocked_at)
+
+    def test_blocked_device_access_and_refresh_tokens_are_unusable(self):
+        user, token_data = self._create_session('blocked-runtime-43a@example.com')
+        session = token_data['session']
+        session.action_trust_device()
+        session.action_block_device()
+        session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state'])
+
+        self.assertEqual(session.device_trust_state, 'blocked')
+        self.assertEqual(session.state, 'revoked')
+        self.assertFalse(
+            self.env['acpec.mobile.session'].sudo().authenticate_access_token(token_data['access_token'])
+        )
+
+        with self.assertRaises(AccessError):
+            self.env['acpec.mobile.session'].sudo().refresh_with_token(token_data['refresh_token'])
 
     def test_refresh_keeps_device_trust_for_same_device_uid(self):
         user, token_data = self._create_session('refresh-same-device-20a@example.com', 'same-device-20a')
@@ -160,10 +182,10 @@ class TestMobileDeviceTrust(TransactionCase):
         self.assertTrue(second_session.device_trusted_at)
         self.assertFalse(second_session.is_device_approval_candidate)
 
-    def test_relogin_same_stable_device_inherits_blocked_state(self):
-        user = self._create_mobile_user('blocked-relogin-41a@example.com')
+    def test_relogin_same_stable_blocked_device_is_refused(self):
+        user = self._create_mobile_user('blocked-relogin-43a@example.com')
         Session = self.env['acpec.mobile.session'].sudo()
-        device_uid = 'ft-test-blocked-41a'
+        device_uid = 'ft-test-blocked-43a'
 
         first = Session.create_for_user(user, {
             'device_uid': device_uid,
@@ -171,17 +193,25 @@ class TestMobileDeviceTrust(TransactionCase):
         })
         first_session = first['session']
         first_session.action_block_device()
-        first_session.action_revoke()
+        first_session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state'])
 
-        second = Session.create_for_user(user, {
-            'device_uid': device_uid,
-            'platform': 'android',
-        })
-        second_session = second['session']
+        self.assertEqual(first_session.device_trust_state, 'blocked')
+        self.assertEqual(first_session.state, 'revoked')
+        self.assertTrue(first_session.revoked_at)
 
-        self.assertEqual(second_session.device_trust_state, 'blocked')
-        self.assertTrue(second_session.device_blocked_at)
-        self.assertFalse(second_session.is_device_approval_candidate)
+        with self.assertRaises(AccessError):
+            Session.create_for_user(user, {
+                'device_uid': device_uid,
+                'platform': 'android',
+            })
+
+        new_active = Session.search([
+            ('user_id', '=', user.id),
+            ('device_uid', '=', device_uid),
+            ('id', '!=', first_session.id),
+            ('state', '=', 'active'),
+        ], limit=1)
+        self.assertFalse(new_active)
 
     def test_reset_device_trust_prevents_future_relogin_inheritance(self):
         user = self._create_mobile_user('reset-relogin-41a@example.com')

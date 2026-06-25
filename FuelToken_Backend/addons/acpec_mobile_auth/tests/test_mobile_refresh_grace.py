@@ -93,7 +93,10 @@ class TestMobileRefreshGrace(TransactionCase):
     def test_refresh_token_retry_is_rejected_after_grace_deadline(self):
         self._set_grace_seconds(30)
         user = self._create_mobile_user('refresh-grace-expired-19b@example.com')
-        first = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        first = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'ft-device-refresh-grace-expired-19b',
+            'platform': 'android',
+        })
         old_session = first['session']
         old_refresh_token = first['refresh_token']
 
@@ -108,7 +111,10 @@ class TestMobileRefreshGrace(TransactionCase):
     def test_refresh_token_grace_can_be_disabled(self):
         self._set_grace_seconds(0)
         user = self._create_mobile_user('refresh-grace-disabled-19b@example.com')
-        first = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        first = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'ft-device-refresh-grace-disabled-19b',
+            'platform': 'android',
+        })
         old_refresh_token = first['refresh_token']
 
         self.env['acpec.mobile.session'].sudo().refresh_with_token(old_refresh_token)
