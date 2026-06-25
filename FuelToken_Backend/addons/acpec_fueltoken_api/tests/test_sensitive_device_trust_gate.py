@@ -24,22 +24,31 @@ class TestSensitiveDeviceTrustGate(TransactionCase):
         ):
             self.assertIn("_require_sensitive_action_pin", self._source(method))
 
-    def test_mobile_read_or_preview_endpoints_do_not_require_trusted_device(self):
+    def test_mobile_read_or_preview_endpoints_require_trusted_device_without_action_pin(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenMobileApi._mobile_wallet))
         for method in (
-            AcpecFuelTokenMobileApi.transfer_carnets_recipient,
             AcpecFuelTokenMobileApi.purchases,
             AcpecFuelTokenMobileApi.purchase_detail,
             AcpecFuelTokenMobileApi.qr_list,
             AcpecFuelTokenMobileApi.qr_detail,
         ):
+            self.assertIn("_mobile_wallet", self._source(method))
             self.assertNotIn("_require_sensitive_action_pin", self._source(method))
-            self.assertNotIn("_require_trusted_sensitive", self._source(method))
+
+        for method in (
+            AcpecFuelTokenMobileApi.transfer_carnets_recipient,
+            AcpecFuelTokenMobileApi.transfer_list,
+        ):
+            source = self._source(method)
+            self.assertIn("_require_trusted_mobile_auth", source)
+            self.assertNotIn("_require_sensitive_action_pin", source)
 
     def test_station_qr_use_requires_trusted_device_indirectly(self):
         self.assertIn("_require_sensitive_action_pin", self._source(AcpecFuelTokenStationApi._trusted_station_user))
         self.assertIn("_trusted_station_user", self._source(AcpecFuelTokenStationApi.use_qr))
 
-    def test_station_read_or_check_endpoints_keep_regular_station_auth(self):
+    def test_station_read_or_check_endpoints_require_trusted_device_without_action_pin(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenStationApi._station_user))
         for method in (
             AcpecFuelTokenStationApi.profile,
             AcpecFuelTokenStationApi.check_qr,
@@ -65,7 +74,8 @@ class TestSensitiveDeviceTrustGate(TransactionCase):
         ):
             self.assertIn("_trusted_admin_user", self._source(method))
 
-    def test_admin_read_endpoints_keep_regular_mobile_manager_auth(self):
+    def test_admin_read_endpoints_require_trusted_device_without_action_pin(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenAdminApi._admin_user))
         for method in (
             AcpecFuelTokenAdminApi.carnet_type_list,
             AcpecFuelTokenAdminApi.purchases_pending,
@@ -76,3 +86,4 @@ class TestSensitiveDeviceTrustGate(TransactionCase):
             source = self._source(method)
             self.assertIn("_admin_user", source)
             self.assertNotIn("_trusted_admin_user", source)
+            self.assertNotIn("_require_sensitive_action_pin", source)

@@ -817,13 +817,13 @@ class AcpecMobileAuthApiCommon(http.Controller):
         self._assert_mobile_only_user(user)
         return user
 
-    def _require_trusted_sensitive(self):
-        """Guard for sensitive mobile operations.
+    def _require_trusted_mobile_auth(self):
+        """Guard for business mobile reads and actions requiring a trusted device.
 
-        This deliberately does not replace _require_mobile_auth(): normal mobile
-        reads/profile/refresh can work on approved users even when a new device
-        is still pending trust. Sensitive actions must explicitly call this
-        helper.
+        Login, signup, OTP, refresh and minimal profile/enrollment endpoints must
+        keep using _require_mobile_auth() so a pending device can still learn its
+        approval state. Business reads/actions must use this helper to avoid
+        exposing wallet, QR, purchase, station or admin data to pending devices.
         """
         session = self._get_mobile_session(required=True)
         user = session.user_id.sudo()
@@ -840,6 +840,10 @@ class AcpecMobileAuthApiCommon(http.Controller):
             raise AccessError('Device mobile non approuvé.')
 
         return user
+
+    def _require_trusted_sensitive(self):
+        """Guard for sensitive mobile operations before action-code validation."""
+        return self._require_trusted_mobile_auth()
 
     def _get_sensitive_action_pin(self, params):
         """Return the canonical server-side PIN for a sensitive action.
