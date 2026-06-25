@@ -437,26 +437,26 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def create_purchase(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines', 'proof_data'])
-            self._require_sensitive_action_pin(kwargs, purpose='purchase_create')
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_create')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_create')
-            wallet = self._mobile_wallet()
-            purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
-                wallet.partner_id,
-                wallet.company_id,
-                kwargs.get('lines') or [],
-                kwargs.get('proof_filename') or _('preuve_paiement.pdf'),
-                kwargs.get('proof_data'),
-                payment_reference=kwargs.get('payment_reference'),
-                idempotency_key=idempotency_key,
-                request_hash=request_hash,
-            )
-            return self._json_response({
-                'purchase_id': purchase.id,
-                'public_code': purchase.public_code,
-                'state': purchase.state,
-                'amount_total': purchase.amount_total,
-            })
+            with self._sensitive_action_transaction(kwargs, purpose='purchase_create') as _authorized_user:
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_create')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_create')
+                wallet = self._mobile_wallet()
+                purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
+                    wallet.partner_id,
+                    wallet.company_id,
+                    kwargs.get('lines') or [],
+                    kwargs.get('proof_filename') or _('preuve_paiement.pdf'),
+                    kwargs.get('proof_data'),
+                    payment_reference=kwargs.get('payment_reference'),
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                )
+                return self._json_response({
+                    'purchase_id': purchase.id,
+                    'public_code': purchase.public_code,
+                    'state': purchase.state,
+                    'amount_total': purchase.amount_total,
+                })
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -718,38 +718,38 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def issue_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines'])
-            self._require_sensitive_action_pin(kwargs, purpose='qr_issue')
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_issue')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_issue')
-            wallet = self._mobile_wallet()
-            requests = []
-            has_explicit_lines = False
-            has_legacy_lines = False
-            for line in kwargs.get('lines') or []:
-                req = {'qty': int(line.get('qty') or 0)}
-                if line.get('face_line_id'):
-                    req['face_line_id'] = int(line.get('face_line_id'))
-                    has_explicit_lines = True
-                elif line.get('carnet_type_id'):
-                    req['carnet_type_id'] = int(line.get('carnet_type_id'))
-                    has_legacy_lines = True
-                elif line.get('face_value') is not None:
-                    req['face_value'] = float(line.get('face_value'))
-                    has_legacy_lines = True
-                else:
-                    raise ValidationError('Chaque ligne doit contenir face_line_id, carnet_type_id ou face_value.')
-                requests.append(req)
-            if has_explicit_lines and has_legacy_lines:
-                raise ValidationError('Un QR ne peut pas melanger selection explicite de carnets et allocation automatique.')
-            with request.env.cr.savepoint():
-                qr = request.env['acpec.fuel.qr'].sudo().issue_from_available(
-                    wallet,
-                    requests,
-                    idempotency_key=idempotency_key,
-                    request_hash=request_hash,
-                )
-                payload = self._qr_payload(qr)
-            return self._json_response(payload)
+            with self._sensitive_action_transaction(kwargs, purpose='qr_issue') as _authorized_user:
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_issue')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_issue')
+                wallet = self._mobile_wallet()
+                requests = []
+                has_explicit_lines = False
+                has_legacy_lines = False
+                for line in kwargs.get('lines') or []:
+                    req = {'qty': int(line.get('qty') or 0)}
+                    if line.get('face_line_id'):
+                        req['face_line_id'] = int(line.get('face_line_id'))
+                        has_explicit_lines = True
+                    elif line.get('carnet_type_id'):
+                        req['carnet_type_id'] = int(line.get('carnet_type_id'))
+                        has_legacy_lines = True
+                    elif line.get('face_value') is not None:
+                        req['face_value'] = float(line.get('face_value'))
+                        has_legacy_lines = True
+                    else:
+                        raise ValidationError('Chaque ligne doit contenir face_line_id, carnet_type_id ou face_value.')
+                    requests.append(req)
+                if has_explicit_lines and has_legacy_lines:
+                    raise ValidationError('Un QR ne peut pas melanger selection explicite de carnets et allocation automatique.')
+                with request.env.cr.savepoint():
+                    qr = request.env['acpec.fuel.qr'].sudo().issue_from_available(
+                        wallet,
+                        requests,
+                        idempotency_key=idempotency_key,
+                        request_hash=request_hash,
+                    )
+                    payload = self._qr_payload(qr)
+                return self._json_response(payload)
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -796,27 +796,27 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def retirer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code', 'lines'])
-            self._require_sensitive_action_pin(kwargs, purpose='qr_retirer')
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_retirer')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_retirer')
-            wallet = self._mobile_wallet()
-            qr = request.env['acpec.fuel.qr'].sudo().search([
-                ('public_code', '=', kwargs.get('public_code')),
-                ('wallet_id', '=', wallet.id),
-            ], limit=1)
-            if not qr:
-                raise ValidationError(_('QR introuvable.'))
+            with self._sensitive_action_transaction(kwargs, purpose='qr_retirer') as _authorized_user:
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_retirer')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_retirer')
+                wallet = self._mobile_wallet()
+                qr = request.env['acpec.fuel.qr'].sudo().search([
+                    ('public_code', '=', kwargs.get('public_code')),
+                    ('wallet_id', '=', wallet.id),
+                ], limit=1)
+                if not qr:
+                    raise ValidationError(_('QR introuvable.'))
 
-            child = qr.action_retirer_to_child(
-                kwargs.get('lines') or [],
-                idempotency_key=idempotency_key,
-                request_hash=request_hash,
-            )
-            source_payload = self._qr_payload(qr)
-            child_payload = self._qr_payload(child)
-            source_payload['technical_lines'] = self._qr_technical_lines_payload(qr)
-            child_payload['technical_lines'] = self._qr_technical_lines_payload(child)
-            return self._json_response({'source': source_payload, 'new_qr': child_payload})
+                child = qr.action_retirer_to_child(
+                    kwargs.get('lines') or [],
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                )
+                source_payload = self._qr_payload(qr)
+                child_payload = self._qr_payload(child)
+                source_payload['technical_lines'] = self._qr_technical_lines_payload(qr)
+                child_payload['technical_lines'] = self._qr_technical_lines_payload(child)
+                return self._json_response({'source': source_payload, 'new_qr': child_payload})
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -826,26 +826,26 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def separer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
-            self._require_sensitive_action_pin(kwargs, purpose='qr_separer')
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_separer')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_separer')
-            wallet = self._mobile_wallet()
-            qr = request.env['acpec.fuel.qr'].sudo().search([
-                ('public_code', '=', kwargs.get('public_code')),
-                ('wallet_id', '=', wallet.id),
-            ], limit=1)
-            if not qr:
-                raise ValidationError(_('QR introuvable.'))
+            with self._sensitive_action_transaction(kwargs, purpose='qr_separer') as _authorized_user:
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_separer')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_separer')
+                wallet = self._mobile_wallet()
+                qr = request.env['acpec.fuel.qr'].sudo().search([
+                    ('public_code', '=', kwargs.get('public_code')),
+                    ('wallet_id', '=', wallet.id),
+                ], limit=1)
+                if not qr:
+                    raise ValidationError(_('QR introuvable.'))
 
-            child = qr.action_separer_valid_to_child(
-                idempotency_key=idempotency_key,
-                request_hash=request_hash,
-            )
-            source_payload = self._qr_payload(qr)
-            child_payload = self._qr_payload(child)
-            source_payload['technical_lines'] = self._qr_technical_lines_payload(qr)
-            child_payload['technical_lines'] = self._qr_technical_lines_payload(child)
-            return self._json_response({'source': source_payload, 'new_qr': child_payload})
+                child = qr.action_separer_valid_to_child(
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                )
+                source_payload = self._qr_payload(qr)
+                child_payload = self._qr_payload(child)
+                source_payload['technical_lines'] = self._qr_technical_lines_payload(qr)
+                child_payload['technical_lines'] = self._qr_technical_lines_payload(child)
+                return self._json_response({'source': source_payload, 'new_qr': child_payload})
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -948,90 +948,90 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             """
         try:
             self._require_keys(kwargs, ['recipient_phone', 'lines'])
-            source_user = self._require_sensitive_action_pin(kwargs, purpose='carnet_transfer')
-            self._require_fuel_group(source_user, 'client')
-            wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
-                source_user.partner_id, source_user.company_id,
-            )
-
-            # ── 1. Identifier le destinataire par téléphone (login) ──────────
-            recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
-            if not recipient_phone:
-                raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
-
-            # Normalisation et validation du numéro de téléphone destinataire
-            parsed = self._parse_signup_identifier(recipient_phone)
-            recipient_phone = parsed['login']
-
-            recipient_user = request.env['res.users'].sudo().search([
-                ('login', '=', recipient_phone),
-                ('active', '=', True),
-                ('company_ids', 'in', [wallet.company_id.id]),
-            ], limit=1)
-            if not recipient_user:
-                raise ValidationError(
-                    _("Aucun compte trouvé pour le numéro '%s'.") % recipient_phone
+            with self._sensitive_action_transaction(kwargs, purpose='carnet_transfer') as source_user:
+                self._require_fuel_group(source_user, 'client')
+                wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                    source_user.partner_id, source_user.company_id,
                 )
-            if recipient_user.id == source_user.id:
-                raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
-            if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
-                raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
 
-            # ── 2. Idempotence (vérification avant création) ─────────────────
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_transfer')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_transfer')
-            if idempotency_key:
-                existing = request.env['acpec.fuel.carnet.transfer'].sudo().search([
-                    ('source_wallet_id', '=', wallet.id),
-                    ('idempotency_key', '=', idempotency_key),
+                # ── 1. Identifier le destinataire par téléphone (login) ──────────
+                recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
+                if not recipient_phone:
+                    raise ValidationError(_('Le numéro de téléphone du destinataire est requis.'))
+
+                # Normalisation et validation du numéro de téléphone destinataire
+                parsed = self._parse_signup_identifier(recipient_phone)
+                recipient_phone = parsed['login']
+
+                recipient_user = request.env['res.users'].sudo().search([
+                    ('login', '=', recipient_phone),
+                    ('active', '=', True),
+                    ('company_ids', 'in', [wallet.company_id.id]),
                 ], limit=1)
-                if existing:
-                    if existing.request_hash and existing.request_hash != request_hash:
-                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
-                    if existing.state == 'confirmed':
-                        return self._json_response(self._transfer_payload(existing))
+                if not recipient_user:
+                    raise ValidationError(
+                        _("Aucun compte trouvé pour le numéro '%s'.") % recipient_phone
+                    )
+                if recipient_user.id == source_user.id:
+                    raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
+                if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
+                    raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
 
-            # ── 3. Wallet destinataire (find or create) ──────────────────────
-            dest_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
-                recipient_user.partner_id, wallet.company_id,
-            )
+                # ── 2. Idempotence (vérification avant création) ─────────────────
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_transfer')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_transfer')
+                if idempotency_key:
+                    existing = request.env['acpec.fuel.carnet.transfer'].sudo().search([
+                        ('source_wallet_id', '=', wallet.id),
+                        ('idempotency_key', '=', idempotency_key),
+                    ], limit=1)
+                    if existing:
+                        if existing.request_hash and existing.request_hash != request_hash:
+                            raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                        if existing.state == 'confirmed':
+                            return self._json_response(self._transfer_payload(existing))
 
-            # ── 4. Construire les lignes de transfert ────────────────────────
-            raw_lines = kwargs.get('lines') or []
-            if not raw_lines:
-                raise ValidationError(_('Au moins une ligne de transfert est requise.'))
-
-            transfer_line_vals = []
-            for item in raw_lines:
-                face_line_id = self._get_optional_int(item, 'face_line_id', 0)
-                carnet_qty = self._get_optional_int(item, 'carnet_qty', 0)
-                if not face_line_id or face_line_id <= 0:
-                    raise ValidationError(_("Paramètre 'face_line_id' invalide ou manquant."))
-                if not carnet_qty or carnet_qty <= 0:
-                    raise ValidationError(_("Paramètre 'carnet_qty' doit être un entier positif."))
-                transfer_line_vals.append({
-                    'face_line_id': face_line_id,
-                    'carnet_qty': carnet_qty,
-                })
-
-            # ── 5. Créer et confirmer le transfert ───────────────────────────
-            with request.env.cr.savepoint():
-                transfer = request.env['acpec.fuel.carnet.transfer'].sudo().create({
-                    'source_wallet_id': wallet.id,
-                    'dest_wallet_id': dest_wallet.id,
-                    'company_id': wallet.company_id.id,
-                    'note': self._get_clean_str(kwargs, 'note') or False,
-                    'idempotency_key': idempotency_key or False,
-                    'request_hash': request_hash,
-                    'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
-                })
-                mobile_session = self._get_mobile_session(required=True)
-                transfer.action_confirm_mobile(
-                    actor_user=source_user,
-                    mobile_session=mobile_session,
+                # ── 3. Wallet destinataire (find or create) ──────────────────────
+                dest_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                    recipient_user.partner_id, wallet.company_id,
                 )
 
-            return self._json_response(self._transfer_payload(transfer))
+                # ── 4. Construire les lignes de transfert ────────────────────────
+                raw_lines = kwargs.get('lines') or []
+                if not raw_lines:
+                    raise ValidationError(_('Au moins une ligne de transfert est requise.'))
+
+                transfer_line_vals = []
+                for item in raw_lines:
+                    face_line_id = self._get_optional_int(item, 'face_line_id', 0)
+                    carnet_qty = self._get_optional_int(item, 'carnet_qty', 0)
+                    if not face_line_id or face_line_id <= 0:
+                        raise ValidationError(_("Paramètre 'face_line_id' invalide ou manquant."))
+                    if not carnet_qty or carnet_qty <= 0:
+                        raise ValidationError(_("Paramètre 'carnet_qty' doit être un entier positif."))
+                    transfer_line_vals.append({
+                        'face_line_id': face_line_id,
+                        'carnet_qty': carnet_qty,
+                    })
+
+                # ── 5. Créer et confirmer le transfert ───────────────────────────
+                with request.env.cr.savepoint():
+                    transfer = request.env['acpec.fuel.carnet.transfer'].sudo().create({
+                        'source_wallet_id': wallet.id,
+                        'dest_wallet_id': dest_wallet.id,
+                        'company_id': wallet.company_id.id,
+                        'note': self._get_clean_str(kwargs, 'note') or False,
+                        'idempotency_key': idempotency_key or False,
+                        'request_hash': request_hash,
+                        'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
+                    })
+                    mobile_session = self._get_mobile_session(required=True)
+                    transfer.action_confirm_mobile(
+                        actor_user=source_user,
+                        mobile_session=mobile_session,
+                    )
+
+                return self._json_response(self._transfer_payload(transfer))
         except Exception as exc:
             return self._handle_exception_response(exc)
 

@@ -161,99 +161,102 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_create(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='carnet_type_create')
-            self._require_keys(kwargs, ['face_count', 'face_value'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_create')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_create')
+            with self._sensitive_action_transaction(kwargs, purpose='carnet_type_create') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['face_count', 'face_value'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_create')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_create')
 
-            existing = request.env['acpec.fuel.carnet.type'].sudo().search([
-                ('admin_create_idempotency_key', '=', idempotency_key),
-            ], limit=1)
-            if existing:
-                if existing.admin_create_request_hash and existing.admin_create_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
-                self._check_record_company_allowed(user, existing)
-                return self._json_response(self._carnet_payload(existing))
+                existing = request.env['acpec.fuel.carnet.type'].sudo().search([
+                    ('admin_create_idempotency_key', '=', idempotency_key),
+                ], limit=1)
+                if existing:
+                    if existing.admin_create_request_hash and existing.admin_create_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    self._check_record_company_allowed(user, existing)
+                    return self._json_response(self._carnet_payload(existing))
 
-            company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
-            company = self._require_allowed_company(user, company_id)
-            rec = request.env['acpec.fuel.carnet.type'].sudo().create({
-                'face_count': self._get_optional_int(kwargs, 'face_count', 0),
-                'face_value': self._get_optional_float(kwargs, 'face_value', 0),
-                'validity_days': self._get_optional_int(kwargs, 'validity_days', 365),
-                'company_id': company.id,
-                'active': self._get_bool_param(kwargs.get('active'), default=True),
-                'admin_create_idempotency_key': idempotency_key,
-                'admin_create_request_hash': request_hash,
-            })
-            if kwargs.get('name'):
-                rec.write({'name': kwargs.get('name')})
-            if kwargs.get('code'):
-                rec.write({'code': kwargs.get('code')})
-            return self._json_response(self._carnet_payload(rec))
+                company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
+                company = self._require_allowed_company(user, company_id)
+                rec = request.env['acpec.fuel.carnet.type'].sudo().create({
+                    'face_count': self._get_optional_int(kwargs, 'face_count', 0),
+                    'face_value': self._get_optional_float(kwargs, 'face_value', 0),
+                    'validity_days': self._get_optional_int(kwargs, 'validity_days', 365),
+                    'company_id': company.id,
+                    'active': self._get_bool_param(kwargs.get('active'), default=True),
+                    'admin_create_idempotency_key': idempotency_key,
+                    'admin_create_request_hash': request_hash,
+                })
+                if kwargs.get('name'):
+                    rec.write({'name': kwargs.get('name')})
+                if kwargs.get('code'):
+                    rec.write({'code': kwargs.get('code')})
+                return self._json_response(self._carnet_payload(rec))
         except Exception as exc:
             return self._handle_exception_response(exc)
 
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_update(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='carnet_type_update')
-            self._require_keys(kwargs, ['carnet_type_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_update')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_update')
-            rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
-            if not rec:
-                raise ValidationError(_('Type de carnet introuvable.'))
-            self._check_record_company_allowed(user, rec)
+            with self._sensitive_action_transaction(kwargs, purpose='carnet_type_update') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['carnet_type_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_update')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_update')
+                rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
+                if not rec:
+                    raise ValidationError(_('Type de carnet introuvable.'))
+                self._check_record_company_allowed(user, rec)
 
-            if rec.admin_update_idempotency_key == idempotency_key:
-                if rec.admin_update_request_hash and rec.admin_update_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                if rec.admin_update_idempotency_key == idempotency_key:
+                    if rec.admin_update_request_hash and rec.admin_update_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    return self._json_response(self._carnet_payload(rec))
+
+                vals = {}
+                for key in ('name', 'code'):
+                    if key in kwargs:
+                        vals[key] = kwargs.get(key) or False
+                for key in ('face_count', 'validity_days'):
+                    if key in kwargs:
+                        vals[key] = self._get_optional_int(kwargs, key, 0)
+                if 'face_value' in kwargs:
+                    vals['face_value'] = self._get_optional_float(kwargs, 'face_value', 0)
+                if 'active' in kwargs:
+                    vals['active'] = self._get_bool_param(kwargs.get('active'))
+                vals.update({
+                    'admin_update_idempotency_key': idempotency_key,
+                    'admin_update_request_hash': request_hash,
+                })
+                rec.write(vals)
                 return self._json_response(self._carnet_payload(rec))
-
-            vals = {}
-            for key in ('name', 'code'):
-                if key in kwargs:
-                    vals[key] = kwargs.get(key) or False
-            for key in ('face_count', 'validity_days'):
-                if key in kwargs:
-                    vals[key] = self._get_optional_int(kwargs, key, 0)
-            if 'face_value' in kwargs:
-                vals['face_value'] = self._get_optional_float(kwargs, 'face_value', 0)
-            if 'active' in kwargs:
-                vals['active'] = self._get_bool_param(kwargs.get('active'))
-            vals.update({
-                'admin_update_idempotency_key': idempotency_key,
-                'admin_update_request_hash': request_hash,
-            })
-            rec.write(vals)
-            return self._json_response(self._carnet_payload(rec))
         except Exception as exc:
             return self._handle_exception_response(exc)
 
     @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def carnet_type_delete(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='carnet_type_delete')
-            self._require_keys(kwargs, ['carnet_type_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_delete')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_delete')
-            rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
-            if not rec:
-                raise ValidationError(_('Type de carnet introuvable.'))
-            self._check_record_company_allowed(user, rec)
+            with self._sensitive_action_transaction(kwargs, purpose='carnet_type_delete') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['carnet_type_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_type_delete')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='carnet_type_delete')
+                rec = request.env['acpec.fuel.carnet.type'].sudo().browse(self._get_optional_int(kwargs, 'carnet_type_id', 0)).exists()
+                if not rec:
+                    raise ValidationError(_('Type de carnet introuvable.'))
+                self._check_record_company_allowed(user, rec)
 
-            if rec.admin_delete_idempotency_key == idempotency_key:
-                if rec.admin_delete_request_hash and rec.admin_delete_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                if rec.admin_delete_idempotency_key == idempotency_key:
+                    if rec.admin_delete_request_hash and rec.admin_delete_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    return self._json_response({'id': rec.id, 'active': rec.active})
+
+                rec.write({
+                    'active': False,
+                    'admin_delete_idempotency_key': idempotency_key,
+                    'admin_delete_request_hash': request_hash,
+                })
                 return self._json_response({'id': rec.id, 'active': rec.active})
-
-            rec.write({
-                'active': False,
-                'admin_delete_idempotency_key': idempotency_key,
-                'admin_delete_request_hash': request_hash,
-            })
-            return self._json_response({'id': rec.id, 'active': rec.active})
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -297,58 +300,60 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/purchases/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_approve(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='purchase_approve')
-            self._require_keys(kwargs, ['purchase_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_approve')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_approve')
-            purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
-            if not purchase:
-                raise ValidationError(_('Lot d’achat introuvable.'))
-            self._check_record_company_allowed(user, purchase)
+            with self._sensitive_action_transaction(kwargs, purpose='purchase_approve') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['purchase_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_approve')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_approve')
+                purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
+                if not purchase:
+                    raise ValidationError(_('Lot d’achat introuvable.'))
+                self._check_record_company_allowed(user, purchase)
 
-            if purchase.approval_idempotency_key == idempotency_key:
-                if purchase.approval_request_hash and purchase.approval_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
-                if purchase.state == 'approved':
-                    return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
+                if purchase.approval_idempotency_key == idempotency_key:
+                    if purchase.approval_request_hash and purchase.approval_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    if purchase.state == 'approved':
+                        return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
 
-            with request.env.cr.savepoint():
-                purchase.sudo().write({
-                    'approval_idempotency_key': idempotency_key,
-                    'approval_request_hash': request_hash,
-                })
-                purchase.with_user(user).action_approve()
-            return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
+                with request.env.cr.savepoint():
+                    purchase.sudo().write({
+                        'approval_idempotency_key': idempotency_key,
+                        'approval_request_hash': request_hash,
+                    })
+                    purchase.with_user(user).action_approve()
+                return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:
             return self._handle_exception_response(exc)
 
     @http.route('/api/acpec/fueltoken/v1/admin/purchases/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def purchase_reject(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='purchase_reject')
-            self._require_keys(kwargs, ['purchase_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_reject')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_reject')
-            purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
-            if not purchase:
-                raise ValidationError(_('Lot d’achat introuvable.'))
-            self._check_record_company_allowed(user, purchase)
+            with self._sensitive_action_transaction(kwargs, purpose='purchase_reject') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['purchase_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_reject')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_reject')
+                purchase = request.env['acpec.fuel.purchase'].sudo().browse(self._get_optional_int(kwargs, 'purchase_id', 0)).exists()
+                if not purchase:
+                    raise ValidationError(_('Lot d’achat introuvable.'))
+                self._check_record_company_allowed(user, purchase)
 
-            if purchase.rejection_idempotency_key == idempotency_key:
-                if purchase.rejection_request_hash and purchase.rejection_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
-                if purchase.state == 'rejected':
-                    return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
+                if purchase.rejection_idempotency_key == idempotency_key:
+                    if purchase.rejection_request_hash and purchase.rejection_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    if purchase.state == 'rejected':
+                        return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
 
-            with request.env.cr.savepoint():
-                purchase.sudo().write({
-                    'rejection_idempotency_key': idempotency_key,
-                    'rejection_request_hash': request_hash,
-                })
-                purchase.with_user(user).action_reject()
-                if kwargs.get('rejection_reason'):
-                    purchase.sudo().write({'rejection_reason': kwargs.get('rejection_reason')})
-            return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
+                with request.env.cr.savepoint():
+                    purchase.sudo().write({
+                        'rejection_idempotency_key': idempotency_key,
+                        'rejection_request_hash': request_hash,
+                    })
+                    purchase.with_user(user).action_reject()
+                    if kwargs.get('rejection_reason'):
+                        purchase.sudo().write({'rejection_reason': kwargs.get('rejection_reason')})
+                return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -367,106 +372,109 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/admin/stations/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_create(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='station_create')
-            self._require_keys(kwargs, ['name', 'user_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='station_create')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_create')
+            with self._sensitive_action_transaction(kwargs, purpose='station_create') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['name', 'user_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='station_create')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_create')
 
-            existing = request.env['acpec.fuel.station'].sudo().search([
-                ('create_idempotency_key', '=', idempotency_key),
-            ], limit=1)
-            if existing:
-                if existing.create_request_hash and existing.create_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
-                self._check_record_company_allowed(user, existing)
-                return self._json_response(self._station_payload(existing))
+                existing = request.env['acpec.fuel.station'].sudo().search([
+                    ('create_idempotency_key', '=', idempotency_key),
+                ], limit=1)
+                if existing:
+                    if existing.create_request_hash and existing.create_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    self._check_record_company_allowed(user, existing)
+                    return self._json_response(self._station_payload(existing))
 
-            company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
-            company = self._require_allowed_company(user, company_id)
-            station_user = request.env['res.users'].sudo().browse(self._get_optional_int(kwargs, 'user_id', 0)).exists()
-            self._require_user_company_membership(station_user, company)
-            rec = request.env['acpec.fuel.station'].sudo().create({
-                'name': kwargs.get('name'),
-                'code': kwargs.get('code') or False,
-                'user_id': station_user.id,
-                'company_id': company.id,
-                'active': self._get_bool_param(kwargs.get('active'), default=True),
-                'create_idempotency_key': idempotency_key,
-                'create_request_hash': request_hash,
-            })
-            return self._json_response(self._station_payload(rec))
+                company_id = self._get_optional_int(kwargs, 'company_id', user.company_id.id)
+                company = self._require_allowed_company(user, company_id)
+                station_user = request.env['res.users'].sudo().browse(self._get_optional_int(kwargs, 'user_id', 0)).exists()
+                self._require_user_company_membership(station_user, company)
+                rec = request.env['acpec.fuel.station'].sudo().create({
+                    'name': kwargs.get('name'),
+                    'code': kwargs.get('code') or False,
+                    'user_id': station_user.id,
+                    'company_id': company.id,
+                    'active': self._get_bool_param(kwargs.get('active'), default=True),
+                    'create_idempotency_key': idempotency_key,
+                    'create_request_hash': request_hash,
+                })
+                return self._json_response(self._station_payload(rec))
         except Exception as exc:
             return self._handle_exception_response(exc)
 
     @http.route('/api/acpec/fueltoken/v1/admin/stations/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_update(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='station_update')
-            self._require_keys(kwargs, ['station_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='station_update')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_update')
+            with self._sensitive_action_transaction(kwargs, purpose='station_update') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['station_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='station_update')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_update')
 
-            rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
-            if not rec:
-                raise ValidationError(_('Station introuvable.'))
-            self._check_record_company_allowed(user, rec)
+                rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
+                if not rec:
+                    raise ValidationError(_('Station introuvable.'))
+                self._check_record_company_allowed(user, rec)
 
-            if rec.update_idempotency_key == idempotency_key:
-                if rec.update_request_hash and rec.update_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                if rec.update_idempotency_key == idempotency_key:
+                    if rec.update_request_hash and rec.update_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    return self._json_response(self._station_payload(rec))
+
+                target_company = rec.company_id
+                if 'company_id' in kwargs:
+                    target_company = self._require_allowed_company(user, self._get_optional_int(kwargs, 'company_id', 0))
+
+                vals = {}
+                for key in ('name', 'code'):
+                    if key in kwargs:
+                        vals[key] = kwargs.get(key) or False
+                if 'user_id' in kwargs:
+                    station_user = request.env['res.users'].sudo().browse(self._get_optional_int(kwargs, 'user_id', 0)).exists()
+                    self._require_user_company_membership(station_user, target_company)
+                    vals['user_id'] = station_user.id
+                elif 'company_id' in kwargs:
+                    self._require_user_company_membership(rec.user_id, target_company)
+                if 'company_id' in kwargs:
+                    vals['company_id'] = target_company.id
+                if 'active' in kwargs:
+                    vals['active'] = self._get_bool_param(kwargs.get('active'))
+                vals.update({
+                    'update_idempotency_key': idempotency_key,
+                    'update_request_hash': request_hash,
+                })
+                rec.write(vals)
                 return self._json_response(self._station_payload(rec))
-
-            target_company = rec.company_id
-            if 'company_id' in kwargs:
-                target_company = self._require_allowed_company(user, self._get_optional_int(kwargs, 'company_id', 0))
-
-            vals = {}
-            for key in ('name', 'code'):
-                if key in kwargs:
-                    vals[key] = kwargs.get(key) or False
-            if 'user_id' in kwargs:
-                station_user = request.env['res.users'].sudo().browse(self._get_optional_int(kwargs, 'user_id', 0)).exists()
-                self._require_user_company_membership(station_user, target_company)
-                vals['user_id'] = station_user.id
-            elif 'company_id' in kwargs:
-                self._require_user_company_membership(rec.user_id, target_company)
-            if 'company_id' in kwargs:
-                vals['company_id'] = target_company.id
-            if 'active' in kwargs:
-                vals['active'] = self._get_bool_param(kwargs.get('active'))
-            vals.update({
-                'update_idempotency_key': idempotency_key,
-                'update_request_hash': request_hash,
-            })
-            rec.write(vals)
-            return self._json_response(self._station_payload(rec))
         except Exception as exc:
             return self._handle_exception_response(exc)
 
     @http.route('/api/acpec/fueltoken/v1/admin/stations/disable', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def station_disable(self, **kwargs):
         try:
-            user = self._trusted_admin_user(kwargs, purpose='station_disable')
-            self._require_keys(kwargs, ['station_id'])
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='station_disable')
-            request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_disable')
+            with self._sensitive_action_transaction(kwargs, purpose='station_disable') as user:
+                self._require_fuel_group(user, 'manager')
+                self._require_keys(kwargs, ['station_id'])
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='station_disable')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='station_disable')
 
-            rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
-            if not rec:
-                raise ValidationError(_('Station introuvable.'))
-            self._check_record_company_allowed(user, rec)
+                rec = request.env['acpec.fuel.station'].sudo().browse(self._get_optional_int(kwargs, 'station_id', 0)).exists()
+                if not rec:
+                    raise ValidationError(_('Station introuvable.'))
+                self._check_record_company_allowed(user, rec)
 
-            if rec.disable_idempotency_key == idempotency_key:
-                if rec.disable_request_hash and rec.disable_request_hash != request_hash:
-                    raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                if rec.disable_idempotency_key == idempotency_key:
+                    if rec.disable_request_hash and rec.disable_request_hash != request_hash:
+                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                    return self._json_response(self._station_payload(rec))
+
+                rec.write({
+                    'active': False,
+                    'disable_idempotency_key': idempotency_key,
+                    'disable_request_hash': request_hash,
+                })
                 return self._json_response(self._station_payload(rec))
-
-            rec.write({
-                'active': False,
-                'disable_idempotency_key': idempotency_key,
-                'disable_request_hash': request_hash,
-            })
-            return self._json_response(self._station_payload(rec))
         except Exception as exc:
             return self._handle_exception_response(exc)
 

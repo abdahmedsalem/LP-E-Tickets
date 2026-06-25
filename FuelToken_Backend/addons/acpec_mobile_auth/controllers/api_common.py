@@ -1,8 +1,9 @@
 import hashlib
 import logging
 import re
+from contextlib import contextmanager
 
-from odoo import http, _, fields
+from odoo import http, _, fields, api, SUPERUSER_ID
 from odoo.exceptions import AccessError, ValidationError
 
 from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
@@ -204,6 +205,106 @@ class AcpecMobileAuthApiCommon(http.Controller):
         value = str(value).strip() if value not in (None, False) else ''
         return value or False
 
+    def _mobile_security_audit_vals(
+        self, *,
+        event_type,
+        code,
+        purpose=False,
+        public_message=False,
+        debug_reason=False,
+        user=False,
+        session=False,
+        company=False,
+        params=False,
+        severity='warning',
+        success=False,
+        blocked=True,
+        failed_count_before=False,
+        failed_count_after=False,
+        target_model=False,
+        target_res_id=False,
+        business_ref=False,
+    ):
+        """Build plain audit values with no raw secret and no recordset.
+
+        This helper deliberately returns only scalars so the committed-audit
+        path can write from a separate cursor without carrying uncommitted
+        recordsets across transactions.
+        """
+        user = user.sudo() if user and user.exists() else False
+        session = session.sudo() if session and session.exists() else False
+        company = company.sudo() if company and company.exists() else False
+
+        audit_public_message = public_message
+        if audit_public_message is False:
+            audit_public_message = False if success else self._sensitive_public_message(purpose)
+
+        return {
+            'event_type': event_type,
+            'severity': severity,
+            'code': code,
+            'public_message': audit_public_message or False,
+            'debug_reason': debug_reason or False,
+            'user_id': user.id if user else False,
+            'partner_id': user.partner_id.id if user and user.partner_id else False,
+            'company_id': (user.company_id.id if user and user.company_id else (company.id if company else False)),
+            'session_id': session.id if session else False,
+            'device_uid': session.device_uid if session else False,
+            'device_name': session.device_name if session else False,
+            'device_trust_state': session.device_trust_state if session else False,
+            'endpoint': self._request_path(),
+            'operation': purpose or False,
+            'idempotency_key': self._idempotency_key_for_audit(params),
+            'ip_address': self._request_ip(),
+            'user_agent': self._request_user_agent(),
+            'success': bool(success),
+            'blocked': bool(blocked),
+            'action_code_present': self._action_code_present(params),
+            'action_code_format_valid': self._action_code_format_valid(params),
+            'failed_count_before': failed_count_before if failed_count_before is not False else False,
+            'failed_count_after': failed_count_after if failed_count_after is not False else False,
+            'target_model': target_model or False,
+            'target_res_id': target_res_id or False,
+            'business_ref': business_ref or False,
+        }
+
+    def _audit_in_transaction(self, vals):
+        """Write audit in the current transaction, fail-closed.
+
+        This is the only valid path for a sensitive action that has been
+        authorized and whose business operation is about to be committed.
+        There is intentionally no try/except here: if audit write fails, the
+        caller's savepoint/transaction must rollback the business action too.
+        """
+        self._api_env()['acpec.mobile.security.audit.log'].sudo().log_event(**(vals or {}))
+
+    def _audit_committed(self, vals):
+        """Write a security-refusal audit in an independent committed cursor.
+
+        Refusal evidence must survive the rollback/savepoint used by the denied
+        business flow.  This helper receives only plain scalar values; never
+        pass recordsets or data that depends on uncommitted rows.
+
+        In Odoo 19, registry.cursor().__exit__ commits automatically when no
+        exception is raised.  Do not add an explicit cr.commit() here.
+        """
+        vals = dict(vals or {})
+        try:
+            env = self._api_env()
+            force_independent_cursor = getattr(self, '_force_independent_audit_cursor', False)
+            if getattr(self, '_test_env', None) is not None and not force_independent_cursor:
+                # Unit tests often use uncommitted fixture records that a second
+                # cursor cannot see.  Production HTTP requests use the committed
+                # cursor path below; tests can force that path with scalar-only
+                # values through _force_independent_audit_cursor.
+                env['acpec.mobile.security.audit.log'].sudo().log_event(**vals)
+                return
+            with env.registry.cursor() as cr:
+                committed_env = api.Environment(cr, SUPERUSER_ID, dict(env.context))
+                committed_env['acpec.mobile.security.audit.log'].sudo().log_event(**vals)
+        except Exception:
+            _logger.exception('Impossible d’écrire le journal d’audit sécurité mobile refusé')
+
     def _log_mobile_security_audit_event(
         self, *,
         event_type,
@@ -225,45 +326,26 @@ class AcpecMobileAuthApiCommon(http.Controller):
         business_ref=False,
     ):
         try:
-            env = self._api_env()
-            audit_model = env['acpec.mobile.security.audit.log'].sudo()
-
-            user = user.sudo() if user and user.exists() else False
-            session = session.sudo() if session and session.exists() else False
-            company = company.sudo() if company and company.exists() else False
-
-            audit_public_message = public_message
-            if audit_public_message is False:
-                audit_public_message = False if success else self._sensitive_public_message(purpose)
-
-            audit_model.log_event(
+            vals = self._mobile_security_audit_vals(
                 event_type=event_type,
                 severity=severity,
                 code=code,
-                public_message=audit_public_message or False,
-                debug_reason=debug_reason or False,
-                user_id=user.id if user else False,
-                partner_id=user.partner_id.id if user and user.partner_id else False,
-                company_id=(user.company_id.id if user and user.company_id else (company.id if company else False)),
-                session_id=session.id if session else False,
-                device_uid=session.device_uid if session else False,
-                device_name=session.device_name if session else False,
-                device_trust_state=session.device_trust_state if session else False,
-                endpoint=self._request_path(),
-                operation=purpose or False,
-                idempotency_key=self._idempotency_key_for_audit(params),
-                ip_address=self._request_ip(),
-                user_agent=self._request_user_agent(),
-                success=bool(success),
-                blocked=bool(blocked),
-                action_code_present=self._action_code_present(params),
-                action_code_format_valid=self._action_code_format_valid(params),
-                failed_count_before=failed_count_before if failed_count_before is not False else False,
-                failed_count_after=failed_count_after if failed_count_after is not False else False,
-                target_model=target_model or False,
-                target_res_id=target_res_id or False,
-                business_ref=business_ref or False,
+                purpose=purpose,
+                public_message=public_message,
+                debug_reason=debug_reason,
+                user=user,
+                session=session,
+                company=company,
+                params=params,
+                success=success,
+                blocked=blocked,
+                failed_count_before=failed_count_before,
+                failed_count_after=failed_count_after,
+                target_model=target_model,
+                target_res_id=target_res_id,
+                business_ref=business_ref,
             )
+            self._audit_in_transaction(vals)
         except Exception:
             _logger.exception('Impossible d’écrire le journal d’audit sécurité mobile')
             if getattr(self, '_test_env', None) is not None:
@@ -283,7 +365,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         failed_count_after=False,
     ):
         public_message = self._sensitive_public_message(purpose)
-        self._log_mobile_security_audit_event(
+        vals = self._mobile_security_audit_vals(
             event_type=event_type,
             severity=severity,
             code=code,
@@ -298,6 +380,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             failed_count_before=failed_count_before,
             failed_count_after=failed_count_after,
         )
+        self._audit_committed(vals)
         raise MobileSensitiveActionError(code, public_message, debug_reason)
 
     def _classify_pin_failure(self, exc, user, failed_count_before=False):
@@ -869,7 +952,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             raise ValidationError('action_code requis pour confirmer cette action sensible.')
         return str(pin)
 
-    def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action'):
+    def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action', log_allowed=True, return_audit_vals=False):
         """Require trusted device + server-side mobile PIN for a concrete sensitive action.
 
         Le PIN/action_code brut n’est jamais stocké dans l’audit. Le mobile
@@ -995,7 +1078,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         ])
         failed_count_after = user.mobile_pin_failed_count or 0
 
-        self._log_mobile_security_audit_event(
+        allowed_audit_vals = self._mobile_security_audit_vals(
             event_type='sensitive_action_allowed',
             severity='info',
             code='ACTION_CODE_VALID',
@@ -1011,7 +1094,33 @@ class AcpecMobileAuthApiCommon(http.Controller):
             failed_count_after=failed_count_after,
         )
 
+        if log_allowed:
+            self._audit_in_transaction(allowed_audit_vals)
+
+        if return_audit_vals:
+            return user, allowed_audit_vals
         return user
+
+    @contextmanager
+    def _sensitive_action_transaction(self, params=None, purpose='sensitive_action'):
+        """Run an authorized sensitive action and its success audit atomically.
+
+        Security refusals are audited by _require_sensitive_action_pin() before
+        this savepoint is opened.  Once the action_code is valid, the allowed
+        audit is written only after the business action succeeds and in the
+        same savepoint.  If the allowed-audit write fails, the savepoint rolls
+        back the business action and re-raises the audit exception.  Do not
+        replace this with a try/except that swallows audit errors.
+        """
+        user, allowed_audit_vals = self._require_sensitive_action_pin(
+            params or {},
+            purpose=purpose,
+            log_allowed=False,
+            return_audit_vals=True,
+        )
+        with self._api_env().cr.savepoint():
+            yield user
+            self._audit_in_transaction(allowed_audit_vals)
 
     def _mobile_profile_payload(self, user, session=False):
         data = {

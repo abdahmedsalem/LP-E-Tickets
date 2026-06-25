@@ -34,7 +34,7 @@ l'invariant et sert de point de départ — à ne pas recopier aveuglément.
 | INV-D7 | implémenté_patch43A | acpec_mobile_auth (refus dur device blocked, révocation sessions, access/refresh tokens inutilisables) | T-D6 | Validé par Patch43A tag security-runtime-v1-20260625-patch43A, tests prod-like 228 tests OK |
 | INV-D8 | implémenté_patch43B | acpec_mobile_auth + acpec_fueltoken_api (trust wall lecture métier + actions sensibles, sans action_code pour lectures) | T-D7 | Validé par Patch43B, tests prod-like 228 tests OK, tag cible security-runtime-v1-20260625-patch43B |
 | INV-A1 | à_implementer | api_common._require_sensitive_action_pin | T-A1 | api_common.py |
-| INV-X3 | à_implementer | audit transactionnel actions autorisées | T-X3 | (best-effort aujourd'hui) |
+| INV-X3 | implémenté_patch43D | acpec_mobile_auth + acpec_fueltoken_api (audit allowed fail-closed dans la transaction métier, audit refus sécurité committed séparé, helpers explicites) | T-X3a/b/c/d | Validé par Patch43D, tests prod-like cible 238+ tests OK, tag cible security-runtime-v1-20260625-patch43D |
 | ... | ... | ... | ... | ... |
 
 ## D2 — Métier (extrait amorcé ; compléter pour tous les INV-W/C/TR/Q/TX/VAL)
@@ -72,5 +72,5 @@ Total invariants D2 :  __ / __ verifie
 Total invariants D3 :  __ / __ verifie
 
 Invariants sans test (trous) : [lister ici]
-Invariants nouveaux non encore implémentés : INV-S2, INV-X3, ... (compléter)
+Invariants nouveaux non encore implémentés : INV-S2, ... (compléter)
 ```

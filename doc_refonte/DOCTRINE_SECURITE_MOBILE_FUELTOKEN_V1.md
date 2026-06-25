@@ -300,9 +300,23 @@ INV-X1  Tout le trafic mobile passe en transport chiffré. Le device_uid et les 
 INV-X2  Production / sécurité stricte est le comportement par défaut ; les facilités de
         développement n'existent que par assertion positive d'environnement, et ne
         relaxent jamais device-trust, rôle, session, PIN, idempotence ni audit.
-INV-X3  Le journal d'audit est immuable (création seule). Pour une action sensible
-        autorisée, l'écriture d'audit est dans la même transaction : ce qui n'est pas
-        auditable n'est pas autorisé.
+INV-X3  Action sensible autorisée et réussie : l'audit success/allowed est écrit
+        dans la même transaction que l'action métier, sans try/except. Si l'audit
+        échoue, le savepoint rollback l'action métier et ré-émet l'exception : ce
+        qui n'est pas auditable n'est pas autorisé.
+INV-X3b Refus sécurité avant autorisation : l'audit de refus est écrit via une
+        transaction séparée committed, afin de survivre au rollback/savepoint du
+        flux refusé. Si cette écriture échoue, _logger.exception est le dernier recours.
+        Ce chemin est une preuve de refus indépendante, jamais un best-effort sur
+        une action autorisée.
+INV-X3c _logger est du diagnostic opérationnel. Il complète l'audit en base, mais
+        ne le remplace jamais comme preuve métier/sécurité.
+INV-X3d Aucun secret brut (OTP, PIN/action_code, jeton, secret, QR complet) ne peut
+        apparaître dans une ligne d'audit ni dans un log Python.
+ANTI-X3 Interdit : un helper unique qui avale les erreurs d'audit pour les succès
+        comme pour les refus. Succès autorisé et refus sécurité utilisent deux
+        chemins nommés et visibles au point d'appel ; aucun succès autorisé ne
+        peut continuer sans preuve d'audit en base.
 ```
 
 ### Tests
@@ -311,7 +325,11 @@ INV-X3  Le journal d'audit est immuable (création seule). Pour une action sensi
 T-X1  Trafic non chiffré hors environnement de développement => refusé / readiness.
 T-X2  En mode développement actif : appareil non trusted, mauvais rôle, mauvais PIN,
       QR déjà consommé => toujours refusés (invariants non relaxés).
-T-X3  Échec d'écriture d'audit sur une action sensible autorisée => l'action est annulée.
+T-X3a Échec d'écriture d'audit sur une action sensible autorisée => l'action est annulée.
+T-X3b Refus sécurité avant autorisation => l'action est refusée et une ligne d'audit
+      de refus existe malgré le rollback/savepoint du flux refusé.
+T-X3c Action autorisée puis erreur métier => aucun audit success/allowed n'est conservé.
+T-X3d Audit/logging ne contient aucun secret brut.
 T-X4  Modification ou suppression d'une ligne d'audit => refus.
 ```
 
