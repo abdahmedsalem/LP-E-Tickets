@@ -1,4 +1,5 @@
 import os
+from contextlib import ExitStack
 from unittest.mock import patch
 
 from odoo.tests import TransactionCase, tagged
@@ -66,13 +67,55 @@ class TestMobileSecurityReadiness(TransactionCase):
     def _codes(self, result):
         return {issue['code'] for issue in result['issues']}
 
-    def _check(self, env):
+    def _group_ids(self, xmlids):
+        ids = []
+        for xmlid in xmlids:
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                ids.append(group.id)
+        return ids
+
+    def _existing_partner(self):
+        partner = self.env.user.sudo().partner_id or self.env.company.sudo().partner_id
+        self.assertTrue(partner)
+        return partner
+
+    def _create_mobile_identity_user(self, login, mobile_phone=False):
+        Users = self.env['res.users'].sudo().with_context(no_reset_password=True)
+        vals = {
+            'name': login,
+            'login': login,
+            'partner_id': self._existing_partner().id,
+            'mobile_only': True,
+            'mobile_state': 'approved',
+            'password': Users._acpec_mobile_unusable_password(),
+            'group_ids': [(6, 0, self._group_ids([
+                'base.group_portal',
+                'acpec_mobile_auth.group_mobile_auth_user',
+            ]))],
+        }
+        if mobile_phone is not False:
+            vals['mobile_phone'] = mobile_phone
+        return Users.create(vals)
+
+    def _check(self, env, include_mobile_identity=False):
         # Odoo tests run with --test-enable. Patch36A readiness must still be
-        # testable for simulated production/dev runtime values.
-        with patch.dict(os.environ, env, clear=False), patch(
-            'odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config',
-            {'test_enable': False},
-        ):
+        # testable for simulated production/dev runtime values.  Most readiness
+        # tests target runtime/SMS settings and must not depend on legacy users
+        # already present in the developer database; identity-specific tests opt
+        # in explicitly.
+        with ExitStack() as stack:
+            stack.enter_context(patch.dict(os.environ, env, clear=False))
+            stack.enter_context(patch(
+                'odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config',
+                {'test_enable': False},
+            ))
+            if not include_mobile_identity:
+                stack.enter_context(patch.object(
+                    type(self.readiness),
+                    '_mobile_identity_issues',
+                    lambda _readiness: [],
+                ))
             return self.readiness.check_mobile_security_readiness()
 
     def test_fueltoken_company_missing_is_reported_as_critical(self):
@@ -105,6 +148,54 @@ class TestMobileSecurityReadiness(TransactionCase):
 
         self.assertFalse(result['ready'])
         self.assertIn('FUELTOKEN_COMPANY_NOT_UNIQUE', self._codes(result))
+
+    def test_mobile_identity_missing_phone_is_reported_as_critical(self):
+        self._create_mobile_identity_user('identity-missing-phone-43f1@example.com')
+
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+        result = self._check(env, include_mobile_identity=True)
+
+        self.assertFalse(result['ready'])
+        self.assertIn('MOBILE_IDENTITY_MOBILE_PHONE_MISSING', self._codes(result))
+
+    def test_mobile_identity_invalid_phone_is_reported_as_critical(self):
+        self._create_mobile_identity_user('32348001', '+222 32 34 80 01')
+
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+        result = self._check(env, include_mobile_identity=True)
+
+        self.assertFalse(result['ready'])
+        self.assertIn('MOBILE_IDENTITY_MOBILE_PHONE_INVALID', self._codes(result))
+
+    def test_mobile_identity_login_phone_mismatch_is_reported_as_critical(self):
+        self._create_mobile_identity_user('32348002', '32348003')
+
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+        result = self._check(env, include_mobile_identity=True)
+
+        self.assertFalse(result['ready'])
+        self.assertIn('MOBILE_IDENTITY_LOGIN_PHONE_MISMATCH', self._codes(result))
+
+    def test_mobile_identity_duplicate_phone_is_reported_as_critical(self):
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+
+        with patch.object(
+            type(self.readiness),
+            '_mobile_identity_duplicate_phone_rows',
+            lambda _readiness: [('32348004', 2)],
+        ):
+            result = self._check(env, include_mobile_identity=True)
+
+        self.assertFalse(result['ready'])
+        self.assertIn('MOBILE_IDENTITY_MOBILE_PHONE_NOT_UNIQUE', self._codes(result))
 
     def test_dev_gate_allows_zero_antiflood_without_sms_readiness_failure(self):
         self._set_setting('acpec_mobile_auth.otp_request_cooldown_seconds', '0')

@@ -63,6 +63,77 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
         return company_model.search_count([('acpec_fueltoken_enabled', '=', True)])
 
     @api.model
+    def _mobile_identity_duplicate_phone_rows(self):
+        users_model = self.env['res.users'].sudo().with_context(active_test=False)
+        helper = getattr(users_model, '_acpec_mobile_identity_duplicate_phone_rows', None)
+        if helper:
+            return helper()
+        return []
+
+    @api.model
+    def _mobile_identity_issues(self):
+        users_model = self.env['res.users'].sudo().with_context(active_test=False)
+        required_fields = {'mobile_only', 'mobile_phone', 'login'}
+        missing_fields = sorted(required_fields - set(users_model._fields))
+        if missing_fields:
+            return [self._issue(
+                'MOBILE_IDENTITY_FIELDS_MISSING',
+                'critical',
+                'Champs identité mobile absents sur res.users: %s.' % ', '.join(missing_fields),
+                'res.users',
+            )]
+
+        issues = []
+        mobile_users = users_model.search([('mobile_only', '=', True)])
+        missing_phone = self.env['res.users']
+        invalid_phone = self.env['res.users']
+        login_mismatch = self.env['res.users']
+
+        for user in mobile_users:
+            login = (user.login or '').strip()
+            phone = (user.mobile_phone or '').strip()
+            if not phone:
+                missing_phone |= user
+                continue
+            if not users_model._acpec_is_canonical_mobile_phone(phone):
+                invalid_phone |= user
+                continue
+            if login != phone:
+                login_mismatch |= user
+
+        duplicate_rows = self._mobile_identity_duplicate_phone_rows()
+
+        if missing_phone:
+            issues.append(self._issue(
+                'MOBILE_IDENTITY_MOBILE_PHONE_MISSING',
+                'critical',
+                '%s utilisateur(s) mobile_only n’ont pas de mobile_phone.' % len(missing_phone),
+                'res.users.mobile_phone',
+            ))
+        if invalid_phone:
+            issues.append(self._issue(
+                'MOBILE_IDENTITY_MOBILE_PHONE_INVALID',
+                'critical',
+                '%s utilisateur(s) mobile_only ont un mobile_phone non canonique local 8 chiffres.' % len(invalid_phone),
+                'res.users.mobile_phone',
+            ))
+        if login_mismatch:
+            issues.append(self._issue(
+                'MOBILE_IDENTITY_LOGIN_PHONE_MISMATCH',
+                'critical',
+                '%s utilisateur(s) mobile_only ont login différent de mobile_phone.' % len(login_mismatch),
+                'res.users.login',
+            ))
+        if duplicate_rows:
+            issues.append(self._issue(
+                'MOBILE_IDENTITY_MOBILE_PHONE_NOT_UNIQUE',
+                'critical',
+                'Des utilisateurs mobile_only partagent le même mobile_phone ; unicité obligatoire.',
+                'res.users.mobile_phone',
+            ))
+        return issues
+
+    @api.model
     def _resolved_sms_config(self):
         # Patch36A: readiness does not read ir.config_parameter.
         # SMS secrets are runtime/deployment secrets, therefore read from env.
@@ -159,6 +230,8 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
                 'Plusieurs sociétés portent Tickets Carburant ; une seule société FuelToken est autorisée.',
                 'res.company.acpec_fueltoken_enabled',
             ))
+
+        issues.extend(self._mobile_identity_issues())
 
         if self._raw_bool(policy.OTP_DEV_MODE_KEY, default=False):
             issues.append(self._issue(

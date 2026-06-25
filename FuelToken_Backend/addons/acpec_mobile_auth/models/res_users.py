@@ -104,6 +104,65 @@ class ResUsers(models.Model):
         return secrets.token_urlsafe(64)
 
     @api.model
+    def init(self):
+        super().init()
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS res_users_acpec_mobile_only_phone_uniq
+                ON res_users (mobile_phone)
+             WHERE mobile_only IS TRUE
+               AND mobile_phone IS NOT NULL
+               AND mobile_phone <> ''
+            """
+        )
+
+    @api.model
+    def _acpec_normalize_mobile_phone(self, mobile_phone):
+        """Return the local 8-digit Mauritanian mobile number when possible.
+
+        F1 only provides a canonical helper and readiness diagnostics. It does
+        not yet rewrite legacy users automatically; strict enforcement is kept
+        for Patch43F2.
+        """
+        value = (str(mobile_phone) if mobile_phone not in (False, None) else '').strip()
+        if not value:
+            return False
+        digits = ''.join(char for char in value if char.isdigit())
+        if digits.startswith('00222') and len(digits) == 13:
+            digits = digits[5:]
+        elif digits.startswith('222') and len(digits) == 11:
+            digits = digits[3:]
+        return digits or False
+
+    @api.model
+    def _acpec_is_valid_mobile_phone(self, mobile_phone):
+        normalized = self._acpec_normalize_mobile_phone(mobile_phone)
+        return bool(normalized and normalized.isdigit() and len(normalized) == 8)
+
+    @api.model
+    def _acpec_is_canonical_mobile_phone(self, mobile_phone):
+        value = (str(mobile_phone) if mobile_phone not in (False, None) else '').strip()
+        return bool(value and value == self._acpec_normalize_mobile_phone(value) and self._acpec_is_valid_mobile_phone(value))
+
+    @api.model
+    def _acpec_mobile_identity_duplicate_phone_rows(self, limit=5):
+        self.env.cr.execute(
+            """
+            SELECT mobile_phone, COUNT(*)
+              FROM res_users
+             WHERE mobile_only IS TRUE
+               AND mobile_phone IS NOT NULL
+               AND mobile_phone <> ''
+             GROUP BY mobile_phone
+            HAVING COUNT(*) > 1
+             ORDER BY mobile_phone
+             LIMIT %s
+            """,
+            (int(limit or 5),),
+        )
+        return self.env.cr.fetchall()
+
+    @api.model
     def _validate_mobile_pin(self, pin):
         pin = (str(pin) if pin not in (False, None) else '').strip()
         if not pin.isdigit() or len(pin) != 4:
