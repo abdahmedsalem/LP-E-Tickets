@@ -11,7 +11,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -838,20 +838,9 @@ class _CarnetDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Détail Carnet',
               onBack: () => Navigator.of(context).pop(),
-              largeTitle: true,
-              largeTitlePadding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              largeTitleGap: 18,
-              largeTitleFontSize: 32,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF0F2747),
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
             ),
             const SizedBox(height: 18),
             Expanded(

@@ -18,7 +18,7 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/face_value_chip.dart';
@@ -27,10 +27,6 @@ import '../../../shared/widgets/section_label.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
-
-const _separerHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _separerHeaderGap = 10.0;
-const _separerHeaderTitleSize = 26.0;
 
 class SeparerQrScreen extends StatefulWidget {
   const SeparerQrScreen({super.key, required this.qrId});
@@ -247,13 +243,9 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              AppBarHeader(
+              ScreenHeader(
                 title: 'Separer les tickets valides',
                 onBack: () => context.pop(),
-                largeTitle: true,
-                largeTitlePadding: _separerHeaderPadding,
-                largeTitleGap: _separerHeaderGap,
-                largeTitleFontSize: _separerHeaderTitleSize,
               ),
               const Expanded(
                 child: Padding(
@@ -349,15 +341,11 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Separer les tickets valides',
               subtitle:
                   'Les tickets expirés restent séparés des tickets encore utilisables',
               onBack: () => context.pop(),
-              largeTitle: true,
-              largeTitlePadding: _separerHeaderPadding,
-              largeTitleGap: _separerHeaderGap,
-              largeTitleFontSize: _separerHeaderTitleSize,
             ),
             Expanded(
               child: ListView(

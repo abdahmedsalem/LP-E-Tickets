@@ -18,17 +18,12 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
-
-const _retirerHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _retirerHeaderGap = 18.0;
-const _retirerHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 class RetirerQrScreen extends StatefulWidget {
   const RetirerQrScreen({super.key, required this.qrId});
@@ -299,21 +294,9 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              AppBarHeader(
+              ScreenHeader(
                 title: 'Retirer',
                 onBack: () => context.pop(),
-                plainBackButton: true,
-                largeTitle: true,
-                largeTitlePadding: _retirerHeaderPadding,
-                largeTitleGap: _retirerHeaderGap,
-                largeTitleFontSize: _retirerHeaderTitleSize,
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
               ),
               const SizedBox(height: 18),
               const Expanded(
@@ -406,21 +389,9 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Retirer',
               onBack: () => context.pop(),
-              plainBackButton: true,
-              largeTitle: true,
-              largeTitlePadding: _retirerHeaderPadding,
-              largeTitleGap: _retirerHeaderGap,
-              largeTitleFontSize: _retirerHeaderTitleSize,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _headerNavy,
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
             ),
             const SizedBox(height: 18),
             Expanded(

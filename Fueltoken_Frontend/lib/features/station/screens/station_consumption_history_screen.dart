@@ -15,6 +15,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/face_value_chip.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class StationConsumptionHistoryScreen extends StatefulWidget {
@@ -29,8 +30,6 @@ class _StationConsumptionHistoryScreenState
     extends State<StationConsumptionHistoryScreen>
     with SingleTickerProviderStateMixin {
   static const int _pageSize = 100;
-  static const Color _cPrimaryText = Color(0xFF111827);
-  static const Color _cSecondaryText = Color(0xFF4B5563);
   static const Color _cOrange = Color(0xFF16A34A);
 
   List<BusinessTransaction> _items = [];
@@ -56,7 +55,7 @@ class _StationConsumptionHistoryScreenState
     _draftTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _activeFrom = _draftFrom;
     _activeTo = _draftTo;
-    // Recharger l'historique quand un scan est effectuÃ© (WalletRefreshBus)
+    // Recharger l'historique quand un scan est effectué (WalletRefreshBus)
     _walletBusListener = () {
       if (mounted && AppEnvironment.useAcpecLiveData) _load();
     };
@@ -77,7 +76,7 @@ class _StationConsumptionHistoryScreenState
 
   String _briefError(Object e) {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirÃ©e. Reconnectez-vous.';
+      return 'Session expirée. Reconnectez-vous.';
     }
     return e.toString().replaceFirst('Exception: ', '').trim();
   }
@@ -201,45 +200,13 @@ class _StationConsumptionHistoryScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: Row(
-                  children: [
-                    _HeaderIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => context.go('/station/home'),
-                    ),
-                    const Spacer(),
-                    _HeaderIconButton(
-                      icon: Icons.filter_list_rounded,
-                      onTap: () {},
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Historique des consommations',
-                  style: GoogleFonts.poppins(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: _cPrimaryText,
-                    height: 1.08,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Vos dernières consommations apparaîtront ici',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: _cSecondaryText,
-                    fontWeight: FontWeight.w500,
-                  ),
+              ScreenHeader(
+                title: 'Historique des consommations',
+                subtitle: 'Vos dernières consommations apparaîtront ici',
+                onBack: () => context.go('/station/home'),
+                trailing: ScreenHeaderIconButton(
+                  icon: Icons.filter_list_rounded,
+                  onTap: () {},
                 ),
               ),
               const SizedBox(height: 24),
@@ -400,97 +367,70 @@ class _DateFilterChip extends StatelessWidget {
   }
 }
 
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({required this.icon, required this.onTap});
 
-  final IconData icon;
-  final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 34,
-          height: 34,
-          alignment: Alignment.center,
-          child: Icon(icon, size: 22, color: const Color(0xFF374151)),
-        ),
-      ),
-    );
-  }
-}
-
-class _AmountInline extends StatelessWidget {
-  const _AmountInline({
-    required this.amount,
-    required this.valueStyle,
-    required this.unitStyle,
-    this.textAlign = TextAlign.left,
-  });
-
-  final int amount;
-  final TextStyle valueStyle;
-  final TextStyle unitStyle;
-  final TextAlign textAlign;
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: Formatters.money(amount),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-            TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
-          ],
-        ),
-        textAlign: textAlign,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-}
 
 class _StationHistoryRow extends StatelessWidget {
   const _StationHistoryRow({required this.transaction});
 
   final BusinessTransaction transaction;
+
   @override
   Widget build(BuildContext context) {
     final tx = transaction;
     final amount = tx.totalAmount.abs();
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
-    final qrCode = (tx.qrPublicCode ?? tx.qrId ?? '—').trim();
+    final qrCode = (tx.qrPublicCode ?? tx.qrId ?? '-').trim();
+    final qrTitleCode = qrCode.isEmpty
+        ? '-'
+        : qrCode.length > 8
+            ? qrCode.substring(0, 8)
+            : qrCode;
 
     return AppCard(
       padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.displayTitle,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Consommation QR - $qrTitleCode',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w500,
                     color: AppColors.ink,
                     height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
+              ),
+              const SizedBox(width: 12),
+              Text(
+                Formatters.money(amount),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.danger,
+                  height: 1,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   '$dateLabel $hourLabel',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11.5,
                     color: AppColors.muted,
@@ -498,139 +438,21 @@ class _StationHistoryRow extends StatelessWidget {
                     height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Client concerné : ${tx.userName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.2,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w500,
-                    height: 1.15,
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                tx.userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w500,
+                  height: 1.15,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'QR consommé : ${qrCode.isEmpty ? '—' : qrCode}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.2,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w500,
-                    height: 1.15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          _AmountInline(
-            amount: amount,
-            textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.danger,
-              height: 1,
-              letterSpacing: -0.2,
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.danger.withValues(alpha: 0.82),
-              height: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StationTxLineRow extends StatelessWidget {
-  const _StationTxLineRow({required this.line});
-
-  final TransactionLine line;
-
-  String _qrTitle() {
-    final qty = line.qty > 0 ? line.qty : 1;
-    final ticketLabel =
-        '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
-    final carnetLabel = Formatters.carnetTypeLabelFromServer(
-      line.carnetTypeName,
-      fallbackSize: line.carnetSize,
-      fallbackFaceValue: line.faceValue,
-      fallbackCode: line.carnetTypeCode,
-    ).replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), 'carnet ');
-    return '$ticketLabel de $carnetLabel';
-  }
-
-  String? _subtitle() {
-    if (line.expirationDate == null) return null;
-    return 'Date d\'expiration : ${DateFormat('dd-MM-yyyy').format(line.expirationDate!)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = _subtitle();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE8EAED)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _qrTitle(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    height: 1.15,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                      height: 1.25,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          _AmountInline(
-            amount: line.amount,
-            textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-              height: 1.1,
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: Colors.black.withValues(alpha: 0.72),
-              height: 1.1,
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -825,15 +647,15 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                     items: [
                       ('Transaction', tx.id),
                       ('Client ID', tx.userId),
-                      ('Station ID', tx.stationId ?? 'â€”'),
-                      ('QR', tx.qrId ?? tx.qrPublicCode ?? 'â€”'),
-                      ('Lot ID', tx.lotId ?? 'â€”'),
-                      ('RÃ©f lot', tx.lotInternalRef ?? 'â€”'),
+                      ('Station ID', tx.stationId ?? '—'),
+                      ('QR', tx.qrId ?? tx.qrPublicCode ?? '—'),
+                      ('Lot ID', tx.lotId ?? '—'),
+                      ('Réf lot', tx.lotInternalRef ?? '—'),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'DÃ©tail de la consommation',
+                    'Détail de la consommation',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -985,7 +807,7 @@ class _ErrorPanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('RÃ©essayer'),
+            label: const Text('Réessayer'),
           ),
         ],
       ),
@@ -1024,7 +846,7 @@ class _EmptyHistoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Aucune consommation enregistrÃ©e',
+            'Aucune consommation enregistrée',
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ],
@@ -1125,3 +947,4 @@ class _SkeletonBlock extends StatelessWidget {
     );
   }
 }
+

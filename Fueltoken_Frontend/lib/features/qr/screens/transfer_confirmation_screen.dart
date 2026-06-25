@@ -5,14 +5,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
-
-const _transferConfirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _transferConfirmationHeaderGap = 18.0;
-const _transferConfirmationHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 /// Arguments passés à [TransferConfirmationScreen].
 class TransferConfirmationArgs {
@@ -197,20 +192,9 @@ class _TransferConfirmationScreenState
       body: SafeArea(
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Confirmer l\'envoi',
               onBack: () => Navigator.of(context).pop(false),
-              largeTitle: true,
-              largeTitlePadding: _transferConfirmationHeaderPadding,
-              largeTitleGap: _transferConfirmationHeaderGap,
-              largeTitleFontSize: _transferConfirmationHeaderTitleSize,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _headerNavy,
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
             ),
             const SizedBox(height: 18),
             Expanded(

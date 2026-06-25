@@ -15,6 +15,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 /// Liste des achats (données locales ou synchronisées ACPEC selon la configuration).
@@ -151,119 +152,59 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0F7A5A), Color(0xFF1A9A6B)],
+              ScreenHeader(
+                title: 'Mes achats',
+                subtitle: 'Chaque carte résume le carnet, le montant total et la date de validation.',
+                onBack: () => context.pop(),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
                   ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F7A5A).withValues(alpha: 0.22),
-                      blurRadius: 30,
-                      offset: const Offset(0, 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$totalLots achats',
+                    style: const TextStyle(
+                      color: Color(0xFF374151),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => context.pop(),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.16),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '$totalLots achats',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Mes achats',
-                      style: GoogleFonts.poppins(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        height: 1.05,
-                        letterSpacing: -0.8,
+                    Expanded(
+                      child: _SummaryPill(
+                        label: 'Validés',
+                        value: '$approvedLots',
+                        color: const Color(0xFFDCFCE7),
+                        foreground: const Color(0xFF0F7A5A),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Chaque carte résume le carnet, le montant total et la date de validation.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _SummaryPill(
+                        label: 'Rejetés',
+                        value: '$rejectedLots',
+                        color: const Color(0xFFFFE4E6),
+                        foreground: const Color(0xFFB91C1C),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SummaryPill(
-                            label: 'Validés',
-                            value: '$approvedLots',
-                            color: const Color(0xFFDCFCE7),
-                            foreground: const Color(0xFF0F7A5A),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _SummaryPill(
-                            label: 'Rejetés',
-                            value: '$rejectedLots',
-                            color: const Color(0xFFFFE4E6),
-                            foreground: const Color(0xFFB91C1C),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _SummaryPill(
-                            label: 'Montant',
-                            value: Formatters.money(totalAmount),
-                            color: Colors.white.withValues(alpha: 0.14),
-                            foreground: Colors.white,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _SummaryPill(
+                        label: 'Montant',
+                        value: Formatters.money(totalAmount),
+                        color: const Color(0xFFF3F4F6),
+                        foreground: const Color(0xFF374151),
+                      ),
                     ),
                   ],
                 ),

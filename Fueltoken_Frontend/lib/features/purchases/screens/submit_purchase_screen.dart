@@ -21,7 +21,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/models/acpec_purchase_create_result.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -29,9 +29,6 @@ import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const int _kMaxTicketsPerPurchase = 500;
-const _submitPurchaseHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _submitPurchaseHeaderGap = 18.0;
-const _submitPurchaseHeaderTitleSize = 32.0;
 
 class SubmitPurchaseScreen extends StatefulWidget {
   const SubmitPurchaseScreen({super.key});
@@ -605,13 +602,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         top: true,
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Commander',
-              showBack: true,
-              largeTitle: true,
-              largeTitlePadding: _submitPurchaseHeaderPadding,
-              largeTitleGap: _submitPurchaseHeaderGap,
-              largeTitleFontSize: _submitPurchaseHeaderTitleSize,
               onBack: () => context.pop(),
             ),
             const SizedBox(height: 18),

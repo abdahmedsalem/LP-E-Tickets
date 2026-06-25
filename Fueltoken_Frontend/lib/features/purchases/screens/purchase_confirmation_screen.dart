@@ -9,13 +9,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
-
-const _purchaseConfirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _purchaseConfirmationHeaderGap = 18.0;
-const _purchaseConfirmationHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 class PurchaseConfirmationArgs {
   const PurchaseConfirmationArgs({
@@ -167,20 +162,9 @@ class _PurchaseConfirmationScreenState
       body: SafeArea(
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: "Confirmer l'achat",
               onBack: () => Navigator.of(context).pop(false),
-              largeTitle: true,
-              largeTitlePadding: _purchaseConfirmationHeaderPadding,
-              largeTitleGap: _purchaseConfirmationHeaderGap,
-              largeTitleFontSize: _purchaseConfirmationHeaderTitleSize,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _headerNavy,
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
             ),
             const SizedBox(height: 14),
             Expanded(

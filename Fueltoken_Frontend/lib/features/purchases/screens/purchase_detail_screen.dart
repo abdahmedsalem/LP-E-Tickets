@@ -24,7 +24,7 @@ import '../../../data/models/user_role.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_pill.dart';
@@ -33,10 +33,6 @@ import '../../../shared/widgets/section_label.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
-
-const _purchaseDetailHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
-const _purchaseDetailHeaderGap = 4.0;
-const _purchaseDetailHeaderTitleSize = 24.0;
 
 Color _purchaseAmountColor(PurchaseLotState state) {
   return switch (state) {
@@ -563,13 +559,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppBarHeader(
-              title: _confirmingReject ? 'Rejeter lachat' : 'Détail achat',
+            ScreenHeader(
+              title: _confirmingReject ? 'Rejeter l’achat' : 'Détail achat',
               onBack: _handleBack,
-              largeTitle: true,
-              largeTitlePadding: _purchaseDetailHeaderPadding,
-              largeTitleGap: _purchaseDetailHeaderGap,
-              largeTitleFontSize: _purchaseDetailHeaderTitleSize,
             ),
             Expanded(
               child: _loading

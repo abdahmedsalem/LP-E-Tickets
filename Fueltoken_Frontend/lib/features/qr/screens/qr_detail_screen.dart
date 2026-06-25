@@ -19,7 +19,7 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -27,11 +27,6 @@ import '../../../shared/widgets/section_label.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
-
-const _detailHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _detailHeaderGap = 18.0;
-const _detailHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 class QrDetailScreen extends StatefulWidget {
   final String qrId;
@@ -230,20 +225,9 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              AppBarHeader(
+              ScreenHeader(
                 title: 'Détails du QR',
                 onBack: () => context.pop(),
-                largeTitle: true,
-                largeTitlePadding: _detailHeaderPadding,
-                largeTitleGap: _detailHeaderGap,
-                largeTitleFontSize: _detailHeaderTitleSize,
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
               ),
               const Expanded(
                 child: Padding(
@@ -265,20 +249,9 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              AppBarHeader(
+              ScreenHeader(
                 title: 'Détails du QR',
                 onBack: () => context.pop(),
-                largeTitle: true,
-                largeTitlePadding: _detailHeaderPadding,
-                largeTitleGap: _detailHeaderGap,
-                largeTitleFontSize: _detailHeaderTitleSize,
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
               ),
               Expanded(
                 child: ListView(
@@ -412,20 +385,9 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Détail QR Code',
               onBack: () => context.pop(),
-              largeTitle: true,
-              largeTitlePadding: _detailHeaderPadding,
-              largeTitleGap: _detailHeaderGap,
-              largeTitleFontSize: _detailHeaderTitleSize,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _headerNavy,
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
             ),
             const SizedBox(height: 18),
             Expanded(

@@ -3,13 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
-
-const _confirmationHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _confirmationHeaderGap = 14.0;
-const _confirmationHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 class QrActionConfirmationArgs {
   const QrActionConfirmationArgs({
@@ -144,22 +139,11 @@ class _QrActionConfirmationScreenState
       body: SafeArea(
         child: Column(
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: args.title,
               onBack: _confirming
                   ? null
                   : () => Navigator.of(context).pop(false),
-              largeTitle: true,
-              largeTitlePadding: _confirmationHeaderPadding,
-              largeTitleGap: _confirmationHeaderGap,
-              largeTitleFontSize: _confirmationHeaderTitleSize,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _headerNavy,
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
             ),
             const SizedBox(height: 18),
             Expanded(
