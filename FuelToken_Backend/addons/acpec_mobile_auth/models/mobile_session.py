@@ -209,8 +209,11 @@ class AcpecMobileSession(models.Model):
             vals['device_uid'] = self._normalize_stable_device_uid_or_raise(vals.get('device_uid'))
             if vals.get('name', 'New') == 'New':
                 vals['name'] = sequence.next_by_code('acpec.mobile.session') or 'New'
-        sessions = super().create(vals_list)
-        sessions._sync_device_approval_candidates(sessions._device_approval_candidate_keys())
+
+        with self.env.cr.savepoint():
+            sessions = super().create(vals_list)
+            sessions._sync_device_approval_candidates(sessions._device_approval_candidate_keys())
+            sessions._assert_single_trusted_device_per_user(sessions.mapped('user_id').sudo())
         return sessions
 
     def write(self, vals):
@@ -225,13 +228,25 @@ class AcpecMobileSession(models.Model):
             'device_trust_state',
         }
         should_sync = bool(tracked_fields.intersection(vals))
+        should_assert_single_trusted = bool({
+            'user_id',
+            'device_uid',
+            'device_trust_state',
+        }.intersection(vals))
         keys_before = self._device_approval_candidate_keys() if should_sync else set()
+        users_before = self.mapped('user_id').sudo() if should_assert_single_trusted else self.env['res.users']
 
-        result = super().write(vals)
+        with self.env.cr.savepoint():
+            result = super().write(vals)
 
-        if should_sync and not self.env.context.get('skip_device_approval_candidate_sync'):
-            keys_after = self._device_approval_candidate_keys()
-            self._sync_device_approval_candidates(keys_before | keys_after)
+            if should_sync and not self.env.context.get('skip_device_approval_candidate_sync'):
+                keys_after = self._device_approval_candidate_keys()
+                self._sync_device_approval_candidates(keys_before | keys_after)
+
+            if should_assert_single_trusted:
+                self._assert_single_trusted_device_per_user(
+                    (users_before | self.mapped('user_id').sudo()).exists()
+                )
 
         return result
 
@@ -650,18 +665,115 @@ class AcpecMobileSession(models.Model):
                 session.message_post(body='Session mobile révoquée par %s.' % (self.env.user.display_name,))
         return True
 
+    def _check_single_trust_target_per_user(self):
+        """Fail closed for ambiguous bulk approval on a same user.
+
+        INV-D4 guarantees at most one trusted device per user.  Approving two
+        different devices for the same user in one recordset would make the
+        winning device depend on iteration order, so the batch is rejected.
+        """
+        targets_by_user = {}
+        for session in self:
+            device_uid = (session.device_uid or '').strip()
+            if not session._is_stable_device_uid(device_uid):
+                raise UserError('Impossible de faire confiance à une session sans identifiant device stable.')
+            user_id = session.user_id.id
+            if not user_id:
+                continue
+            previous_uid = targets_by_user.get(user_id)
+            if previous_uid and previous_uid != device_uid:
+                raise UserError(
+                    "Impossible d'approuver plusieurs appareils différents "
+                    "pour le même utilisateur en une seule action."
+                )
+            targets_by_user[user_id] = device_uid
+        return True
+
+    @api.model
+    def _lock_device_trust_scope_for_users(self, users):
+        """Serialize trust promotion per user.
+
+        This is a surgical runtime guard, not a declarative constraint.  The
+        V1 model stores trust on session rows, so approving a device first
+        locks all session rows of the impacted users before resetting older
+        trusted devices and promoting the selected one.
+        """
+        user_ids = tuple(sorted(set(users.exists().ids)))
+        if not user_ids:
+            return True
+        self.env.cr.execute(
+            'SELECT id FROM %s WHERE user_id IN %%s FOR UPDATE' % self._table,
+            [user_ids],
+        )
+        return True
+
+    @api.model
+    def _assert_single_trusted_device_per_user(self, users):
+        """Defensive invariant check for INV-D4.
+
+        Multiple trusted session rows are allowed for the same logical device,
+        but a single user must never have two distinct trusted device_uid values.
+        """
+        Session = self.sudo()
+        for user in users.exists():
+            trusted_sessions = Session.search([
+                ('user_id', '=', user.id),
+                ('device_trust_state', '=', 'trusted'),
+                ('device_uid', '!=', False),
+                ('device_uid', '!=', ''),
+            ])
+            trusted_device_uids = {
+                (session.device_uid or '').strip()
+                for session in trusted_sessions
+                if Session._is_stable_device_uid(session.device_uid)
+            }
+            if len(trusted_device_uids) > 1:
+                raise UserError(_(
+                    "Un utilisateur mobile ne peut avoir qu'un seul appareil approuvé."
+                ))
+        return True
+
+    def _reset_other_trusted_devices_for_user(self, user, device_uid):
+        """Remove trust from other devices of the same user only.
+
+        INV-D4: approving a new device revokes trust from previous trusted
+        devices of that user.  Sessions stay technically active so the mobile
+        app can still display the pending-trust state; Patch43B prevents them
+        from reading or acting on business data.  Blocked devices are left
+        untouched because only trusted rows are targeted.
+        """
+        device_uid = (device_uid or '').strip()
+        if not user or not user.exists() or not self._is_stable_device_uid(device_uid):
+            return self.browse()
+
+        previous_trusted = self.sudo().search([
+            ('user_id', '=', user.id),
+            ('device_trust_state', '=', 'trusted'),
+            ('device_uid', '!=', device_uid),
+        ])
+        if previous_trusted:
+            previous_trusted.write({
+                'device_trust_state': 'pending_trust',
+                'device_trusted_at': False,
+                'device_blocked_at': False,
+            })
+        return previous_trusted
+
     def action_trust_device(self):
         self._check_device_trust_admin()
+        self._check_single_trust_target_per_user()
+        self._lock_device_trust_scope_for_users(self.mapped('user_id').sudo())
         now = fields.Datetime.now()
         for session in self:
-            if not session._is_stable_device_uid(session.device_uid):
-                raise UserError('Impossible de faire confiance à une session sans identifiant device stable.')
+            device_uid = (session.device_uid or '').strip()
+            self._reset_other_trusted_devices_for_user(session.user_id.sudo(), device_uid)
             scope = session._same_user_device_sessions()
             scope.write({
                 'device_trust_state': 'trusted',
                 'device_trusted_at': now,
                 'device_blocked_at': False,
             })
+            self._assert_single_trusted_device_per_user(session.user_id.sudo())
             session.message_post(
                 body='Device mobile approuvé par %s. Device UID: %s'
                 % (self.env.user.display_name, session.device_uid)
