@@ -35,7 +35,10 @@ class TestMobileStateGate(TransactionCase):
 
     def test_approved_mobile_user_can_create_session(self):
         user = self._create_mobile_user('approved-mobile-19a@example.com', 'approved')
-        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'ft-device-approved-mobile-19a',
+            'platform': 'android',
+        })
         self.assertTrue(token_data['access_token'])
         self.assertEqual(token_data['session'].state, 'active')
 
@@ -56,7 +59,10 @@ class TestMobileStateGate(TransactionCase):
 
     def test_mobile_sessions_are_revoked_when_user_is_blocked(self):
         user = self._create_mobile_user('block-revoke-mobile-19a@example.com', 'approved')
-        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'ft-device-blocked-after-session-19a',
+            'platform': 'android',
+        })
         session = token_data['session']
 
         user.sudo().write({'mobile_state': 'blocked'})
@@ -67,7 +73,10 @@ class TestMobileStateGate(TransactionCase):
 
     def test_refresh_revokes_session_if_user_is_no_longer_approved(self):
         user = self._create_mobile_user('refresh-pending-mobile-19a@example.com', 'approved')
-        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'ft-device-refresh-pending-mobile-19a',
+            'platform': 'android',
+        })
         session = token_data['session']
 
         user.sudo().write({'mobile_state': 'pending'})
@@ -80,7 +89,10 @@ class TestMobileStateGate(TransactionCase):
 
     def test_deactivating_mobile_user_revokes_sessions(self):
         user = self._create_mobile_user('inactive-mobile-19a@example.com', 'approved')
-        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user)
+        token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
+            'device_uid': 'ft-device-deactivate-mobile-19a',
+            'platform': 'android',
+        })
         session = token_data['session']
 
         user.sudo().write({'active': False})

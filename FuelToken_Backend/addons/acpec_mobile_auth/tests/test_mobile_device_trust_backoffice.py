@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import fields
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 from odoo.tests.common import TransactionCase, tagged
 
@@ -80,10 +80,12 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertTrue(session.message_ids.filtered(lambda msg: 'Device mobile approuvé' in (msg.body or '')))
 
         session.with_user(admin).action_block_device()
-        session.invalidate_recordset(['device_trust_state', 'device_blocked_at'])
+        session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state', 'device_blocked_at'])
 
         self.assertEqual(session.device_trust_state, 'blocked')
         self.assertTrue(session.device_blocked_at)
+        self.assertEqual(session.state, 'revoked')
+        self.assertTrue(session.revoked_at)
         self.assertTrue(session.message_ids.filtered(lambda msg: 'bloqué par' in (msg.body or '')))
 
         session.with_user(admin).action_reset_device_trust()
@@ -253,27 +255,21 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertFalse(first.is_device_approval_candidate)
         self.assertTrue(second.is_device_approval_candidate)
 
-    def test_create_for_user_does_not_rotate_legacy_flutter_placeholder_uid(self):
-        user = self._create_mobile_user('legacy-device-lifecycle-32d@example.com')
+    def test_create_for_user_rejects_legacy_flutter_placeholder_uid(self):
+        user = self._create_mobile_user('legacy-device-lifecycle-43a@example.com')
         Session = self.env['acpec.mobile.session'].sudo()
 
-        first = Session.create_for_user(user, {
-            'device_uid': 'flutter-android-local',
-            'device_name': 'Legacy Android',
-            'platform': 'android',
-        })['session']
-        second = Session.create_for_user(user, {
-            'device_uid': 'flutter-android-local',
-            'device_name': 'Legacy Android',
-            'platform': 'android',
-        })['session']
+        with self.assertRaises(ValidationError):
+            Session.create_for_user(user, {
+                'device_uid': 'flutter-android-local',
+                'device_name': 'Legacy Android',
+                'platform': 'android',
+            })
 
-        first.invalidate_recordset(['state', 'rotated_to_session_id'])
-        second.invalidate_recordset(['state'])
-
-        self.assertEqual(first.state, 'active')
-        self.assertFalse(first.rotated_to_session_id)
-        self.assertEqual(second.state, 'active')
+        self.assertFalse(Session.search([
+            ('user_id', '=', user.id),
+            ('state', '=', 'active'),
+        ], limit=1))
 
     def test_create_for_user_does_not_rotate_other_stable_device_uid(self):
         user = self._create_mobile_user('other-device-lifecycle-32d@example.com')
