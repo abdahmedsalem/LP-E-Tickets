@@ -15,7 +15,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def _mobile_wallet(self):
         user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'client')
-        return request.env['acpec.fuel.wallet'].sudo().get_or_create(user.partner_id, user.company_id)
+        company = self._require_fueltoken_user_company(user)
+        return request.env['acpec.fuel.wallet'].sudo().get_or_create(user.partner_id, company)
 
     def _qr_payload(self, qr):
         qr._ensure_qr_numeric_code_hash()
@@ -894,8 +895,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['recipient_phone'])
             source_user = self._require_trusted_mobile_auth()
             self._require_fuel_group(source_user, 'client')
+            company = self._require_fueltoken_user_company(source_user)
             wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
-                source_user.partner_id, source_user.company_id,
+                source_user.partner_id, company,
             )
             recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
             if not recipient_phone:
@@ -950,8 +952,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             self._require_keys(kwargs, ['recipient_phone', 'lines'])
             with self._sensitive_action_transaction(kwargs, purpose='carnet_transfer') as source_user:
                 self._require_fuel_group(source_user, 'client')
+                company = self._require_fueltoken_user_company(source_user)
                 wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
-                    source_user.partner_id, source_user.company_id,
+                    source_user.partner_id, company,
                 )
 
                 # ── 1. Identifier le destinataire par téléphone (login) ──────────
@@ -1044,8 +1047,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         try:
             user = self._require_trusted_mobile_auth()
             self._require_fuel_group(user, 'client')
+            company = self._require_fueltoken_user_company(user)
             wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
-                user.partner_id, user.company_id,
+                user.partner_id, company,
             )
             limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=100)
             include_meta = self._include_pagination_meta(kwargs)

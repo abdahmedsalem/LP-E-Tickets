@@ -8,17 +8,32 @@ from .api_common import AcpecFuelTokenApiCommon
 class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
 
 
+    def _station_for_fueltoken_user(self, user):
+        self._require_fueltoken_user_company(user)
+        station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
+        self._require_fueltoken_record_company(station)
+        return station
+
     def _station_user(self):
         user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'station')
-        station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
+        station = self._station_for_fueltoken_user(user)
         return station, user
 
     def _trusted_station_user(self, params=None, purpose='station_sensitive_action'):
         user = self._require_sensitive_action_pin(params or {}, purpose=purpose)
         self._require_fuel_group(user, 'station')
-        station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
+        station = self._station_for_fueltoken_user(user)
         return station, user
+
+    def _require_station_qr_company(self, qr, station):
+        """Fail closed without leaking cross-company QR metadata to stations."""
+        company = self._fueltoken_company()
+        if not qr or qr.company_id != company or station.company_id != company:
+            raise ValidationError('QR introuvable.')
+        if qr.company_id != station.company_id:
+            raise ValidationError('QR introuvable.')
+        return qr
 
     def _station_agent_payload(self, agent):
         return {
@@ -71,7 +86,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             qr_numeric_code=(params or {}).get('qr_numeric_code'),
         )
         if not qr:
-            raise ValidationError(_('QR introuvable.'))
+            raise ValidationError('QR introuvable.')
         return qr
 
     def _qr_check_payload(self, qr, station):
@@ -116,6 +131,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         try:
             station, user = self._station_user()
             qr = self._resolve_qr_from_payload(kwargs)
+            self._require_station_qr_company(qr, station)
             with request.env.cr.savepoint():
                 qr._lock_records()
                 qr.invalidate_recordset()
@@ -129,9 +145,10 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         try:
             with self._sensitive_action_transaction(kwargs, purpose='station_qr_use') as user:
                 self._require_fuel_group(user, 'station')
-                station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
+                station = self._station_for_fueltoken_user(user)
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='station_qr_use')
                 qr = self._resolve_qr_from_payload(kwargs)
+                self._require_station_qr_company(qr, station)
                 request_hash_params = dict(kwargs)
                 request_hash_params['public_code'] = qr.public_code
                 request_hash_params.pop('qr_numeric_code', None)
@@ -158,7 +175,11 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             include_meta = self._include_pagination_meta(kwargs)
             date_from, date_to = self._date_range_params(kwargs)
             transaction_type = self._get_clean_str(kwargs, 'transaction_type')
-            domain = [('station_id', '=', station.id)]
+            company = self._fueltoken_company()
+            domain = [
+                ('station_id', '=', station.id),
+                ('company_id', '=', company.id),
+            ]
             tx_model = request.env['acpec.fuel.transaction'].sudo()
             _tx_filter_state, _tx_filter_value, tx_filter_error = self._apply_transaction_type_filter(
                 domain,

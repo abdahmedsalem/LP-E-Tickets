@@ -166,6 +166,25 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertTrue(qr.line_ids)
         return carnet_type, purchase, wallet, qr
 
+
+    def _create_foreign_company_qr(self, suffix):
+        other_company = self.env['res.company'].sudo().create({
+            'name': 'Foreign FuelToken QR %s' % suffix,
+            'acpec_fueltoken_enabled': False,
+        })
+        partner = self.env['res.partner'].sudo().create({
+            'name': 'Foreign QR Partner %s' % suffix,
+        })
+        wallet = self.env['acpec.fuel.wallet'].sudo().create({
+            'partner_id': partner.id,
+            'company_id': other_company.id,
+        })
+        qr = self.env['acpec.fuel.qr'].sudo().create({
+            'wallet_id': wallet.id,
+        })
+        self.assertNotEqual(qr.company_id, self.company)
+        return other_company, wallet, qr
+
     def _controller_with_consumable_qr(self, suffix, trusted=True):
         client_user = self._create_client_user("client-station-qr-%s@example.com" % suffix)
         _carnet_type, _purchase, _wallet, qr = self._issue_client_qr(client_user, suffix)
@@ -244,6 +263,63 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertIn(str(qr.id), repr(response))
         self.assertIn("can_consume", repr(response))
         self.assertIn("True", repr(response))
+
+
+    def test_station_qr_check_rejects_foreign_company_without_payload(self):
+        controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "foreign-check-43e2",
+        )
+        _other_company, _foreign_wallet, foreign_qr = self._create_foreign_company_qr("check-43e2")
+
+        response = self._call_check_qr(controller, {
+            "public_code": foreign_qr.public_code,
+        })
+
+        self._assert_error_contains(response, "QR introuvable")
+        self.assertNotIn("qr_id", repr(response))
+        self.assertNotIn(foreign_qr.public_code, repr(response))
+        self.assertNotIn("partner_name", repr(response))
+        self.assertNotIn(str(foreign_qr.company_id.id), repr(response))
+
+    def test_station_qr_use_rejects_foreign_company_before_consumption(self):
+        controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "foreign-use-43e2",
+        )
+        _other_company, _foreign_wallet, foreign_qr = self._create_foreign_company_qr("use-43e2")
+        key = "station-qr-foreign-company-use-43e2"
+
+        response = self._call_use_qr(
+            controller,
+            self._payload(foreign_qr, key=key),
+        )
+
+        self._assert_error_contains(response, "QR introuvable")
+        foreign_qr.invalidate_recordset(["state"])
+        self.assertEqual(foreign_qr.state, "active")
+        self.assertFalse(self._tx_by_key(foreign_qr, key))
+
+    def test_station_transactions_are_limited_to_fueltoken_company(self):
+        controller, _station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "foreign-tx-43e2",
+        )
+        other_company = self.env['res.company'].sudo().create({
+            'name': 'Foreign station tx 43E2',
+            'acpec_fueltoken_enabled': False,
+        })
+        foreign_tx = self.env['acpec.fuel.transaction'].sudo().create({
+            'transaction_type': 'consommation_station',
+            'company_id': other_company.id,
+            'station_id': station.id,
+        })
+
+        response = self._call_check_qr(controller, {"public_code": _qr.public_code})
+        self.assertIn("True", repr(response))
+
+        fake_request = SimpleNamespace(env=self.env)
+        with patch.object(api_station_module, "request", fake_request):
+            tx_response = controller.station_transactions()
+
+        self.assertNotIn(str(foreign_tx.id), repr(tx_response))
 
     def test_station_qr_use_accepts_qr_numeric_code(self):
         controller, _station_user, station, _session, _client_user, qr = self._controller_with_consumable_qr(
