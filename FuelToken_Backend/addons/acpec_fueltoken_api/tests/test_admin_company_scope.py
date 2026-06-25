@@ -52,7 +52,7 @@ class TestAcpecFuelAdminCompanyScope(TransactionCase):
     def test_company_domain_is_restricted_to_user_companies(self):
         self.assertEqual(
             self.controller._company_domain_for_user(self.manager),
-            [('company_id', 'in', [self.company_a.id])],
+            [('company_id', '=', self.company_a.id)],
         )
 
     def test_record_company_scope_rejects_foreign_record(self):
@@ -60,6 +60,31 @@ class TestAcpecFuelAdminCompanyScope(TransactionCase):
 
         with self.assertRaises(AccessError):
             self.controller._check_record_company_allowed(self.manager, foreign_carnet)
+
+    def test_require_allowed_company_rejects_non_fueltoken_company_even_if_user_has_it(self):
+        manager = self._create_user(
+            'ft-manager-two-companies-scope',
+            self.company_a,
+            self.company_a | self.company_b,
+        )
+
+        with self.assertRaises(AccessError):
+            self.controller._require_allowed_company(manager, self.company_b.id)
+
+        self.assertEqual(
+            self.controller._company_domain_for_user(manager),
+            [('company_id', '=', self.company_a.id)],
+        )
+
+    def test_fueltoken_user_company_rejects_primary_foreign_company(self):
+        manager = self._create_user(
+            'ft-manager-primary-foreign-scope',
+            self.company_b,
+            self.company_a | self.company_b,
+        )
+
+        with self.assertRaises(AccessError):
+            self.controller._require_fueltoken_user_company(manager)
 
     def test_station_user_must_belong_to_target_company(self):
         foreign_user = self._create_user('ft-station-foreign-scope', self.company_b, self.company_b)

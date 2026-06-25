@@ -1,5 +1,5 @@
 from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.http import request
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
@@ -80,6 +80,86 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
         if env:
             return env
         return getattr(self, 'env', None)
+
+    def _fueltoken_company(self):
+        """Return the unique company allowed to carry FuelToken.
+
+        FuelToken is mono-company even when the Odoo database is multi-company.
+        Patch43E1 enforces the uniqueness at database level; runtime code stays
+        fail-closed in case the module is misconfigured or the flag is missing.
+        """
+        env = self._controller_env()
+        if not env:
+            raise AccessError('Configuration Tickets Carburant indisponible.')
+        company_model = env['res.company'].sudo()
+        if 'acpec_fueltoken_enabled' not in company_model._fields:
+            raise AccessError('Configuration Tickets Carburant invalide : société FuelToken non définie.')
+        companies = company_model.search([('acpec_fueltoken_enabled', '=', True)], limit=2)
+        if len(companies) != 1:
+            raise AccessError('Configuration Tickets Carburant invalide : exactement une société FuelToken doit être active.')
+        return companies
+
+    def _fueltoken_company_domain(self, field_name='company_id'):
+        company = self._fueltoken_company()
+        return [(field_name, '=', company.id)]
+
+    def _require_fueltoken_user_company(self, user):
+        """Ensure a mobile FuelToken actor belongs to the unique FuelToken company."""
+        if not user:
+            raise AccessError('Utilisateur mobile introuvable.')
+        company = self._fueltoken_company()
+        if user.company_id != company or company not in user.company_ids:
+            raise AccessError('Utilisateur hors société Tickets Carburant.')
+        return company
+
+    def _require_fueltoken_record_company(self, record, field_name='company_id'):
+        """Ensure sudo-browsed FuelToken records belong to the unique FuelToken company."""
+        if not record:
+            return record
+        company = self._fueltoken_company()
+        for rec in record:
+            if field_name not in rec._fields:
+                raise AccessError('Accès refusé : objet sans société Tickets Carburant.')
+            record_company = rec[field_name]
+            if not record_company:
+                raise AccessError('Accès refusé : société Tickets Carburant manquante.')
+            if record_company != company:
+                raise AccessError('Accès refusé : objet hors société Tickets Carburant.')
+        return record
+
+    def _company_domain_for_user(self, user, field_name='company_id'):
+        """FuelToken runtime domain: always the unique FuelToken company.
+
+        The inherited helper exposes all user company_ids.  That is correct for
+        generic mobile auth, but FuelToken is mono-company by doctrine.
+        """
+        self._require_fueltoken_user_company(user)
+        return self._fueltoken_company_domain(field_name=field_name)
+
+    def _require_allowed_company(self, user, company_id=False):
+        """Return company only if it is the unique FuelToken company for this user."""
+        fueltoken_company = self._require_fueltoken_user_company(user)
+        target_company_id = company_id or fueltoken_company.id
+        company = self._controller_env()['res.company'].sudo().browse(target_company_id).exists()
+        if not company:
+            raise ValidationError('Société introuvable.')
+        if company != fueltoken_company:
+            raise AccessError('Société non autorisée pour Tickets Carburant.')
+        return company
+
+    def _check_record_company_allowed(self, user, record, field_name='company_id'):
+        self._require_fueltoken_user_company(user)
+        return self._require_fueltoken_record_company(record, field_name=field_name)
+
+    def _require_user_company_membership(self, target_user, company):
+        if not target_user:
+            raise ValidationError('Utilisateur introuvable.')
+        fueltoken_company = self._fueltoken_company()
+        if company != fueltoken_company:
+            raise ValidationError('La société doit être la société Tickets Carburant.')
+        if target_user.company_id != fueltoken_company or fueltoken_company not in target_user.company_ids:
+            raise ValidationError('L’utilisateur doit appartenir à la société Tickets Carburant.')
+        return target_user
 
     def _transaction_type_allowed_values(self):
         env = self._controller_env()

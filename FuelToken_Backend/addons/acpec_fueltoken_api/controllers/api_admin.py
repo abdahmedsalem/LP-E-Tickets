@@ -10,11 +10,13 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     def _admin_user(self):
         user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'manager')
+        self._require_fueltoken_user_company(user)
         return user
 
     def _trusted_admin_user(self, params=None, purpose='admin_sensitive_action'):
         user = self._require_sensitive_action_pin(params or {}, purpose=purpose)
         self._require_fuel_group(user, 'manager')
+        self._require_fueltoken_user_company(user)
         return user
 
     def _carnet_type_label(self, rec):
