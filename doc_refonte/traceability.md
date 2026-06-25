@@ -32,7 +32,7 @@ l'invariant et sert de point de départ — à ne pas recopier aveuglément.
 | INV-I3 | à_implementer | res_users (contrainte unique mobile_phone) | T-I1 | (absente aujourd'hui) |
 | INV-D4 | à_implementer | mobile_session (révocation à la promotion) | T-D3 | (nouveau) |
 | INV-D7 | implémenté_patch43A | acpec_mobile_auth (refus dur device blocked, révocation sessions, access/refresh tokens inutilisables) | T-D6 | Validé par Patch43A tag security-runtime-v1-20260625-patch43A, tests prod-like 228 tests OK |
-| INV-D8 | à_implementer | gate métier (lecture+action si trusted) | T-D7 | api_common (partiel) |
+| INV-D8 | implémenté_patch43B | acpec_mobile_auth + acpec_fueltoken_api (trust wall lecture métier + actions sensibles, sans action_code pour lectures) | T-D7 | Validé par Patch43B, tests prod-like 228 tests OK, tag cible security-runtime-v1-20260625-patch43B |
 | INV-A1 | à_implementer | api_common._require_sensitive_action_pin | T-A1 | api_common.py |
 | INV-X3 | à_implementer | audit transactionnel actions autorisées | T-X3 | (best-effort aujourd'hui) |
 | ... | ... | ... | ... | ... |

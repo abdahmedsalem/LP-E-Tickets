@@ -13,7 +13,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         return carnet.name or carnet.code or _('Carnet de tickets')
 
     def _mobile_wallet(self):
-        user = self._require_mobile_auth()
+        user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'client')
         return request.env['acpec.fuel.wallet'].sudo().get_or_create(user.partner_id, user.company_id)
 
@@ -892,7 +892,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         """
         try:
             self._require_keys(kwargs, ['recipient_phone'])
-            source_user = self._require_mobile_auth()
+            source_user = self._require_trusted_mobile_auth()
             self._require_fuel_group(source_user, 'client')
             wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
                 source_user.partner_id, source_user.company_id,
@@ -1042,7 +1042,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def transfer_list(self, **kwargs):
         """Historique des transferts du client authentifié (source et destinataire)."""
         try:
-            user = self._require_mobile_auth()
+            user = self._require_trusted_mobile_auth()
             self._require_fuel_group(user, 'client')
             wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
                 user.partner_id, user.company_id,

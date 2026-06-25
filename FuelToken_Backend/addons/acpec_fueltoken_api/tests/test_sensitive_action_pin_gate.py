@@ -33,7 +33,8 @@ class TestSensitiveActionPinGate(TransactionCase):
         for method, purpose in expectations:
             self._assert_pin_guard(method, purpose)
 
-    def test_mobile_read_or_preview_endpoints_do_not_require_action_pin(self):
+    def test_mobile_read_or_preview_endpoints_require_trust_but_not_action_pin(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenMobileApi._mobile_wallet))
         for method in (
             AcpecFuelTokenMobileApi.purchases,
             AcpecFuelTokenMobileApi.purchase_detail,
@@ -50,7 +51,8 @@ class TestSensitiveActionPinGate(TransactionCase):
         self.assertIn("_trusted_station_user", self._source(AcpecFuelTokenStationApi.use_qr))
         self.assertIn("purpose='station_qr_use'", self._source(AcpecFuelTokenStationApi.use_qr))
 
-    def test_station_read_or_check_endpoints_do_not_require_action_pin(self):
+    def test_station_read_or_check_endpoints_require_trust_but_not_action_pin(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenStationApi._station_user))
         for method in (
             AcpecFuelTokenStationApi.profile,
             AcpecFuelTokenStationApi.check_qr,
@@ -77,7 +79,8 @@ class TestSensitiveActionPinGate(TransactionCase):
             self.assertIn("_trusted_admin_user", source)
             self.assertIn("purpose='%s'" % purpose, source)
 
-    def test_admin_read_endpoints_do_not_require_action_pin(self):
+    def test_admin_read_endpoints_require_trust_but_not_action_pin(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenAdminApi._admin_user))
         for method in (
             AcpecFuelTokenAdminApi.carnet_type_list,
             AcpecFuelTokenAdminApi.purchases_pending,

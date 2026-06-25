@@ -8,7 +8,7 @@ from .api_common import AcpecFuelTokenApiCommon
 class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
 
     def _admin_user(self):
-        user = self._require_mobile_auth()
+        user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'manager')
         return user
 

@@ -12,7 +12,7 @@ class TestAdminSensitiveInventoryPolicy(TransactionCase):
     # Source-level inventory lock:
     # every admin write endpoint currently classified as sensitive must stay
     # protected by trusted mobile manager + action_code + idempotency/request_hash.
-    # Admin read endpoints must remain regular manager-auth endpoints.
+    # Admin read endpoints require trusted manager device, but no action_code/idempotency gate.
 
     SENSITIVE_ADMIN_WRITE_METHODS = (
         (AcpecFuelTokenAdminApi.purchase_approve, "purchase_approve"),
@@ -50,7 +50,8 @@ class TestAdminSensitiveInventoryPolicy(TransactionCase):
             self.assertIn("_require_idempotency_key", source)
             self.assertIn("_compute_idempotency_request_hash", source)
 
-    def test_admin_reads_do_not_require_sensitive_or_idempotency_gate(self):
+    def test_admin_reads_require_trusted_device_but_not_sensitive_or_idempotency_gate(self):
+        self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenAdminApi._admin_user))
         for method in self.ADMIN_READ_METHODS:
             source = self._source(method)
             self.assertIn("_admin_user", source)

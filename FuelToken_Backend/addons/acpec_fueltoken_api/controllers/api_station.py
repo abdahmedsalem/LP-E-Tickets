@@ -9,7 +9,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
 
 
     def _station_user(self):
-        user = self._require_mobile_auth()
+        user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'station')
         station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
         return station, user
