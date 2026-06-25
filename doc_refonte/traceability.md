@@ -30,7 +30,7 @@ l'invariant et sert de point de départ — à ne pas recopier aveuglément.
 | INV-S2 | à_implementer | res_company (index unique partiel) | T-S1, T-S2 | (nouveau) |
 | INV-S3 | à_implementer | mobile_security_readiness | T-S3 | mobile_security_readiness.py |
 | INV-I3 | à_implementer | res_users (contrainte unique mobile_phone) | T-I1 | (absente aujourd'hui) |
-| INV-D4 | à_implementer | mobile_session (révocation à la promotion) | T-D3 | (nouveau) |
+| INV-D4 | implémenté_patch43C | acpec_mobile_auth (single trusted device per user, révocation du trust précédent à la promotion, lock transactionnel, garde défensive non déclarative) | T-D3 | Validé par Patch43C, tests prod-like 233 tests OK, tag cible security-runtime-v1-20260625-patch43C |
 | INV-D7 | implémenté_patch43A | acpec_mobile_auth (refus dur device blocked, révocation sessions, access/refresh tokens inutilisables) | T-D6 | Validé par Patch43A tag security-runtime-v1-20260625-patch43A, tests prod-like 228 tests OK |
 | INV-D8 | implémenté_patch43B | acpec_mobile_auth + acpec_fueltoken_api (trust wall lecture métier + actions sensibles, sans action_code pour lectures) | T-D7 | Validé par Patch43B, tests prod-like 228 tests OK, tag cible security-runtime-v1-20260625-patch43B |
 | INV-A1 | à_implementer | api_common._require_sensitive_action_pin | T-A1 | api_common.py |
@@ -72,5 +72,5 @@ Total invariants D2 :  __ / __ verifie
 Total invariants D3 :  __ / __ verifie
 
 Invariants sans test (trous) : [lister ici]
-Invariants nouveaux non encore implémentés : INV-S2, INV-D4, INV-X3, ... (compléter)
+Invariants nouveaux non encore implémentés : INV-S2, INV-X3, ... (compléter)
 ```

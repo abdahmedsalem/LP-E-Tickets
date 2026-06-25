@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from odoo import fields
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 from odoo.tests.common import TransactionCase, tagged
+
+from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
 
 
 @tagged("post_install", "-at_install")
@@ -67,6 +69,12 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         })
         return token_data['session']
 
+    def _controller_for_session(self, session):
+        controller = AcpecMobileAuthApiCommon()
+        controller._test_env = self.env
+        controller._get_mobile_session = lambda required=True: session
+        return controller
+
     def test_mobile_auth_admin_can_trust_block_and_reset_device(self):
         session = self._create_session()
         admin = self._create_admin_user()
@@ -95,6 +103,159 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertFalse(session.device_trusted_at)
         self.assertFalse(session.device_blocked_at)
         self.assertTrue(session.message_ids.filtered(lambda msg: 'Confiance device remise en attente' in (msg.body or '')))
+
+
+    def test_trusting_new_device_resets_previous_trusted_device_for_same_user(self):
+        user = self._create_mobile_user('single-trusted-device-43c@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'ft-single-trusted-device-a-43c',
+            'device_name': 'Android A 43C',
+            'platform': 'android',
+        })['session']
+        first.action_trust_device()
+        first.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+
+        self.assertEqual(first.device_trust_state, 'trusted')
+        self.assertTrue(first.device_trusted_at)
+
+        second = Session.create_for_user(user, {
+            'device_uid': 'ft-single-trusted-device-b-43c',
+            'device_name': 'Android B 43C',
+            'platform': 'android',
+        })['session']
+        second.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+        first.invalidate_recordset(['device_trust_state'])
+
+        self.assertEqual(second.device_trust_state, 'pending_trust')
+        self.assertFalse(second.device_trusted_at)
+        self.assertEqual(first.device_trust_state, 'trusted')
+
+        second.action_trust_device()
+        first.invalidate_recordset([
+            'state',
+            'device_trust_state',
+            'device_trusted_at',
+            'device_blocked_at',
+        ])
+        second.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+
+        self.assertEqual(second.device_trust_state, 'trusted')
+        self.assertTrue(second.device_trusted_at)
+        self.assertEqual(first.device_trust_state, 'pending_trust')
+        self.assertFalse(first.device_trusted_at)
+        self.assertFalse(first.device_blocked_at)
+        self.assertEqual(first.state, 'active')
+
+        controller = self._controller_for_session(first)
+        with self.assertRaises(AccessError):
+            controller._require_trusted_mobile_auth()
+
+    def test_trusting_same_device_for_other_user_does_not_reset_first_user(self):
+        Session = self.env['acpec.mobile.session'].sudo()
+        first_user = self._create_mobile_user('shared-device-user-a-43c@example.com')
+        second_user = self._create_mobile_user('shared-device-user-b-43c@example.com')
+        device_uid = 'ft-shared-device-43c'
+
+        first = Session.create_for_user(first_user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })['session']
+        first.action_trust_device()
+
+        second = Session.create_for_user(second_user, {
+            'device_uid': device_uid,
+            'platform': 'android',
+        })['session']
+        second.action_trust_device()
+
+        first.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+        second.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+
+        self.assertEqual(first.device_trust_state, 'trusted')
+        self.assertTrue(first.device_trusted_at)
+        self.assertEqual(second.device_trust_state, 'trusted')
+        self.assertTrue(second.device_trusted_at)
+
+    def test_trusting_new_device_does_not_unblock_blocked_device(self):
+        user = self._create_mobile_user('blocked-device-single-trust-43c@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        blocked = Session.create_for_user(user, {
+            'device_uid': 'ft-blocked-single-trust-a-43c',
+            'platform': 'android',
+        })['session']
+        blocked.action_trust_device()
+        blocked.action_block_device()
+        blocked.invalidate_recordset(['state', 'device_trust_state', 'device_blocked_at'])
+
+        self.assertEqual(blocked.device_trust_state, 'blocked')
+        self.assertTrue(blocked.device_blocked_at)
+        self.assertEqual(blocked.state, 'revoked')
+
+        new_device = Session.create_for_user(user, {
+            'device_uid': 'ft-blocked-single-trust-b-43c',
+            'platform': 'android',
+        })['session']
+        new_device.action_trust_device()
+
+        blocked.invalidate_recordset(['state', 'device_trust_state', 'device_blocked_at'])
+        new_device.invalidate_recordset(['device_trust_state'])
+
+        self.assertEqual(new_device.device_trust_state, 'trusted')
+        self.assertEqual(blocked.device_trust_state, 'blocked')
+        self.assertTrue(blocked.device_blocked_at)
+        self.assertEqual(blocked.state, 'revoked')
+
+    def test_trust_device_rejects_two_target_devices_for_same_user(self):
+        user = self._create_mobile_user('ambiguous-single-trust-43c@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'ft-ambiguous-single-trust-a-43c',
+            'platform': 'android',
+        })['session']
+        second = Session.create_for_user(user, {
+            'device_uid': 'ft-ambiguous-single-trust-b-43c',
+            'platform': 'android',
+        })['session']
+
+        with self.assertRaises(UserError):
+            (first | second).action_trust_device()
+
+        first.invalidate_recordset(['device_trust_state'])
+        second.invalidate_recordset(['device_trust_state'])
+
+        self.assertEqual(first.device_trust_state, 'pending_trust')
+        self.assertEqual(second.device_trust_state, 'pending_trust')
+
+    def test_direct_write_cannot_create_two_trusted_devices_for_same_user(self):
+        user = self._create_mobile_user('direct-write-single-trust-43c@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first = Session.create_for_user(user, {
+            'device_uid': 'ft-direct-single-trust-a-43c',
+            'platform': 'android',
+        })['session']
+        second = Session.create_for_user(user, {
+            'device_uid': 'ft-direct-single-trust-b-43c',
+            'platform': 'android',
+        })['session']
+
+        first.action_trust_device()
+
+        with self.assertRaises(UserError):
+            second.write({
+                'device_trust_state': 'trusted',
+                'device_trusted_at': fields.Datetime.now(),
+            })
+
+        first.invalidate_recordset(['device_trust_state'])
+        second.invalidate_recordset(['device_trust_state'])
+
+        self.assertEqual(first.device_trust_state, 'trusted')
+        self.assertEqual(second.device_trust_state, 'pending_trust')
 
     def test_regular_internal_user_cannot_change_device_trust(self):
         session = self._create_session()
