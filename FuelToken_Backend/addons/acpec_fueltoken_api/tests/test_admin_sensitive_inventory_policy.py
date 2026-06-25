@@ -39,13 +39,13 @@ class TestAdminSensitiveInventoryPolicy(TransactionCase):
     def test_admin_sensitive_write_inventory_is_closed(self):
         expected = {purpose for _method, purpose in self.SENSITIVE_ADMIN_WRITE_METHODS}
         source = inspect.getsource(AcpecFuelTokenAdminApi)
-        actual = set(re.findall(r"_trusted_admin_user\(kwargs, purpose='([^']+)'\)", source))
+        actual = set(re.findall(r"_sensitive_action_transaction\(kwargs, purpose='([^']+)'\)", source))
         self.assertEqual(actual, expected)
 
     def test_admin_sensitive_writes_require_pin_trust_and_idempotency(self):
         for method, purpose in self.SENSITIVE_ADMIN_WRITE_METHODS:
             source = self._source(method)
-            self.assertIn("_trusted_admin_user", source)
+            self.assertIn("_sensitive_action_transaction", source)
             self.assertIn("purpose='%s'" % purpose, source)
             self.assertIn("_require_idempotency_key", source)
             self.assertIn("_compute_idempotency_request_hash", source)
@@ -57,5 +57,6 @@ class TestAdminSensitiveInventoryPolicy(TransactionCase):
             self.assertIn("_admin_user", source)
             self.assertNotIn("_trusted_admin_user", source)
             self.assertNotIn("_require_sensitive_action_pin", source)
+            self.assertNotIn("_sensitive_action_transaction", source)
             self.assertNotIn("_require_idempotency_key", source)
             self.assertNotIn("_compute_idempotency_request_hash", source)

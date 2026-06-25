@@ -16,11 +16,13 @@ class TestSensitiveActionPinGate(TransactionCase):
 
     def _assert_pin_guard(self, method, purpose):
         source = self._source(method)
-        self.assertIn("_require_sensitive_action_pin", source)
+        self.assertIn("_sensitive_action_transaction", source)
         self.assertIn("purpose='%s'" % purpose, source)
 
     def _assert_no_pin_guard(self, method):
-        self.assertNotIn("_require_sensitive_action_pin", self._source(method))
+        source = self._source(method)
+        self.assertNotIn("_require_sensitive_action_pin", source)
+        self.assertNotIn("_sensitive_action_transaction", source)
 
     def test_mobile_sensitive_write_endpoints_require_action_pin(self):
         expectations = (
@@ -46,10 +48,9 @@ class TestSensitiveActionPinGate(TransactionCase):
             self._assert_no_pin_guard(method)
 
     def test_station_sensitive_write_endpoint_requires_action_pin(self):
-        source = self._source(AcpecFuelTokenStationApi._trusted_station_user)
-        self.assertIn("_require_sensitive_action_pin", source)
-        self.assertIn("_trusted_station_user", self._source(AcpecFuelTokenStationApi.use_qr))
-        self.assertIn("purpose='station_qr_use'", self._source(AcpecFuelTokenStationApi.use_qr))
+        source = self._source(AcpecFuelTokenStationApi.use_qr)
+        self.assertIn("_sensitive_action_transaction", source)
+        self.assertIn("purpose='station_qr_use'", source)
 
     def test_station_read_or_check_endpoints_require_trust_but_not_action_pin(self):
         self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenStationApi._station_user))
@@ -61,9 +62,6 @@ class TestSensitiveActionPinGate(TransactionCase):
             self._assert_no_pin_guard(method)
 
     def test_admin_sensitive_write_endpoints_require_action_pin(self):
-        helper_source = self._source(AcpecFuelTokenAdminApi._trusted_admin_user)
-        self.assertIn("_require_sensitive_action_pin", helper_source)
-
         expectations = (
             (AcpecFuelTokenAdminApi.purchase_approve, "purchase_approve"),
             (AcpecFuelTokenAdminApi.purchase_reject, "purchase_reject"),
@@ -76,7 +74,7 @@ class TestSensitiveActionPinGate(TransactionCase):
         )
         for method, purpose in expectations:
             source = self._source(method)
-            self.assertIn("_trusted_admin_user", source)
+            self.assertIn("_sensitive_action_transaction", source)
             self.assertIn("purpose='%s'" % purpose, source)
 
     def test_admin_read_endpoints_require_trust_but_not_action_pin(self):
@@ -90,4 +88,5 @@ class TestSensitiveActionPinGate(TransactionCase):
         ):
             source = self._source(method)
             self.assertNotIn("_require_sensitive_action_pin", source)
+            self.assertNotIn("_sensitive_action_transaction", source)
             self.assertNotIn("_trusted_admin_user(kwargs", source)

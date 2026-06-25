@@ -127,24 +127,26 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     @http.route('/api/acpec/fueltoken/v1/station/qr/use', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def use_qr(self, **kwargs):
         try:
-            station, user = self._trusted_station_user(kwargs, purpose='station_qr_use')
-            idempotency_key = self._require_idempotency_key(kwargs, purpose='station_qr_use')
-            qr = self._resolve_qr_from_payload(kwargs)
-            request_hash_params = dict(kwargs)
-            request_hash_params['public_code'] = qr.public_code
-            request_hash_params.pop('qr_numeric_code', None)
-            request_hash = self._compute_idempotency_request_hash(request_hash_params, purpose='station_qr_use')
-            tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
-            return self._json_response({
-                'transaction_id': tx.id,
-                'transaction_name': tx.name,
-                'qr_id': qr.id,
-                'qr_public_code': qr.public_code,
-                'qr_state': qr.state,
-                'amount_total': qr.amount_total,
-                'station_id': station.id,
-                'station_name': station.name,
-            })
+            with self._sensitive_action_transaction(kwargs, purpose='station_qr_use') as user:
+                self._require_fuel_group(user, 'station')
+                station = request.env['acpec.fuel.station'].sudo().station_for_user(user)
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='station_qr_use')
+                qr = self._resolve_qr_from_payload(kwargs)
+                request_hash_params = dict(kwargs)
+                request_hash_params['public_code'] = qr.public_code
+                request_hash_params.pop('qr_numeric_code', None)
+                request_hash = self._compute_idempotency_request_hash(request_hash_params, purpose='station_qr_use')
+                tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
+                return self._json_response({
+                    'transaction_id': tx.id,
+                    'transaction_name': tx.name,
+                    'qr_id': qr.id,
+                    'qr_public_code': qr.public_code,
+                    'qr_state': qr.state,
+                    'amount_total': qr.amount_total,
+                    'station_id': station.id,
+                    'station_name': station.name,
+                })
         except Exception as exc:
             return self._handle_exception_response(exc)
 

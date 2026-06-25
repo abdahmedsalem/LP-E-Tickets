@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields
-from odoo.exceptions import AccessError
+from odoo import api, fields, SUPERUSER_ID
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
@@ -177,3 +177,151 @@ class TestMobileSecurityAuditLog(TransactionCase):
         self.assertFalse(log.public_message)
         self.assertEqual(log.failed_count_before, 1)
         self.assertEqual(log.failed_count_after, 0)
+
+    def test_sensitive_action_transaction_logs_allowed_after_success(self):
+        user = self._create_mobile_user('audit-transaction-success-43d@example.com')
+        session = self._session_for_user(
+            user,
+            trusted=True,
+            device_uid='audit-transaction-success-43d',
+        )
+        controller = self._controller_for_session(session)
+
+        with controller._sensitive_action_transaction({
+            'action_code': '1234',
+            'idempotency_key': 'audit-transaction-success-key-43d',
+        }, purpose='carnet_transfer') as allowed_user:
+            self.assertEqual(allowed_user, user)
+
+        self.env.flush_all()
+        self.env.invalidate_all()
+
+        log = self.env['acpec.mobile.security.audit.log'].sudo().search([
+            ('idempotency_key', '=', 'audit-transaction-success-key-43d'),
+            ('code', '=', 'ACTION_CODE_VALID'),
+        ], limit=1)
+        self.assertTrue(log)
+        self.assertEqual(log.event_type, 'sensitive_action_allowed')
+        self.assertTrue(log.success)
+        self.assertFalse(log.blocked)
+
+    def test_authorized_business_failure_does_not_create_allowed_audit(self):
+        user = self._create_mobile_user('audit-business-failure-43d@example.com')
+        session = self._session_for_user(
+            user,
+            trusted=True,
+            device_uid='audit-business-failure-43d',
+        )
+        controller = self._controller_for_session(session)
+
+        with self.assertRaises(ValidationError):
+            with controller._sensitive_action_transaction({
+                'action_code': '1234',
+                'idempotency_key': 'audit-business-failure-key-43d',
+            }, purpose='carnet_transfer'):
+                raise ValidationError('business failure after authorization')
+
+        self.env.flush_all()
+        self.env.invalidate_all()
+
+        log = self.env['acpec.mobile.security.audit.log'].sudo().search([
+            ('idempotency_key', '=', 'audit-business-failure-key-43d'),
+            ('code', '=', 'ACTION_CODE_VALID'),
+        ], limit=1)
+        self.assertFalse(log)
+
+    def test_allowed_audit_failure_rolls_back_business_action(self):
+        user = self._create_mobile_user('audit-fail-rollback-43d@example.com')
+        session = self._session_for_user(
+            user,
+            trusted=True,
+            device_uid='audit-fail-rollback-43d',
+        )
+        controller = self._controller_for_session(session)
+        marker_ids = []
+
+        def _fail_allowed_audit(vals):
+            raise ValidationError('forced audit failure')
+
+        controller._audit_in_transaction = _fail_allowed_audit
+
+        with self.assertRaises(ValidationError):
+            with controller._sensitive_action_transaction({
+                'action_code': '1234',
+                'idempotency_key': 'audit-fail-rollback-key-43d',
+            }, purpose='carnet_transfer'):
+                marker = self.env['res.partner'].sudo().create({
+                    'name': 'Patch43D marker must rollback',
+                })
+                marker_ids.append(marker.id)
+
+        self.env.flush_all()
+        self.env.invalidate_all()
+
+        self.assertTrue(marker_ids)
+        self.assertFalse(self.env['res.partner'].sudo().browse(marker_ids[0]).exists())
+
+    def test_security_denial_uses_committed_audit_helper(self):
+        user = self._create_mobile_user('audit-denial-committed-43d@example.com')
+        session = self._session_for_user(
+            user,
+            trusted=True,
+            device_uid='audit-denial-committed-43d',
+        )
+        controller = self._controller_for_session(session)
+        captured = []
+
+        def _capture_committed(vals):
+            captured.append(dict(vals or {}))
+            controller._audit_in_transaction(vals)
+
+        controller._audit_committed = _capture_committed
+
+        self._expect_access_error(controller, {
+            'idempotency_key': 'audit-denial-committed-key-43d',
+        }, purpose='carnet_transfer')
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]['code'], 'MISSING_ACTION_CODE')
+        self.assertFalse(captured[0]['success'])
+        self.assertTrue(captured[0]['blocked'])
+
+    def test_committed_refusal_audit_survives_caller_savepoint_rollback(self):
+        controller = AcpecMobileAuthApiCommon()
+        controller._test_env = self.env
+        controller._force_independent_audit_cursor = True
+        key = 'audit-independent-cursor-survives-rollback-43d'
+
+        vals = {
+            'event_type': 'missing_action_code',
+            'severity': 'warning',
+            'code': 'MISSING_ACTION_CODE',
+            'operation': 'carnet_transfer',
+            'idempotency_key': key,
+            'success': False,
+            'blocked': True,
+            'action_code_present': False,
+            'action_code_format_valid': False,
+        }
+
+        with self.assertRaises(ValidationError):
+            with self.env.cr.savepoint():
+                controller._audit_committed(vals)
+                raise ValidationError('force rollback of caller savepoint')
+
+        with self.env.registry.cursor() as cr:
+            check_env = api.Environment(cr, SUPERUSER_ID, dict(self.env.context))
+            log = check_env['acpec.mobile.security.audit.log'].sudo().search([
+                ('idempotency_key', '=', key),
+                ('code', '=', 'MISSING_ACTION_CODE'),
+            ], limit=1)
+            self.assertTrue(log)
+            self.assertEqual(log.event_type, 'missing_action_code')
+            self.assertFalse(log.success)
+            self.assertTrue(log.blocked)
+
+        with self.env.registry.cursor() as cr:
+            cr.execute(
+                "DELETE FROM acpec_mobile_security_audit_log WHERE idempotency_key = %s",
+                [key],
+            )
