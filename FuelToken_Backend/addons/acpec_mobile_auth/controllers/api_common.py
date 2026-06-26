@@ -753,24 +753,13 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 public_debug_reason='account_exists',
             )
 
-        partner_vals = {
-            'name': name,
-            'company_id': company.id,
-        }
-        if identifier_vals['phone']:
-            partner_vals['phone'] = '+222' + identifier_vals['phone']
         email_value = (email or identifier_vals['email'] or '').strip()
-        if email_value:
-            partner_vals['email'] = email_value
-
-        partner = request.env['res.partner'].sudo().create(partner_vals)
 
         mobile_group_ids = self._mobile_signup_group_ids()
 
         user_vals = {
             'name': name,
             'login': identifier_vals['login'],
-            'partner_id': partner.id,
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
             'active': True,
@@ -782,10 +771,15 @@ class AcpecMobileAuthApiCommon(http.Controller):
             user_vals['group_ids'] = [(6, 0, mobile_group_ids)]
         if identifier_vals['phone']:
             user_vals['mobile_phone'] = identifier_vals['phone']
-        if email_value:
-            user_vals['email'] = email_value
 
         user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
+        partner = user.partner_id.sudo()
+        partner_vals = {
+            'acpec_is_mobile_partner': True,
+        }
+        if identifier_vals['phone'] and not partner.ref:
+            partner_vals['ref'] = 'MOB:%s' % identifier_vals['phone']
+        partner.write(partner_vals)
         user.set_mobile_pin(secret_code)
 
         request_model = request.env['acpec.mobile.auth.account.request'].sudo()

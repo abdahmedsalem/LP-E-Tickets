@@ -339,4 +339,31 @@
         <field name="search_view_id" ref="view_acpec_mobile_session_search"/>
     </record>
 
+
+    <record id="view_res_users_search_mobile_auth" model="ir.ui.view">
+        <field name="name">res.users.search.mobile.auth</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Utilisateurs mobiles" name="acpec_mobile_only_users" domain="[('mobile_only', '=', True)]"/>
+                <filter string="Utilisateurs non mobiles" name="acpec_non_mobile_users" domain="[('mobile_only', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_res_partner_search_mobile_auth" model="ir.ui.view">
+        <field name="name">res.partner.search.mobile.auth</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Partenaires mobiles" name="acpec_mobile_partners" domain="[('acpec_is_mobile_partner', '=', True)]"/>
+                <filter string="Partenaires non mobiles" name="acpec_non_mobile_partners" domain="[('acpec_is_mobile_partner', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>
