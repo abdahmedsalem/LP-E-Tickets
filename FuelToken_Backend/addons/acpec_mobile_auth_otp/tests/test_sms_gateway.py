@@ -954,6 +954,129 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(session.device_trust_state, 'pending_trust')
         self.assertTrue(session.is_device_approval_candidate)
 
+
+    def test_f2c_signup_verify_ignores_frontend_security_fields(self):
+        """Public signup/register payload cannot choose security-owned user fields."""
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+
+        phone = '32524761'
+        other_company = self.env['res.company'].sudo().create({
+            'name': 'F2C Foreign Payload Company',
+        })
+
+        controller = AcpecMobileAuthApiPublic()
+        otp_controller = AcpecMobileAuthOtpApi()
+        controller._require_keys = lambda params, keys: None
+        controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
+        controller._get_optional_int = lambda params, key, default=False: int(params.get(key) or default)
+        controller._get_company = lambda company_id=False: self.env.company
+        dummy_httprequest = SimpleNamespace(
+            remote_addr='127.0.0.1',
+            headers={'User-Agent': 'pytest'},
+        )
+        dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
+
+        manager_group = self.env.ref('acpec_fueltoken_base.group_fuel_manager', raise_if_not_found=False)
+        station_group = self.env.ref('acpec_fueltoken_base.group_fuel_station', raise_if_not_found=False)
+        internal_group = self.env.ref('base.group_user', raise_if_not_found=False)
+        forbidden_group_ids = [
+            group.id for group in (manager_group, station_group, internal_group)
+            if group
+        ]
+
+        poisoned_payload = {
+            'mobile_only': False,
+            'mobile_state': 'approved',
+            'active': False,
+            'login': 'evil-f2c@example.com',
+            'password': '9999',
+            'company_ids': [(6, 0, [other_company.id])],
+            'groups_id': [(6, 0, forbidden_group_ids)],
+            'group_ids': [(6, 0, forbidden_group_ids)],
+            'role': 'manager',
+            'mobile_profile': 'manager',
+        }
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_public.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+            signup_result = controller.signup(
+                name='Client F2C Payload',
+                signup_identifier=phone,
+                signup_identifier_type='phone',
+                secret_code='1234',
+                company_id=self.env.company.id,
+                email='client-f2c@example.com',
+                **poisoned_payload
+            )
+
+            self.assertTrue(signup_result['ok'])
+            signup_data = signup_result['data']
+            self.assertEqual(signup_data['signup_identifier'], phone)
+            self.assertEqual(signup_data['signup_identifier_type'], 'phone')
+
+            verify_result = otp_controller.verify_otp(
+                challenge_id=signup_data['otp_challenge_id'],
+                identifier=phone,
+                code='000000',
+                name='Client F2C Payload',
+                secret_code='1234',
+                company_id=self.env.company.id,
+                email='client-f2c@example.com',
+                device_uid='ft-android-test-f2c-payload-32524761',
+                device_name='Flutter Android',
+                platform='android',
+                app_version='test',
+                **poisoned_payload
+            )
+
+        self.assertTrue(verify_result['ok'])
+
+        user = self.env['res.users'].sudo().search([('login', '=', phone)], limit=1)
+        self.assertTrue(user)
+        self.assertTrue(user.active)
+        self.assertTrue(user.mobile_only)
+        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.login, phone)
+        self.assertEqual(user.mobile_phone, phone)
+        self.assertEqual(user.company_id, self.env.company)
+        self.assertIn(self.env.company, user.company_ids)
+        self.assertNotIn(other_company, user.company_ids)
+
+        baseline_xmlids = (
+            'base.group_portal',
+            'acpec_mobile_auth.group_mobile_auth_user',
+        )
+        for xmlid in baseline_xmlids:
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                self.assertIn(group, user.group_ids)
+
+        forbidden_xmlids = (
+            'base.group_user',
+            'acpec_fueltoken_base.group_fuel_manager',
+            'acpec_fueltoken_base.group_fuel_station',
+            'acpec_mobile_auth.group_mobile_auth_admin',
+            'acpec_fueltoken_base.group_fuel_admin',
+        )
+        for xmlid in forbidden_xmlids:
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                self.assertNotIn(group, user.group_ids)
+
+        user.check_mobile_pin('1234')
+        with self.assertRaises(AccessError):
+            user.check_mobile_pin('9999')
+
+        account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
+            ('user_id', '=', user.id),
+        ], order='id desc', limit=1)
+        self.assertTrue(account_request)
+        self.assertEqual(account_request.signup_identifier, phone)
+        self.assertEqual(account_request.signup_identifier_type, 'phone')
+        self.assertEqual(account_request.state, 'approved')
+
     def test_signup_then_verify_register_otp_e2e_without_sms_provider(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
         self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')

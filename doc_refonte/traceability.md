@@ -143,3 +143,49 @@ Cas négatifs couverts :
 Impact invariants :
 - INV-I1 renforcé : identité FuelToken phone-only, login/mobile_phone/signup_identifier alignés.
 - INV-I5 renforcé : téléphone canonique local strict, sans normalisation implicite.
+
+## Patch43F2C — ownership backend du payload signup
+
+Statut : vérifié_patch43F2C.
+
+Date : 2026-06-26.
+
+Objet :
+- Verrouillage par test de la propriété backend des champs sécurité pendant le flux public signup/register OTP.
+- Le frontend peut fournir les champs publics nécessaires à l'inscription, mais ne peut pas piloter les champs sécurité du `res.users`.
+- Patch volontairement test-only : aucune modification métier, car le code existant construit déjà `user_vals` côté serveur via whitelist.
+
+Doctrine confirmée :
+- `mobile_only` est forcé backend.
+- `mobile_state` est décidé backend.
+- `active`, `login`, `password`, `company_id`, `company_ids`, `groups_id` et rôles mobiles ne sont pas décidés par le frontend.
+- Les rôles manager/station/admin restent exclusivement attribués par backend/back-office.
+- Le PIN mobile reste `secret_code`, pas le champ `password` éventuellement envoyé par le frontend.
+
+Test ajouté :
+- `TestAcpecMobileAuthOtpSms.test_f2c_signup_verify_ignores_frontend_security_fields`.
+
+Payload empoisonné couvert :
+- `mobile_only=False`
+- `mobile_state='approved'`
+- `active=False`
+- `login='evil-f2c@example.com'`
+- `password='9999'`
+- `company_ids` vers une société étrangère
+- `groups_id` / `group_ids` avec groupes interdits
+- `role='manager'`
+- `mobile_profile='manager'`
+
+Résultat attendu verrouillé :
+- user final actif.
+- `mobile_only=True`.
+- `mobile_state='self_registered'`.
+- `login == mobile_phone == signup_identifier`.
+- société limitée à la société backend.
+- aucun groupe interne, manager, station ou admin injecté.
+- PIN `1234` accepté.
+- PIN/password frontend `9999` refusé.
+- demande d'inscription approuvée après OTP, sans attribution de rôles métier.
+
+Tests validés :
+- Test ciblé : `265 tests`, `0 failed`, `0 error`.
