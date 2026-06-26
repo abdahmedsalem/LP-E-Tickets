@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from psycopg2 import IntegrityError
 
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 from odoo.tools import mute_logger
 
@@ -154,3 +154,126 @@ class TestMobileDeviceModel(TransactionCase):
         action = self.env.ref('acpec_mobile_auth.action_acpec_mobile_device', raise_if_not_found=False)
         self.assertTrue(action)
         self.assertEqual(action.res_model, 'acpec.mobile.device')
+
+    def test_f2f_create_for_user_links_session_to_durable_device(self):
+        user = self._create_mobile_user('f2f-session-device-link@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        token_data = Session.create_for_user(user, {
+            'device_uid': 'ft-f2f-session-device-link',
+            'device_name': 'Android F2F',
+            'platform': 'android',
+            'app_version': 'test',
+        })
+        session = token_data['session']
+
+        self.assertTrue(session.device_id)
+        self.assertEqual(session.device_id.user_id, user)
+        self.assertEqual(session.device_id.stable_device_uid, session.device_uid)
+        self.assertEqual(session.device_id.trust_state, 'pending_trust')
+        self.assertEqual(session.device_trust_state, 'pending_trust')
+
+        second_token_data = Session.create_for_user(user, {
+            'device_uid': 'ft-f2f-session-device-link',
+            'device_name': 'Android F2F Updated',
+            'platform': 'android',
+            'app_version': 'test2',
+        })
+        second_session = second_token_data['session']
+        session.invalidate_recordset(['state', 'rotated_to_session_id'])
+        second_session.device_id.invalidate_recordset(['device_name', 'app_version'])
+
+        self.assertEqual(second_session.device_id, session.device_id)
+        self.assertEqual(session.state, 'rotated')
+        self.assertEqual(session.rotated_to_session_id, second_session)
+        self.assertEqual(second_session.device_id.device_name, 'Android F2F Updated')
+        self.assertEqual(second_session.device_id.app_version, 'test2')
+
+    def test_f2f_refresh_keeps_durable_device_and_trust_snapshot(self):
+        user = self._create_mobile_user('f2f-refresh-device-link@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        token_data = Session.create_for_user(user, {
+            'device_uid': 'ft-f2f-refresh-device-link',
+            'device_name': 'Android F2F Refresh',
+            'platform': 'android',
+            'app_version': 'test',
+        })
+        session = token_data['session']
+        device = session.device_id
+
+        session.action_trust_device()
+        session.invalidate_recordset(['device_trust_state'])
+        device.invalidate_recordset(['trust_state'])
+        self.assertEqual(session.device_trust_state, 'trusted')
+        self.assertEqual(device.trust_state, 'trusted')
+
+        refresh_data = Session.refresh_with_token(token_data['refresh_token'])
+        successor = refresh_data['session']
+        session.invalidate_recordset(['state', 'rotated_to_session_id'])
+
+        self.assertEqual(successor.device_id, device)
+        self.assertEqual(successor.device_trust_state, 'trusted')
+        self.assertEqual(session.state, 'rotated')
+        self.assertEqual(session.rotated_to_session_id, successor)
+
+    def test_f2f_blocking_durable_device_revokes_active_sessions_and_prevents_relogin(self):
+        user = self._create_mobile_user('f2f-block-device-link@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        token_data = Session.create_for_user(user, {
+            'device_uid': 'ft-f2f-block-device-link',
+            'device_name': 'Android F2F Block',
+            'platform': 'android',
+            'app_version': 'test',
+        })
+        session = token_data['session']
+        device = session.device_id
+
+        device.action_block_device()
+        session.invalidate_recordset(['state', 'device_trust_state', 'revoked_at'])
+        device.invalidate_recordset(['trust_state', 'blocked_at'])
+
+        self.assertEqual(device.trust_state, 'blocked')
+        self.assertEqual(session.device_trust_state, 'blocked')
+        self.assertEqual(session.state, 'revoked')
+        self.assertTrue(session.revoked_at)
+
+        with self.assertRaises(AccessError):
+            Session.create_for_user(user, {
+                'device_uid': 'ft-f2f-block-device-link',
+                'device_name': 'Android F2F Block',
+                'platform': 'android',
+                'app_version': 'test',
+            })
+
+    def test_f2f_trusting_second_durable_device_resets_first_device_sessions(self):
+        user = self._create_mobile_user('f2f-single-trusted-device-link@example.com')
+        Session = self.env['acpec.mobile.session'].sudo()
+
+        first_session = Session.create_for_user(user, {
+            'device_uid': 'ft-f2f-trust-device-a',
+            'device_name': 'Android A',
+            'platform': 'android',
+            'app_version': 'test',
+        })['session']
+        second_session = Session.create_for_user(user, {
+            'device_uid': 'ft-f2f-trust-device-b',
+            'device_name': 'Android B',
+            'platform': 'android',
+            'app_version': 'test',
+        })['session']
+
+        first_session.device_id.action_trust_device()
+        second_session.device_id.action_trust_device()
+        first_session.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+        second_session.invalidate_recordset(['device_trust_state', 'device_trusted_at'])
+        first_session.device_id.invalidate_recordset(['trust_state', 'trusted_at'])
+        second_session.device_id.invalidate_recordset(['trust_state', 'trusted_at'])
+
+        self.assertEqual(first_session.device_id.trust_state, 'pending_trust')
+        self.assertEqual(first_session.device_trust_state, 'pending_trust')
+        self.assertFalse(first_session.device_trusted_at)
+        self.assertEqual(second_session.device_id.trust_state, 'trusted')
+        self.assertEqual(second_session.device_trust_state, 'trusted')
+        self.assertTrue(second_session.device_trusted_at)

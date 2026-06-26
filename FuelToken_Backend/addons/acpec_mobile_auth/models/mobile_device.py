@@ -191,7 +191,72 @@ class AcpecMobileDevice(models.Model):
                 'trusted_at': False,
                 'trusted_by': False,
             })
+            previous_trusted._sync_sessions_from_device()
         return previous_trusted
+
+    def _session_trust_snapshot_vals(self):
+        self.ensure_one()
+        state = self.trust_state or 'pending_trust'
+        if state not in ('trusted', 'blocked'):
+            state = 'pending_trust'
+        return {
+            'device_id': self.id,
+            'device_trust_state': state,
+            'device_trusted_at': self.trusted_at if state == 'trusted' else False,
+            'device_blocked_at': self.blocked_at if state == 'blocked' else False,
+            'device_trust_note': self.trust_note or self.blocked_reason or False,
+        }
+
+    def _linked_sessions(self):
+        self.ensure_one()
+        if not self.user_id or not self.stable_device_uid:
+            return self.env['acpec.mobile.session']
+        return self.env['acpec.mobile.session'].sudo().search([
+            '|',
+            ('device_id', '=', self.id),
+            '&',
+            ('user_id', '=', self.user_id.id),
+            ('device_uid', '=', self.stable_device_uid),
+        ])
+
+    def _sync_sessions_from_device(self):
+        Session = self.env['acpec.mobile.session'].sudo()
+        impacted_keys = set()
+        for device in self.with_context(active_test=False).sudo():
+            sessions = device._linked_sessions()
+            if not sessions:
+                continue
+            vals = device._session_trust_snapshot_vals()
+            if device.trust_state == 'blocked':
+                active_sessions = sessions.filtered(lambda session: session.state == 'active')
+                inactive_sessions = sessions - active_sessions
+                if inactive_sessions:
+                    inactive_sessions.with_context(skip_device_approval_candidate_sync=True).write(vals)
+                if active_sessions:
+                    block_vals = dict(vals)
+                    block_vals.update({
+                        'state': 'revoked',
+                        'revoked_at': device.blocked_at or fields.Datetime.now(),
+                    })
+                    active_sessions.with_context(skip_device_approval_candidate_sync=True).write(block_vals)
+            else:
+                sessions.with_context(skip_device_approval_candidate_sync=True).write(vals)
+            impacted_keys.add((device.user_id.id, device.stable_device_uid))
+
+        if impacted_keys:
+            Session._sync_device_approval_candidates(impacted_keys)
+            Session._assert_single_trusted_device_per_user(self.mapped('user_id').sudo())
+        return True
+
+    def _source_session_chatter_suffix(self):
+        source_session_id = self.env.context.get('acpec_mobile_source_session_id')
+        if not source_session_id:
+            return ''
+        source_session = self.env['acpec.mobile.session'].sudo().browse(source_session_id).exists()
+        if not source_session:
+            return ''
+        source_label = source_session.name or source_session.display_name or str(source_session.id)
+        return '. Origine session: %s' % source_label
 
     def action_trust_device(self):
         self._check_device_trust_admin()
@@ -209,10 +274,11 @@ class AcpecMobileDevice(models.Model):
                 'blocked_by': False,
                 'blocked_reason': False,
             })
+            device._sync_sessions_from_device()
             device._assert_single_trusted_device_per_user(device.user_id.sudo())
             device.message_post(
-                body='Device mobile approuvé par %s. Device UID: %s'
-                % (self.env.user.display_name, stable_device_uid)
+                body='Device mobile approuvé par %s. Device UID: %s%s'
+                % (self.env.user.display_name, stable_device_uid, device._source_session_chatter_suffix())
             )
         return True
 
@@ -227,9 +293,10 @@ class AcpecMobileDevice(models.Model):
                 'blocked_at': now,
                 'blocked_by': self.env.uid,
             })
+            device._sync_sessions_from_device()
             device.message_post(
-                body='Device mobile bloqué par %s. Device UID: %s'
-                % (self.env.user.display_name, device.stable_device_uid or 'n/a')
+                body='Device mobile bloqué par %s. Device UID: %s%s'
+                % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix())
             )
         return True
 
@@ -244,9 +311,10 @@ class AcpecMobileDevice(models.Model):
                 'blocked_by': False,
                 'blocked_reason': False,
             })
+            device._sync_sessions_from_device()
             device.message_post(
-                body='Confiance device remise en attente par %s. Device UID: %s'
-                % (self.env.user.display_name, device.stable_device_uid or 'n/a')
+                body='Confiance device remise en attente par %s. Device UID: %s%s'
+                % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix())
             )
         return True
 
