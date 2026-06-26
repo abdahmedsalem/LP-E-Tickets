@@ -3,6 +3,15 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 
@@ -30,7 +39,7 @@ class TestMobilePinResetOtp(TransactionCase):
         )
         user = user_model.create({
             'name': login,
-            'login': login,
+            'login': mobile_phone,
             'email': login,
             'mobile_phone': mobile_phone,
             'active': True,

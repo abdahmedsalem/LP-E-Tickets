@@ -2,6 +2,15 @@ from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 class TestMobileUserBaseline(TransactionCase):
 
     def _group_ids(self, xmlids):
@@ -30,7 +39,8 @@ class TestMobileUserBaseline(TransactionCase):
         partner = self._existing_partner()
         user = Users.create({
             'name': 'Mobile Baseline Test',
-            'login': 'mobile-baseline-test',
+            'login': _acpec_test_mobile_phone('mobile-baseline-test'),
+            'mobile_phone': _acpec_test_mobile_phone('mobile-baseline-test'),
             'partner_id': partner.id,
             'mobile_only': True,
             'mobile_state': 'approved',
@@ -65,7 +75,8 @@ class TestMobileUserBaseline(TransactionCase):
         with self.assertRaises(ValidationError):
             Users.create({
                 'name': 'Mobile Missing Portal Test',
-                'login': 'mobile-missing-portal-test',
+                'login': _acpec_test_mobile_phone('mobile-missing-portal-test'),
+                'mobile_phone': _acpec_test_mobile_phone('mobile-missing-portal-test'),
                 'partner_id': partner.id,
                 'mobile_only': True,
                 'mobile_state': 'approved',

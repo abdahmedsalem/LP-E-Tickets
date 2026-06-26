@@ -2,6 +2,15 @@ from odoo.exceptions import AccessDenied, AccessError, UserError
 from odoo.tests.common import TransactionCase
 
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 class TestMobileWebPasswordBlockers(TransactionCase):
 
     def _group_ids(self, xmlids):
@@ -26,14 +35,17 @@ class TestMobileWebPasswordBlockers(TransactionCase):
 
     def _create_user(self, login, password, *, mobile_only=False, groups=None):
         Users = self.env['res.users'].sudo().with_context(no_reset_password=True)
+        identity_login = _acpec_test_mobile_phone(login) if mobile_only else login
         vals = {
             'name': login,
-            'login': login,
+            'login': identity_login,
             'partner_id': self._existing_partner().id,
             'password': password,
             'mobile_only': mobile_only,
             'mobile_state': 'approved' if mobile_only else False,
         }
+        if mobile_only:
+            vals['mobile_phone'] = identity_login
         if groups:
             vals['group_ids'] = [(6, 0, self._group_ids(groups))]
         return Users.create(vals)
@@ -41,12 +53,12 @@ class TestMobileWebPasswordBlockers(TransactionCase):
     def test_password_auth_is_blocked_for_mobile_only_even_with_known_password(self):
         login = 'mobile-web-blocked@example.com'
         password = 'Known-Mobile-Password-18A!'
-        self._create_user(login, password, mobile_only=True, groups=[
+        user = self._create_user(login, password, mobile_only=True, groups=[
             'base.group_portal',
             'acpec_mobile_auth.group_mobile_auth_user',
         ])
         with self.assertRaises(AccessDenied):
-            self._auth_password(login, password)
+            self._auth_password(user.login, password)
 
     def test_password_auth_still_works_for_non_mobile_user(self):
         login = 'regular-web-user-18a@example.com'

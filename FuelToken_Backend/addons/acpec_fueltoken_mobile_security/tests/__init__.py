@@ -1,0 +1,1 @@
+from . import test_fueltoken_mobile_identity_phone_only
