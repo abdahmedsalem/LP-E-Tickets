@@ -3,6 +3,15 @@ import base64
 from types import SimpleNamespace
 from unittest.mock import patch
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
@@ -65,6 +74,7 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         user = user_model.create({
             "name": "Mobile %s" % name_suffix,
             "login": login,
+            "mobile_phone": login,
             "email": "%s@example.test" % login.replace("+", "").replace(" ", "").replace("-", ""),
             "active": True,
             "company_id": self.company.id,

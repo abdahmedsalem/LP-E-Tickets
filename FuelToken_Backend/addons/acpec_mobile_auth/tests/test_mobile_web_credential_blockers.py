@@ -2,6 +2,15 @@ from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase
 
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 class TestMobileWebCredentialBlockers(TransactionCase):
 
     def _group_ids(self, xmlids):
@@ -22,15 +31,17 @@ class TestMobileWebCredentialBlockers(TransactionCase):
             no_reset_password=True,
             acpec_mobile_allow_password_write=True,
         )
+        identity_login = _acpec_test_mobile_phone(login) if mobile_only else login
         vals = {
             'name': login,
-            'login': login,
+            'login': identity_login,
             'partner_id': self._existing_partner().id,
             'password': 'Credential-Blocker-18B!',
             'mobile_only': mobile_only,
             'mobile_state': 'approved' if mobile_only else False,
         }
         if mobile_only:
+            vals['mobile_phone'] = identity_login
             vals['group_ids'] = [(6, 0, self._group_ids([
                 'base.group_portal',
                 'acpec_mobile_auth.group_mobile_auth_user',

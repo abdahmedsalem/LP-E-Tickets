@@ -2,6 +2,15 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_admin as api_admin_module
@@ -59,7 +68,8 @@ class TestTrustedReadGateRuntimePolicy(TransactionCase):
         )
         user = user_model.create({
             "name": login,
-            "login": login,
+            "login": _acpec_test_mobile_phone(login),
+            "mobile_phone": _acpec_test_mobile_phone(login),
             "email": login,
             "active": True,
             "company_id": self.company.id,

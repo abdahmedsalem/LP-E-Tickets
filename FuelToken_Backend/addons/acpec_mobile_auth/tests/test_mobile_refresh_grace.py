@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 from dateutil.relativedelta import relativedelta
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo import fields
 from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
@@ -27,7 +36,8 @@ class TestMobileRefreshGrace(TransactionCase):
         )
         return user_model.create({
             'name': login,
-            'login': login,
+            'login': _acpec_test_mobile_phone(login),
+            'mobile_phone': _acpec_test_mobile_phone(login),
             'email': login,
             'active': True,
             'mobile_only': True,

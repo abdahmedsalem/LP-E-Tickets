@@ -88,6 +88,7 @@ class _ConsumeFixtureMixin:
         group_ids = self._mobile_station_group_ids(env)
         if group_ids:
             vals['group_ids'] = [(6, 0, group_ids)]
+        vals['login'] = mobile_phone
         vals.setdefault('mobile_phone', mobile_phone)
         vals.setdefault('mobile_only', True)
         vals.setdefault('mobile_state', 'approved')

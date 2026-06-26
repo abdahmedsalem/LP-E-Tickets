@@ -3,6 +3,15 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.acpec_mobile_auth.controllers.api_public import AcpecMobileAuthApiPublic
@@ -1044,7 +1053,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         mobile_group = self.env.ref('acpec_mobile_auth.group_mobile_auth_user')
         mobile_user = self.env['res.users'].sudo().with_context(no_reset_password=True).create({
             'name': 'Legacy Mobile',
-            'login': 'legacy.mobile@example.com',
+            'login': '32524001',
             'password': '1234',
             'partner_id': mobile_partner.id,
             'company_id': self.env.company.id,

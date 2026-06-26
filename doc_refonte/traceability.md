@@ -32,15 +32,28 @@ l'invariant et sert de point de départ — à ne pas recopier aveuglément.
 | INV-S3 | implémenté_patch43E1 | acpec_mobile_auth.mobile_security_readiness (readiness critique si zéro ou plusieurs sociétés FuelToken) | T-S3 | Validé par Patch43E1, tests prod-like cible 241+ tests OK, tag cible security-runtime-v1-20260625-patch43E1 |
 | INV-S4 | implémenté_patch43E2 | acpec_fueltoken_api runtime (wallet/admin/station/QR bornés à la société FuelToken unique) | T-S4 | Validé par Patch43E2, tests prod-like cible 264+ tests OK, tag cible security-runtime-v1-20260625-patch43E2 |
 | INV-S5 | implémenté_patch43E2 | acpec_fueltoken_api runtime (aucun utilisateur hors société FuelToken n’atteint un objet FuelToken) | T-S5 | Validé par Patch43E2, tests prod-like cible 264+ tests OK, tag cible security-runtime-v1-20260625-patch43E2 |
-| INV-I1 | partiel_patch43F1 | acpec_mobile_auth.res_users + readiness (diagnostic login/mobile_phone/numéro local 8 chiffres) | T-I1 | Patch43F1 pose helpers + readiness critique ; enforcement strict prévu Patch43F2 |
+| INV-I1 | vérifié_patch43F2A | acpec_fueltoken_mobile_security.res_users + acpec_mobile_auth readiness (FuelToken mobile: login == mobile_phone == numéro local 8 chiffres) | T-I1-F2A | Validé par Patch43F2A : module dédié FuelToken phone-only, fixtures alignées, tests prod-like 256 tests OK |
 | INV-I3 | implémenté_patch43F1 | acpec_mobile_auth.res_users (index unique partiel mobile_only + mobile_phone non vide) | T-I3 | Validé par Patch43F1, tests prod-like cible 270+ tests OK, tag cible security-runtime-v1-20260625-patch43F1 |
-| INV-I5 | partiel_patch43F1 | acpec_mobile_auth.res_users + readiness (un mobile_only sans mobile_phone est critique) | T-I5 | Patch43F1 diagnostic ; enforcement write strict prévu Patch43F2 |
+| INV-I5 | vérifié_patch43F2A | acpec_fueltoken_mobile_security.res_users + account.request (un mobile FuelToken a exactement un numéro canonique, pas email comme identité) | T-I5-F2A | Validé par Patch43F2A : contraintes write/create FuelToken + demandes signup phone-only, tests prod-like 256 tests OK |
 | INV-D4 | implémenté_patch43C | acpec_mobile_auth (single trusted device per user, révocation du trust précédent à la promotion, lock transactionnel, garde défensive non déclarative) | T-D3 | Validé par Patch43C, tests prod-like 233 tests OK, tag cible security-runtime-v1-20260625-patch43C |
 | INV-D7 | implémenté_patch43A | acpec_mobile_auth (refus dur device blocked, révocation sessions, access/refresh tokens inutilisables) | T-D6 | Validé par Patch43A tag security-runtime-v1-20260625-patch43A, tests prod-like 228 tests OK |
 | INV-D8 | implémenté_patch43B | acpec_mobile_auth + acpec_fueltoken_api (trust wall lecture métier + actions sensibles, sans action_code pour lectures) | T-D7 | Validé par Patch43B, tests prod-like 228 tests OK, tag cible security-runtime-v1-20260625-patch43B |
 | INV-A1 | à_implementer | api_common._require_sensitive_action_pin | T-A1 | api_common.py |
 | INV-X3 | implémenté_patch43D | acpec_mobile_auth + acpec_fueltoken_api (audit allowed fail-closed dans la transaction métier, audit refus sécurité committed séparé, helpers explicites) | T-X3a/b/c/d | Validé par Patch43D, tests prod-like cible 238+ tests OK, tag cible security-runtime-v1-20260625-patch43D |
 | ... | ... | ... | ... | ... |
+
+
+### Note Patch43F2A — FuelToken mobile security phone-only
+
+Patch43F2A ajoute `acpec_fueltoken_mobile_security` comme couche dédiée FuelToken, sans casser la généricité de `acpec_mobile_auth`.
+
+Validation :
+- branche : `patch43F2A-fueltoken-mobile-security`
+- run prod-like : `acpec_mobile_auth,acpec_mobile_auth_otp,acpec_fueltoken_mobile_security,acpec_fueltoken_api`
+- résultat : `0 failed, 0 error(s) of 256 tests`
+- correction fixtures : les users mobiles FuelToken de test respectent `login == mobile_phone`
+- correction collision : `32342008` remplacé par le numéro réservé libre `21000008`
+- doctrine confirmée : `res.partner.phone` reste contact, pas identité sécurité
 
 ## D2 — Métier (extrait amorcé ; compléter pour tous les INV-W/C/TR/Q/TX/VAL)
 
@@ -77,5 +90,5 @@ Total invariants D2 :  __ / __ verifie
 Total invariants D3 :  __ / __ verifie
 
 Invariants sans test (trous) : [lister ici]
-Invariants nouveaux non encore implémentés : INV-I1 enforcement strict, INV-I5 enforcement strict, INV-I7, ... (compléter)
+Invariants nouveaux non encore implémentés : INV-I7, préfixes mobiles FuelToken 2/3/4, contrat signup_identifier_type explicite/fallback F2B, ... (compléter)
 ```

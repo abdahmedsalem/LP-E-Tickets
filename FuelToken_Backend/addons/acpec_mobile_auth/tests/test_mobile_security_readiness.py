@@ -2,6 +2,15 @@ import os
 from contextlib import ExitStack
 from unittest.mock import patch
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -82,9 +91,11 @@ class TestMobileSecurityReadiness(TransactionCase):
 
     def _create_mobile_identity_user(self, login, mobile_phone=False):
         Users = self.env['res.users'].sudo().with_context(no_reset_password=True)
-        vals = {
+        valid_phone = _acpec_test_mobile_phone(login)
+        user = Users.create({
             'name': login,
-            'login': login,
+            'login': valid_phone,
+            'mobile_phone': valid_phone,
             'partner_id': self._existing_partner().id,
             'mobile_only': True,
             'mobile_state': 'approved',
@@ -93,10 +104,22 @@ class TestMobileSecurityReadiness(TransactionCase):
                 'base.group_portal',
                 'acpec_mobile_auth.group_mobile_auth_user',
             ]))],
-        }
-        if mobile_phone is not False:
-            vals['mobile_phone'] = mobile_phone
-        return Users.create(vals)
+        })
+
+        # Readiness tests intentionally simulate legacy broken data.  After
+        # Patch43F2A this can no longer go through ORM; corrupt it directly.
+        if mobile_phone is False:
+            self.env.cr.execute(
+                "UPDATE res_users SET login=%s, mobile_phone=NULL WHERE id=%s",
+                (login, user.id),
+            )
+        elif login != mobile_phone or not Users._acpec_is_canonical_mobile_phone(mobile_phone):
+            self.env.cr.execute(
+                "UPDATE res_users SET login=%s, mobile_phone=%s WHERE id=%s",
+                (login, mobile_phone, user.id),
+            )
+        self.env.invalidate_all()
+        return user
 
     def _check(self, env, include_mobile_identity=False):
         # Odoo tests run with --test-enable. Patch36A readiness must still be

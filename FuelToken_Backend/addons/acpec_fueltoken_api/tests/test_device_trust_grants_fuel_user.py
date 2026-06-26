@@ -2,6 +2,15 @@
 from odoo.tests.common import TransactionCase, tagged
 
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 @tagged('post_install', '-at_install')
 class TestDeviceTrustGrantsFuelUser(TransactionCase):
 
@@ -20,7 +29,7 @@ class TestDeviceTrustGrantsFuelUser(TransactionCase):
         )
         user = user_model.create({
             'name': 'Auto-inscrit 39A',
-            'login': 'self.registered.39a@example.com',
+            'login': '32343939',
             'email': 'self.registered.39a@example.com',
             'active': True,
             'company_id': self.env.company.id,

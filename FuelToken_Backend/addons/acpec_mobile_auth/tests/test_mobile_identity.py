@@ -1,5 +1,14 @@
 from psycopg2 import IntegrityError
 
+
+def _acpec_test_mobile_phone(label):
+    """Return a deterministic canonical 8-digit mobile phone for test labels."""
+    value = 2166136261
+    for char in str(label):
+        value ^= ord(char)
+        value = (value * 16777619) % 10000000
+    return "3%07d" % value
+
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
 
@@ -31,7 +40,7 @@ class TestMobileIdentity(TransactionCase):
         Users = self.env['res.users'].sudo().with_context(no_reset_password=True)
         return Users.create({
             'name': login,
-            'login': login,
+            'login': mobile_phone,
             'partner_id': self._existing_partner().id,
             'mobile_phone': mobile_phone,
             'mobile_only': True,

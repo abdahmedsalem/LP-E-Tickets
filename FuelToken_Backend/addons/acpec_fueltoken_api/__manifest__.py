@@ -6,7 +6,7 @@
     'author': 'ACPEC SARL',
     'website': 'https://acpec.odoorim.com',
     'license': 'OPL-1',
-    'depends': ['acpec_mobile_auth', 'acpec_mobile_auth_otp', 'acpec_fueltoken_core'],
+    'depends': ['acpec_mobile_auth', 'acpec_mobile_auth_otp', 'acpec_fueltoken_core', 'acpec_fueltoken_mobile_security'],
     'data': [],
     'installable': True,
 }
