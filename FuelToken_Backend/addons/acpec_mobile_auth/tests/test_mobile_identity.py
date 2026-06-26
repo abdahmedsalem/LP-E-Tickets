@@ -55,11 +55,16 @@ class TestMobileIdentity(TransactionCase):
     def test_mobile_phone_normalization_helpers(self):
         Users = self.env['res.users'].sudo()
 
-        self.assertEqual(Users._acpec_normalize_mobile_phone('+222 32 34 00 01'), '32340001')
-        self.assertEqual(Users._acpec_normalize_mobile_phone('00222 32340002'), '32340002')
+        self.assertEqual(Users._acpec_normalize_mobile_phone('32340001'), '32340001')
+        self.assertEqual(Users._acpec_normalize_mobile_phone('+222 32 34 00 01'), '+222 32 34 00 01')
+        self.assertEqual(Users._acpec_normalize_mobile_phone('00222 32340002'), '00222 32340002')
         self.assertTrue(Users._acpec_is_valid_mobile_phone('32340003'))
         self.assertTrue(Users._acpec_is_canonical_mobile_phone('32340004'))
+        self.assertFalse(Users._acpec_is_valid_mobile_phone('+222 32 34 00 04'))
         self.assertFalse(Users._acpec_is_canonical_mobile_phone('+222 32 34 00 04'))
+        self.assertFalse(Users._acpec_is_valid_mobile_phone('323420056'))
+        self.assertFalse(Users._acpec_is_valid_mobile_phone('3475'))
+        self.assertFalse(Users._acpec_is_valid_mobile_phone('59000001'))
         self.assertFalse(Users._acpec_is_valid_mobile_phone('123'))
 
     def test_duplicate_mobile_phone_is_rejected_for_mobile_only_users(self):

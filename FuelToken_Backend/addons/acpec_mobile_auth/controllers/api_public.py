@@ -42,6 +42,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             name = self._get_clean_str(kwargs, 'name')
             signup_identifier = self._get_clean_str(kwargs, 'signup_identifier')
+            signup_identifier_type = self._get_clean_str(kwargs, 'signup_identifier_type')
             secret_code = self._get_clean_str(kwargs, 'secret_code')
             company_id = self._get_optional_int(kwargs, 'company_id', False)
             email = self._get_clean_str(kwargs, 'email')
@@ -49,7 +50,10 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             if not name:
                 return self._error_response('NAME_REQUIRED', _('Name is required.'))
 
-            identifier_vals = self._parse_signup_identifier(signup_identifier)
+            identifier_vals = self._parse_signup_identifier(
+                signup_identifier,
+                signup_identifier_type=signup_identifier_type,
+            )
             self._validate_secret_code(secret_code)
             try:
                 company = self._get_company(company_id)

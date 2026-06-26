@@ -118,26 +118,20 @@ class ResUsers(models.Model):
 
     @api.model
     def _acpec_normalize_mobile_phone(self, mobile_phone):
-        """Return the local 8-digit Mauritanian mobile number when possible.
+        """Return the stripped value only; phone identity is not repaired.
 
-        F1 only provides a canonical helper and readiness diagnostics. It does
-        not yet rewrite legacy users automatically; strict enforcement is kept
-        for Patch43F2.
+        F2B makes the mobile identity contract fail-closed: the backend accepts
+        only the canonical local number already provided by the client. It does
+        not convert +222/222 prefixes, spaces, dashes or any international
+        presentation into an identity value.
         """
         value = (str(mobile_phone) if mobile_phone not in (False, None) else '').strip()
-        if not value:
-            return False
-        digits = ''.join(char for char in value if char.isdigit())
-        if digits.startswith('00222') and len(digits) == 13:
-            digits = digits[5:]
-        elif digits.startswith('222') and len(digits) == 11:
-            digits = digits[3:]
-        return digits or False
+        return value or False
 
     @api.model
     def _acpec_is_valid_mobile_phone(self, mobile_phone):
-        normalized = self._acpec_normalize_mobile_phone(mobile_phone)
-        return bool(normalized and normalized.isdigit() and len(normalized) == 8)
+        value = self._acpec_normalize_mobile_phone(mobile_phone)
+        return bool(value and value.isdigit() and len(value) == 8 and value[0] in ('2', '3', '4'))
 
     @api.model
     def _acpec_is_canonical_mobile_phone(self, mobile_phone):

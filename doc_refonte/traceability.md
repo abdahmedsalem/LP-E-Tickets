@@ -92,3 +92,54 @@ Total invariants D3 :  __ / __ verifie
 Invariants sans test (trous) : [lister ici]
 Invariants nouveaux non encore implémentés : INV-I7, préfixes mobiles FuelToken 2/3/4, contrat signup_identifier_type explicite/fallback F2B, ... (compléter)
 ```
+
+## Patch43F2B — contrat signup_identifier strict
+
+Statut : vérifié_patch43F2B.
+
+Date : 2026-06-26.
+
+Objet :
+- Renforcement du contrat `signup_identifier` / `signup_identifier_type`.
+- `signup_identifier_type` devient un contrat explicite optionnel : `phone` ou `email`.
+- Si le type est fourni, il doit correspondre à la valeur transmise.
+- Si le type est absent, le backend conserve le fallback automatique contrôlé.
+- Pour FuelToken / Tickets Carburant, l'identité mobile reste strictement phone-only.
+
+Doctrine téléphone F2B :
+- Téléphone accepté uniquement si `^[234][0-9]{7}$`.
+- Exactement 8 chiffres.
+- Premier chiffre obligatoirement `2`, `3` ou `4`.
+- Aucune normalisation backend de `+222...`, `222...`, espaces ou tirets.
+- Les formats internationaux ou nettoyables sont refusés au lieu d'être convertis.
+
+Doctrine `mobile_only` confirmée :
+- `mobile_only` est un flag backend `res.users`.
+- Le frontend ne décide jamais `mobile_only`.
+- Le backend force `mobile_only=True` lors de la création d'un compte mobile via `_create_mobile_signup_account`.
+- Les utilisateurs web/back-office restent `mobile_only=False`.
+- Les rôles métier FuelToken restent séparés du flag technique `mobile_only`.
+
+Tests validés :
+- Test ciblé : `264 tests`, `0 failed`, `0 error`.
+- Test élargi avec `acpec_fueltoken_api` : `264 tests`, `0 failed`, `0 error`.
+- Nouveaux tests F2B effectivement découverts :
+  - `acpec_mobile_auth` passe à `144 tests`.
+  - `acpec_fueltoken_mobile_security` passe à `10 tests`.
+
+Cas négatifs couverts :
+- `+22223000001`
+- `22223000001`
+- `0022223000001`
+- `2300 0001`
+- `23-00-00-01`
+- `59000001`
+- `70000001`
+- `323420056`
+- `3475`
+- `abdb7374`
+- `abdbd@abdc`
+
+Impact invariants :
+- INV-I1 renforcé : identité FuelToken phone-only, login/mobile_phone/signup_identifier alignés.
+- INV-I5 renforcé : téléphone canonique local strict, sans normalisation implicite.

@@ -12,10 +12,14 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
         try:
             self._require_keys(kwargs, ['identifier'])
             identifier = self._get_clean_str(kwargs, 'identifier')
+            signup_identifier_type = self._get_clean_str(kwargs, 'signup_identifier_type')
             purpose = self._get_clean_str(kwargs, 'purpose') or 'login'
 
             if purpose == 'register':
-                identifier_vals = self._parse_signup_identifier(identifier)
+                identifier_vals = self._parse_signup_identifier(
+                    identifier,
+                    signup_identifier_type=signup_identifier_type,
+                )
                 if identifier_vals['signup_identifier_type'] != 'phone':
                     raise ValidationError(_('Registration OTP currently supports phone numbers only.'))
                 identifier = identifier_vals['phone']
