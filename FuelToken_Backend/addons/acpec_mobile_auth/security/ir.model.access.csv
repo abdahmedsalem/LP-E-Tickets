@@ -4,3 +4,4 @@ access_acpec_mobile_app_version_policy_admin,access.acpec.mobile.app.version.pol
 access_acpec_mobile_session_admin,access.acpec.mobile.session.admin,model_acpec_mobile_session,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,0
 access_acpec_mobile_security_setting_admin,access.acpec.mobile.security.setting.admin,model_acpec_mobile_security_setting,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,1
 access_acpec_mobile_security_audit_log_auditor,access.acpec.mobile.security.audit.log.auditor,model_acpec_mobile_security_audit_log,acpec_mobile_auth.group_mobile_security_auditor,1,0,0,0
+access_acpec_mobile_device_admin,access.acpec.mobile.device.admin,model_acpec_mobile_device,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,0

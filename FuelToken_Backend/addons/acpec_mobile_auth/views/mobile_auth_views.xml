@@ -112,6 +112,113 @@
         <field name="view_mode">list,form</field>
     </record>
 
+
+    <record id="view_acpec_mobile_device_tree" model="ir.ui.view">
+        <field name="name">acpec.mobile.device.list</field>
+        <field name="model">acpec.mobile.device</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="partner_id"/>
+                <field name="company_id"/>
+                <field name="stable_device_uid"/>
+                <field name="device_name"/>
+                <field name="platform"/>
+                <field name="app_version"/>
+                <field name="trust_state"/>
+                <field name="first_seen_at"/>
+                <field name="last_seen_at"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_device_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.device.form</field>
+        <field name="model">acpec.mobile.device</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_trust_device" type="object" string="Trust Device"
+                            invisible="trust_state == 'trusted'"
+                            class="btn-primary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <button name="action_block_device" type="object" string="Block Device"
+                            invisible="trust_state == 'blocked'"
+                            class="btn-secondary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <button name="action_reset_device_trust" type="object" string="Reset Trust"
+                            invisible="trust_state == 'pending_trust'"
+                            class="btn-secondary"
+                            groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+                    <field name="trust_state" widget="statusbar" statusbar_visible="pending_trust,trusted,blocked"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="user_id"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="stable_device_uid"/>
+                            <field name="device_name"/>
+                            <field name="platform"/>
+                            <field name="app_version"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="first_seen_at" readonly="1"/>
+                            <field name="last_seen_at" readonly="1"/>
+                            <field name="trusted_at" readonly="1"/>
+                            <field name="trusted_by" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="blocked_at" readonly="1"/>
+                            <field name="blocked_by" readonly="1"/>
+                            <field name="blocked_reason"/>
+                            <field name="trust_note"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_acpec_mobile_device_search" model="ir.ui.view">
+        <field name="name">acpec.mobile.device.search</field>
+        <field name="model">acpec.mobile.device</field>
+        <field name="arch" type="xml">
+            <search string="Recherche devices mobiles">
+                <field name="name" string="Device"/>
+                <field name="user_id" string="Utilisateur"/>
+                <field name="partner_id" string="Contact"/>
+                <field name="stable_device_uid" string="Identifiant device stable"/>
+                <field name="device_name" string="Nom device"/>
+                <filter name="pending_trust" string="Devices en attente" domain="[('trust_state', '=', 'pending_trust')]"/>
+                <filter name="trusted" string="Devices approuvés" domain="[('trust_state', '=', 'trusted')]"/>
+                <filter name="blocked" string="Devices bloqués" domain="[('trust_state', '=', 'blocked')]"/>
+                <filter name="active" string="Actifs" domain="[('active', '=', True)]"/>
+                <separator/>
+                <filter name="group_by_user" string="Regrouper par utilisateur" context="{'group_by': 'user_id'}"/>
+                <filter name="group_by_trust_state" string="Regrouper par état device" context="{'group_by': 'trust_state'}"/>
+                <filter name="group_by_platform" string="Regrouper par plateforme" context="{'group_by': 'platform'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_acpec_mobile_device" model="ir.actions.act_window">
+        <field name="name">Devices mobiles</field>
+        <field name="res_model">acpec.mobile.device</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_acpec_mobile_device_search"/>
+    </record>
+
     <record id="view_acpec_mobile_session_tree" model="ir.ui.view">
         <field name="name">acpec.mobile.session.list</field>
         <field name="model">acpec.mobile.session</field>

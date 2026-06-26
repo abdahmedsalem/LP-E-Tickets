@@ -8,6 +8,7 @@
         <field name="active" eval="False"/>
     </record>
     <menuitem id="menu_mobile_auth_version_policies" name="Politiques de version" parent="menu_mobile_auth_configuration" action="action_acpec_mobile_app_version_policy" sequence="20" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <menuitem id="menu_mobile_auth_devices" name="Devices mobiles" parent="menu_mobile_auth_operations" action="action_acpec_mobile_device" sequence="15" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
     <menuitem id="menu_mobile_auth_sessions" name="Sessions mobiles" parent="menu_mobile_auth_operations" action="action_acpec_mobile_session" sequence="20" groups="acpec_mobile_auth.group_mobile_auth_admin"/>
     <menuitem id="menu_mobile_security_audit_log" name="Journal d’audit sécurité" parent="menu_mobile_auth_operations" action="action_acpec_mobile_security_audit_log" sequence="80" groups="acpec_mobile_auth.group_mobile_security_auditor"/>
 </odoo>
