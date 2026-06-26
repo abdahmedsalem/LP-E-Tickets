@@ -242,3 +242,41 @@ Limites volontaires :
 Suite prévue :
 - Patch43F2E : rattacher `acpec.mobile.session` à `acpec.mobile.device`.
 - Patch43F2F : verrouiller le lifecycle téléphone / device / session.
+
+## Patch43F2E — signup uses Odoo user partner delegation
+
+Statut : vérifié_patch43F2E.
+
+Date : 2026-06-26.
+
+Objet :
+- Nettoyage du flux signup mobile autour de `res.users` / `res.partner`.
+- Le signup mobile ne crée plus explicitement un `res.partner` avant le `res.users`.
+- Le signup crée le `res.users` directement et utilise `user.partner_id` comme partenaire métier.
+- Le partenaire du user devient le propriétaire métier naturel des futurs objets FuelToken.
+
+Doctrine validée :
+- `res.users` = compte technique mobile, authentification, sécurité, sessions et devices.
+- `res.partner` = identité métier et propriétaire des objets économiques FuelToken.
+- `1 user = 1 partner`, conforme au modèle Odoo.
+- Le signup ne renseigne pas `partner.phone`.
+- Le signup ne renseigne pas `partner.email`.
+- L'enrichissement commercial du partenaire se fait par back-office.
+- Le signup renseigne seulement `partner.ref = MOB:<mobile_phone>` pour tracer l'origine mobile canonique.
+- Le signup marque `partner.acpec_is_mobile_partner = True` pour filtrer les partenaires mobiles.
+- Les users mobiles restent filtrables par `res.users.mobile_only = True`.
+
+Filtres ajoutés :
+- Utilisateurs mobiles : `res.users.mobile_only = True`.
+- Partenaires mobiles : `res.partner.acpec_is_mobile_partner = True`.
+
+Test ajouté :
+- `TestAcpecMobileAuthOtpSms.test_f2e_signup_uses_odoo_user_partner_delegation_without_contact_enrichment`.
+
+Résultat attendu :
+- `account_request.partner_id == user.partner_id`.
+- `user.login == user.mobile_phone == signup_identifier`.
+- `partner.ref == MOB:<mobile_phone>`.
+- `partner.acpec_is_mobile_partner is True`.
+- `partner.phone` et `partner.email` restent vides au signup.
+- L'email éventuel reste porté par la demande d'inscription, pas par le partenaire.

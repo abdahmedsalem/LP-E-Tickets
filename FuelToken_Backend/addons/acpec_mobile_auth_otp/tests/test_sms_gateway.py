@@ -955,6 +955,80 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(session.is_device_approval_candidate)
 
 
+
+    def test_f2e_signup_uses_odoo_user_partner_delegation_without_contact_enrichment(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+
+        phone = '32524817'
+        email = 'client-f2e-partner@example.com'
+        controller = AcpecMobileAuthApiPublic()
+        otp_controller = AcpecMobileAuthOtpApi()
+        controller._require_keys = lambda params, keys: None
+        controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
+        controller._get_optional_int = lambda params, key, default=False: int(params.get(key) or default)
+        controller._get_company = lambda company_id=False: self.env.company
+        dummy_httprequest = SimpleNamespace(
+            remote_addr='127.0.0.1',
+            headers={'User-Agent': 'pytest'},
+        )
+        dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_public.request', dummy_request),                 patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request),                 patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+            signup_result = controller.signup(
+                name='Client F2E Partner',
+                signup_identifier=phone,
+                signup_identifier_type='phone',
+                secret_code='1234',
+                company_id=self.env.company.id,
+                email=email,
+            )
+
+            self.assertTrue(signup_result['ok'])
+            verify_result = otp_controller.verify_otp(
+                challenge_id=signup_result['data']['otp_challenge_id'],
+                identifier=phone,
+                code='000000',
+                name='Client F2E Partner',
+                secret_code='1234',
+                company_id=self.env.company.id,
+                email=email,
+                device_uid='ft-android-test-f2e-partner-32524817',
+                device_name='Flutter Android',
+                platform='android',
+                app_version='test',
+            )
+
+        self.assertTrue(verify_result['ok'])
+
+        user = self.env['res.users'].sudo().search([('login', '=', phone)], limit=1)
+        self.assertTrue(user)
+        self.assertEqual(user.login, phone)
+        self.assertEqual(user.mobile_phone, phone)
+        self.assertTrue(user.mobile_only)
+        self.assertEqual(user.mobile_state, 'self_registered')
+
+        partner = user.partner_id.sudo()
+        self.assertTrue(partner)
+        self.assertTrue(partner.acpec_is_mobile_partner)
+        self.assertEqual(partner.ref, 'MOB:%s' % phone)
+        self.assertFalse(partner.phone)
+        self.assertFalse(partner.email)
+        self.assertFalse(user.email)
+
+        account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
+            ('user_id', '=', user.id),
+        ], order='id desc', limit=1)
+        self.assertTrue(account_request)
+        self.assertEqual(account_request.partner_id, partner)
+        self.assertEqual(account_request.phone, phone)
+        self.assertEqual(account_request.email, email)
+
+        mobile_partners = self.env['res.partner'].sudo().search([
+            ('ref', '=', 'MOB:%s' % phone),
+        ])
+        self.assertEqual(mobile_partners, partner)
+
     def test_f2c_signup_verify_ignores_frontend_security_fields(self):
         """Public signup/register payload cannot choose security-owned user fields."""
         self.env.company.write({'acpec_mobile_auth_enabled': True})
