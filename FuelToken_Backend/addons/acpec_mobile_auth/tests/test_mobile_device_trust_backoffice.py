@@ -87,32 +87,49 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
 
     def test_mobile_auth_admin_can_trust_block_and_reset_device(self):
         session = self._create_session()
+        device = session.device_id
+        self.assertTrue(device)
         admin = self._create_admin_user()
 
         session.with_user(admin).action_trust_device()
         session.invalidate_recordset(['device_trust_state', 'device_trusted_at', 'device_blocked_at'])
+        device.invalidate_recordset(['trust_state', 'message_ids'])
 
         self.assertEqual(session.device_trust_state, 'trusted')
         self.assertTrue(session.device_trusted_at)
         self.assertFalse(session.device_blocked_at)
-        self.assertTrue(session.message_ids.filtered(lambda msg: 'Device mobile approuvé' in (msg.body or '')))
+        self.assertEqual(device.trust_state, 'trusted')
+        self.assertTrue(device.message_ids.filtered(
+            lambda msg: 'Device mobile approuvé' in (msg.body or '')
+            and (session.name or '') in (msg.body or '')
+        ))
 
         session.with_user(admin).action_block_device()
         session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state', 'device_blocked_at'])
+        device.invalidate_recordset(['trust_state', 'message_ids'])
 
         self.assertEqual(session.device_trust_state, 'blocked')
         self.assertTrue(session.device_blocked_at)
         self.assertEqual(session.state, 'revoked')
         self.assertTrue(session.revoked_at)
-        self.assertTrue(session.message_ids.filtered(lambda msg: 'bloqué par' in (msg.body or '')))
+        self.assertEqual(device.trust_state, 'blocked')
+        self.assertTrue(device.message_ids.filtered(
+            lambda msg: 'bloqué par' in (msg.body or '')
+            and (session.name or '') in (msg.body or '')
+        ))
 
         session.with_user(admin).action_reset_device_trust()
         session.invalidate_recordset(['device_trust_state', 'device_trusted_at', 'device_blocked_at'])
+        device.invalidate_recordset(['trust_state', 'message_ids'])
 
         self.assertEqual(session.device_trust_state, 'pending_trust')
         self.assertFalse(session.device_trusted_at)
         self.assertFalse(session.device_blocked_at)
-        self.assertTrue(session.message_ids.filtered(lambda msg: 'Confiance device remise en attente' in (msg.body or '')))
+        self.assertEqual(device.trust_state, 'pending_trust')
+        self.assertTrue(device.message_ids.filtered(
+            lambda msg: 'Confiance device remise en attente' in (msg.body or '')
+            and (session.name or '') in (msg.body or '')
+        ))
 
 
     def test_trusting_new_device_resets_previous_trusted_device_for_same_user(self):

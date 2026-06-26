@@ -15,3 +15,4 @@ from . import test_admin_carnet_type_runtime_policy
 from . import test_admin_sensitive_inventory_policy
 from . import test_mobile_security_runtime_docs
 from . import test_device_trust_grants_fuel_user
+from . import test_mobile_device_trust_grants_fuel_user

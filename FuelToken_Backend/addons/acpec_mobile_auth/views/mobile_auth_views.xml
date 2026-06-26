@@ -230,6 +230,7 @@
                 <field name="partner_id"/>
                 <field name="company_id"/>
                 <field name="device_uid"/>
+                <field name="device_id"/>
                 <field name="device_name"/>
                 <field name="platform"/>
                 <field name="device_trust_state"/>
@@ -277,6 +278,7 @@
                         </group>
                         <group>
                             <field name="device_uid" readonly="1"/>
+                            <field name="device_id" readonly="1"/>
                             <field name="device_name" readonly="1"/>
                             <field name="platform" readonly="1"/>
                             <field name="app_version" readonly="1"/>
@@ -315,6 +317,7 @@
                 <field name="mobile_phone" string="Téléphone mobile"/>
                 <field name="partner_id" string="Contact"/>
                 <field name="device_uid" string="Identifiant device"/>
+                <field name="device_id" string="Device durable"/>
                 <field name="device_name" string="Nom device"/>
 
                 <filter name="approval_candidate" string="Candidats approbation" domain="[('is_device_approval_candidate', '=', True)]"/>
@@ -327,6 +330,7 @@
                 <filter name="group_by_user" string="Regrouper par utilisateur" context="{'group_by': 'user_id'}"/>
                 <filter name="group_by_mobile_user_label" string="Regrouper par utilisateur mobile" context="{'group_by': 'mobile_user_label'}"/>
                 <filter name="group_by_device_uid" string="Regrouper par device UID" context="{'group_by': 'device_uid'}"/>
+                <filter name="group_by_device_id" string="Regrouper par device durable" context="{'group_by': 'device_id'}"/>
                 <filter name="group_by_trust_state" string="Regrouper par état device" context="{'group_by': 'device_trust_state'}"/>
             </search>
         </field>

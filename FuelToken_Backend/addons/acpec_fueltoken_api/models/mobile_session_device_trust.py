@@ -60,3 +60,17 @@ class AcpecMobileSession(models.Model):
             })
 
         return True
+
+
+class AcpecMobileDevice(models.Model):
+    _inherit = 'acpec.mobile.device'
+
+    def action_trust_device(self):
+        result = super().action_trust_device()
+        sessions = self.env['acpec.mobile.session'].sudo().search([
+            ('device_id', 'in', self.ids),
+            ('device_trust_state', '=', 'trusted'),
+        ])
+        if sessions:
+            sessions._grant_fuel_user_group_after_device_trust()
+        return result

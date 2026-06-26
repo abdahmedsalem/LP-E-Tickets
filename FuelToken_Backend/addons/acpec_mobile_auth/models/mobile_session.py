@@ -15,6 +15,14 @@ class AcpecMobileSession(models.Model):
 
     name = fields.Char(default='New', readonly=True, copy=False, index=True)
     user_id = fields.Many2one('res.users', required=True, index=True, ondelete='cascade')
+    device_id = fields.Many2one(
+        'acpec.mobile.device',
+        string='Device mobile',
+        index=True,
+        copy=False,
+        readonly=True,
+        ondelete='restrict',
+    )
     partner_id = fields.Many2one('res.partner', related='user_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='user_id.company_id', store=True, readonly=True, index=True)
     mobile_phone = fields.Char(
@@ -205,10 +213,25 @@ class AcpecMobileSession(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         sequence = self.env['ir.sequence']
+        now = fields.Datetime.now()
         for vals in vals_list:
             vals['device_uid'] = self._normalize_stable_device_uid_or_raise(vals.get('device_uid'))
             if vals.get('name', 'New') == 'New':
                 vals['name'] = sequence.next_by_code('acpec.mobile.session') or 'New'
+
+            if not vals.get('device_id') and vals.get('user_id') and vals.get('device_uid'):
+                device = self._get_or_create_device_for_session(
+                    self.env['res.users'].sudo().browse(vals.get('user_id')),
+                    {
+                        'device_uid': vals.get('device_uid'),
+                        'device_name': vals.get('device_name'),
+                        'platform': vals.get('platform'),
+                        'app_version': vals.get('app_version'),
+                    },
+                    now=vals.get('last_seen_at') or now,
+                )
+                vals['device_id'] = device.id
+                vals.update(self._device_trust_values_for_device(device))
 
         with self.env.cr.savepoint():
             sessions = super().create(vals_list)
@@ -330,13 +353,21 @@ class AcpecMobileSession(models.Model):
         )
 
     @api.model
-    def _latest_device_trust_source_for_login(self, user, device_uid):
-        """Return the latest persisted trust decision for a stable user/device.
+    def _find_device_for_session(self, user, device_uid):
+        if not user or not user.exists():
+            return self.env['acpec.mobile.device']
 
-        Session rows remain the audit trail in V1.  A back-office trust/block/reset
-        is a decision on the logical pair user_id + stable device_uid and must
-        survive logout/relogin.  Non-stable legacy placeholders never inherit trust.
-        """
+        device_uid = (device_uid or '').strip()
+        if not self._is_stable_device_uid(device_uid):
+            return self.env['acpec.mobile.device']
+
+        return self.env['acpec.mobile.device'].with_context(active_test=False).sudo().search([
+            ('user_id', '=', user.id),
+            ('stable_device_uid', '=', device_uid),
+        ], limit=1)
+
+    @api.model
+    def _latest_session_trust_source_for_login(self, user, device_uid):
         if not user or not user.exists():
             return self.browse()
 
@@ -350,9 +381,8 @@ class AcpecMobileSession(models.Model):
         ], order='write_date desc, create_date desc, id desc', limit=1)
 
     @api.model
-    def _device_trust_values_for_login(self, user, device_uid):
-        source = self._latest_device_trust_source_for_login(user, device_uid)
-        if not source or source.device_trust_state not in ('trusted', 'blocked'):
+    def _device_trust_values_for_device(self, device):
+        if not device or not device.exists():
             return {
                 'device_trust_state': 'pending_trust',
                 'device_trusted_at': False,
@@ -360,28 +390,98 @@ class AcpecMobileSession(models.Model):
                 'device_trust_note': False,
             }
 
-        state = source.device_trust_state
+        state = device.trust_state or 'pending_trust'
+        if state not in ('trusted', 'blocked'):
+            state = 'pending_trust'
+
         return {
             'device_trust_state': state,
-            'device_trusted_at': source.device_trusted_at if state == 'trusted' else False,
-            'device_blocked_at': source.device_blocked_at if state == 'blocked' else False,
-            'device_trust_note': source.device_trust_note or False,
+            'device_trusted_at': device.trusted_at if state == 'trusted' else False,
+            'device_blocked_at': device.blocked_at if state == 'blocked' else False,
+            'device_trust_note': device.trust_note or device.blocked_reason or False,
         }
+
+    @api.model
+    def _device_trust_values_for_login(self, user, device_uid):
+        return self._device_trust_values_for_device(
+            self._find_device_for_session(user, device_uid)
+        )
 
     @api.model
     def _assert_device_uid_can_open_session(self, user, device_uid):
         """Fail closed before opening or rotating a mobile session.
 
         INV-T7: every mobile session requires a stable device_uid.
-        INV-D7/INV-T6: a blocked user/device pair cannot open or refresh
-        a session.  The refusal happens before token creation so no usable
-        runtime session is emitted for a blocked device.
+        INV-D7/INV-T6: a blocked or archived user/device pair cannot open or
+        refresh a session.  The refusal happens before token creation so no
+        usable runtime session is emitted for a blocked durable device.
         """
         device_uid = self._normalize_stable_device_uid_or_raise(device_uid)
-        source = self._latest_device_trust_source_for_login(user.sudo(), device_uid)
-        if source and source.device_trust_state == 'blocked':
-            raise AccessError(_('Appareil mobile bloqué.'))
+        device = self._find_device_for_session(user.sudo(), device_uid)
+        if device:
+            if not device.active:
+                raise AccessError(_('Appareil mobile archivé.'))
+            if device.trust_state == 'blocked':
+                raise AccessError(_('Appareil mobile bloqué.'))
+        else:
+            legacy_source = self._latest_session_trust_source_for_login(user.sudo(), device_uid)
+            if legacy_source and legacy_source.device_trust_state == 'blocked':
+                raise AccessError(_('Appareil mobile bloqué.'))
         return device_uid
+
+    @api.model
+    def _get_or_create_device_for_session(self, user, device_vals=None, now=None):
+        user = user.sudo().exists()
+        if not user:
+            raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
+
+        device_vals = device_vals or {}
+        now = now or fields.Datetime.now()
+        device_uid = self._assert_device_uid_can_open_session(
+            user,
+            device_vals.get('device_uid'),
+        )
+
+        Device = self.env['acpec.mobile.device'].with_context(active_test=False).sudo()
+        device = Device.search([
+            ('user_id', '=', user.id),
+            ('stable_device_uid', '=', device_uid),
+        ], limit=1)
+
+        platform = device_vals.get('platform') if device_vals.get('platform') in ('android', 'ios', 'web', 'other') else False
+        if not device:
+            create_vals = {
+                'user_id': user.id,
+                'stable_device_uid': device_uid,
+                'device_name': device_vals.get('device_name') or False,
+                'platform': platform,
+                'app_version': device_vals.get('app_version') or False,
+                'first_seen_at': now,
+                'last_seen_at': now,
+            }
+            legacy_source = self._latest_session_trust_source_for_login(user, device_uid)
+            if legacy_source and legacy_source.device_trust_state == 'trusted':
+                create_vals.update({
+                    'trust_state': 'trusted',
+                    'trusted_at': legacy_source.device_trusted_at or now,
+                    'trust_note': legacy_source.device_trust_note or False,
+                })
+            return Device.create(create_vals)
+
+        if not device.active:
+            raise AccessError(_('Appareil mobile archivé.'))
+        if device.trust_state == 'blocked':
+            raise AccessError(_('Appareil mobile bloqué.'))
+
+        update_vals = {'last_seen_at': now}
+        if device_vals.get('device_name'):
+            update_vals['device_name'] = device_vals.get('device_name')
+        if platform:
+            update_vals['platform'] = platform
+        if device_vals.get('app_version'):
+            update_vals['app_version'] = device_vals.get('app_version')
+        device.write(update_vals)
+        return device
 
     @api.model
     def _is_session_runtime_usable(self, session, now=None):
@@ -394,21 +494,33 @@ class AcpecMobileSession(models.Model):
             return False
         if not self._is_stable_device_uid(session.device_uid):
             return False
+        device = session.device_id.with_context(active_test=False).sudo()
+        if device and (not device.active or device.trust_state == 'blocked'):
+            return False
         if session.device_trust_state == 'blocked':
             return False
         return True
 
     def _same_user_device_sessions(self):
-        """Return all session rows for the same stable user/device pair."""
+        """Return all session rows for the same durable user/device pair."""
         self.ensure_one()
         device_uid = (self.device_uid or '').strip()
         if not self.user_id or not self._is_stable_device_uid(device_uid):
             return self
 
-        return self.sudo().search([
+        domain = [
             ('user_id', '=', self.user_id.id),
             ('device_uid', '=', device_uid),
-        ])
+        ]
+        if self.device_id:
+            domain = [
+                '|',
+                ('device_id', '=', self.device_id.id),
+                '&',
+                ('user_id', '=', self.user_id.id),
+                ('device_uid', '=', device_uid),
+            ]
+        return self.sudo().search(domain)
 
     @api.model
     def _rotate_prior_active_sessions_for_device_login(self, user, device_uid, new_session, now):
@@ -455,14 +567,13 @@ class AcpecMobileSession(models.Model):
         now = fields.Datetime.now()
         expires_at = now + relativedelta(minutes=self._access_minutes())
         refresh_expires_at = now + relativedelta(days=self._refresh_days())
-        device_uid = self._assert_device_uid_can_open_session(
-            user.sudo(),
-            device_vals.get('device_uid'),
-        )
-        trust_vals = self._device_trust_values_for_login(user.sudo(), device_uid)
+        device = self._get_or_create_device_for_session(user.sudo(), device_vals, now=now)
+        device_uid = device.stable_device_uid
+        trust_vals = self._device_trust_values_for_device(device)
 
         vals = {
             'user_id': user.id,
+            'device_id': device.id,
             'access_token_hash': self._hash_token(access_token),
             'refresh_token_hash': self._hash_token(refresh_token),
             'expires_at': expires_at,
@@ -470,9 +581,9 @@ class AcpecMobileSession(models.Model):
             'last_seen_at': now,
             'state': 'active',
             'device_uid': device_uid,
-            'device_name': device_vals.get('device_name') or False,
-            'platform': device_vals.get('platform') if device_vals.get('platform') in ('android', 'ios', 'web', 'other') else False,
-            'app_version': device_vals.get('app_version') or False,
+            'device_name': device_vals.get('device_name') or device.device_name or False,
+            'platform': device_vals.get('platform') if device_vals.get('platform') in ('android', 'ios', 'web', 'other') else device.platform or False,
+            'app_version': device_vals.get('app_version') or device.app_version or False,
             'ip_address': device_vals.get('ip_address') or False,
             'user_agent': device_vals.get('user_agent') or False,
         }
@@ -544,33 +655,25 @@ class AcpecMobileSession(models.Model):
             session.user_id.sudo(),
             successor_device_vals.get('device_uid'),
         )
-        old_device_uid = session.device_uid or False
-        new_device_uid = successor_device_vals.get('device_uid') or False
-        same_device = bool(old_device_uid and new_device_uid and old_device_uid == new_device_uid)
-
-        if same_device:
-            device_trust_state = session.device_trust_state or 'pending_trust'
-            device_trusted_at = session.device_trusted_at if device_trust_state == 'trusted' else False
-            device_blocked_at = session.device_blocked_at if device_trust_state == 'blocked' else False
-        else:
-            device_trust_state = 'pending_trust'
-            device_trusted_at = False
-            device_blocked_at = False
+        device = self._get_or_create_device_for_session(
+            session.user_id.sudo(),
+            successor_device_vals,
+            now=now,
+        )
 
         vals = {
             'user_id': session.user_id.id,
+            'device_id': device.id,
             'access_token_hash': self._hash_token(access_token),
             'refresh_token_hash': self._hash_token(new_refresh_token),
             'expires_at': expires_at,
             'refresh_expires_at': refresh_expires_at,
             'last_seen_at': now,
             'state': 'active',
-            'device_trust_state': device_trust_state,
-            'device_trusted_at': device_trusted_at,
-            'device_blocked_at': device_blocked_at,
-            'device_trust_note': session.device_trust_note if same_device else False,
         }
         vals.update(successor_device_vals)
+        vals['device_uid'] = device.stable_device_uid
+        vals.update(self._device_trust_values_for_device(device))
 
         new_session = self.sudo().create(vals)
         return {
@@ -590,6 +693,11 @@ class AcpecMobileSession(models.Model):
         if not self._is_stable_device_uid(session.device_uid):
             session.sudo().write({'state': 'revoked', 'revoked_at': now})
             raise AccessError(_('Identifiant appareil mobile invalide.'))
+        try:
+            self._assert_device_uid_can_open_session(session.user_id.sudo(), session.device_uid)
+        except AccessError as exc:
+            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            raise exc
         if session.device_trust_state == 'blocked':
             session.sudo().write({'state': 'revoked', 'revoked_at': now})
             raise AccessError(_('Appareil mobile bloqué.'))
@@ -759,63 +867,54 @@ class AcpecMobileSession(models.Model):
             })
         return previous_trusted
 
+    def _device_for_trust_action(self):
+        self.ensure_one()
+        if self.device_id:
+            return self.device_id.with_context(active_test=False).sudo()
+        return self._get_or_create_device_for_session(
+            self.user_id.sudo(),
+            {
+                'device_uid': self.device_uid,
+                'device_name': self.device_name,
+                'platform': self.platform,
+                'app_version': self.app_version,
+            },
+            now=self.last_seen_at or fields.Datetime.now(),
+        )
+
     def action_trust_device(self):
         self._check_device_trust_admin()
         self._check_single_trust_target_per_user()
-        self._lock_device_trust_scope_for_users(self.mapped('user_id').sudo())
-        now = fields.Datetime.now()
+        result = True
         for session in self:
-            device_uid = (session.device_uid or '').strip()
-            self._reset_other_trusted_devices_for_user(session.user_id.sudo(), device_uid)
-            scope = session._same_user_device_sessions()
-            scope.write({
-                'device_trust_state': 'trusted',
-                'device_trusted_at': now,
-                'device_blocked_at': False,
-            })
-            self._assert_single_trusted_device_per_user(session.user_id.sudo())
-            session.message_post(
-                body='Device mobile approuvé par %s. Device UID: %s'
-                % (self.env.user.display_name, session.device_uid)
-            )
-        return True
+            device = session._device_for_trust_action()
+            result = device.with_context(
+                acpec_mobile_source_session_id=session.id,
+            ).action_trust_device()
+        self.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at', 'device_blocked_at'])
+        return result
 
     def action_block_device(self):
         self._check_device_trust_admin()
-        now = fields.Datetime.now()
+        result = True
         for session in self:
-            scope = session._same_user_device_sessions()
-            vals = {
-                'device_trust_state': 'blocked',
-                'device_blocked_at': now,
-            }
-            active_scope = scope.filtered(lambda item: item.state == 'active')
-            if active_scope:
-                vals.update({
-                    'state': 'revoked',
-                    'revoked_at': now,
-                })
-            scope.write(vals)
-            session.message_post(
-                body='Device mobile bloqué par %s. Device UID: %s'
-                % (self.env.user.display_name, session.device_uid or 'n/a')
-            )
-        return True
+            device = session._device_for_trust_action()
+            result = device.with_context(
+                acpec_mobile_source_session_id=session.id,
+            ).action_block_device()
+        self.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at', 'device_blocked_at', 'state', 'revoked_at'])
+        return result
 
     def action_reset_device_trust(self):
         self._check_device_trust_admin()
+        result = True
         for session in self:
-            scope = session._same_user_device_sessions()
-            scope.write({
-                'device_trust_state': 'pending_trust',
-                'device_trusted_at': False,
-                'device_blocked_at': False,
-            })
-            session.message_post(
-                body='Confiance device remise en attente par %s. Device UID: %s'
-                % (self.env.user.display_name, session.device_uid or 'n/a')
-            )
-        return True
+            device = session._device_for_trust_action()
+            result = device.with_context(
+                acpec_mobile_source_session_id=session.id,
+            ).action_reset_device_trust()
+        self.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at', 'device_blocked_at'])
+        return result
 
     def unlink(self):
         raise UserError(_('Les sessions mobiles doivent être révoquées et non supprimées.'))
