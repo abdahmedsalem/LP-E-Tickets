@@ -189,3 +189,56 @@ Résultat attendu verrouillé :
 
 Tests validés :
 - Test ciblé : `265 tests`, `0 failed`, `0 error`.
+
+## Patch43F2D — fondation modèle device mobile générique
+
+Statut : vérifié_patch43F2D.
+
+Date : 2026-06-26.
+
+Objet :
+- Création de la fondation générique `acpec.mobile.device` dans `acpec_mobile_auth`.
+- Séparation conceptuelle entre device durable et session runtime.
+- Le modèle device reste neutre et réutilisable hors FuelToken.
+- Aucun rattachement comportemental complet de `acpec.mobile.session` vers `acpec.mobile.device` dans ce patch.
+
+Doctrine validée :
+- `acpec_mobile_auth` porte la couche générique mobile : user mobile, OTP/PIN, session, device, trust et audit.
+- Pas de module séparé `acpec_mobile_session` en V1.
+- FuelToken reste au-dessus et ne contamine pas les modèles session/device génériques.
+- Le trust device est défini par couple `user_id + stable_device_uid`, pas globalement par UID device.
+- Une session reste un objet runtime temporaire ; le device devient un objet durable.
+
+Modèle ajouté :
+- `acpec.mobile.device`.
+
+Contraintes et garanties :
+- unicité `UNIQUE(user_id, stable_device_uid)`.
+- rejet des UID instables ou placeholders : `flutter-android-local`, `flutter-ios-local`, `flutter-web-local`, `web-local`.
+- un seul device `trusted` par utilisateur.
+- approuver un nouveau device remet les autres devices trusted du même user en `pending_trust`.
+- le même `stable_device_uid` pour un autre user reste indépendant.
+
+Back-office :
+- vues list/form/search pour les devices mobiles.
+- menu `Devices mobiles` sous `Mobile Auth / Opérations`.
+- actions génériques : trust, block, reset trust.
+
+Tests ajoutés :
+- `TestMobileDeviceModel.test_f2d_mobile_device_can_be_created_for_mobile_user`.
+- `TestMobileDeviceModel.test_f2d_mobile_device_unique_per_user_and_stable_uid`.
+- `TestMobileDeviceModel.test_f2d_mobile_device_rejects_unstable_device_uid`.
+- `TestMobileDeviceModel.test_f2d_trusting_device_resets_other_trusted_devices_for_same_user`.
+- `TestMobileDeviceModel.test_f2d_trusting_same_stable_uid_for_other_user_does_not_reset_first_user`.
+- `TestMobileDeviceModel.test_f2d_mobile_device_rejects_ambiguous_bulk_trust_for_same_user`.
+- `TestMobileDeviceModel.test_f2d_mobile_device_views_and_action_exist`.
+
+Limites volontaires :
+- pas encore de champ `device_id` sur `acpec.mobile.session`.
+- pas de migration des sessions existantes.
+- pas de modification de `create_for_user`, `refresh_with_token` ou des actions session existantes.
+- pas de changement FuelToken.
+
+Suite prévue :
+- Patch43F2E : rattacher `acpec.mobile.session` à `acpec.mobile.device`.
+- Patch43F2F : verrouiller le lifecycle téléphone / device / session.
