@@ -128,3 +128,53 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
                 'login': '32345008',
                 'company_id': self.fuel_company.id,
             })
+
+    def test_f2b_fueltoken_mobile_user_accepts_allowed_first_digits(self):
+        for phone in ('23000101', '33000101', '43000101'):
+            with self.subTest(phone=phone):
+                user = self.User.create(self._mobile_user_vals(phone=phone))
+                self.assertEqual(user.login, phone)
+                self.assertEqual(user.mobile_phone, phone)
+
+    def test_f2b_fueltoken_mobile_user_rejects_non_canonical_phone_values(self):
+        invalid_values = (
+            '+22223000102',
+            '22223000102',
+            '0022223000102',
+            '2300 0102',
+            '23-00-01-02',
+            '59000102',
+            '70000102',
+            '323420056',
+            '3475',
+            'abdb7374',
+        )
+        for phone in invalid_values:
+            with self.subTest(phone=phone):
+                with self.assertRaises(ValidationError):
+                    self.User.create(self._mobile_user_vals(phone=phone, login=phone))
+
+    def test_f2b_fueltoken_account_request_rejects_non_canonical_phone_values(self):
+        invalid_values = (
+            '+22223000103',
+            '22223000103',
+            '0022223000103',
+            '2300 0103',
+            '23-00-01-03',
+            '59000103',
+            '70000103',
+            '323420056',
+            '3475',
+            'abdb7374',
+        )
+        for phone in invalid_values:
+            with self.subTest(phone=phone):
+                with self.assertRaises(ValidationError):
+                    self.Request.create({
+                        'name_display': 'FuelToken Bad Phone %s' % phone,
+                        'signup_identifier': phone,
+                        'signup_identifier_type': 'phone',
+                        'phone': phone,
+                        'login': phone,
+                        'company_id': self.fuel_company.id,
+                    })

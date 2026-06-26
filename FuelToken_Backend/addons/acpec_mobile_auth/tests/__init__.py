@@ -14,3 +14,4 @@ from . import test_mobile_security_settings_migration
 from . import test_mobile_security_setting_backoffice
 from . import test_mobile_security_readiness
 from . import test_mobile_security_audit_log
+from . import test_signup_identifier_contract

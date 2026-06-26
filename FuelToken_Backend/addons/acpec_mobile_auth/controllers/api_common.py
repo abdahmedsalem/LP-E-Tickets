@@ -675,12 +675,25 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if not self.EMAIL_RE.match(email or ''):
             raise ValidationError(_('Invalid email address.'))
 
-    def _parse_signup_identifier(self, signup_identifier):
+    def _parse_signup_identifier(self, signup_identifier, signup_identifier_type=False):
+        """Parse the public signup identity with a strict optional type contract.
+
+        If signup_identifier_type is omitted, legacy auto-detection is kept:
+        values containing '@' are treated as email, everything else as phone.
+
+        Phone identity is strict at input: exactly 8 digits and first digit 2,
+        3 or 4. No +222/222 prefix, spaces, dashes or other normalization is
+        accepted. The UI may assist entry, but the backend does not repair an
+        identity value.
+        """
         identifier = (signup_identifier or '').strip()
+        requested_type = (signup_identifier_type or '').strip().lower()
         if not identifier:
             raise ValidationError(_('Signup identifier is required.'))
+        if requested_type and requested_type not in ('phone', 'email'):
+            raise ValidationError(_('signup_identifier_type must be phone or email.'))
 
-        if '@' in identifier:
+        if requested_type == 'email' or (not requested_type and '@' in identifier):
             email = identifier.lower()
             self._validate_email(email)
             return {
@@ -691,15 +704,12 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 'email': email,
             }
 
-        phone_identifier = re.sub(r'\D', '', identifier)
-        if phone_identifier.startswith('222') and len(phone_identifier) == 11:
-            phone_identifier = phone_identifier[3:]
-        self._validate_phone_number(phone_identifier)
+        self._validate_phone_number(identifier)
         return {
-            'signup_identifier': phone_identifier,
+            'signup_identifier': identifier,
             'signup_identifier_type': 'phone',
-            'login': phone_identifier,
-            'phone': phone_identifier,
+            'login': identifier,
+            'phone': identifier,
             'email': False,
         }
 
@@ -720,8 +730,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 group_ids.append(group.id)
         return group_ids
 
-    def _create_mobile_signup_account(self, *, name, signup_identifier, secret_code, company, email=False, note=False):
-        identifier_vals = self._parse_signup_identifier(signup_identifier)
+    def _create_mobile_signup_account(self, *, name, signup_identifier, secret_code, company, email=False, note=False, signup_identifier_type=False):
+        identifier_vals = self._parse_signup_identifier(
+            signup_identifier,
+            signup_identifier_type=signup_identifier_type,
+        )
         self._validate_secret_code(secret_code)
 
         user_model = request.env['res.users'].sudo().with_context(active_test=False)
