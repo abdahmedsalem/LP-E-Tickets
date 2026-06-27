@@ -18,3 +18,4 @@ from . import test_device_trust_grants_fuel_user
 from . import test_mobile_device_trust_grants_fuel_user
 from . import test_mobile_device_replacement_lifecycle
 from . import test_mobile_old_device_return_lifecycle
+from . import test_pending_trust_endpoint_guard_audit
