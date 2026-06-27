@@ -68,7 +68,7 @@ Validation :
 | INV-Q6 | vérifié_patch43G4 | acpec_fueltoken_core.models.fuel_qr (`action_consume_by_station`, `_lock_records`, double relecture idempotence) | TestConsumeStationGuard, TestConsumeStationConcurrency, TestStationQrUseRuntimePolicy | Patch43G4 : double consommation, idempotence station et verrou FOR UPDATE prouvés |
 | INV-Q8 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_qr (`models.Constraint` public code/hash + génération aléatoire) | TestD2MechanicalInvariants | Patch43G3 : identifiants QR publics/numériques générés et uniques prouvés |
 | INV-TX2 | vérifié_patch43G2 | acpec_fueltoken_core.models.fuel_transaction + transaction lines append-only | TestFuelTransactionAppendOnly | Patch43G2 : `write()` économique et `unlink()` transaction/lines bloqués hors contexte interne |
-| INV-VAL1 | à_prouver_patch43G1 | transverse wallet/faces/QR/transfert/transaction | T-VAL1 à concevoir | Audit G1 : invariant trop large, à traiter après invariants mécaniques |
+| INV-VAL1 | clarifié_patch43G7_a_durcir_patch43G8 | face_line / qr_line / transaction_line / wallet projection | Patch43G8 à créer | Patch43G7 : VAL1 reformulé comme immutabilité d'identité économique + transitions tracées ; ne pas fermer comme vérifié avant durcissement |
 | ... | ... | ... | ... | ... |
 
 ## D3 — Mode dev/test (extrait amorcé ; compléter pour tous les INV-DEV, DEV-GLB)
@@ -647,3 +647,36 @@ Tests :
 Décision :
 - `INV-C6` passe en `vérifié_patch43G6`.
 - Aucun changement runtime nécessaire.
+
+### Patch43G7 — VAL1 doctrine/audit
+
+Statut : doctrine/traceability-only, sans changement runtime.
+
+Objet :
+- Clarifier `INV-VAL1` avant tout durcissement runtime.
+- Éviter de traiter "conservation valeur transverse" comme un invariant comptable faux ou trop large.
+- Distinguer les invariants déjà vérifiés des protections encore manquantes.
+
+Constat :
+- `INV-C2` couvre déjà la conservation des quantités d'une face line entre statuts.
+- `INV-C6` couvre déjà la propagation end-to-end de l'origine achat/lot.
+- `INV-Q6` couvre déjà la consommation QR verrouillée et idempotente.
+- `INV-TR5` couvre déjà la relecture après verrou lors du transfert.
+- `INV-TX2` couvre déjà le caractère append-only des transactions.
+- Les transactions FuelToken sont un journal d'audit métier, pas une balance comptable débit/crédit.
+
+Doctrine VAL1 retenue :
+- La valeur économique d'un Ticket est conservée par identité immuable + transitions d'état tracées.
+- La valeur faciale et l'origine achat/lot ne doivent pas changer après création.
+- Les QR lines et transaction lines doivent hériter cette identité économique.
+- Les transitions de quantité doivent passer par les flux contrôlés.
+- Le wallet est une projection calculée des face lines, pas une source autonome de vérité.
+
+Champs sensibles à durcir ensuite :
+- `acpec.fuel.face.line` : `purchase_id`, `purchase_line_id`, `carnet_type_id`, `face_value`, `qty_initial`, `lot_short_code`, `carnet_short_code`, `carnet_sequence`.
+- `acpec.fuel.qr.line` : `face_line_id`, `purchase_id`, `purchase_line_id`, `face_value`, `qty`.
+
+Décision :
+- `INV-VAL1` ne passe pas en `vérifié` avec G7.
+- `INV-VAL1` passe en `clarifié_patch43G7_a_durcir_patch43G8`.
+- Le prochain patch recommandé est `Patch43G8 — economic identity immutability`.
