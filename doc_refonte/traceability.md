@@ -462,3 +462,23 @@ Tests :
 - `TestMobileDeviceTrustHardening`, 0 failed, 0 error.
 - `TestMobileDeviceTrustBackoffice`, 0 failed, 0 error.
 - `TestMobileDeviceBackofficeMenu`, 0 failed, 0 error.
+
+### Patch43F2O — pending trust endpoint guard audit
+
+Statut : test-only / traceability, sans changement runtime.
+
+Décisions confirmées :
+- `pending_trust` est un état runtime du device, pas un état métier du user.
+- `pending_trust` ne retire pas les groupes FuelToken du user mobile.
+- Les groupes FuelToken indiquent le rôle métier théorique du compte.
+- Le trust device indique si ce téléphone peut agir maintenant.
+- Un user peut donc garder `group_fuel_user`, `group_fuel_station` ou `group_fuel_manager` pendant que le device courant est `pending_trust`.
+- Les endpoints métier doivent rester protégés par `_require_trusted_mobile_auth()` ou par une action sensible qui l'appelle.
+- Un device `pending_trust` peut seulement accéder aux flux minimaux auth/session/profil nécessaires pour afficher son état d'approbation.
+- Un device `pending_trust` ne doit pas lire wallet/station/admin ni manipuler tickets/carnets/QR.
+
+Tests ajoutés :
+- `TestPendingTrustEndpointGuardAudit`
+- Vérifie qu'un client `pending_trust` garde `group_fuel_user` mais ne lit pas le wallet.
+- Vérifie qu'une station `pending_trust` garde `group_fuel_station` mais ne lit pas le profil station.
+- Vérifie qu'un manager `pending_trust` garde `group_fuel_manager` mais ne lit pas les données admin.
