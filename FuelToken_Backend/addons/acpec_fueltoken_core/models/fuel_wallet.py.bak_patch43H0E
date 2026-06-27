@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 
 
 class AcpecFuelWallet(models.Model):
@@ -87,80 +87,6 @@ class AcpecFuelWallet(models.Model):
             # gracieusement en relisant le wallet désormais existant.
             self.env.cr.rollback()
             return self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
-
-    @api.model
-    def _fueltoken_user_has_group_xmlid(self, user, xmlid):
-        group = self.env.ref(xmlid, raise_if_not_found=False)
-        if not user or not group:
-            return False
-        return group in user.sudo().group_ids
-
-    @api.model
-    def _fueltoken_is_operational_mobile_user(self, user):
-        if not user or not user.exists():
-            return False
-        if not getattr(user, 'mobile_only', False):
-            return False
-        operational_xmlids = (
-            'acpec_fueltoken_base.group_fuel_station',
-            'acpec_fueltoken_base.group_fuel_manager',
-        )
-        return any(
-            self._fueltoken_user_has_group_xmlid(user, xmlid)
-            for xmlid in operational_xmlids
-        )
-
-    @api.model
-    def _fueltoken_partner_has_non_empty_client_wallet(self, partner, company=False):
-        # V1 definition: active fuel value exists when there are available
-        # faces, QR-active faces, QR-blocked faces, or active/blocked QR.
-        # Consumed/expired history is not a hard blocker.
-        partner = partner.sudo().exists() if partner else self.env['res.partner']
-        if not partner:
-            return False
-
-        line_domain = [('wallet_id.partner_id', '=', partner.id)]
-        qr_domain = [('partner_id', '=', partner.id)]
-        if company:
-            line_domain.append(('wallet_id.company_id', '=', company.id))
-            qr_domain.append(('company_id', '=', company.id))
-
-        line_domain.extend([
-            '|', '|',
-            ('qty_available', '>', 0),
-            ('qty_qr_active', '>', 0),
-            ('qty_qr_blocked', '>', 0),
-        ])
-        if self.env['acpec.fuel.face.line'].sudo().search_count(line_domain):
-            return True
-
-        qr_domain.append(('state', 'in', ['active', 'blocked']))
-        if self.env['acpec.fuel.qr'].sudo().search_count(qr_domain):
-            return True
-
-        return False
-
-    @api.model
-    def _assert_no_non_empty_client_wallet_for_operational_mobile_user(self, user, company=False):
-        user = user.sudo().exists() if user else self.env['res.users']
-        if not user:
-            return True
-        if not self._fueltoken_is_operational_mobile_user(user):
-            return True
-        if not user.partner_id:
-            return True
-        if not self._fueltoken_partner_has_non_empty_client_wallet(user.partner_id, company=company):
-            return True
-        raise ValidationError(_(
-            'Séparation des rôles FuelToken : un utilisateur mobile station ou manager '
-            'ne peut pas être lié à un partenaire dont la wallet Tickets Carburant est non vide.'
-        ))
-
-    @api.model
-    def _assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role(self, users, company=False):
-        for user in users.sudo().exists():
-            self._assert_no_non_empty_client_wallet_for_operational_mobile_user(user, company=company)
-        return True
 
     def write(self, vals):
         if 'balance' in vals:
