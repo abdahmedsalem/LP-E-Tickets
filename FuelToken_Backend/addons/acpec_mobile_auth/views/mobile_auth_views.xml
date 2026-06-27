@@ -141,14 +141,14 @@
             <form>
                 <header>
                     <button name="action_trust_device" type="object" string="Trust Device"
-                            invisible="trust_state == 'trusted'"
+                            invisible="trust_state != 'pending_trust'"
                             class="btn-primary"
                             groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-                    <button name="action_block_device" type="object" string="Block Device"
+                    <button name="action_open_block_device_wizard" type="object" string="Block Device"
                             invisible="trust_state == 'blocked'"
                             class="btn-secondary"
                             groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-                    <button name="action_reset_device_trust" type="object" string="Reset Trust"
+                    <button name="action_open_reset_device_trust_wizard" type="object" string="Reset Trust"
                             invisible="trust_state == 'pending_trust'"
                             class="btn-secondary"
                             groups="acpec_mobile_auth.group_mobile_auth_admin"/>
@@ -249,14 +249,14 @@
             <form create="0">
                 <header>
                     <button name="action_trust_device" type="object" string="Trust Device"
-                            invisible="not device_uid or device_trust_state == 'trusted'"
+                            invisible="not device_uid or device_trust_state != 'pending_trust'"
                             class="btn-primary"
                             groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-                    <button name="action_block_device" type="object" string="Block Device"
+                    <button name="action_open_block_device_wizard" type="object" string="Block Device"
                             invisible="device_trust_state == 'blocked'"
                             class="btn-secondary"
                             groups="acpec_mobile_auth.group_mobile_auth_admin"/>
-                    <button name="action_reset_device_trust" type="object" string="Reset Trust"
+                    <button name="action_open_reset_device_trust_wizard" type="object" string="Reset Trust"
                             invisible="device_trust_state == 'pending_trust'"
                             class="btn-secondary"
                             groups="acpec_mobile_auth.group_mobile_auth_admin"/>

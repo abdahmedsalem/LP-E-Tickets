@@ -104,7 +104,11 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             and (session.name or '') in (msg.body or '')
         ))
 
-        session.with_user(admin).action_block_device()
+        self.env['acpec.mobile.device.trust.wizard'].with_user(admin).create({
+            'session_id': session.id,
+            'operation': 'block',
+            'reason': 'F2N blocage device depuis test BO',
+        }).action_confirm()
         session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state', 'device_blocked_at'])
         device.invalidate_recordset(['trust_state', 'message_ids'])
 
@@ -118,7 +122,11 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             and (session.name or '') in (msg.body or '')
         ))
 
-        session.with_user(admin).action_reset_device_trust()
+        self.env['acpec.mobile.device.trust.wizard'].with_user(admin).create({
+            'session_id': session.id,
+            'operation': 'reset',
+            'reason': 'F2N remise en attente device depuis test BO',
+        }).action_confirm()
         session.invalidate_recordset(['device_trust_state', 'device_trusted_at', 'device_blocked_at'])
         device.invalidate_recordset(['trust_state', 'message_ids'])
 
@@ -214,7 +222,11 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             'platform': 'android',
         })['session']
         blocked.action_trust_device()
-        blocked.action_block_device()
+        self.env['acpec.mobile.device.trust.wizard'].create({
+            'session_id': blocked.id,
+            'operation': 'block',
+            'reason': 'F2N blocage device fixture',
+        }).action_confirm()
         blocked.invalidate_recordset(['state', 'device_trust_state', 'device_blocked_at'])
 
         self.assertEqual(blocked.device_trust_state, 'blocked')
@@ -292,10 +304,10 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             session.with_user(regular_user).action_trust_device()
 
         with self.assertRaises(AccessError):
-            session.with_user(regular_user).action_block_device()
+            session.with_user(regular_user).action_open_block_device_wizard()
 
         with self.assertRaises(AccessError):
-            session.with_user(regular_user).action_reset_device_trust()
+            session.with_user(regular_user).action_open_reset_device_trust_wizard()
 
     def test_session_views_expose_device_trust_backoffice_controls(self):
         list_arch = self.env.ref('acpec_mobile_auth.view_acpec_mobile_session_tree').arch_db
@@ -305,8 +317,8 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertIn('device_trust_state', list_arch)
 
         self.assertIn('action_trust_device', form_arch)
-        self.assertIn('action_block_device', form_arch)
-        self.assertIn('action_reset_device_trust', form_arch)
+        self.assertIn('action_open_block_device_wizard', form_arch)
+        self.assertIn('action_open_reset_device_trust_wizard', form_arch)
         self.assertIn('device_trust_state', form_arch)
         self.assertIn('device_trusted_at', form_arch)
         self.assertIn('device_blocked_at', form_arch)

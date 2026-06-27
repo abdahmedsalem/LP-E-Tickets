@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_acpec_mobile_device_trust_wizard_form" model="ir.ui.view">
+        <field name="name">acpec.mobile.device.trust.wizard.form</field>
+        <field name="model">acpec.mobile.device.trust.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirmation device mobile">
+                <sheet>
+                    <group>
+                        <field name="device_id" readonly="1" invisible="not device_id"/>
+                        <field name="session_id" readonly="1" invisible="not session_id"/>
+                        <field name="operation" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="warning_message" readonly="1" nolabel="1"/>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Motif obligatoire"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirmer" class="btn-primary"/>
+                    <button string="Annuler" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

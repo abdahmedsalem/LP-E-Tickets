@@ -258,8 +258,57 @@ class AcpecMobileDevice(models.Model):
         source_label = source_session.name or source_session.display_name or str(source_session.id)
         return '. Origine session: %s' % source_label
 
+
+    def _check_device_can_be_trusted(self):
+        for device in self:
+            if device.trust_state == 'blocked':
+                raise UserError(_(
+                    "Un device mobile bloqué ne peut pas être approuvé directement. "
+                    "Remettez-le d'abord en attente avec un motif, puis approuvez-le séparément."
+                ))
+            if device.user_id.mobile_state == 'blocked':
+                raise UserError(_("Impossible d'approuver un device d'un utilisateur mobile bloqué."))
+        return True
+
+    def action_open_block_device_wizard(self):
+        self.ensure_one()
+        self._check_device_trust_admin()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Bloquer le device"),
+            'res_model': 'acpec.mobile.device.trust.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_device_id': self.id,
+                'default_operation': 'block',
+            },
+        }
+
+    def action_open_reset_device_trust_wizard(self):
+        self.ensure_one()
+        self._check_device_trust_admin()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Remettre le device en attente"),
+            'res_model': 'acpec.mobile.device.trust.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_device_id': self.id,
+                'default_operation': 'reset',
+            },
+        }
+
+    def _device_trust_reason_suffix(self, reason):
+        reason = (reason or '').strip()
+        if not reason:
+            return ''
+        return '. Motif: %s' % reason
+
     def action_trust_device(self):
         self._check_device_trust_admin()
+        self._check_device_can_be_trusted()
         self._check_single_trust_target_per_user()
         self._lock_device_trust_scope_for_users(self.mapped('user_id').sudo())
         now = fields.Datetime.now()
@@ -282,7 +331,7 @@ class AcpecMobileDevice(models.Model):
             )
         return True
 
-    def action_block_device(self):
+    def action_block_device(self, reason=None):
         self._check_device_trust_admin()
         now = fields.Datetime.now()
         for device in self:
@@ -292,17 +341,21 @@ class AcpecMobileDevice(models.Model):
                 'trusted_by': False,
                 'blocked_at': now,
                 'blocked_by': self.env.uid,
+                'blocked_reason': (reason or '').strip() or False,
             })
             device._sync_sessions_from_device()
             device.message_post(
-                body='Device mobile bloqué par %s. Device UID: %s%s'
-                % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix())
+                body='Device mobile bloqué par %s. Device UID: %s%s%s'
+                % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix(), device._device_trust_reason_suffix(reason))
             )
         return True
 
-    def action_reset_device_trust(self):
+    def action_reset_device_trust(self, reason=None):
         self._check_device_trust_admin()
+        reason = (reason or '').strip()
         for device in self:
+            if device.trust_state == 'blocked' and not reason:
+                raise UserError(_("Le motif est obligatoire pour remettre en attente un device bloqué."))
             device.write({
                 'trust_state': 'pending_trust',
                 'trusted_at': False,
@@ -313,8 +366,8 @@ class AcpecMobileDevice(models.Model):
             })
             device._sync_sessions_from_device()
             device.message_post(
-                body='Confiance device remise en attente par %s. Device UID: %s%s'
-                % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix())
+                body='Confiance device remise en attente par %s. Device UID: %s%s%s'
+                % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix(), device._device_trust_reason_suffix(reason))
             )
         return True
 

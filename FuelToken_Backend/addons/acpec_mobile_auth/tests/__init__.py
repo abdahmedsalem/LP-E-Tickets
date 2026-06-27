@@ -18,3 +18,4 @@ from . import test_mobile_security_readiness
 from . import test_mobile_security_audit_log
 from . import test_signup_identifier_contract
 from . import test_mobile_user_blocking_lifecycle
+from . import test_mobile_device_trust_hardening

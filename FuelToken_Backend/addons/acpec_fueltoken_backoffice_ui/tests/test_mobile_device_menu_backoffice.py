@@ -21,7 +21,7 @@ class TestMobileDeviceBackofficeMenu(TransactionCase):
 
         self.assertIn('action_trust_device', arch)
         self.assertIn('Approuver le device', arch)
-        self.assertIn('action_block_device', arch)
+        self.assertIn('action_open_block_device_wizard', arch)
         self.assertIn('Bloquer le device', arch)
-        self.assertIn('action_reset_device_trust', arch)
+        self.assertIn('action_open_reset_device_trust_wizard', arch)
         self.assertIn('Remettre en attente', arch)

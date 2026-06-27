@@ -882,6 +882,37 @@ class AcpecMobileSession(models.Model):
             now=self.last_seen_at or fields.Datetime.now(),
         )
 
+
+    def action_open_block_device_wizard(self):
+        self.ensure_one()
+        self._check_device_trust_admin()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Bloquer le device"),
+            'res_model': 'acpec.mobile.device.trust.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_session_id': self.id,
+                'default_operation': 'block',
+            },
+        }
+
+    def action_open_reset_device_trust_wizard(self):
+        self.ensure_one()
+        self._check_device_trust_admin()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Remettre le device en attente"),
+            'res_model': 'acpec.mobile.device.trust.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_session_id': self.id,
+                'default_operation': 'reset',
+            },
+        }
+
     def action_trust_device(self):
         self._check_device_trust_admin()
         self._check_single_trust_target_per_user()
@@ -894,25 +925,25 @@ class AcpecMobileSession(models.Model):
         self.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at', 'device_blocked_at'])
         return result
 
-    def action_block_device(self):
+    def action_block_device(self, reason=None):
         self._check_device_trust_admin()
         result = True
         for session in self:
             device = session._device_for_trust_action()
             result = device.with_context(
                 acpec_mobile_source_session_id=session.id,
-            ).action_block_device()
+            ).action_block_device(reason=reason)
         self.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at', 'device_blocked_at', 'state', 'revoked_at'])
         return result
 
-    def action_reset_device_trust(self):
+    def action_reset_device_trust(self, reason=None):
         self._check_device_trust_admin()
         result = True
         for session in self:
             device = session._device_for_trust_action()
             result = device.with_context(
                 acpec_mobile_source_session_id=session.id,
-            ).action_reset_device_trust()
+            ).action_reset_device_trust(reason=reason)
         self.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at', 'device_blocked_at'])
         return result
 
