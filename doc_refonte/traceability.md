@@ -68,7 +68,7 @@ Validation :
 | INV-Q6 | vérifié_patch43G4 | acpec_fueltoken_core.models.fuel_qr (`action_consume_by_station`, `_lock_records`, double relecture idempotence) | TestConsumeStationGuard, TestConsumeStationConcurrency, TestStationQrUseRuntimePolicy | Patch43G4 : double consommation, idempotence station et verrou FOR UPDATE prouvés |
 | INV-Q8 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_qr (`models.Constraint` public code/hash + génération aléatoire) | TestD2MechanicalInvariants | Patch43G3 : identifiants QR publics/numériques générés et uniques prouvés |
 | INV-TX2 | vérifié_patch43G2 | acpec_fueltoken_core.models.fuel_transaction + transaction lines append-only | TestFuelTransactionAppendOnly | Patch43G2 : `write()` économique et `unlink()` transaction/lines bloqués hors contexte interne |
-| INV-VAL1 | clarifié_patch43G7_a_durcir_patch43G8 | face_line / qr_line / transaction_line / wallet projection | Patch43G8 à créer | Patch43G7 : VAL1 reformulé comme immutabilité d'identité économique + transitions tracées ; ne pas fermer comme vérifié avant durcissement |
+| INV-VAL1 | vérifié_patch43G8 | acpec.fuel.face.line / acpec.fuel.qr.line (`write` guards + contextes internes contrôlés) | TestEconomicIdentityImmutability + TestQrSeparerRuntimePolicy + run élargi 323 tests | Patch43G8 : identité économique immuable, transitions métier contrôlées, fixtures QR adaptées |
 | ... | ... | ... | ... | ... |
 
 ## D3 — Mode dev/test (extrait amorcé ; compléter pour tous les INV-DEV, DEV-GLB)
@@ -680,3 +680,52 @@ Décision :
 - `INV-VAL1` ne passe pas en `vérifié` avec G7.
 - `INV-VAL1` passe en `clarifié_patch43G7_a_durcir_patch43G8`.
 - Le prochain patch recommandé est `Patch43G8 — economic identity immutability`.
+
+### Patch43G8 — economic identity immutability
+
+Statut : runtime + tests.
+
+Objet :
+- Fermer `INV-VAL1` après clarification doctrinale G7.
+- Empêcher les mutations directes des champs d'identité économique.
+- Préserver les flux métier contrôlés : achat, émission QR, retrait/séparation QR, expiration, consommation station, transfert carnet.
+
+Durcissement ajouté :
+- `acpec.fuel.face.line.write()` bloque les écritures directes sur :
+  - `purchase_id`, `purchase_line_id`, `carnet_type_id`, `face_value`, `qty_initial`,
+    `carnet_no`, `lot_short_code`, `carnet_short_code`, `carnet_sequence`.
+  - `wallet_id`, `qty_available`, `qty_qr_active`, `qty_qr_blocked`, `qty_consumed`, `qty_expired`
+    hors contexte interne contrôlé.
+- `acpec.fuel.qr.line.write()` bloque les écritures directes sur :
+  - `source_qr_line_id`, `face_line_id`, `purchase_id`, `purchase_line_id`, `face_value`, `expires_at`.
+  - `qr_id`, `qty`, `state` hors contexte interne contrôlé.
+- `acpec.fuel.qr.line.unlink()` est interdit hors contexte interne explicite.
+
+Contextes internes :
+- `allow_fuel_face_line_state_update`
+- `allow_fuel_face_line_economic_update`
+- `allow_fuel_qr_line_state_update`
+- `allow_fuel_qr_line_economic_update`
+- `allow_fuel_qr_line_unlink`
+
+Tests ajoutés :
+- `TestEconomicIdentityImmutability.test_g8_face_line_direct_economic_mutations_are_blocked_but_transfer_flow_works`
+- `TestEconomicIdentityImmutability.test_g8_qr_line_direct_economic_mutations_are_blocked_but_split_flow_works`
+
+Corrections de fixtures :
+- `TestQrSeparerRuntimePolicy` adapte les écritures artificielles de `expires_at` avec contexte interne,
+  car `expires_at` est maintenant protégé par G8.
+
+Tests :
+- Ciblé `TestEconomicIdentityImmutability` : 2 tests, 0 échec, 0 erreur.
+- Ciblé `TestQrSeparerRuntimePolicy` : 5 tests, 0 échec, 0 erreur.
+- Élargi sécurité/runtime : 323 tests, 0 échec, 0 erreur.
+
+Décision :
+- `INV-VAL1` passe en `vérifié_patch43G8`.
+- La conservation de valeur transverse est portée par :
+  - identité économique immuable,
+  - transitions de quantité contrôlées,
+  - origine achat/lot propagée,
+  - transactions append-only,
+  - wallet comme projection des face lines.
