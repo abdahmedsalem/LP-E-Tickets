@@ -64,7 +64,7 @@ Validation :
 | INV-C6 | implémenté_probable_patch43G1_preuve_end_to_end_manquante | purchase/face/QR/transaction lines (`purchase_id`, `purchase_line_id`) | T-C4 à renforcer | Audit G1 : propagation présente, preuve end-to-end à ajouter |
 | INV-TR1 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (relocalisation carnet) | tests transfert existants | Audit G1 : transfert relocalise les faces vers wallet destination |
 | INV-TR4 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (`UNIQUE(source_wallet_id, idempotency_key)`) | tests idempotence transfert existants | Audit G1 : replay/conflict couverts |
-| INV-TR5 | implémenté_patch43G1_test_concurrence_manquant | acpec_fueltoken_base.models.fuel_carnet_transfer (`FOR UPDATE`, relecture/invalidate) | T-TR5 à ajouter/renforcer | Audit G1 : verrouillage observé, preuve test dédiée manquante |
+| INV-TR5 | vérifié_patch43G5 | acpec_fueltoken_core.models.fuel_carnet_transfer (`FOR UPDATE` wallets/face lines + `invalidate_recordset`) | TestCarnetTransferLockReread | Patch43G5 : relecture après verrou prouvée par test dédié |
 | INV-Q6 | vérifié_patch43G4 | acpec_fueltoken_core.models.fuel_qr (`action_consume_by_station`, `_lock_records`, double relecture idempotence) | TestConsumeStationGuard, TestConsumeStationConcurrency, TestStationQrUseRuntimePolicy | Patch43G4 : double consommation, idempotence station et verrou FOR UPDATE prouvés |
 | INV-Q8 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_qr (`models.Constraint` public code/hash + génération aléatoire) | TestD2MechanicalInvariants | Patch43G3 : identifiants QR publics/numériques générés et uniques prouvés |
 | INV-TX2 | vérifié_patch43G2 | acpec_fueltoken_core.models.fuel_transaction + transaction lines append-only | TestFuelTransactionAppendOnly | Patch43G2 : `write()` économique et `unlink()` transaction/lines bloqués hors contexte interne |
@@ -595,3 +595,27 @@ Décision :
 - `INV-Q6` passe en `vérifié_patch43G4`.
 - Aucun changement runtime nécessaire.
 - Aucun nouveau test nécessaire, car la preuve existe déjà dans les tests core/concurrence/API station.
+
+### Patch43G5 — carnet transfer lock/re-read proof
+
+Statut : test-only, sans changement runtime.
+
+Objet :
+- Fermer `INV-TR5`, identifié par G1 comme implémenté mais sans preuve dédiée.
+- Prouver que le transfert de carnet relit l'état réel des lignes après verrou avant confirmation.
+- Ne pas modifier le runtime : le verrouillage `FOR UPDATE` et `invalidate_recordset()` existent déjà.
+
+Preuve ajoutée :
+- `TestCarnetTransferLockReread.test_g5_transfer_rereads_locked_face_line_before_confirming`
+- Le test charge volontairement le cache ORM de la face line.
+- Le test modifie ensuite `wallet_id` hors ORM par SQL direct pour simuler un état concurrent/stale.
+- `action_confirm()` doit relire après verrou et refuser le transfert, au lieu de confirmer avec un cache obsolète.
+- Le transfert reste en `draft` et la face line reste dans le wallet externe simulé.
+
+Tests :
+- Ciblé `TestCarnetTransferLockReread` : 1 test, 0 échec, 0 erreur.
+- Élargi sécurité/runtime : 320 tests, 0 échec, 0 erreur.
+
+Décision :
+- `INV-TR5` passe en `vérifié_patch43G5`.
+- Aucun changement runtime nécessaire.
