@@ -7,7 +7,10 @@
     'website': 'https://acpec.odoorim.com',
     'license': 'OPL-1',
     'depends': ['acpec_mobile_auth', 'acpec_fueltoken_base'],
-    'data': [],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/mobile_phone_change_views.xml',
+    ],
     'installable': True,
     'application': False,
 }

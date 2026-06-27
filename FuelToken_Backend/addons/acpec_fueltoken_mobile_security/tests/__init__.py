@@ -1,1 +1,2 @@
 from . import test_fueltoken_mobile_identity_phone_only
+from . import test_mobile_phone_change_lifecycle
