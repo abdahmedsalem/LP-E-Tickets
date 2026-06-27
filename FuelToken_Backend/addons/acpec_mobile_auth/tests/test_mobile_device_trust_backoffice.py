@@ -30,16 +30,16 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             if self.env.ref(xmlid, raise_if_not_found=False)
         ]
 
-    def _create_mobile_user(self, login):
+    def _create_mobile_user(self, label, phone=None, name=None):
         user_model = self.env['res.users'].sudo().with_context(
             acpec_mobile_allow_password_write=True,
             no_reset_password=True,
         )
+        mobile_phone = phone or _acpec_test_mobile_phone(label)
         return user_model.create({
-            'name': login,
-            'login': _acpec_test_mobile_phone(login),
-            'mobile_phone': _acpec_test_mobile_phone(login),
-            'email': login,
+            'name': name or label,
+            'login': mobile_phone,
+            'mobile_phone': mobile_phone,
             'active': True,
             'mobile_only': True,
             'mobile_state': 'approved',
@@ -314,12 +314,10 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertIn('acpec_mobile_auth.group_mobile_auth_admin', form_arch)
 
     def test_mobile_identity_fields_are_available_for_device_worklist(self):
-        user = self._create_mobile_user('device-label-32b@example.com')
-        user.write({
-            'name': 'Test Mobile 32B',
-            'login': '21000008',
-            'mobile_phone': '21000008',
-        })
+        user = self._create_mobile_user(
+            'Client mobile Test 032',
+            phone='21000008',
+        )
 
         token_data = self.env['acpec.mobile.session'].sudo().create_for_user(user, {
             'device_uid': 'device-label-32b',
@@ -330,7 +328,7 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         session.invalidate_recordset(['mobile_phone', 'mobile_user_label'])
 
         self.assertEqual(session.mobile_phone, '21000008')
-        self.assertEqual(session.mobile_user_label, 'Test Mobile 32B - 21000008')
+        self.assertEqual(session.mobile_user_label, 'Client mobile Test 032 - 21000008')
 
     def test_device_approval_candidate_keeps_latest_active_pending_session_only(self):
         user = self._create_mobile_user('device-candidate-32b@example.com')

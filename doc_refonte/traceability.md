@@ -90,7 +90,7 @@ Total invariants D2 :  __ / __ verifie
 Total invariants D3 :  __ / __ verifie
 
 Invariants sans test (trous) : [lister ici]
-Invariants nouveaux non encore implémentés : INV-I7, préfixes mobiles FuelToken 2/3/4, contrat signup_identifier_type explicite/fallback F2B, ... (compléter)
+Invariants nouveaux non encore implémentés : préfixes mobiles FuelToken 2/3/4, ... (compléter)
 ```
 
 ## Patch43F2B — contrat signup_identifier strict
@@ -280,3 +280,29 @@ Résultat attendu :
 - `partner.acpec_is_mobile_partner is True`.
 - `partner.phone` et `partner.email` restent vides au signup.
 - L'email éventuel reste porté par la demande d'inscription, pas par le partenaire.
+
+### Patch43F2G — changement téléphone mobile FuelToken contrôlé BO
+
+Statut : implémenté et testé.
+
+Couverture doctrine :
+- INV-I7 : changement de numéro exclusivement via back-office contrôlé.
+- Même `res.users.id` conservé.
+- Même `partner_id` conservé.
+- `login` et `mobile_phone` changent ensemble vers le nouveau numéro canonique.
+- Écriture directe de `login` / `mobile_phone` refusée pour une identité FuelToken établie.
+- Doublon `login` / `mobile_phone` refusé.
+- `partner.ref` automatique `MOB:<old_phone>` remplacée par `MOB:<new_phone>`.
+- Référence partenaire manuelle conservée.
+- Audit créé dans `acpec.fueltoken.mobile.phone.change.log`.
+- Log d'audit en lecture seule pour l'admin mobile.
+- Sessions actives révoquées systématiquement.
+- Trust device conservé : la révocation porte sur les sessions, pas sur le device.
+- Wizard back-office disponible depuis la fiche utilisateur.
+- Historique disponible dans Configuration > Historique changements téléphone mobile.
+- Menu Utilisateurs mobiles — audit filtré par `mobile_only=True`.
+
+Tests :
+- `test_mobile_phone_change_lifecycle.py`
+- Run complet : 284 tests, 0 failed, 0 error.
+- Run ciblé après ACL : 122 tests, 0 failed, 0 error.

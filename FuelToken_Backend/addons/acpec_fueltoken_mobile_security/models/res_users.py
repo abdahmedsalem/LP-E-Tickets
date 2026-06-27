@@ -1,5 +1,5 @@
-from odoo import _, api, models
-from odoo.exceptions import ValidationError
+from odoo import _, api, fields, models
+from odoo.exceptions import AccessError, ValidationError
 
 
 class ResUsers(models.Model):
@@ -42,6 +42,149 @@ class ResUsers(models.Model):
             ) % names)
         return True
 
+    def _check_acpec_fueltoken_mobile_phone_change_admin(self):
+        if self.env.su or self.env.user.has_group('acpec_mobile_auth.group_mobile_auth_admin'):
+            return True
+        raise AccessError(_('Seul un administrateur mobile peut changer le téléphone FuelToken.'))
+
+    def _acpec_fueltoken_user_label_for_error(self):
+        self.ensure_one()
+        name = (self.name or self.display_name or '').strip()
+        login = (self.login or '').strip()
+        if name and login:
+            return '%s (login: %s)' % (name, login)
+        if name:
+            return '%s (login: -)' % name
+        if login:
+            return 'Utilisateur #%s (login: %s)' % (self.id, login)
+        return 'Utilisateur #%s (login: -)' % self.id
+
+    def _acpec_fueltoken_has_established_mobile_identity(self):
+        self.ensure_one()
+        login = (self.login or '').strip()
+        phone = (self.mobile_phone or '').strip()
+        return bool(
+            login
+            and phone
+            and login == phone
+            and self._acpec_is_canonical_mobile_phone(phone)
+        )
+
+    def _check_acpec_fueltoken_mobile_phone_write_allowed(self, vals):
+        if self.env.context.get('acpec_fueltoken_allow_mobile_phone_change'):
+            return True
+        if not ({'login', 'mobile_phone'} & set(vals)):
+            return True
+
+        blocked_users = self.env['res.users']
+        for user in self.sudo()._acpec_fueltoken_is_mobile_identity_scope():
+            if not user._acpec_fueltoken_has_established_mobile_identity():
+                continue
+
+            login_changed = 'login' in vals and (vals.get('login') or '').strip() != (user.login or '').strip()
+            phone_changed = 'mobile_phone' in vals and (vals.get('mobile_phone') or '').strip() != (user.mobile_phone or '').strip()
+            if login_changed or phone_changed:
+                blocked_users |= user
+
+        if blocked_users:
+            labels = ', '.join(
+                user._acpec_fueltoken_user_label_for_error()
+                for user in blocked_users[:5]
+            )
+            if len(blocked_users) > 5:
+                labels = '%s, ... (+%s)' % (labels, len(blocked_users) - 5)
+            raise ValidationError(_(
+                "Changement téléphone FuelToken refusé : utilisez l'action back-office "
+                "contrôlée de changement de téléphone mobile. Utilisateurs concernés: %s"
+            ) % labels)
+        return True
+
+    def _acpec_fueltoken_duplicate_phone_user(self, new_phone):
+        return self.env['res.users'].with_context(active_test=False).sudo().search([
+            ('id', 'not in', self.ids),
+            ('mobile_only', '=', True),
+            '|',
+            ('login', '=', new_phone),
+            ('mobile_phone', '=', new_phone),
+        ], limit=1)
+
+    def action_fueltoken_change_mobile_phone(self, new_phone, reason, source='backoffice'):
+        self.ensure_one()
+        self._check_acpec_fueltoken_mobile_phone_change_admin()
+
+        reason = (reason or '').strip()
+        if not reason:
+            raise ValidationError(_('Le motif du changement de téléphone est obligatoire.'))
+
+        new_phone = (new_phone or '').strip()
+        if not self._acpec_is_canonical_mobile_phone(new_phone):
+            raise ValidationError(_('Le nouveau téléphone doit être un numéro local mauritanien canonique à 8 chiffres.'))
+
+        user = self.sudo()
+        if user not in user._acpec_fueltoken_is_mobile_identity_scope():
+            raise ValidationError(_('Le changement de téléphone contrôlé est réservé aux utilisateurs mobiles FuelToken.'))
+
+        old_phone = (user.mobile_phone or '').strip()
+        old_login = (user.login or '').strip()
+        if not old_phone or old_login != old_phone or not user._acpec_is_canonical_mobile_phone(old_phone):
+            raise ValidationError(_('Identité mobile FuelToken courante invalide : login et mobile_phone doivent être le même numéro canonique.'))
+
+        if new_phone == old_phone:
+            raise ValidationError(_('Le nouveau téléphone est identique au téléphone actuel.'))
+
+        duplicate = user._acpec_fueltoken_duplicate_phone_user(new_phone)
+        if duplicate:
+            raise ValidationError(_('Ce numéro est déjà utilisé par un autre utilisateur mobile.'))
+
+        partner = user.partner_id.sudo()
+        old_partner_ref = partner.ref or False
+        new_partner_ref = old_partner_ref
+        expected_old_ref = 'MOB:%s' % old_phone
+        expected_new_ref = 'MOB:%s' % new_phone
+
+        if partner and (old_partner_ref == expected_old_ref or (not old_partner_ref and getattr(partner, 'acpec_is_mobile_partner', False))):
+            partner.write({'ref': expected_new_ref})
+            new_partner_ref = expected_new_ref
+
+        now = fields.Datetime.now()
+        active_sessions = self.env['acpec.mobile.session'].sudo().search([
+            ('user_id', '=', user.id),
+            ('state', '=', 'active'),
+        ])
+        revoked_count = 0
+        if active_sessions:
+            revoked_count = len(active_sessions)
+            active_sessions.write({
+                'state': 'revoked',
+                'revoked_at': now,
+            })
+
+        user.with_context(
+            acpec_fueltoken_allow_mobile_phone_change=True,
+            no_reset_password=True,
+        ).write({
+            'login': new_phone,
+            'mobile_phone': new_phone,
+        })
+
+        log = self.env['acpec.fueltoken.mobile.phone.change.log'].sudo().create({
+            'user_id': user.id,
+            'partner_id': partner.id if partner else False,
+            'old_phone': old_phone,
+            'new_phone': new_phone,
+            'old_login': old_login,
+            'new_login': new_phone,
+            'old_partner_ref': old_partner_ref,
+            'new_partner_ref': new_partner_ref,
+            'changed_by': self.env.user.id,
+            'changed_at': now,
+            'reason': reason,
+            'source': source or 'backoffice',
+            'revoke_active_sessions': True,
+            'active_sessions_revoked_count': revoked_count,
+        })
+        return log
+
     @api.model_create_multi
     def create(self, vals_list):
         users = super().create(vals_list)
@@ -49,6 +192,7 @@ class ResUsers(models.Model):
         return users
 
     def write(self, vals):
+        self._check_acpec_fueltoken_mobile_phone_write_allowed(vals)
         result = super().write(vals)
         self._check_acpec_fueltoken_mobile_identity()
         return result
