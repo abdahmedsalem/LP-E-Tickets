@@ -301,6 +301,13 @@
               sequence="69"
               groups="acpec_mobile_auth.group_mobile_auth_admin"/>
 
+    <menuitem id="menu_backoffice_mobile_devices_all"
+              name="Devices mobiles — audit"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_config"
+              action="acpec_mobile_auth.action_acpec_mobile_device"
+              sequence="31"
+              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
     <record id="acpec_mobile_auth.menu_mobile_auth_sessions" model="ir.ui.menu">
         <field name="name">Sessions mobile</field>
         <field name="parent_id" ref="acpec_fueltoken_base.menu_acpec_fueltoken_config"/>

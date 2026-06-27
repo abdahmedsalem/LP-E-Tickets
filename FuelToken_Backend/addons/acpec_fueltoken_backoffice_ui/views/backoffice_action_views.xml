@@ -136,4 +136,9 @@
         <field name="name">Vérifications OTP</field>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
+
+    <record id="acpec_mobile_auth.action_acpec_mobile_device" model="ir.actions.act_window">
+        <field name="name">Devices mobiles — audit</field>
+    </record>
+
 </odoo>

@@ -418,3 +418,23 @@ Décisions confirmées :
 Tests :
 - `test_mobile_user_blocking_backoffice.py`
 - Run ciblé : `TestMobileUserBlockingBackofficeLifecycle`, 0 failed, 0 error.
+
+### Patch43F2M — BO device menu visibility
+
+Statut : exposition BO des devices durables, patch UI/navigation uniquement.
+
+Décisions confirmées :
+- F2M ne modifie pas le runtime device.
+- Le modèle durable `acpec.mobile.device` existait déjà.
+- L'action `acpec_mobile_auth.action_acpec_mobile_device` existait déjà.
+- Les boutons device existaient déjà : approuver, bloquer, remettre en attente.
+- Le problème était l'exposition dans le BO FuelToken après réorganisation/override du menu Mobile Auth.
+- F2M ajoute un menu visible `Devices mobiles — audit`.
+- Le menu ouvre les devices durables, pas seulement les sessions candidates.
+- `Devices à approuver` reste la file opérationnelle des sessions candidates.
+- Les boutons de la fiche device sont francisés : Approuver le device, Bloquer le device, Remettre en attente.
+- Aucun déblocage device direct vers trusted n'est ajouté.
+
+Tests :
+- `test_mobile_device_menu_backoffice.py`
+- Run ciblé : `TestMobileDeviceBackofficeMenu`, 0 failed, 0 error.
