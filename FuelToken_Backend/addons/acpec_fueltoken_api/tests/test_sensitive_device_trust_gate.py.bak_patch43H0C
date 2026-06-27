@@ -36,6 +36,7 @@ class TestSensitiveDeviceTrustGate(TransactionCase):
             source = self._source(method)
             self.assertNotIn("_require_sensitive_action_pin", source)
             self.assertNotIn("_sensitive_action_transaction", source)
+            self.assertNotIn("_sensitive_action_transaction", source)
 
         for method in (
             AcpecFuelTokenMobileApi.transfer_carnets_recipient,
@@ -64,17 +65,24 @@ class TestSensitiveDeviceTrustGate(TransactionCase):
     def test_admin_write_endpoints_require_trusted_manager_device_indirectly(self):
         for method in (
             AcpecFuelTokenAdminApi.purchase_approve,
-            AcpecFuelTokenAdminApi.device_approve_pending_trust,
+            AcpecFuelTokenAdminApi.purchase_reject,
+            AcpecFuelTokenAdminApi.station_create,
+            AcpecFuelTokenAdminApi.station_update,
+            AcpecFuelTokenAdminApi.station_disable,
+            AcpecFuelTokenAdminApi.carnet_type_create,
+            AcpecFuelTokenAdminApi.carnet_type_update,
+            AcpecFuelTokenAdminApi.carnet_type_delete,
         ):
             self.assertIn("_sensitive_action_transaction", self._source(method))
 
     def test_admin_read_endpoints_require_trusted_device_without_action_pin(self):
         self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenAdminApi._admin_user))
         for method in (
+            AcpecFuelTokenAdminApi.carnet_type_list,
             AcpecFuelTokenAdminApi.purchases_pending,
             AcpecFuelTokenAdminApi.purchase_detail,
             AcpecFuelTokenAdminApi.stations_list,
-            AcpecFuelTokenAdminApi.devices_pending_trust,
+            AcpecFuelTokenAdminApi.reports_summary,
         ):
             source = self._source(method)
             self.assertIn("_admin_user", source)

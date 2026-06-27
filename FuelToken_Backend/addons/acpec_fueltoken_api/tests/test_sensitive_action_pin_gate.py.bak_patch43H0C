@@ -49,7 +49,9 @@ class TestSensitiveActionPinGate(TransactionCase):
             self._assert_no_pin_guard(method)
 
     def test_station_sensitive_write_endpoint_requires_action_pin(self):
-        self._assert_pin_guard(AcpecFuelTokenStationApi.use_qr, "station_qr_use")
+        source = self._source(AcpecFuelTokenStationApi.use_qr)
+        self.assertIn("_sensitive_action_transaction", source)
+        self.assertIn("purpose='station_qr_use'", source)
 
     def test_station_read_or_check_endpoints_require_trust_but_not_action_pin(self):
         self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenStationApi._station_user))
@@ -63,18 +65,27 @@ class TestSensitiveActionPinGate(TransactionCase):
     def test_admin_sensitive_write_endpoints_require_action_pin(self):
         expectations = (
             (AcpecFuelTokenAdminApi.purchase_approve, "purchase_approve"),
-            (AcpecFuelTokenAdminApi.device_approve_pending_trust, "device_approve_pending_trust"),
+            (AcpecFuelTokenAdminApi.purchase_reject, "purchase_reject"),
+            (AcpecFuelTokenAdminApi.station_create, "station_create"),
+            (AcpecFuelTokenAdminApi.station_update, "station_update"),
+            (AcpecFuelTokenAdminApi.station_disable, "station_disable"),
+            (AcpecFuelTokenAdminApi.carnet_type_create, "carnet_type_create"),
+            (AcpecFuelTokenAdminApi.carnet_type_update, "carnet_type_update"),
+            (AcpecFuelTokenAdminApi.carnet_type_delete, "carnet_type_delete"),
         )
         for method, purpose in expectations:
-            self._assert_pin_guard(method, purpose)
+            source = self._source(method)
+            self.assertIn("_sensitive_action_transaction", source)
+            self.assertIn("purpose='%s'" % purpose, source)
 
     def test_admin_read_endpoints_require_trust_but_not_action_pin(self):
         self.assertIn("_require_trusted_mobile_auth", self._source(AcpecFuelTokenAdminApi._admin_user))
         for method in (
+            AcpecFuelTokenAdminApi.carnet_type_list,
             AcpecFuelTokenAdminApi.purchases_pending,
             AcpecFuelTokenAdminApi.purchase_detail,
             AcpecFuelTokenAdminApi.stations_list,
-            AcpecFuelTokenAdminApi.devices_pending_trust,
+            AcpecFuelTokenAdminApi.reports_summary,
         ):
             source = self._source(method)
             self.assertNotIn("_require_sensitive_action_pin", source)

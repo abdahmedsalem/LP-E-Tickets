@@ -9,30 +9,27 @@ from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelToken
 
 @tagged("post_install", "-at_install")
 class TestAdminSensitiveInventoryPolicy(TransactionCase):
-    # H0C source-level inventory lock:
-    # manager mobile = positive validator only.
+    # Source-level inventory lock:
+    # every admin write endpoint currently classified as sensitive must stay
+    # protected by trusted mobile manager + action_code + idempotency/request_hash.
+    # Admin read endpoints require trusted manager device, but no action_code/idempotency gate.
 
     SENSITIVE_ADMIN_WRITE_METHODS = (
         (AcpecFuelTokenAdminApi.purchase_approve, "purchase_approve"),
-        (AcpecFuelTokenAdminApi.device_approve_pending_trust, "device_approve_pending_trust"),
+        (AcpecFuelTokenAdminApi.purchase_reject, "purchase_reject"),
+        (AcpecFuelTokenAdminApi.station_create, "station_create"),
+        (AcpecFuelTokenAdminApi.station_update, "station_update"),
+        (AcpecFuelTokenAdminApi.station_disable, "station_disable"),
+        (AcpecFuelTokenAdminApi.carnet_type_create, "carnet_type_create"),
+        (AcpecFuelTokenAdminApi.carnet_type_update, "carnet_type_update"),
+        (AcpecFuelTokenAdminApi.carnet_type_delete, "carnet_type_delete"),
     )
 
     ADMIN_READ_METHODS = (
+        AcpecFuelTokenAdminApi.carnet_type_list,
         AcpecFuelTokenAdminApi.purchases_pending,
         AcpecFuelTokenAdminApi.purchase_detail,
         AcpecFuelTokenAdminApi.stations_list,
-        AcpecFuelTokenAdminApi.devices_pending_trust,
-    )
-
-    BACKOFFICE_ONLY_METHODS = (
-        AcpecFuelTokenAdminApi.carnet_type_list,
-        AcpecFuelTokenAdminApi.carnet_type_create,
-        AcpecFuelTokenAdminApi.carnet_type_update,
-        AcpecFuelTokenAdminApi.carnet_type_delete,
-        AcpecFuelTokenAdminApi.purchase_reject,
-        AcpecFuelTokenAdminApi.station_create,
-        AcpecFuelTokenAdminApi.station_update,
-        AcpecFuelTokenAdminApi.station_disable,
         AcpecFuelTokenAdminApi.reports_summary,
     )
 
@@ -64,9 +61,3 @@ class TestAdminSensitiveInventoryPolicy(TransactionCase):
             self.assertNotIn("_sensitive_action_transaction", source)
             self.assertNotIn("_require_idempotency_key", source)
             self.assertNotIn("_compute_idempotency_request_hash", source)
-
-    def test_backoffice_only_methods_are_fail_closed_for_mobile_manager(self):
-        for method in self.BACKOFFICE_ONLY_METHODS:
-            source = self._source(method)
-            self.assertIn("_raise_mobile_manager_backoffice_only", source)
-            self.assertNotIn("_sensitive_action_transaction", source)
