@@ -24,6 +24,7 @@ class TestSensitiveActionPinGate(TransactionCase):
         self.assertNotIn("_require_sensitive_action_pin", source)
         self.assertNotIn("_sensitive_action_transaction", source)
 
+    # INV-A1: les écritures mobiles sensibles doivent passer par _sensitive_action_transaction().
     def test_mobile_sensitive_write_endpoints_require_action_pin(self):
         expectations = (
             (AcpecFuelTokenMobileApi.create_purchase, "purchase_create"),

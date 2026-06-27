@@ -188,6 +188,7 @@ class TestMobileSecurityAuditLog(TransactionCase):
         self.assertEqual(log.failed_count_before, 1)
         self.assertEqual(log.failed_count_after, 0)
 
+    # INV-A1: l'autorisation PIN d'une action sensible est auditée sans stocker le PIN brut.
     def test_sensitive_action_transaction_logs_allowed_after_success(self):
         user = self._create_mobile_user('audit-transaction-success-43d@example.com')
         session = self._session_for_user(
