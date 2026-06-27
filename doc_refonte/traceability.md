@@ -438,3 +438,27 @@ Décisions confirmées :
 Tests :
 - `test_mobile_device_menu_backoffice.py`
 - Run ciblé : `TestMobileDeviceBackofficeMenu`, 0 failed, 0 error.
+
+### Patch43F2N — BO device trust action hardening
+
+Statut : durcissement BO des actions sensibles device, avec wizard, motif obligatoire et interdiction du retour direct blocked -> trusted.
+
+Décisions confirmées :
+- F2N ne change pas le contrat API mobile.
+- Les actions device restent portées par `acpec.mobile.device` et déléguées depuis `acpec.mobile.session`.
+- `action_trust_device()` refuse désormais un device déjà `blocked`.
+- `action_trust_device()` refuse aussi l'approbation d'un device si le user mobile est `blocked`.
+- Le bouton BO d'approbation n'est visible que pour les devices `pending_trust`.
+- Le blocage device BO passe par un wizard de confirmation avec motif obligatoire.
+- La remise en attente device BO passe par un wizard de confirmation avec motif obligatoire.
+- `blocked -> pending_trust` reste possible, mais seulement avec motif ; l'approbation `trusted` doit être faite séparément.
+- `blocked -> trusted` direct est interdit.
+- Le blocage device remplit `blocked_reason`.
+- Les motifs sont tracés dans le chatter du device.
+- Aucun nouveau modèle métier de log n'est ajouté.
+- Les sessions actives liées à un device bloqué restent révoquées par la logique existante `_sync_sessions_from_device()`.
+
+Tests :
+- `TestMobileDeviceTrustHardening`, 0 failed, 0 error.
+- `TestMobileDeviceTrustBackoffice`, 0 failed, 0 error.
+- `TestMobileDeviceBackofficeMenu`, 0 failed, 0 error.
