@@ -397,3 +397,24 @@ Décisions confirmées :
 Tests :
 - `test_mobile_old_device_return_lifecycle.py`
 - Run ciblé : `TestMobileOldDeviceReturnLifecycle`, 0 failed, 0 error.
+
+### Patch43F2L — BO user blocking lifecycle simple
+
+Statut : actions BO simples blocage/réactivation user mobile, avec warning wizard et trace chatter, sans modèle métier de log dédié.
+
+Décisions confirmées :
+- F2L ajoute deux actions BO : bloquer utilisateur mobile et réactiver utilisateur mobile.
+- Le blocage user passe `mobile_state` à `blocked`.
+- La réactivation user repasse par défaut à `self_registered`, ou `approved` si explicitement demandé.
+- Le motif est obligatoire.
+- Le wizard affiche un avertissement avant confirmation.
+- La trace est postée dans le chatter du partner lié au user mobile.
+- Aucun modèle métier de log supplémentaire n'est créé.
+- Les sessions actives sont révoquées par la logique existante quand le user sort de `approved/self_registered`.
+- Les devices ne sont pas modifiés automatiquement.
+- Réactivation user ne restaure aucune session et n'approuve aucun device.
+- Blocage user reste distinct du blocage device.
+
+Tests :
+- `test_mobile_user_blocking_backoffice.py`
+- Run ciblé : `TestMobileUserBlockingBackofficeLifecycle`, 0 failed, 0 error.

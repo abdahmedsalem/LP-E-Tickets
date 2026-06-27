@@ -1,3 +1,4 @@
 from . import test_fueltoken_mobile_identity_phone_only
 from . import test_mobile_phone_change_lifecycle
 from . import test_mobile_phone_device_composition_lifecycle
+from . import test_mobile_user_blocking_backoffice
