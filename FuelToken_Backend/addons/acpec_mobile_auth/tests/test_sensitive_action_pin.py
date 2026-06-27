@@ -79,6 +79,7 @@ class TestSensitiveActionPin(TransactionCase):
             return
         self.fail('AccessError attendu mais non levé.')
 
+    # INV-A1: une action sensible mobile exige action_code sur device trusted.
     def test_sensitive_action_pin_accepts_action_code_on_trusted_device(self):
         user, session = self._trusted_session()
         controller = self._controller_for_session(session)

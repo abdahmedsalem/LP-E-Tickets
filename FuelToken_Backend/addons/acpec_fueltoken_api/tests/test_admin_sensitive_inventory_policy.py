@@ -42,6 +42,7 @@ class TestAdminSensitiveInventoryPolicy(TransactionCase):
         actual = set(re.findall(r"_sensitive_action_transaction\(kwargs, purpose='([^']+)'\)", source))
         self.assertEqual(actual, expected)
 
+    # INV-A1: les écritures admin sensibles exigent trusted device, action_code et idempotency_key.
     def test_admin_sensitive_writes_require_pin_trust_and_idempotency(self):
         for method, purpose in self.SENSITIVE_ADMIN_WRITE_METHODS:
             source = self._source(method)

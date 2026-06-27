@@ -38,7 +38,7 @@ l'invariant et sert de point de départ — à ne pas recopier aveuglément.
 | INV-D4 | implémenté_patch43C | acpec_mobile_auth (single trusted device per user, révocation du trust précédent à la promotion, lock transactionnel, garde défensive non déclarative) | T-D3 | Validé par Patch43C, tests prod-like 233 tests OK, tag cible security-runtime-v1-20260625-patch43C |
 | INV-D7 | implémenté_patch43A | acpec_mobile_auth (refus dur device blocked, révocation sessions, access/refresh tokens inutilisables) | T-D6 | Validé par Patch43A tag security-runtime-v1-20260625-patch43A, tests prod-like 228 tests OK |
 | INV-D8 | implémenté_patch43B | acpec_mobile_auth + acpec_fueltoken_api (trust wall lecture métier + actions sensibles, sans action_code pour lectures) | T-D7 | Validé par Patch43B, tests prod-like 228 tests OK, tag cible security-runtime-v1-20260625-patch43B |
-| INV-A1 | à_implementer | api_common._require_sensitive_action_pin | T-A1 | api_common.py |
+| INV-A1 | vérifié_patch43H0 | acpec_mobile_auth.controllers.api_common (`_require_sensitive_action_pin`, `_sensitive_action_transaction`) + acpec_fueltoken_api controllers sensibles | TestSensitiveActionPin + TestMobileSecurityAuditLog + TestSensitiveActionPinGate + TestAdminSensitiveInventoryPolicy + tests runtime policy action_code/idempotency | Patch43H0 : action_code obligatoire pour actions sensibles, lectures sans action_code, audit sans PIN brut |
 | INV-X3 | implémenté_patch43D | acpec_mobile_auth + acpec_fueltoken_api (audit allowed fail-closed dans la transaction métier, audit refus sécurité committed séparé, helpers explicites) | T-X3a/b/c/d | Validé par Patch43D, tests prod-like cible 238+ tests OK, tag cible security-runtime-v1-20260625-patch43D |
 | ... | ... | ... | ... | ... |
 
