@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_acpec_fueltoken_mobile_user_state_wizard_form" model="ir.ui.view">
+        <field name="name">acpec.fueltoken.mobile.user.state.wizard.form</field>
+        <field name="model">acpec.fueltoken.mobile.user.state.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirmation sécurité mobile">
+                <sheet>
+                    <group>
+                        <field name="user_id" readonly="1"/>
+                        <field name="operation" readonly="1"/>
+                        <field name="target_state" invisible="operation != 'reactivate'"/>
+                    </group>
+                    <group>
+                        <field name="warning_message" readonly="1" nolabel="1"/>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Motif obligatoire"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirmer" class="btn-primary"/>
+                    <button string="Annuler" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_users_form_acpec_fueltoken_mobile_user_blocking" model="ir.ui.view">
+        <field name="name">res.users.form.acpec.fueltoken.mobile.user.blocking</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="mobile_only" invisible="1"/>
+                <field name="mobile_state" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//header" position="inside">
+                <button name="action_open_fueltoken_block_mobile_user_wizard"
+                        type="object"
+                        string="Bloquer utilisateur mobile"
+                        class="btn-danger"
+                        groups="acpec_mobile_auth.group_mobile_auth_admin"
+                        invisible="not mobile_only or mobile_state == 'blocked'"/>
+                <button name="action_open_fueltoken_reactivate_mobile_user_wizard"
+                        type="object"
+                        string="Réactiver utilisateur mobile"
+                        class="btn-primary"
+                        groups="acpec_mobile_auth.group_mobile_auth_admin"
+                        invisible="not mobile_only or mobile_state != 'blocked'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
