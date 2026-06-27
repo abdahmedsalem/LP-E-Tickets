@@ -41,6 +41,43 @@ class AcpecFuelFaceLine(models.Model):
         'Le code court du carnet doit etre unique par societe.',
     )
 
+    _economic_identity_fields = frozenset((
+        'purchase_id',
+        'purchase_line_id',
+        'carnet_type_id',
+        'face_value',
+        'qty_initial',
+        'carnet_no',
+        'lot_short_code',
+        'carnet_short_code',
+        'carnet_sequence',
+    ))
+    _controlled_state_fields = frozenset((
+        'wallet_id',
+        'qty_available',
+        'qty_qr_active',
+        'qty_qr_blocked',
+        'qty_consumed',
+        'qty_expired',
+    ))
+
+    def _check_protected_write_vals(self, vals):
+        protected = set(vals or {}) & (self._economic_identity_fields | self._controlled_state_fields)
+        if not protected:
+            return
+        if self.env.context.get('allow_fuel_face_line_economic_update'):
+            return
+        if self.env.context.get('allow_fuel_face_line_state_update') and not (protected & self._economic_identity_fields):
+            return
+        raise ValidationError(
+            _('Modification directe interdite sur les champs économiques du carnet : %s')
+            % ', '.join(sorted(protected))
+        )
+
+    def write(self, vals):
+        self._check_protected_write_vals(vals)
+        return super().write(vals)
+
     def init(self):
         super().init()
         self.env.cr.execute("""
@@ -160,7 +197,7 @@ class AcpecFuelFaceLine(models.Model):
                     label = line.carnet_short_code or line.carnet_no or line.id
                     raise ValidationError(_('Quantite disponible insuffisante pour %s.') % label)
 
-                line.write({
+                line.with_context(allow_fuel_face_line_state_update=True).write({
                     'qty_available': line.qty_available - remaining,
                     'qty_qr_active': line.qty_qr_active + remaining,
                 })
@@ -217,7 +254,7 @@ class AcpecFuelFaceLine(models.Model):
                 ) != 0:
                     continue
                 qty = min(remaining, line.qty_available)
-                line.write({
+                line.with_context(allow_fuel_face_line_state_update=True).write({
                     'qty_available': line.qty_available - qty,
                     'qty_qr_active': line.qty_qr_active + qty,
                 })
@@ -233,4 +270,4 @@ class AcpecFuelFaceLine(models.Model):
         for rec in self:
             qty = rec.qty_available
             if qty > 0:
-                rec.write({'qty_available': 0, 'qty_expired': rec.qty_expired + qty})
+                rec.with_context(allow_fuel_face_line_state_update=True).write({'qty_available': 0, 'qty_expired': rec.qty_expired + qty})

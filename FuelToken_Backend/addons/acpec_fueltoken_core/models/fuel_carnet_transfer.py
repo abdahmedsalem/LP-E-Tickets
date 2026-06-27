@@ -227,7 +227,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                     'qty': qty_to_transfer,
                 })
 
-                src_face_line.write({
+                src_face_line.with_context(allow_fuel_face_line_state_update=True).write({
                     'wallet_id': self.dest_wallet_id.id,
                 })
 
