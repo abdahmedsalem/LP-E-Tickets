@@ -324,3 +324,21 @@ Décisions doctrine :
 Tests à venir :
 - T-D9 et T-D10 à couvrir dans F2I.
 - F2H couvrira remplacement device normal : nouveau device pending, approbation BO, ancien device non trusted.
+
+### Patch43F2H — couverture remplacement device normal
+
+Statut : test de cycle device replacement normal validé, sans changement runtime.
+
+Décisions confirmées :
+- F2H couvre le remplacement normal d'appareil : même user, même numéro, même partner.
+- Un nouveau device naît en `pending_trust` et n'accède à aucune donnée métier.
+- L'approbation BO du nouveau device le passe en `trusted`.
+- L'ancien device trusted repasse en `pending_trust`.
+- L'ancienne session peut rester active et candidate BO tant que le device est pending, mais l'accès métier est refusé par le backend.
+- Aucun rôle station/manager n'est injecté ; le rôle FuelToken client reste le seul rôle métier ajouté au trust device.
+- F2H ne traite pas perte/vol/SIM-swap/user blocked ; ces cas restent F2I.
+- Aucun gel wallet séparé n'est introduit.
+
+Tests :
+- `test_mobile_device_replacement_lifecycle.py`
+- Run ciblé : `TestMobileDeviceReplacementLifecycle`, 0 failed, 0 error.
