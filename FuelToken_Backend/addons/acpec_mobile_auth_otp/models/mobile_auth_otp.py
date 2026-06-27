@@ -243,6 +243,8 @@ class AcpecMobileAuthOtp(models.Model):
             raise AccessError(_('Compte mobile introuvable.'))
         if getattr(user, 'mobile_state', False) == 'rejected':
             raise AccessError(_('Compte mobile rejeté.'))
+        if getattr(user, 'mobile_state', False) == 'blocked':
+            raise AccessError(_('Compte mobile bloqué.'))
         return user
 
     @api.model
@@ -370,6 +372,8 @@ class AcpecMobileAuthOtp(models.Model):
             raise ValidationError(_("Ce challenge OTP n'est plus actif."))
         if self.blocked_until and self.blocked_until > now:
             raise AccessError(_('Ce challenge OTP est temporairement bloqué.'))
+        if self.user_id and getattr(self.user_id.sudo(), 'mobile_state', False) == 'blocked':
+            raise AccessError(_('Compte mobile bloqué.'))
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})
             raise ValidationError(_('Le code OTP a expiré.'))
