@@ -14,12 +14,16 @@ des sections suivantes.
 ```text
 M1  Vol de session / jeton            => sessions à jetons à forte entropie, rotation,
                                           révocation, expiration (§3).
-M2  Vol d'appareil                    => device blocable, refus dur au login (§2),
-                                          actions sensibles derrière PIN (§5).
+M2  Vol d'appareil                    => device blocable, refus dur au login (§2, INV-D7),
+                                          compte blocable au login si le risque vise le
+                                          compte (§2, INV-D11), actions sensibles derrière
+                                          PIN (§5).
 M3  SIM-swap (prise de contrôle du
     numéro par un tiers)              => OTP prouve le numéro, pas la personne ;
                                           tout appareil neuf reste pending_trust et passe
-                                          par approbation humaine (§2, §6).
+                                          par approbation humaine (§2, §6) ; blocage user
+                                          persistant si prise de contrôle confirmée
+                                          (§2, INV-D11).
 M4  device_uid rejoué ou forgé        => le device_uid est un identifiant non attesté ;
                                           la confiance qu'on lui accorde est bornée par
                                           l'approbation admin et le transport chiffré (§2, §7).
@@ -98,6 +102,10 @@ Un appareil est identifié par un `device_uid` généré par l'application mobil
 identifiant **non attesté** : la confiance qu'on lui accorde n'est valable que sous
 transport chiffré (§7) et reste bornée par l'approbation humaine de tout appareil neuf.
 
+Dans le backend, chaque couple durable `(user_id, device_uid stable)` est matérialisé
+par un objet `acpec.mobile.device`. La confiance persistante est portée par cet objet
+durable ; la session mobile est seulement le runtime tokenisé qui référence ce device.
+
 La confiance est portée par le couple **utilisateur + appareil**, jamais par l'un seul.
 Un appareil neuf naît non approuvé et n'accède à aucune fonction métier — ni action,
 ni consultation — tant qu'un administrateur ne l'a pas approuvé.
@@ -105,6 +113,9 @@ ni consultation — tant qu'un administrateur ne l'a pas approuvé.
 ### Invariants
 
 ```text
+INV-D0  Chaque couple (user_id, device_uid stable) est représenté par un objet durable
+        acpec.mobile.device. Les sessions mobiles référencent ce device durable.
+        La confiance est portée par le device durable, pas par la session seule.
 INV-D1  La confiance est l'état device_trust_state d'un couple (user_id, device_uid) :
         pending_trust, trusted ou blocked.
 INV-D2  Tout couple (user, appareil) inconnu naît en pending_trust.
@@ -124,6 +135,12 @@ INV-D9  Approuver, bloquer ou révoquer un appareil s'applique à tout le couple
         (user, appareil) de façon cohérente et auditée.
 INV-D10 Perte ou alerte : le back-office peut révoquer ou bloquer aussi bien
         l'utilisateur que l'appareil.
+INV-D11 Un utilisateur mobile blocked est refusé à l'OTP et au login : OTP non
+        consommé, aucune session ouverte, quel que soit l'appareil. Le blocage
+        user est un état persistant, pas une simple révocation de sessions.
+INV-D12 La réactivation d'un utilisateur mobile blocked ne restaure jamais
+        automatiquement le trust device. Après réactivation user, chaque device
+        conserve son état propre : pending_trust, trusted ou blocked.
 ```
 
 ### Tests
@@ -140,6 +157,10 @@ T-D6  Appareil blocked => login refusé, aucune session.
 T-D7  Appareil pending_trust => toute lecture ou action métier refusée côté backend
       (le masquage frontend ne suffit pas).
 T-D8  Réinstallation : même device_uid réutilisé ; device_uid différent => pending_trust.
+T-D9  Utilisateur mobile blocked => OTP/login refusés sur tout appareil, y compris
+      appareil neuf ; aucune session ouverte ; OTP non consommé.
+T-D10 Réactivation user blocked => aucun device ne redevient trusted automatiquement ;
+      l'accès métier reste refusé tant qu'un device n'est pas explicitement trusted.
 ```
 
 ---
@@ -154,8 +175,9 @@ appareil, jamais un numéro. Les jetons sont à forte entropie et stockés hach�
 ### Invariants
 
 ```text
-INV-T1  Une session lie user_id + device_uid et porte access_token, refresh_token,
-        state et device_trust_state.
+INV-T1  Une session lie user_id + device_id + device_uid et porte access_token,
+        refresh_token, state et device_trust_state. Elle référence le device durable
+        et hérite/voit son état de confiance sans jamais l'accorder elle-même.
 INV-T2  Les jetons sont à forte entropie ; seul leur haché est stocké.
 INV-T3  Le rafraîchissement effectue une rotation : une nouvelle session active est émise,
         l'ancienne passe en grâce à usage unique puis devient inexploitable.
@@ -349,6 +371,11 @@ RES-2  device_uid non attesté. La reconnaissance d'un appareil repose sur un id
        fourni par le client. Sa valeur de sécurité tient au transport chiffré (INV-X1) et
        au fait qu'un appareil neuf passe toujours par approbation humaine (INV-D2, INV-D3).
        Aucune attestation matérielle n'est exigée en V1.
+
+RES-3  Pas de gel wallet séparé en V1. La valeur est protégée par la pile d'accès :
+       session valide, utilisateur autorisé, device trusted, rôle requis, PIN/action_code,
+       idempotence et verrous. Le blocage user/device rend la valeur inatteignable
+       sans ajouter un état métier wallet supplémentaire.
 ```
 
 ---
