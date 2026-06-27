@@ -84,14 +84,30 @@ class _ConsumeFixtureMixin:
         return group_ids
 
     def _station_mobile_user_vals(self, env, vals, mobile_phone):
-        vals = dict(vals)
+        vals = dict(vals or {})
+        label = str(mobile_phone or vals.get('login') or vals.get('name') or 'station-conc')
+    
+        # Doctrine tests mobiles FuelToken : numéros locaux canonique en 21xxxxxx.
+        value = 2166136261
+        for char in label:
+            value ^= ord(char)
+            value = (value * 16777619) % 1000000
+        phone = "21%06d" % value
+    
+        # Ne jamais laisser les anciens labels de fixture devenir l'identité mobile.
+        vals.pop('login', None)
+        vals.pop('mobile_phone', None)
+        vals.pop('email', None)
+        vals.pop('groups_id', None)
+    
         group_ids = self._mobile_station_group_ids(env)
         if group_ids:
             vals['group_ids'] = [(6, 0, group_ids)]
-        vals['login'] = mobile_phone
-        vals.setdefault('mobile_phone', mobile_phone)
-        vals.setdefault('mobile_only', True)
-        vals.setdefault('mobile_state', 'approved')
+    
+        vals['login'] = phone
+        vals['mobile_phone'] = phone
+        vals['mobile_only'] = True
+        vals['mobile_state'] = vals.get('mobile_state') or 'approved'
         vals.setdefault(
             'password',
             env['res.users'].sudo()._acpec_mobile_unusable_password(),
@@ -416,6 +432,8 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
                 try:
                     recs = env[model].sudo().search(domain)
                     if recs:
+                        if model == 'acpec.fuel.transaction':
+                            recs = recs.with_context(allow_fuel_transaction_unlink=True)
                         recs.unlink()
                         cr.commit()
                 except Exception:

@@ -99,6 +99,11 @@ class AcpecFuelTransaction(models.Model):
             raise UserError(_('Les transactions Tickets Carburant ne doivent pas être modifiées directement.'))
         return super().write(vals)
 
+    def unlink(self):
+        if not self.env.context.get('allow_fuel_transaction_unlink'):
+            raise UserError(_('Les transactions Tickets Carburant sont append-only et ne doivent pas être supprimées.'))
+        return super().unlink()
+
 
 class AcpecFuelTransactionLine(models.Model):
     _name = 'acpec.fuel.transaction.line'
@@ -122,3 +127,13 @@ class AcpecFuelTransactionLine(models.Model):
     def _compute_amount(self):
         for rec in self:
             rec.amount = rec.face_value * rec.qty
+
+    def write(self, vals):
+        if vals and not self.env.context.get('allow_fuel_transaction_update'):
+            raise UserError(_('Les lignes de transaction Tickets Carburant ne doivent pas être modifiées directement.'))
+        return super().write(vals)
+
+    def unlink(self):
+        if not self.env.context.get('allow_fuel_transaction_unlink'):
+            raise UserError(_('Les lignes de transaction Tickets Carburant sont append-only et ne doivent pas être supprimées.'))
+        return super().unlink()
