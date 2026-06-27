@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, models
-from odoo.exceptions import AccessError
+from odoo import models
 
 
 class AcpecMobileSession(models.Model):
@@ -66,30 +65,8 @@ class AcpecMobileSession(models.Model):
 class AcpecMobileDevice(models.Model):
     _inherit = 'acpec.mobile.device'
 
-    def _fueltoken_manager_approval_user(self):
-        user_id = self.env.context.get('acpec_fueltoken_mobile_manager_device_approval_user_id')
-        if not user_id:
-            return self.env['res.users']
-        user = self.env['res.users'].sudo().browse(user_id).exists()
-        if not user:
-            raise AccessError(_('Manager mobile introuvable pour approbation device.'))
-        if not user.has_group('acpec_fueltoken_base.group_fuel_manager'):
-            raise AccessError(_('Seul un manager FuelToken peut approuver un device via l’API mobile.'))
-        return user
-
     def action_trust_device(self):
-        manager_user = self._fueltoken_manager_approval_user()
         result = super().action_trust_device()
-
-        if manager_user:
-            devices = self.sudo()
-            devices.write({'trusted_by': manager_user.id})
-            for device in devices:
-                device.message_post(body=(
-                    'Device mobile approuvé via API manager mobile par %s.'
-                    % manager_user.display_name
-                ))
-
         sessions = self.env['acpec.mobile.session'].sudo().search([
             ('device_id', 'in', self.ids),
             ('device_trust_state', '=', 'trusted'),

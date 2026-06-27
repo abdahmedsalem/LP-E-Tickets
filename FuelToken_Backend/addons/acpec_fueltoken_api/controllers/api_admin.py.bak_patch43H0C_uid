@@ -20,14 +20,10 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         return user
 
     def _raise_mobile_manager_backoffice_only(self):
-        # Do not wrap this message in _().
-        # In lightweight controller tests, controller.env can be None even when
-        # request.env is patched; Odoo translation may inspect self.env.uid and
-        # crash with AttributeError("'NoneType' object has no attribute 'uid'").
-        raise AccessError(
+        raise AccessError(_(
             "Action réservée au back-office administratif. "
             "Le manager mobile est limité aux validations positives."
-        )
+        ))
 
     def _carnet_type_label(self, rec):
         if not rec:
