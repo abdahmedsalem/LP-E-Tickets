@@ -107,8 +107,6 @@ class AcpecFuelStation(models.Model):
         if 'mobile_state' in user._fields and user.mobile_state != 'approved':
             raise ValidationError(_('L’utilisateur mobile station doit être approuvé.'))
 
-        self.env['acpec.fuel.wallet'].sudo()._assert_no_non_empty_client_wallet_for_operational_mobile_user(user)
-
     @api.constrains('user_id', 'company_id')
     def _check_station_user_company(self):
         for rec in self:

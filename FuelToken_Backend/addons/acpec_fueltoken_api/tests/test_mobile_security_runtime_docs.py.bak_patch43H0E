@@ -49,25 +49,3 @@ class TestMobileSecurityRuntimeDocs(TransactionCase):
         ):
             method = getattr(AcpecFuelTokenAdminApi, method_name)
             self.assertIn("_raise_mobile_manager_backoffice_only", inspect.getsource(method))
-
-
-    def test_h0e_client_wallet_operational_role_segregation_lock(self):
-        from odoo.addons.acpec_fueltoken_core.models.fuel_wallet import AcpecFuelWallet
-        from odoo.addons.acpec_fueltoken_core.models.fuel_station import AcpecFuelStation
-        from odoo.addons.acpec_fueltoken_api.models.mobile_session_device_trust import (
-            AcpecMobileDevice,
-            AcpecMobileSession,
-        )
-
-        wallet_source = inspect.getsource(AcpecFuelWallet)
-        station_source = inspect.getsource(AcpecFuelStation)
-        device_source = inspect.getsource(AcpecMobileDevice)
-        session_source = inspect.getsource(AcpecMobileSession)
-
-        self.assertIn("_fueltoken_partner_has_non_empty_client_wallet", wallet_source)
-        self.assertIn("qty_available", wallet_source)
-        self.assertIn("qty_qr_active", wallet_source)
-        self.assertIn("qty_qr_blocked", wallet_source)
-        self.assertIn("_assert_no_non_empty_client_wallet_for_operational_mobile_user", station_source)
-        self.assertIn("_assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role", device_source)
-        self.assertIn("_assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role", session_source)

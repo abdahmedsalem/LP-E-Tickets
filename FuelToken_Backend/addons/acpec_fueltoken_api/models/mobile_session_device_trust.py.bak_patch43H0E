@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, _, models
+from odoo import _, models
 from odoo.exceptions import AccessError
 
 
@@ -7,9 +7,6 @@ class AcpecMobileSession(models.Model):
     _inherit = 'acpec.mobile.session'
 
     def action_trust_device(self):
-        self.env['acpec.fuel.wallet'].sudo()._assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role(
-            self.sudo().mapped('user_id')
-        )
         result = super().action_trust_device()
         self._grant_fuel_user_group_after_device_trust()
         return result
@@ -82,9 +79,6 @@ class AcpecMobileDevice(models.Model):
 
     def action_trust_device(self):
         manager_user = self._fueltoken_manager_approval_user()
-        self.env['acpec.fuel.wallet'].sudo()._assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role(
-            self.sudo().mapped('user_id')
-        )
         result = super().action_trust_device()
 
         if manager_user:
@@ -103,34 +97,3 @@ class AcpecMobileDevice(models.Model):
         if sessions:
             sessions._grant_fuel_user_group_after_device_trust()
         return result
-
-
-class ResUsers(models.Model):
-    _inherit = 'res.users'
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        users = super().create(vals_list)
-        users._fueltoken_check_operational_role_wallet_segregation()
-        return users
-
-    def write(self, vals):
-        res = super().write(vals)
-        watched_fields = {
-            'group_ids',
-            'groups_id',
-            'partner_id',
-            'company_ids',
-            'active',
-            'mobile_only',
-            'mobile_state',
-        }
-        if watched_fields & set(vals or {}):
-            self._fueltoken_check_operational_role_wallet_segregation()
-        return res
-
-    def _fueltoken_check_operational_role_wallet_segregation(self):
-        self.env['acpec.fuel.wallet'].sudo()._assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role(
-            self.sudo()
-        )
-        return True
