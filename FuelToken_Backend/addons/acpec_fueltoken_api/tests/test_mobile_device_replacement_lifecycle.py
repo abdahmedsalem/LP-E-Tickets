@@ -37,7 +37,6 @@ class TestMobileDeviceReplacementLifecycle(TransactionCase):
             'name': label,
             'login': phone,
             'mobile_phone': phone,
-            'email': label,
             'active': True,
             'mobile_only': True,
             'mobile_state': 'self_registered',

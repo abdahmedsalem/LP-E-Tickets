@@ -342,3 +342,22 @@ Décisions confirmées :
 Tests :
 - `test_mobile_device_replacement_lifecycle.py`
 - Run ciblé : `TestMobileDeviceReplacementLifecycle`, 0 failed, 0 error.
+
+### Patch43F2I — user blocked OTP/login lifecycle
+
+Statut : INV-D11/T-D9 couverts côté OTP/session, patch minimal.
+
+Décisions confirmées :
+- `mobile_state='blocked'` est un état user persistant.
+- Un user mobile blocked est refusé à la demande OTP login/reset avant création de challenge.
+- Un OTP déjà émis n'est pas consommé si le user devient blocked avant vérification.
+- Aucune session mobile n'est ouverte pour un user blocked.
+- Les sessions actives sont déjà révoquées quand le user passe hors `approved/self_registered`.
+- La réactivation user ne modifie pas automatiquement les états devices : trusted reste trusted, pending reste pending_trust, blocked reste blocked.
+- F2I ne crée pas de gel wallet séparé.
+- F2I ne traite pas changement téléphone + device ni ancien device retrouvé.
+
+Tests :
+- `test_mobile_user_blocked_otp.py`
+- `test_mobile_user_blocking_lifecycle.py`
+- Run ciblé : `TestMobileUserBlockedOtp` + `TestMobileUserBlockingLifecycle`, 0 failed, 0 error.
