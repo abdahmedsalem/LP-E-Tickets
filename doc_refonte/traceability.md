@@ -67,7 +67,7 @@ Validation :
 | INV-TR5 | implémenté_patch43G1_test_concurrence_manquant | acpec_fueltoken_base.models.fuel_carnet_transfer (`FOR UPDATE`, relecture/invalidate) | T-TR5 à ajouter/renforcer | Audit G1 : verrouillage observé, preuve test dédiée manquante |
 | INV-Q6 | implémenté_patch43G1_test_double_consommation_a_renforcer | acpec_fueltoken_base.models.fuel_qr (`_lock_records`, consommation station) | T-Q5/T-Q7 à renforcer | Audit G1 : verrouillage observé, test double-consommation à renforcer |
 | INV-Q8 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_qr (`public_code`, numeric code hash unique) | T-Q8 à ajouter | Audit G1 : génération aléatoire/unique observée, test direct manquant |
-| INV-TX2 | partiel_patch43G1_a_durcir_patch43G2 | acpec_fueltoken_base.models.fuel_transaction + transaction lines | T-TX2 à créer | Audit G1 : `write()` partiellement protégé, `unlink()` transaction/lines à durcir |
+| INV-TX2 | vérifié_patch43G2 | acpec_fueltoken_core.models.fuel_transaction + transaction lines append-only | TestFuelTransactionAppendOnly | Patch43G2 : `write()` économique et `unlink()` transaction/lines bloqués hors contexte interne |
 | INV-VAL1 | à_prouver_patch43G1 | transverse wallet/faces/QR/transfert/transaction | T-VAL1 à concevoir | Audit G1 : invariant trop large, à traiter après invariants mécaniques |
 | ... | ... | ... | ... | ... |
 
@@ -512,3 +512,30 @@ Décision :
 Tests :
 - Aucun test Odoo requis pour G1, car aucun code runtime n'est modifié.
 - Validation attendue : `git diff --check` et revue de `traceability.md`.
+
+### Patch43G2 — transaction append-only hardening
+
+Statut : runtime hardening + tests.
+
+Objet :
+- Fermer `INV-TX2`, identifié par G1 comme partiel.
+- Rendre les transactions Tickets Carburant réellement append-only côté ORM.
+- Protéger aussi les lignes `acpec.fuel.transaction.line`, pas seulement l'en-tête transaction.
+
+Changements :
+- `acpec.fuel.transaction.write()` conserve l'autorisation de modification de `note` seule hors contexte interne.
+- `acpec.fuel.transaction.write()` bloque les modifications économiques hors contexte `allow_fuel_transaction_update`.
+- `acpec.fuel.transaction.unlink()` est interdit hors contexte interne `allow_fuel_transaction_unlink`.
+- `acpec.fuel.transaction.line.write()` est interdit hors contexte interne `allow_fuel_transaction_update`.
+- `acpec.fuel.transaction.line.unlink()` est interdit hors contexte interne `allow_fuel_transaction_unlink`.
+- Le cleanup du test concurrence station utilise le contexte interne d'unlink transaction.
+- Les fixtures station concurrence sont réalignées avec la doctrine mobile test : `login == mobile_phone == 21xxxxxx`.
+
+Doctrine :
+- Une transaction FuelToken est un journal append-only.
+- Une ligne de transaction FuelToken est également append-only.
+- Les exceptions internes sont réservées aux flux techniques contrôlés : enrichissement interne, cleanup test, maintenance/migration explicite.
+
+Tests :
+- Ciblé `TestFuelTransactionAppendOnly` : 4 tests, 0 échec, 0 erreur.
+- Élargi après correction fixture concurrence : 306 tests, 0 échec, 0 erreur.
