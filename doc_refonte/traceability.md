@@ -59,14 +59,14 @@ Validation :
 
 | INV | Statut | Fichier code (cible) | Test | Réf. ancien code |
 |---|---|---|---|---|
-| INV-W1 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_wallet (`UNIQUE(partner_id, company_id)` + `get_or_create`) | T-W1 à ajouter | Audit G1 : implémenté, preuve test directe manquante |
-| INV-C2 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_face_line (conservation quantités face) | T-C2 à ajouter | Audit G1 : contrainte métier présente, test direct à ajouter |
+| INV-W1 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_wallet (`models.Constraint` unique partner/company + `get_or_create`) | TestD2MechanicalInvariants | Patch43G3 : unicité wallet partner/company prouvée en test |
+| INV-C2 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_face_line (conservation quantités face) | TestD2MechanicalInvariants | Patch43G3 : conservation `qty_initial == available + active + blocked + consumed + expired` prouvée |
 | INV-C6 | implémenté_probable_patch43G1_preuve_end_to_end_manquante | purchase/face/QR/transaction lines (`purchase_id`, `purchase_line_id`) | T-C4 à renforcer | Audit G1 : propagation présente, preuve end-to-end à ajouter |
 | INV-TR1 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (relocalisation carnet) | tests transfert existants | Audit G1 : transfert relocalise les faces vers wallet destination |
 | INV-TR4 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (`UNIQUE(source_wallet_id, idempotency_key)`) | tests idempotence transfert existants | Audit G1 : replay/conflict couverts |
 | INV-TR5 | implémenté_patch43G1_test_concurrence_manquant | acpec_fueltoken_base.models.fuel_carnet_transfer (`FOR UPDATE`, relecture/invalidate) | T-TR5 à ajouter/renforcer | Audit G1 : verrouillage observé, preuve test dédiée manquante |
 | INV-Q6 | implémenté_patch43G1_test_double_consommation_a_renforcer | acpec_fueltoken_base.models.fuel_qr (`_lock_records`, consommation station) | T-Q5/T-Q7 à renforcer | Audit G1 : verrouillage observé, test double-consommation à renforcer |
-| INV-Q8 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_qr (`public_code`, numeric code hash unique) | T-Q8 à ajouter | Audit G1 : génération aléatoire/unique observée, test direct manquant |
+| INV-Q8 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_qr (`models.Constraint` public code/hash + génération aléatoire) | TestD2MechanicalInvariants | Patch43G3 : identifiants QR publics/numériques générés et uniques prouvés |
 | INV-TX2 | vérifié_patch43G2 | acpec_fueltoken_core.models.fuel_transaction + transaction lines append-only | TestFuelTransactionAppendOnly | Patch43G2 : `write()` économique et `unlink()` transaction/lines bloqués hors contexte interne |
 | INV-VAL1 | à_prouver_patch43G1 | transverse wallet/faces/QR/transfert/transaction | T-VAL1 à concevoir | Audit G1 : invariant trop large, à traiter après invariants mécaniques |
 | ... | ... | ... | ... | ... |
@@ -539,3 +539,26 @@ Doctrine :
 Tests :
 - Ciblé `TestFuelTransactionAppendOnly` : 4 tests, 0 échec, 0 erreur.
 - Élargi après correction fixture concurrence : 306 tests, 0 échec, 0 erreur.
+
+### Patch43G3 — D2 mechanical invariant tests
+
+Statut : test-only, sans changement runtime.
+
+Objet :
+- Fermer les preuves directes des invariants D2 mécaniques identifiés par G1.
+- Prouver `INV-W1`, `INV-C2` et `INV-Q8` par tests dédiés.
+- Conserver la terminologie Odoo 19 : contraintes déclarées via `models.Constraint`, pas `_sql_constraints`.
+
+Invariants couverts :
+- `INV-W1` : unicité wallet par `(partner_id, company_id)` et idempotence `get_or_create`.
+- `INV-C2` : conservation des quantités de face.
+- `INV-Q8` : génération et unicité des identifiants QR publics et numériques.
+
+Tests :
+- Ciblé `TestD2MechanicalInvariants` : 3 tests, 0 échec, 0 erreur.
+- Élargi core : 129 tests, 0 échec, 0 erreur.
+- Élargi sécurité/runtime : 319 tests, 0 échec, 0 erreur.
+
+Décision :
+- `INV-W1`, `INV-C2` et `INV-Q8` passent en `vérifié_patch43G3`.
+- Aucun changement runtime nécessaire.
