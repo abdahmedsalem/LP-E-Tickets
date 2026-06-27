@@ -29,6 +29,45 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             "Le manager mobile est limité aux validations positives."
         )
 
+    def _require_purchase_partner_trusted_mobile_access_for_manager_api(self, purchase):
+        # API-only H0D guard for mobile manager purchase approval.
+        # FuelToken business objects remain economically owned by partner_id.
+        # This guard does not change purchase.action_approve() and must not
+        # block Odoo back-office/backend administrative approvals.
+        error_message = (
+            "Le partenaire de l'achat ne dispose d'aucun accès mobile trusted actif."
+        )
+        if not purchase or not purchase.exists() or not purchase.partner_id:
+            raise AccessError(error_message)
+
+        company = purchase.company_id
+        user_domain = [
+            ('partner_id', '=', purchase.partner_id.id),
+            ('active', '=', True),
+            ('mobile_only', '=', True),
+            ('mobile_state', 'in', ['approved', 'self_registered']),
+        ]
+        if company:
+            user_domain.append(('company_ids', 'in', [company.id]))
+
+        users = request.env['res.users'].sudo().search(user_domain)
+        if not users:
+            raise AccessError(error_message)
+
+        device_domain = [
+            ('user_id', 'in', users.ids),
+            ('active', '=', True),
+            ('trust_state', '=', 'trusted'),
+        ]
+        Device = request.env['acpec.mobile.device'].sudo()
+        if company and 'company_id' in Device._fields:
+            device_domain.append(('company_id', '=', company.id))
+
+        trusted_device = Device.search(device_domain, limit=1)
+        if not trusted_device:
+            raise AccessError(error_message)
+        return trusted_device
+
     def _carnet_type_label(self, rec):
         if not rec:
             return False
@@ -272,6 +311,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
                     if purchase.state == 'approved':
                         return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
 
+                self._require_purchase_partner_trusted_mobile_access_for_manager_api(purchase)
+
                 with request.env.cr.savepoint():
                     purchase.sudo().write({
                         'approval_idempotency_key': idempotency_key,
@@ -351,13 +392,13 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
                 self._check_record_company_allowed(user, device)
 
                 if device.user_id == user:
-                    raise AccessError(_('Un manager mobile ne peut pas approuver son propre device.'))
+                    raise AccessError('Un manager mobile ne peut pas approuver son propre device.')
                 if not device.user_id.mobile_only:
-                    raise AccessError(_('Seul un device d’utilisateur mobile peut être approuvé.'))
+                    raise AccessError('Seul un device d’utilisateur mobile peut être approuvé.')
                 if device.user_id.mobile_state == 'blocked':
-                    raise AccessError(_('Impossible d’approuver un device d’un utilisateur mobile bloqué.'))
+                    raise AccessError('Impossible d’approuver un device d’un utilisateur mobile bloqué.')
                 if device.trust_state != 'pending_trust':
-                    raise AccessError(_('Seul un device en attente peut être approuvé par l’API manager mobile.'))
+                    raise AccessError('Seul un device en attente peut être approuvé par l’API manager mobile.')
 
                 source_session = self._get_mobile_session(required=False)
                 device.with_context(

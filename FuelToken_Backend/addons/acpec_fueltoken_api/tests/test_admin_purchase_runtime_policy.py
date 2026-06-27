@@ -82,6 +82,55 @@ class TestAdminPurchaseRuntimePolicy(TransactionCase):
         user.set_mobile_pin("1234")
         return user
 
+    def _client_group_ids(self):
+        return self._group_ids([
+            "base.group_portal",
+            "acpec_mobile_auth.group_mobile_auth_user",
+            "acpec_fueltoken_base.group_fuel_user",
+        ])
+
+    def _create_client_mobile_user(self, suffix, trust_state="trusted"):
+        user_model = self.env["res.users"].sudo().with_context(
+            acpec_mobile_allow_password_write=True,
+            no_reset_password=True,
+        )
+        login = "client-%s@example.com" % suffix
+        user = user_model.create({
+            "name": login,
+            "login": _acpec_test_mobile_phone(login),
+            "mobile_phone": _acpec_test_mobile_phone(login),
+            "email": login,
+            "active": True,
+            "company_id": self.company.id,
+            "company_ids": [(6, 0, [self.company.id])],
+            "mobile_only": True,
+            "mobile_state": "approved",
+            "password": user_model._acpec_mobile_unusable_password(),
+            "group_ids": [(6, 0, self._client_group_ids())],
+        })
+        if user.partner_id:
+            user.partner_id.sudo().write({
+                "name": "Client admin purchase %s" % suffix,
+                "company_id": self.company.id,
+            })
+
+        token_data = self.env["acpec.mobile.session"].sudo().create_for_user(user, {
+            "device_uid": "dev-client-%s" % str(suffix).replace("@", "-").replace(".", "-").replace(" ", "-"),
+            "platform": "android",
+        })
+        session = token_data["session"]
+
+        if trust_state == "trusted":
+            session.action_trust_device()
+        elif trust_state == "blocked":
+            session.device_id.action_block_device(reason="H0D client device blocked fixture")
+        elif trust_state in ("pending_trust", "pending", False, None):
+            pass
+        else:
+            raise AssertionError("Unknown client trust_state fixture: %s" % trust_state)
+
+        return user, session
+
     def _admin_controller(self, login, trusted=True):
         manager = self._create_manager_user(login)
         token_data = self.env["acpec.mobile.session"].sudo().create_for_user(manager, {
@@ -97,12 +146,19 @@ class TestAdminPurchaseRuntimePolicy(TransactionCase):
         controller._get_mobile_session = lambda required=True: session
         return controller, manager, session
 
-    def _create_submitted_purchase(self, suffix):
+    def _create_submitted_purchase(self, suffix, partner_mobile_access="trusted"):
         carnet_type = self._create_unique_carnet_type()
-        partner = self.env["res.partner"].sudo().create({
-            "name": "Client admin purchase %s" % suffix,
-            "company_id": self.company.id,
-        })
+        if partner_mobile_access:
+            client_user, _client_session = self._create_client_mobile_user(
+                suffix,
+                trust_state=partner_mobile_access,
+            )
+            partner = client_user.partner_id.sudo()
+        else:
+            partner = self.env["res.partner"].sudo().create({
+                "name": "Client admin purchase %s" % suffix,
+                "company_id": self.company.id,
+            })
         purchase = self.env["acpec.fuel.purchase"].sudo().create({
             "partner_id": partner.id,
             "company_id": self.company.id,
@@ -244,6 +300,46 @@ class TestAdminPurchaseRuntimePolicy(TransactionCase):
         purchase.invalidate_recordset(["state"])
         self.assertEqual(purchase.state, "submitted")
         self.assertFalse(self._face_lines_for_purchase(purchase))
+
+    def test_purchase_approve_requires_partner_trusted_mobile_access(self):
+        controller, _manager, _session = self._admin_controller("admin-approve-partner-no-mobile-h0d@example.com")
+        _carnet_type, _partner, purchase = self._create_submitted_purchase(
+            "approve-partner-no-mobile-h0d",
+            partner_mobile_access=False,
+        )
+
+        response = self._call_approve(
+            controller,
+            self._approve_payload(purchase, key="approve-partner-no-mobile-h0d"),
+        )
+        self._assert_error_contains(response, "accès mobile trusted")
+        purchase.invalidate_recordset(["state", "approved_by"])
+        self.assertEqual(purchase.state, "submitted")
+        self.assertFalse(purchase.approved_by)
+        self.assertFalse(self._face_lines_for_purchase(purchase))
+        self.assertFalse(self._approved_txs_for_purchase(purchase))
+
+    def test_purchase_approve_requires_partner_device_trusted_not_pending_or_blocked(self):
+        controller, _manager, _session = self._admin_controller("admin-approve-partner-device-h0d@example.com")
+
+        for trust_state in ("pending_trust", "blocked"):
+            _carnet_type, _partner, purchase = self._create_submitted_purchase(
+                "approve-partner-%s-h0d" % trust_state,
+                partner_mobile_access=trust_state,
+            )
+            response = self._call_approve(
+                controller,
+                self._approve_payload(
+                    purchase,
+                    key="approve-partner-%s-h0d" % trust_state,
+                ),
+            )
+            self._assert_error_contains(response, "accès mobile trusted")
+            purchase.invalidate_recordset(["state", "approved_by"])
+            self.assertEqual(purchase.state, "submitted")
+            self.assertFalse(purchase.approved_by)
+            self.assertFalse(self._face_lines_for_purchase(purchase))
+            self.assertFalse(self._approved_txs_for_purchase(purchase))
 
     def test_purchase_approve_replays_same_payload_for_same_idempotency_key(self):
         controller, manager, _session = self._admin_controller("admin-approve-replay-25a@example.com")
