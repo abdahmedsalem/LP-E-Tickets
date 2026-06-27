@@ -59,16 +59,16 @@ Validation :
 
 | INV | Statut | Fichier code (cible) | Test | Réf. ancien code |
 |---|---|---|---|---|
-| INV-W1 | à_implementer | fuel_wallet (UNIQUE partner_id, company_id) | T-W1 | fuel_wallet.py |
-| INV-C2 | à_implementer | fuel_face_line (conservation des faces) | T-C2 | fuel_face_line.py |
-| INV-C6 | à_implementer | propagation lot d'origine | T-C4 | fuel_* (purchase_id) |
-| INV-TR1 | à_implementer | fuel_carnet_transfer (relocalisation) | T-TR1 | fuel_carnet_transfer.py |
-| INV-TR4 | à_implementer | fuel_carnet_transfer (UNIQUE wallet,idemp.) | T-TR4 | fuel_carnet_transfer.py |
-| INV-TR5 | à_implementer | fuel_carnet_transfer (verrou + relecture) | T-TR5 | fuel_carnet_transfer.py |
-| INV-Q6 | à_implementer | fuel_qr (consommation verrouillée) | T-Q5,T-Q7 | fuel_qr.py |
-| INV-Q8 | à_implementer | fuel_qr (identifiant aléatoire) | T-Q8 | fuel_qr public_code |
-| INV-TX2 | à_implementer | fuel_transaction (ajout seul) | T-TX2 | fuel_transaction.py |
-| INV-VAL1 | à_implementer | transverse (conservation valeur) | T-VAL1 | (à prouver) |
+| INV-W1 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_wallet (`UNIQUE(partner_id, company_id)` + `get_or_create`) | T-W1 à ajouter | Audit G1 : implémenté, preuve test directe manquante |
+| INV-C2 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_face_line (conservation quantités face) | T-C2 à ajouter | Audit G1 : contrainte métier présente, test direct à ajouter |
+| INV-C6 | implémenté_probable_patch43G1_preuve_end_to_end_manquante | purchase/face/QR/transaction lines (`purchase_id`, `purchase_line_id`) | T-C4 à renforcer | Audit G1 : propagation présente, preuve end-to-end à ajouter |
+| INV-TR1 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (relocalisation carnet) | tests transfert existants | Audit G1 : transfert relocalise les faces vers wallet destination |
+| INV-TR4 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (`UNIQUE(source_wallet_id, idempotency_key)`) | tests idempotence transfert existants | Audit G1 : replay/conflict couverts |
+| INV-TR5 | implémenté_patch43G1_test_concurrence_manquant | acpec_fueltoken_base.models.fuel_carnet_transfer (`FOR UPDATE`, relecture/invalidate) | T-TR5 à ajouter/renforcer | Audit G1 : verrouillage observé, preuve test dédiée manquante |
+| INV-Q6 | implémenté_patch43G1_test_double_consommation_a_renforcer | acpec_fueltoken_base.models.fuel_qr (`_lock_records`, consommation station) | T-Q5/T-Q7 à renforcer | Audit G1 : verrouillage observé, test double-consommation à renforcer |
+| INV-Q8 | implémenté_patch43G1_test_direct_manquant | acpec_fueltoken_base.models.fuel_qr (`public_code`, numeric code hash unique) | T-Q8 à ajouter | Audit G1 : génération aléatoire/unique observée, test direct manquant |
+| INV-TX2 | partiel_patch43G1_a_durcir_patch43G2 | acpec_fueltoken_base.models.fuel_transaction + transaction lines | T-TX2 à créer | Audit G1 : `write()` partiellement protégé, `unlink()` transaction/lines à durcir |
+| INV-VAL1 | à_prouver_patch43G1 | transverse wallet/faces/QR/transfert/transaction | T-VAL1 à concevoir | Audit G1 : invariant trop large, à traiter après invariants mécaniques |
 | ... | ... | ... | ... | ... |
 
 ## D3 — Mode dev/test (extrait amorcé ; compléter pour tous les INV-DEV, DEV-GLB)
@@ -482,3 +482,33 @@ Tests ajoutés :
 - Vérifie qu'un client `pending_trust` garde `group_fuel_user` mais ne lit pas le wallet.
 - Vérifie qu'une station `pending_trust` garde `group_fuel_station` mais ne lit pas le profil station.
 - Vérifie qu'un manager `pending_trust` garde `group_fuel_manager` mais ne lit pas les données admin.
+
+### Patch43G1 — business invariant traceability audit
+
+Statut : audit-only / traceability, sans changement runtime.
+
+Objet :
+- Relecture des invariants D2 encore marqués `à_implementer` dans `traceability.md`.
+- Extraction large des modèles, contraintes, verrous, idempotences, QR identifiers et tests métier FuelToken.
+- Classification des invariants D2 entre déjà implémenté, vérifié, test manquant, preuve manquante et vrai trou runtime.
+
+Résultat d'audit D2 :
+- `INV-W1` : implémenté par contrainte wallet unique `(partner_id, company_id)` et logique `get_or_create`, mais test direct à ajouter.
+- `INV-C2` : implémenté par conservation des quantités face, mais test direct à ajouter.
+- `INV-C6` : propagation lot/purchase observée, mais preuve end-to-end à renforcer.
+- `INV-TR1` : transfert/relocalisation déjà couvert par les tests transfert existants.
+- `INV-TR4` : idempotence transfert déjà couverte par contrainte unique et tests replay/conflict.
+- `INV-TR5` : verrouillage/relecture observés, mais test de concurrence ou preuve dédiée à ajouter.
+- `INV-Q6` : consommation QR verrouillée observée, mais test double-consommation à renforcer.
+- `INV-Q8` : identifiants QR aléatoires/uniques observés, mais test direct à ajouter.
+- `INV-TX2` : partiel ; prochain vrai patch runtime recommandé, car l'append-only transaction/transaction lines doit être durci.
+- `INV-VAL1` : trop transverse ; à prouver après fermeture des invariants mécaniques.
+
+Décision :
+- Ne pas patcher le runtime en G1.
+- Fermer G1 comme audit documentaire.
+- Ouvrir ensuite `Patch43G2 — transaction append-only hardening` pour `INV-TX2`.
+
+Tests :
+- Aucun test Odoo requis pour G1, car aucun code runtime n'est modifié.
+- Validation attendue : `git diff --check` et revue de `traceability.md`.
