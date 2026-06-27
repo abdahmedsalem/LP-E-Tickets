@@ -306,3 +306,21 @@ Tests :
 - `test_mobile_phone_change_lifecycle.py`
 - Run complet : 284 tests, 0 failed, 0 error.
 - Run ciblé après ACL : 122 tests, 0 failed, 0 error.
+
+### Patch43F2H0 — alignement doctrine device durable et user blocked
+
+Statut : doctrine alignée, runtime user blocked à implémenter dans F2I.
+
+Décisions doctrine :
+- `acpec.mobile.device` est l'objet durable du couple `(user_id, device_uid stable)`.
+- Les sessions mobiles référencent le device durable ; elles ne portent pas seules la confiance.
+- INV-D11 ajouté : user mobile blocked persistant refuse OTP/login sur tout appareil.
+- INV-D12 ajouté : réactivation user blocked ne restaure jamais automatiquement le trust device.
+- RES-3 ajouté : pas de gel wallet séparé en V1 ; la valeur est protégée par la pile d'accès.
+- Modèle de menace M2/M3 synchronisé avec INV-D7 et INV-D11 : vol device, SIM-swap, blocage device et blocage user persistant.
+- PIN/action_code et idempotence restent obligatoires pour les actions sensibles et mutations économiques, mais hors périmètre F2H.
+- F2H reste limité au remplacement device normal ; F2I portera perte/vol/suspicion et user blocked.
+
+Tests à venir :
+- T-D9 et T-D10 à couvrir dans F2I.
+- F2H couvrira remplacement device normal : nouveau device pending, approbation BO, ancien device non trusted.
