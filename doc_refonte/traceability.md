@@ -378,3 +378,22 @@ Décisions confirmées :
 Tests :
 - `test_mobile_phone_device_composition_lifecycle.py`
 - Run ciblé : `TestMobilePhoneDeviceCompositionLifecycle`, 0 failed, 0 error.
+
+### Patch43F2K — ancien device retrouvé / retour vers ancien device
+
+Statut : composition F2H validée par tests, sans changement runtime.
+
+Décisions confirmées :
+- F2K ne crée aucun mécanisme parallèle.
+- Un ancien device retrouvé en `pending_trust` peut être ré-approuvé normalement par BO.
+- La ré-approbation de l'ancien device le remet `trusted`.
+- Le device précédemment trusted redescend en `pending_trust`.
+- La règle un seul device trusted par user reste l'unique règle métier.
+- Le user reste le même, le téléphone reste le même, le partner/wallet/carnets restent conservés.
+- Un relogin depuis le device retrouvé réutilise le device durable existant et récupère son trust.
+- F2K ne couvre pas un device `blocked`.
+- Device blocked / user blocked / perte suspecte / vol / SIM-swap restent des cas F2I ou procédure BO spécifique hors F2K normal.
+
+Tests :
+- `test_mobile_old_device_return_lifecycle.py`
+- Run ciblé : `TestMobileOldDeviceReturnLifecycle`, 0 failed, 0 error.
