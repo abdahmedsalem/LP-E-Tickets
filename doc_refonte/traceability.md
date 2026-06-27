@@ -361,3 +361,20 @@ Tests :
 - `test_mobile_user_blocked_otp.py`
 - `test_mobile_user_blocking_lifecycle.py`
 - Run ciblé : `TestMobileUserBlockedOtp` + `TestMobileUserBlockingLifecycle`, 0 failed, 0 error.
+
+### Patch43F2J — composition changement téléphone + remplacement device
+
+Statut : composition F2G + F2H validée par tests, sans changement runtime.
+
+Décisions confirmées :
+- F2J n'introduit aucun mécanisme parallèle.
+- Si téléphone puis device : F2G change `login/mobile_phone`, conserve `user_id/partner_id`, révoque les sessions ; F2H ajoute ensuite le nouveau device `pending_trust` puis `trusted` après approbation BO.
+- Si device puis téléphone : F2H approuve le nouveau device et repasse l'ancien en `pending_trust` ; F2G change ensuite le numéro et révoque les sessions sans modifier le trust durable du device.
+- L'ancien numéro ne résout plus aucun utilisateur mobile après changement téléphone.
+- Le user reste le même, le partner reste le même, le wallet/carnets restent attachés au partner.
+- F2J ne traite pas perte/vol/SIM-swap/user blocked ; ces cas restent couverts par F2I.
+- F2J ne traite pas ancien device retrouvé ; ce sera F2K si nécessaire.
+
+Tests :
+- `test_mobile_phone_device_composition_lifecycle.py`
+- Run ciblé : `TestMobilePhoneDeviceCompositionLifecycle`, 0 failed, 0 error.
