@@ -65,7 +65,7 @@ Validation :
 | INV-TR1 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (relocalisation carnet) | tests transfert existants | Audit G1 : transfert relocalise les faces vers wallet destination |
 | INV-TR4 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (`UNIQUE(source_wallet_id, idempotency_key)`) | tests idempotence transfert existants | Audit G1 : replay/conflict couverts |
 | INV-TR5 | implémenté_patch43G1_test_concurrence_manquant | acpec_fueltoken_base.models.fuel_carnet_transfer (`FOR UPDATE`, relecture/invalidate) | T-TR5 à ajouter/renforcer | Audit G1 : verrouillage observé, preuve test dédiée manquante |
-| INV-Q6 | implémenté_patch43G1_test_double_consommation_a_renforcer | acpec_fueltoken_base.models.fuel_qr (`_lock_records`, consommation station) | T-Q5/T-Q7 à renforcer | Audit G1 : verrouillage observé, test double-consommation à renforcer |
+| INV-Q6 | vérifié_patch43G4 | acpec_fueltoken_core.models.fuel_qr (`action_consume_by_station`, `_lock_records`, double relecture idempotence) | TestConsumeStationGuard, TestConsumeStationConcurrency, TestStationQrUseRuntimePolicy | Patch43G4 : double consommation, idempotence station et verrou FOR UPDATE prouvés |
 | INV-Q8 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_qr (`models.Constraint` public code/hash + génération aléatoire) | TestD2MechanicalInvariants | Patch43G3 : identifiants QR publics/numériques générés et uniques prouvés |
 | INV-TX2 | vérifié_patch43G2 | acpec_fueltoken_core.models.fuel_transaction + transaction lines append-only | TestFuelTransactionAppendOnly | Patch43G2 : `write()` économique et `unlink()` transaction/lines bloqués hors contexte interne |
 | INV-VAL1 | à_prouver_patch43G1 | transverse wallet/faces/QR/transfert/transaction | T-VAL1 à concevoir | Audit G1 : invariant trop large, à traiter après invariants mécaniques |
@@ -562,3 +562,36 @@ Tests :
 Décision :
 - `INV-W1`, `INV-C2` et `INV-Q8` passent en `vérifié_patch43G3`.
 - Aucun changement runtime nécessaire.
+
+### Patch43G4 — QR consume lock/idempotency proof
+
+Statut : audit/traceability-only, sans changement runtime.
+
+Objet :
+- Fermer `INV-Q6` par preuve des tests existants.
+- Vérifier que la consommation station d'un QR est verrouillée, idempotente et non rejouable économiquement.
+- Ne pas ajouter de runtime : le mécanisme existe déjà dans `action_consume_by_station`.
+
+Preuves runtime :
+- `action_consume_by_station()` recherche une transaction existante par `transaction_type`, `qr_id` et `idempotency_key` avant verrou.
+- La méthode prend un verrou pessimiste sur le QR via `_lock_records()` / `SELECT ... FOR UPDATE`.
+- La méthode relit le QR après verrou avec `invalidate_recordset()`.
+- La méthode revérifie l'idempotence après verrou avant tout effet économique.
+- Une deuxième consommation non idempotente est refusée par l'état `consumed`.
+- Un rejeu idempotent retourne la transaction existante sans ré-encaisser.
+- Une concurrence réelle est sérialisée par le verrou QR.
+
+Tests existants utilisés comme preuve :
+- `TestConsumeStationGuard.test_double_consume_is_blocked_by_state`
+- `TestConsumeStationGuard.test_consume_is_idempotent_on_key`
+- `TestConsumeStationGuard.test_cross_company_consume_is_blocked`
+- `TestConsumeStationConcurrency.test_concurrent_consume_is_serialized_and_spends_once`
+- `TestStationQrUseRuntimePolicy.test_station_qr_use_replays_same_payload_for_same_idempotency_key`
+- `TestStationQrUseRuntimePolicy.test_station_qr_use_rejects_same_key_with_different_payload`
+- `TestStationQrUseRuntimePolicy.test_station_qr_use_requires_idempotency_key`
+- `TestStationQrUseRuntimePolicy.test_station_qr_use_requires_trusted_device`
+
+Décision :
+- `INV-Q6` passe en `vérifié_patch43G4`.
+- Aucun changement runtime nécessaire.
+- Aucun nouveau test nécessaire, car la preuve existe déjà dans les tests core/concurrence/API station.
