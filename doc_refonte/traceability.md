@@ -61,7 +61,7 @@ Validation :
 |---|---|---|---|---|
 | INV-W1 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_wallet (`models.Constraint` unique partner/company + `get_or_create`) | TestD2MechanicalInvariants | Patch43G3 : unicité wallet partner/company prouvée en test |
 | INV-C2 | vérifié_patch43G3 | acpec_fueltoken_core.models.fuel_face_line (conservation quantités face) | TestD2MechanicalInvariants | Patch43G3 : conservation `qty_initial == available + active + blocked + consumed + expired` prouvée |
-| INV-C6 | implémenté_probable_patch43G1_preuve_end_to_end_manquante | purchase/face/QR/transaction lines (`purchase_id`, `purchase_line_id`) | T-C4 à renforcer | Audit G1 : propagation présente, preuve end-to-end à ajouter |
+| INV-C6 | vérifié_patch43G6 | purchase → face_line → qr_line → transaction_line + transfert (`purchase_id`, `purchase_line_id`, `face_line_id`) | TestPurchaseLotPropagation | Patch43G6 : propagation origine achat/lot prouvée end-to-end |
 | INV-TR1 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (relocalisation carnet) | tests transfert existants | Audit G1 : transfert relocalise les faces vers wallet destination |
 | INV-TR4 | vérifié_patch43G1 | acpec_fueltoken_base.models.fuel_carnet_transfer (`UNIQUE(source_wallet_id, idempotency_key)`) | tests idempotence transfert existants | Audit G1 : replay/conflict couverts |
 | INV-TR5 | vérifié_patch43G5 | acpec_fueltoken_core.models.fuel_carnet_transfer (`FOR UPDATE` wallets/face lines + `invalidate_recordset`) | TestCarnetTransferLockReread | Patch43G5 : relecture après verrou prouvée par test dédié |
@@ -618,4 +618,32 @@ Tests :
 
 Décision :
 - `INV-TR5` passe en `vérifié_patch43G5`.
+- Aucun changement runtime nécessaire.
+
+### Patch43G6 — purchase/lot propagation end-to-end proof
+
+Statut : test-only, sans changement runtime.
+
+Objet :
+- Fermer `INV-C6`, identifié par G1 comme implémenté probable mais sans preuve end-to-end.
+- Prouver que l'origine achat/lot est conservée de bout en bout.
+- Couvrir achat, face line, QR line, transaction line, consommation station et transfert de carnet.
+
+Preuve ajoutée :
+- `TestPurchaseLotPropagation.test_g6_purchase_origin_is_preserved_through_qr_consume_and_transfer`
+
+Chaîne prouvée :
+- `purchase` → `face_line` : conservation `purchase_id` et `purchase_line_id`.
+- `face_line` → `qr_line` : conservation `face_line_id`, `purchase_id`, `purchase_line_id`.
+- `qr_line` → transaction émission QR : conservation origine achat/lot.
+- consommation station : transaction line conserve `purchase_id`, `purchase_line_id`, `face_line_id`, `qr_id`, `qr_line_id`.
+- transfert carnet : la même `face_line` est déplacée vers le wallet destination sans recréer l'origine.
+- transactions de transfert source/destination conservent `purchase_id`, `purchase_line_id`, `face_line_id` et `transfer_id`.
+
+Tests :
+- Ciblé `TestPurchaseLotPropagation` : 1 test, 0 échec, 0 erreur.
+- Élargi sécurité/runtime : 321 tests, 0 échec, 0 erreur.
+
+Décision :
+- `INV-C6` passe en `vérifié_patch43G6`.
 - Aucun changement runtime nécessaire.
