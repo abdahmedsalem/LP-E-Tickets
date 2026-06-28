@@ -1,5 +1,5 @@
 {'name': 'ACPEC Mobile Auth',
- 'version': '19.0.1.18.0',
+ 'version': '19.0.1.18.2',
  'summary': 'Mobile account creation, approval, token sessions and app version policy',
  'description': 'Authentication and mobile identity backend for ACPEC mobile applications.',
  'category': 'Tools',

@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import re
 import secrets
 
 from dateutil.relativedelta import relativedelta
@@ -33,6 +34,21 @@ class ResUsers(models.Model):
     mobile_pin_failed_count = fields.Integer(string='Mobile PIN Failed Count', default=0, copy=False, groups='base.group_system')
     mobile_pin_locked_until = fields.Datetime(string='Mobile PIN Locked Until', copy=False, groups='base.group_system')
     mobile_pin_set_at = fields.Datetime(string='Mobile PIN Set At', readonly=True)
+
+    acpec_human_code = fields.Char(
+        string='Code humain',
+        size=5,
+        index=True,
+        copy=False,
+        readonly=True,
+        help=(
+            "Alias humain stable de recherche. "
+            "Ne porte aucun droit, aucune authentification et aucune autorisation."
+        ),
+    )
+
+    ACPEC_HUMAN_CODE_RE = re.compile(r'^[A-HJ-NP-Z][0-9]{4}$')
+    ACPEC_HUMAN_CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
 
     def _acpec_group(self, xmlid):
         return self.env.ref(xmlid, raise_if_not_found=False)
@@ -115,6 +131,79 @@ class ResUsers(models.Model):
                AND mobile_phone <> ''
             """
         )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS res_users_acpec_human_code_uniq
+                ON res_users (acpec_human_code)
+             WHERE acpec_human_code IS NOT NULL
+               AND acpec_human_code <> ''
+            """
+        )
+
+    @api.model
+    def _acpec_normalize_human_code(self, code):
+        value = (str(code) if code not in (False, None) else '').strip().upper()
+        return value or False
+
+    @api.model
+    def _acpec_is_valid_human_code(self, code):
+        value = self._acpec_normalize_human_code(code)
+        return bool(value and self.ACPEC_HUMAN_CODE_RE.match(value))
+
+    @api.model
+    def _acpec_new_human_code_candidate(self):
+        return '%s%04d' % (
+            secrets.choice(self.ACPEC_HUMAN_CODE_LETTERS),
+            secrets.randbelow(10000),
+        )
+
+    @api.model
+    def _acpec_create_unique_human_code(self, reserved_codes=False):
+        reserved_codes = set(reserved_codes or [])
+        Users = self.sudo().with_context(active_test=False)
+        for _attempt in range(120):
+            code = self._acpec_new_human_code_candidate()
+            if code in reserved_codes:
+                continue
+            if not Users.search([('acpec_human_code', '=', code)], limit=1):
+                return code
+        raise ValidationError(_('Impossible de générer un code humain utilisateur unique.'))
+
+    @api.model
+    def _acpec_prepare_human_code_create_vals(self, vals_list):
+        reserved_codes = set()
+        for vals in vals_list:
+            code = self._acpec_normalize_human_code(vals.get('acpec_human_code'))
+            if code:
+                if not self._acpec_is_valid_human_code(code):
+                    raise ValidationError(_('Le code humain utilisateur doit respecter le format A9999.'))
+                if code in reserved_codes:
+                    raise ValidationError(_('Code humain utilisateur dupliqué dans la même création.'))
+                vals['acpec_human_code'] = code
+                reserved_codes.add(code)
+                continue
+            code = self._acpec_create_unique_human_code(reserved_codes=reserved_codes)
+            vals['acpec_human_code'] = code
+            reserved_codes.add(code)
+        return vals_list
+
+    def _acpec_assert_human_code_write_allowed(self, vals):
+        if 'acpec_human_code' not in (vals or {}):
+            return True
+
+        requested = self._acpec_normalize_human_code(vals.get('acpec_human_code'))
+        if requested and not self._acpec_is_valid_human_code(requested):
+            raise ValidationError(_('Le code humain utilisateur doit respecter le format A9999.'))
+
+        if self.env.context.get('acpec_allow_human_code_write'):
+            vals['acpec_human_code'] = requested or False
+            return True
+
+        changed = self.filtered(lambda user: (user.acpec_human_code or False) != (requested or False))
+        if changed:
+            raise AccessError(_('Le code humain utilisateur est stable et ne peut pas être modifié.'))
+        vals['acpec_human_code'] = requested or False
+        return True
 
     @api.model
     def _acpec_normalize_mobile_phone(self, mobile_phone):
@@ -566,11 +655,15 @@ class ResUsers(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [dict(vals) for vals in vals_list]
+        self._acpec_prepare_human_code_create_vals(vals_list)
         users = super().create(vals_list)
         users._check_acpec_mobile_user_separation()
         return users
 
     def write(self, vals):
+        vals = dict(vals or {})
+        self._acpec_assert_human_code_write_allowed(vals)
         self._acpec_assert_mobile_password_write_allowed(vals)
         result = super().write(vals)
         self._check_acpec_mobile_user_separation()
