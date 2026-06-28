@@ -16,6 +16,7 @@
         'views/backoffice_search_views.xml',
         'views/backoffice_action_views.xml',
         'views/mobile_users_backoffice_views.xml',
+        'views/mobile_user_human_code_views.xml',
         'views/mobile_auth_french_views.xml',
         # Les menus sont chargés en dernier : ils référencent des actions
         # définies dans backoffice_action_views.xml et mobile_users_backoffice_views.xml.

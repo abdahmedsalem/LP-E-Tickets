@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Patch43H2A3: le code humain utilisateur est visible uniquement dans
+         l'UI métier back-office mobile FuelToken, pas dans la vue users Odoo standard. -->
+
+    <record id="view_backoffice_mobile_user_list_acpec_human_code" model="ir.ui.view">
+        <field name="name">backoffice.mobile.user.list.acpec.human.code</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="acpec_fueltoken_backoffice_ui.view_backoffice_mobile_user_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="acpec_human_code" string="Code utilisateur"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_backoffice_mobile_user_search_acpec_human_code" model="ir.ui.view">
+        <field name="name">backoffice.mobile.user.search.acpec.human.code</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="acpec_fueltoken_backoffice_ui.view_backoffice_mobile_user_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="acpec_human_code" string="Code utilisateur"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
