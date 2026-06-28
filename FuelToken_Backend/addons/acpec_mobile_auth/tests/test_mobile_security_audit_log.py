@@ -336,3 +336,80 @@ class TestMobileSecurityAuditLog(TransactionCase):
                 "DELETE FROM acpec_mobile_security_audit_log WHERE idempotency_key = %s",
                 [key],
             )
+
+    def test_sec_reference_is_visible_and_searchable_in_audit_bo_views(self):
+        search_view = self.env.ref(
+            'acpec_mobile_auth.view_acpec_mobile_security_audit_log_search'
+        )
+        list_view = self.env.ref(
+            'acpec_mobile_auth.view_acpec_mobile_security_audit_log_tree'
+        )
+        form_view = self.env.ref(
+            'acpec_mobile_auth.view_acpec_mobile_security_audit_log_form'
+        )
+        action = self.env.ref(
+            'acpec_mobile_auth.action_acpec_mobile_security_audit_log'
+        )
+        menu = self.env.ref('acpec_mobile_auth.menu_mobile_security_audit_log')
+        auditor_group = self.env.ref('acpec_mobile_auth.group_mobile_security_auditor')
+
+        self.assertIn('name="reference"', search_view.arch_db)
+        self.assertIn('Référence publique', search_view.arch_db)
+        self.assertIn('name="reference"', list_view.arch_db)
+        self.assertIn('name="reference"', form_view.arch_db)
+        self.assertIn('name="debug_reason"', form_view.arch_db)
+
+        self.assertEqual(action.res_model, 'acpec.mobile.security.audit.log')
+        self.assertEqual(action.search_view_id, search_view)
+        self.assertIn(auditor_group, menu.group_ids)
+
+    def test_security_auditor_can_read_sec_reference_without_mutating_audit_log(self):
+        reference = 'SEC-H5F-BO-USABILITY-READONLY'
+        log = self.env['acpec.mobile.security.audit.log'].sudo().log_event(
+            event_type='mobile_signup_not_allowed',
+            severity='warning',
+            code='SIGNUP_NOT_ALLOWED',
+            reference=reference,
+            public_message='Impossible de finaliser l’inscription avec ces informations.',
+            debug_reason='h5f_bo_usability_reference_lookup',
+            endpoint='/api/acpec/mobile_auth/v1/signup',
+            operation='signup',
+            company_id=self.env.company.id,
+            success=False,
+            blocked=True,
+        )
+        partner = self._existing_partner()
+        auditor = self.env['res.users'].sudo().with_context(no_reset_password=True).create({
+            'name': 'H5F SEC Reference Auditor',
+            'login': 'h5f-sec-reference-auditor@example.com',
+            'email': 'h5f-sec-reference-auditor@example.com',
+            'partner_id': partner.id,
+            'company_id': self.env.company.id,
+            'company_ids': [(6, 0, [self.env.company.id])],
+            'group_ids': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('acpec_mobile_auth.group_mobile_security_auditor').id,
+            ])],
+        })
+        audit_as_auditor = self.env['acpec.mobile.security.audit.log'].with_user(auditor)
+
+        found = audit_as_auditor.search([('reference', '=', reference)], limit=1)
+        self.assertEqual(found.id, log.id)
+        self.assertEqual(found.reference, reference)
+        self.assertIn('h5f_bo_usability_reference_lookup', found.debug_reason or '')
+
+        with self.assertRaises(AccessError):
+            found.write({'debug_reason': 'must not change'})
+
+        with self.assertRaises(AccessError):
+            found.unlink()
+
+        with self.assertRaises(AccessError):
+            audit_as_auditor.create({
+                'event_type': 'mobile_signup_not_allowed',
+                'severity': 'warning',
+                'code': 'SIGNUP_NOT_ALLOWED',
+                'reference': 'SEC-H5F-AUDITOR-CREATE-FORBIDDEN',
+                'success': False,
+                'blocked': True,
+            })
