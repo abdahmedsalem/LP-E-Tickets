@@ -1360,42 +1360,41 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             )
 
     def test_request_otp_route_returns_rate_limited_code(self):
-        icp = self.env['ir.config_parameter'].sudo()
         self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'False')
-        icp.set_param('SMS_PROVIDER', '')
-        icp.set_param('SMS_VALIDATION_KEY', '')
-        icp.set_param('SMS_TOKEN', '')
-        icp.set_param('SMS_URL', '')
         self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_minute', '1')
         self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_day', '100')
         self._set_security_setting('acpec_mobile_auth.otp_limit_ip_per_hour', '100')
         self._set_security_setting('acpec_mobile_auth.otp_limit_register_ip_per_day', '100')
 
         self.env['acpec.mobile.auth.otp'].sudo().request_otp(
-            '32524989',
+            '21000089',
             purpose='register',
-            request_ip='10.0.0.9',
+            request_ip='10.43.5.2',
         )
 
         controller = AcpecMobileAuthOtpApi()
+        controller._test_public_auth_min_latency_seconds = 0.250
         controller._require_keys = lambda params, keys: None
         controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
         dummy_httprequest = SimpleNamespace(
-            remote_addr='10.0.0.9',
+            remote_addr='10.43.5.2',
             headers={'User-Agent': 'pytest'},
         )
         dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
 
         with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
-                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth.controllers.api_common.time.sleep') as mocked_sleep:
             result = controller.request_otp(
-                identifier='32524989',
+                identifier='21000089',
                 purpose='register',
             )
 
         self.assertFalse(result['ok'])
         self.assertEqual(result['error']['code'], 'RATE_LIMITED')
-        self.assertIn('Trop de demandes OTP', result['error']['message'])
+        self.assertEqual(result['error']['message'], 'Trop de tentatives. Réessayez plus tard.')
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        mocked_sleep.assert_called()
 
     def test_rate_limit_rejects_same_identifier_per_day(self):
         icp = self.env['ir.config_parameter'].sudo()
