@@ -1175,3 +1175,181 @@ Décision :
 - aucun changement de tests ;
 - aucun changement SMS/ICP ;
 - aucun changement Flutter.
+
+---
+
+## Patch43H5H — Revue alignement doctrine / code / tests backend
+
+Date : 2026-06-28
+Type : documentation / revue uniquement
+Runtime : aucun changement
+Tests Docker : non requis
+
+### Objectif
+
+Patch43H5H documente la revue d'alignement entre :
+
+```text
+doctrine canonique doc_refonte
+code backend actuel
+tests backend existants
+```
+
+Cette revue est faite avant l'alignement Flutter/API public error contract.
+
+Elle ne modifie aucun runtime, aucun test, aucun XML, aucun ACL, aucun setting et aucun flux Flutter.
+
+### Verdict H5H
+
+Aucune faille majeure V1 n'a été identifiée dans le backend actuel.
+
+Le backend est globalement aligné avec la doctrine canonique sur les axes suivants :
+
+```text
+runtime prod/dev/test
+OTP dev-mode / prod guard
+rate-limit / latence
+erreurs publiques ERR-* / SEC-*
+audit BO
+device trust
+rôles mobiles
+signup/register
+readiness fail-closed
+settings source doctrine
+```
+
+Décision :
+
+```text
+Aucun patch runtime requis avant Flutter.
+Aucun changement SMS/ICP en V1.
+Aucun changement device trust.
+Aucun changement signup/register.
+Aucun changement de contrat backend avant extraction Flutter.
+```
+
+### Matrice doctrine / code / tests
+
+```text
+Axe                              Code actuel / tests                              Écart                    Décision
+Runtime prod/dev/test             env + config fallback, pas ICP                  aucun                    garder
+OTP dev-mode / prod guard         relax uniquement runtime dev-like/env           aucun                    garder
+Legacy otp_dev_mode DB            readiness signale, pas source runtime           aucun                    garder
+Rate-limit / antiflood            fail-closed prod, zéro seulement dev relax      aucun                    garder
+Latence refus sensibles           min latency sur refus sensibles H5E             aucun bloquant           garder
+Erreurs techniques                SERVER_ERROR + ERR-* + marker BO                aucun                    garder
+Refus sensibles                   SEC-* + message générique + audit détaillé      aucun                    garder
+Audit BO SEC                      reference/public_message/debug_reason + ACL     aucun                    garder
+Device trust                      nouveau device pending_trust                    aucun                    garder
+TOFU                              absent                                          conforme doctrine        garder absent
+Rôles mobiles                     pas choisis par mobile, BO only                 aucun                    garder
+Signup/register                   refus sensibles génériques, session contrôlée   aucun                    garder
+Validation formulaire signup      NAME_REQUIRED/SECRET_CODE_* publics             choix H5E validé         garder
+Readiness fail-closed             prod guards + alertes legacy                    aucun majeur            garder
+Settings source doctrine          H5G/H5G2 documentés, SMS/ICP ouvert             dette connue            garder ouvert
+```
+
+### Points non bloquants identifiés
+
+#### OPEN-H5H-PUBLIC-LATENCY-SETTING-001 — Configuration de `public_auth_min_latency_ms`
+
+Constat :
+
+```text
+Le code peut lire acpec_mobile_auth.public_auth_min_latency_ms via
+acpec.mobile.security.setting, avec défaut sécurisé.
+La clé n'est pas nécessairement exposée comme setting BO canonique.
+```
+
+Impact :
+
+```text
+Non bloquant V1.
+Le défaut prod reste strict.
+Le dev relax peut garder une latence nulle selon doctrine dev/test.
+```
+
+Décision V1 :
+
+```text
+Ne pas modifier le runtime maintenant.
+```
+
+Options futures :
+
+```text
+- ajouter explicitement la clé aux settings BO si on veut la rendre pilotable ;
+- ou documenter qu'elle reste un réglage interne caché avec défaut sécurisé.
+```
+
+Statut : ouvert, non bloquant.
+
+#### OPEN-H5H-WEB-GUARD-001 — Clarifier le fail-open contrôlé du web session guard
+
+Constat :
+
+```text
+Le guard web qui bloque les comptes mobile_only en session web Odoo bloque sur
+détection positive, mais peut fail-open si la détection elle-même échoue.
+```
+
+Avocat du diable :
+
+```text
+Cela peut sembler contredire la doctrine fail-closed.
+```
+
+Clarification V1 :
+
+```text
+Le fail-closed strict s'applique aux décisions de sécurité mobile/API.
+Le web session guard est une défense en profondeur autour des requêtes web Odoo.
+Il ne doit pas faire tomber tout Odoo si sa détection auxiliaire échoue.
+```
+
+Décision V1 :
+
+```text
+Pas de changement runtime.
+Documenter comme exception auxiliaire contrôlée.
+```
+
+Statut : ouvert, non bloquant.
+
+### Points déjà documentés et maintenus ouverts
+
+#### OPEN-H5G-SMS-001 — SMS / ICP
+
+Le sujet SMS/ICP reste tel que documenté par H5G/H5G2 :
+
+```text
+SMS runtime peut encore lire certains paramètres depuis ir.config_parameter.
+La cible doctrinale future des secrets SMS est env/config.
+Le comportement historique n'est pas migré en V1.
+```
+
+Critères de réouverture V1 inchangés :
+
+```text
+- secret SMS exposé publiquement ;
+- secret SMS loggé en clair ;
+- utilisateur non autorisé pouvant lire/modifier SMS_TOKEN ou SMS_VALIDATION_KEY ;
+- readiness production donnant un feu vert malgré secrets absents ou incohérents ;
+- usage SMS permettant un bypass OTP ou une dégradation fail-open.
+```
+
+Statut : ouvert, non bloquant V1.
+
+### Décision finale H5H
+
+```text
+La revue doctrine/code/tests backend est faite.
+Aucun écart backend ne bloque le passage à Flutter.
+Les points ouverts sont documentaires ou V2 sauf preuve de faille majeure.
+```
+
+Prochaine étape :
+
+```text
+Flutter/API public error contract alignment.
+```
