@@ -1,5 +1,8 @@
 import hashlib
 import logging
+import traceback
+import uuid
+from datetime import datetime
 import re
 from contextlib import contextmanager
 
@@ -61,8 +64,17 @@ class AcpecMobileAuthApiCommon(http.Controller):
         'pin',
         'mobile_pin',
         'password',
+        'qr_numeric_code',
+        'qr_code',
+        'public_code',
+        'request_hash',
     })
     REDACTED_LOG_VALUE = '***REDACTED***'
+    API_ERROR_REFERENCE_PREFIX = 'ERR'
+    API_ERROR_SUMMARY_MAX_CHARS = 512
+    API_ERROR_TRACEBACK_LOG_MAX_CHARS = 32768
+    API_ERROR_PARAMS_LOG_MAX_CHARS = 4096
+
 
     SENSITIVE_PUBLIC_MESSAGES = {
         'purchase_create': "La demande d’achat a échoué. Réessayez ou contactez l’administrateur.",
@@ -100,14 +112,61 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if isinstance(value, set):
             return [self._redact_for_log(item) for item in sorted(value, key=lambda item: str(item))]
 
-        text = str(value)
-        for key in sorted(self.SENSITIVE_LOG_KEYS, key=len, reverse=True):
-            text = re.sub(
-                r'(?i)(%s\s*[:=]\s*)[^,\s\}\]\)]+' % re.escape(key),
-                r'\1%s' % self.REDACTED_LOG_VALUE,
-                text,
-            )
+        return self._redact_text_for_log(value)
+
+    def _redact_text_for_log(self, value):
+        """Best-effort string scrubber for server logs.
+
+        This is a safety net, not the primary protection.  Code must never
+        intentionally interpolate OTP, PIN, action_code, tokens, raw QR codes
+        or request hashes into exception messages.
+        """
+        text = '' if value in (None, False) else str(value)
+        if not text:
+            return text
+
+        text = re.sub(
+            r'(?i)(Authorization\s*:\s*Bearer\s+)[^\s,;]+',
+            r'\1%s' % self.REDACTED_LOG_VALUE,
+            text,
+        )
+        text = re.sub(
+            r'(?i)(\bBearer\s+)[A-Za-z0-9._~+/=-]+',
+            r'\1%s' % self.REDACTED_LOG_VALUE,
+            text,
+        )
+
+        key_pattern = '|'.join(re.escape(key) for key in sorted(self.SENSITIVE_LOG_KEYS, key=len, reverse=True))
+        quoted_pattern = r'(?i)([\"\']?(?:%s)[\"\']?\s*[:=]\s*)([\"\'])(.*?)(\2)' % key_pattern
+        text = re.sub(
+            quoted_pattern,
+            lambda match: '%s%s%s%s' % (
+                match.group(1),
+                match.group(2),
+                self.REDACTED_LOG_VALUE,
+                match.group(2),
+            ),
+            text,
+        )
+        inline_pattern = r'(?i)((?<![\w-])(?:%s)(?![\w-])\s*[:=]\s*)[^\s,;\}\]\)]+' % key_pattern
+        text = re.sub(
+            inline_pattern,
+            r'\1%s' % self.REDACTED_LOG_VALUE,
+            text,
+        )
         return text
+
+    def _truncate_log_text(self, text, limit):
+        text = '' if text in (None, False) else str(text)
+        if not limit or len(text) <= limit:
+            return text
+        suffix = '... [tronqué]'
+        return text[:max(limit - len(suffix), 0)] + suffix
+
+    def _normalize_error_summary(self, text):
+        text = self._redact_text_for_log(text)
+        text = re.sub(r'\s+', ' ', text or '').strip()
+        return self._truncate_log_text(text, self.API_ERROR_SUMMARY_MAX_CHARS)
 
     def _api_env(self):
         test_env = getattr(self, '_test_env', None)
@@ -128,7 +187,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'data': data or {},
         }
 
-    def _error_response(self, code, message, details=False):
+    def _error_response(self, code, message, details=False, reference=False):
         payload = {
             'ok': False,
             'success': False,
@@ -137,11 +196,108 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 'message': message,
             }
         }
+        if reference:
+            payload['error']['reference'] = reference
         if details:
             payload['error']['details'] = details
         return payload
 
-    def _handle_exception_response(self, exc):
+    def _generate_mobile_api_error_reference(self):
+        return '%s-%s-%s' % (
+            self.API_ERROR_REFERENCE_PREFIX,
+            datetime.utcnow().strftime('%Y%m%d-%H%M%S'),
+            uuid.uuid4().hex[:6].upper(),
+        )
+
+    def _request_params_for_error_log(self, params=False):
+        if params is not False:
+            return params or {}
+        try:
+            return getattr(request, 'params', {}) or {}
+        except Exception:
+            return {}
+
+    def _mobile_api_error_marker_vals(self, exc, reference, params=False, operation=False):
+        endpoint = self._request_path() or False
+        exception_type = type(exc).__name__
+        exception_summary = self._normalize_error_summary(str(exc) or exception_type)
+        fingerprint_source = '%s|%s|%s' % (
+            endpoint or '',
+            exception_type or '',
+            exception_summary or '',
+        )
+        fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()[:32]
+
+        user_id = False
+        company_id = False
+        try:
+            env = self._api_env()
+            user = env.user
+            if user and user.exists():
+                user_id = user.id
+                company_id = user.company_id.id if user.company_id else False
+        except Exception:
+            user_id = False
+            company_id = False
+
+        return {
+            'name': reference,
+            'fingerprint': fingerprint,
+            'code': 'SERVER_ERROR',
+            'endpoint': endpoint,
+            'operation': operation or False,
+            'exception_type': exception_type,
+            'exception_summary': exception_summary,
+            'last_user_id': user_id,
+            'last_company_id': company_id,
+        }
+
+    def _log_mobile_api_error_marker_committed(self, vals):
+        vals = dict(vals or {})
+        reference = vals.get('name') or vals.get('last_seen_reference') or False
+        try:
+            env = self._api_env()
+            force_independent_cursor = getattr(self, '_force_independent_error_marker_cursor', False)
+            if getattr(self, '_test_env', None) is not None and not force_independent_cursor:
+                env['acpec.mobile.api.error.marker'].sudo().log_marker(**vals)
+                return
+            with env.registry.cursor() as cr:
+                committed_env = api.Environment(cr, SUPERUSER_ID, dict(env.context))
+                committed_env['acpec.mobile.api.error.marker'].sudo().log_marker(**vals)
+        except Exception:
+            _logger.exception('mobile_api_error_marker_create_failed reference=%s', reference)
+
+    def _log_unhandled_mobile_api_exception(self, exc, params=False, operation=False):
+        reference = self._generate_mobile_api_error_reference()
+        params = self._request_params_for_error_log(params=params)
+        marker_vals = self._mobile_api_error_marker_vals(
+            exc,
+            reference,
+            params=params,
+            operation=operation,
+        )
+        traceback_text = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        traceback_text = self._redact_text_for_log(traceback_text)
+        traceback_text = self._truncate_log_text(traceback_text, self.API_ERROR_TRACEBACK_LOG_MAX_CHARS)
+        params_redacted = self._redact_for_log(params)
+        params_redacted = self._truncate_log_text(params_redacted, self.API_ERROR_PARAMS_LOG_MAX_CHARS)
+
+        _logger.error(
+            'mobile_api_server_error reference=%s endpoint=%s operation=%s uid=%s company_id=%s exception_type=%s exception_summary=%s params_redacted=%s\n%s',
+            reference,
+            marker_vals.get('endpoint') or False,
+            marker_vals.get('operation') or False,
+            marker_vals.get('last_user_id') or False,
+            marker_vals.get('last_company_id') or False,
+            marker_vals.get('exception_type') or False,
+            marker_vals.get('exception_summary') or False,
+            params_redacted,
+            traceback_text,
+        )
+        self._log_mobile_api_error_marker_committed(marker_vals)
+        return reference
+
+    def _handle_exception_response(self, exc, params=False, operation=False):
         if isinstance(exc, MobileSensitiveActionError):
             _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
             return self._error_response(exc.acpec_sensitive_code, exc.acpec_public_message)
@@ -158,10 +314,15 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if isinstance(exc, AccessError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('ACCESS_ERROR', str(exc))
-        _logger.exception('Unhandled API error: %s', self._redact_for_log(str(exc)))
+        reference = self._log_unhandled_mobile_api_exception(
+            exc,
+            params=params,
+            operation=operation,
+        )
         return self._error_response(
             'SERVER_ERROR',
-            _('An unexpected server error occurred.'),
+            'Une erreur technique est survenue. Veuillez contacter le support.',
+            reference=reference,
         )
 
     def _sensitive_public_message(self, purpose):
@@ -174,18 +335,27 @@ class AcpecMobileAuthApiCommon(http.Controller):
         )
 
     def _request_path(self):
+        test_path = getattr(self, '_test_request_path', False)
+        if test_path:
+            return test_path
         try:
             return request.httprequest.path or False
         except Exception:
             return False
 
     def _request_ip(self):
+        test_ip = getattr(self, '_test_request_ip', False)
+        if test_ip:
+            return test_ip
         try:
             return request.httprequest.remote_addr or False
         except Exception:
             return False
 
     def _request_user_agent(self):
+        test_user_agent = getattr(self, '_test_user_agent', False)
+        if test_user_agent:
+            return test_user_agent
         try:
             return request.httprequest.headers.get('User-Agent') or False
         except Exception:

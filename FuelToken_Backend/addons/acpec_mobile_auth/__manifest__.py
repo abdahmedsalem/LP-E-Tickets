@@ -10,11 +10,13 @@
  'data': ['security/mobile_auth_groups.xml',
           'security/ir.model.access.csv',
           'data/ir_sequence_data.xml',
+          'data/mobile_api_error_marker_cron.xml',
           'views/mobile_device_trust_wizard_views.xml',
           'views/mobile_auth_views.xml',
           'views/res_company_views.xml',
           'views/mobile_security_audit_log_views.xml',
           'views/mobile_auth_menu_views.xml',
+          'views/mobile_api_error_marker_views.xml',
           'views/mobile_security_setting_views.xml'],
  'application': True,
  'installable': True}
