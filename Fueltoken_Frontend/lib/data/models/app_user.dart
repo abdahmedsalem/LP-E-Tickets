@@ -366,13 +366,31 @@ class AppUser extends Equatable {
     );
   }
 
-  bool get isDeviceTrusted {
+  String? get normalizedDeviceTrustState {
     final state = deviceTrustState?.trim().toLowerCase();
-    if (state == null || state.isEmpty) return true;
+    if (state == null || state.isEmpty) return null;
+    return state;
+  }
+
+  bool get isDeviceTrusted {
+    final state = normalizedDeviceTrustState;
+    if (state == null) return true; // legacy/local payload: do not block.
     return state == 'trusted';
   }
 
-  bool get isDeviceActivationPending => !isDeviceTrusted;
+  bool get isDeviceBlocked {
+    final state = normalizedDeviceTrustState;
+    return state == 'blocked' || state == 'rejected';
+  }
+
+  bool get isDeviceActivationPending {
+    final state = normalizedDeviceTrustState;
+    if (state == null || state == 'trusted') return false;
+    if (isDeviceBlocked) return false;
+    return state == 'pending_trust' ||
+        state == 'pending_approval' ||
+        state == 'pending';
+  }
 
   AppUser copyWith({
     String? name,

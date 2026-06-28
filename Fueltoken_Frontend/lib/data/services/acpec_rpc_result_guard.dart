@@ -1,3 +1,4 @@
+import 'acpec_public_api_error.dart';
 import 'odoo_jsonrpc_client.dart';
 
 Map<String, dynamic> acpecRpcMapOrThrow(
@@ -37,65 +38,32 @@ void _throwIfBusinessError(
   String fallbackMessage, {
   String? publicErrorMessage,
 }) {
-  bool isFalseValue(dynamic v) {
-    if (v == false || v == 0) return true;
-    if (v is String) {
-      final s = v.trim().toLowerCase();
-      return s == 'false' || s == '0' || s == 'no';
+  if (!AcpecPublicApiError.hasBusinessError(m)) return;
+
+  final publicError = AcpecPublicApiError.fromBusinessEnvelope(m);
+  final preferredMessage = publicErrorMessage?.trim();
+  if (preferredMessage == null || preferredMessage.isEmpty) {
+    if (!publicError.hasKnownCode && fallbackMessage.trim().isNotEmpty) {
+      throw OdooJsonRpcException(
+        _withReference(fallbackMessage.trim(), publicError.normalizedReference),
+        publicCode: publicError.code,
+        reference: publicError.normalizedReference,
+        data: m,
+      );
     }
-    return false;
+    throw publicError.toException();
   }
 
-  final status = m['status']?.toString().trim().toLowerCase();
-  final code = m['code']?.toString().trim().toLowerCase();
-
-  final hasBusinessError =
-      isFalseValue(m['success']) ||
-      isFalseValue(m['ok']) ||
-      status == 'error' ||
-      status == 'failed' ||
-      status == 'failure' ||
-      status == 'denied' ||
-      status == 'rejected' ||
-      code == 'error' ||
-      code == 'failed' ||
-      code == 'access_denied' ||
-      m['error'] != null;
-
-  if (!hasBusinessError) return;
-
   throw OdooJsonRpcException(
-    publicErrorMessage ?? _extractMessage(m, fallbackMessage),
+    _withReference(preferredMessage, publicError.normalizedReference),
+    publicCode: publicError.code,
+    reference: publicError.normalizedReference,
     data: m,
   );
 }
 
-String _extractMessage(Map<String, dynamic> m, String fallbackMessage) {
-  for (final key in const [
-    'message',
-    'human_message',
-    'user_message',
-    'detail',
-    'reason',
-  ]) {
-    final value = m[key]?.toString().trim();
-    if (value != null && value.isNotEmpty && value != 'false') {
-      return value;
-    }
-  }
-
-  final err = m['error'];
-  if (err is Map) {
-    for (final key in const ['message', 'data', 'detail', 'reason']) {
-      final value = err[key]?.toString().trim();
-      if (value != null && value.isNotEmpty && value != 'false') {
-        return value;
-      }
-    }
-  } else if (err != null) {
-    final value = err.toString().trim();
-    if (value.isNotEmpty && value != 'false') return value;
-  }
-
-  return fallbackMessage;
+String _withReference(String message, String? reference) {
+  final ref = reference?.trim();
+  if (ref == null || ref.isEmpty || message.contains(ref)) return message;
+  return '$message\nRéférence support : $ref';
 }
