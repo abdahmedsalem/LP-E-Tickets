@@ -11,10 +11,25 @@ import '../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 
 /// Erreur JSON-RPC (`error` dans la réponse) ou réseau.
 class OdooJsonRpcException implements Exception {
-  OdooJsonRpcException(this.message, {this.code, this.data});
+  OdooJsonRpcException(
+    this.message, {
+    this.code,
+    this.publicCode,
+    this.reference,
+    this.data,
+  });
 
   final String message;
   final int? code;
+
+  /// Public ACPEC business error code from `result.error.code`.
+  ///
+  /// This is intentionally separate from JSON-RPC numeric error [code].
+  final String? publicCode;
+
+  /// Support reference returned by the backend (`SEC-*` / `ERR-*`).
+  final String? reference;
+
   final Object? data;
 
   /// Odoo renvoie souvent `100` + libellé « Session expired ».
@@ -39,6 +54,8 @@ class OdooJsonRpcException implements Exception {
   /// Session mobile expirée / jeton refusé (réponse ACPEC ou HTTP 401).
   bool get isAuthRequired {
     if (code == 401) return true;
+    final pc = publicCode?.trim().toUpperCase();
+    if (pc == 'AUTH_REQUIRED' || pc == 'REFRESH_TOKEN_REQUIRED') return true;
     final m = message.toLowerCase();
     if (m.contains('auth_required')) return true;
     if (m.contains('authentication required')) return true;
@@ -59,8 +76,15 @@ class OdooJsonRpcException implements Exception {
   bool get requiresReLogin => isOdooSessionExpired || isAuthRequired;
 
   @override
-  String toString() =>
-      'OdooJsonRpcException($code): $message${data != null ? ' | $data' : ''}';
+  String toString() {
+    final parts = <String>[
+      if (code != null) 'jsonrpc=$code',
+      if (publicCode != null && publicCode!.isNotEmpty) 'public=$publicCode',
+      if (reference != null && reference!.isNotEmpty) 'reference=$reference',
+    ];
+    final suffix = parts.isEmpty ? '' : '(${parts.join(', ')})';
+    return 'OdooJsonRpcException$suffix: $message';
+  }
 }
 
 String _sanitizeServerMessage(

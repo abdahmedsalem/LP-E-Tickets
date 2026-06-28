@@ -12,7 +12,7 @@ class ErrorPresenter {
       if (error.isOdooSessionExpired) {
         return 'Votre session a expiré. Veuillez vous reconnecter.';
       }
-      return _sanitize(error.message);
+      return _withReference(_sanitize(error.message), error.reference);
     }
     final raw = error
         .toString()
@@ -27,6 +27,13 @@ class ErrorPresenter {
 
   static String sessionExpired() =>
       'Votre session a expiré. Veuillez vous reconnecter.';
+
+  static String _withReference(String message, String? reference) {
+    final ref = reference?.trim();
+    if (ref == null || ref.isEmpty) return message;
+    if (message.contains(ref)) return message;
+    return '$message\nRéférence support : $ref';
+  }
 
   static String _sanitize(String raw) {
     var msg = raw.trim();

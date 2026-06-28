@@ -58,6 +58,7 @@ class AppRouter {
         final atPinLockRoute = loc == '/session-pin-lock';
         final atActivationPendingRoute = loc == '/activation-pending';
         final hasUser = auth.user != null;
+        final deviceBlocked = hasUser && auth.user!.isDeviceBlocked;
         final deviceActivationPending =
             hasUser && auth.user!.isDeviceActivationPending;
         final atAuthRoute = {
@@ -70,7 +71,7 @@ class AppRouter {
           '/forgot-password/reset',
         }.contains(loc);
 
-        if (deviceActivationPending) {
+        if (deviceBlocked || deviceActivationPending) {
           if (!atActivationPendingRoute) return '/activation-pending';
           return null;
         }

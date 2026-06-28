@@ -6,6 +6,7 @@ import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/validation/contact_validators.dart';
 import '../api/acpec_fueltoken_jsonrpc_api.dart';
 import '../models/app_user.dart';
+import 'acpec_public_api_error.dart';
 import '../services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
 
 /// Authentification ACPEC Odoo (session JSON-RPC).
@@ -47,18 +48,7 @@ class OdooAuthService {
       );
       final top = result is Map ? Map<String, dynamic>.from(result) : null;
       if (top != null && _acpecIndicatesFailure(top)) {
-        final message = _acpecErrorMessage(top);
-        if (top['error'] is Map) {
-          final errorMap = Map<String, dynamic>.from(top['error'] as Map);
-          final code =
-              errorMap['code']?.toString() ?? top['code']?.toString() ?? '';
-          if (code == 'PASSWORD_LOGIN_DISABLED') {
-            throw Exception(
-              'La connexion par PIN legacy est désactivée. Utilisez le flux OTP.',
-            );
-          }
-        }
-        throw Exception(message);
+        throw AcpecPublicApiError.fromBusinessEnvelope(top).toException();
       }
       if (kDebugMode && result is Map) {
         final m = Map<String, dynamic>.from(result);
@@ -71,7 +61,7 @@ class OdooAuthService {
       if (kDebugMode) {
         debugPrint('(log appareil) erreur réseau/JSON-RPC : ${e.message}');
       }
-      throw Exception(e.message);
+      rethrow;
     } catch (e, st) {
       if (kDebugMode) {
         debugPrint('(log appareil) erreur login : $e\n$st');
@@ -100,8 +90,8 @@ class OdooAuthService {
         },
       );
       _ensureAcpecEnvelopeSuccess(result);
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
+    } on OdooJsonRpcException {
+      rethrow;
     }
   }
 
@@ -167,8 +157,8 @@ class OdooAuthService {
       _ensureAcpecEnvelopeSuccess(result);
       await OdooSessionStore.mergeSessionFromResult(result);
       return _userFromRpcResult(result);
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
+    } on OdooJsonRpcException {
+      rethrow;
     }
   }
 
@@ -204,8 +194,8 @@ class OdooAuthService {
         };
       }
       return top;
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
+    } on OdooJsonRpcException {
+      rethrow;
     }
   }
 
@@ -243,8 +233,8 @@ class OdooAuthService {
       _ensureAcpecEnvelopeSuccess(result);
       await OdooSessionStore.mergeSessionFromResult(result);
       return _userFromRpcResult(result);
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
+    } on OdooJsonRpcException {
+      rethrow;
     }
   }
 
@@ -284,8 +274,8 @@ class OdooAuthService {
         top['data'] = normalized;
       }
       return top;
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
+    } on OdooJsonRpcException {
+      rethrow;
     }
   }
 
@@ -462,8 +452,8 @@ class OdooAuthService {
       );
       _ensureAcpecEnvelopeSuccess(result);
       return Map<String, dynamic>.from(result as Map);
-    } on OdooJsonRpcException catch (e) {
-      throw Exception(e.message);
+    } on OdooJsonRpcException {
+      rethrow;
     }
   }
 
@@ -473,13 +463,13 @@ class OdooAuthService {
     }
     final top = Map<String, dynamic>.from(result);
     if (_acpecIndicatesFailure(top)) {
-      throw Exception(_acpecErrorMessage(top));
+      throw AcpecPublicApiError.fromBusinessEnvelope(top).toException();
     }
     final data = top['data'];
     if (data is Map) {
       final dm = Map<String, dynamic>.from(data);
       if (_acpecIndicatesFailure(dm)) {
-        throw Exception(_acpecErrorMessage(dm));
+        throw AcpecPublicApiError.fromBusinessEnvelope(dm).toException();
       }
     }
   }
@@ -503,14 +493,14 @@ class OdooAuthService {
     }
     final top = Map<String, dynamic>.from(result);
     if (_acpecIndicatesFailure(top)) {
-      throw Exception(_acpecErrorMessage(top));
+      throw AcpecPublicApiError.fromBusinessEnvelope(top).toException();
     }
     Map<String, dynamic> payload = top;
     final data = top['data'];
     if (data is Map) {
       payload = Map<String, dynamic>.from(data);
       if (_acpecIndicatesFailure(payload)) {
-        throw Exception(_acpecErrorMessage(payload));
+        throw AcpecPublicApiError.fromBusinessEnvelope(payload).toException();
       }
     }
     return AppUser.fromOdooProfileMap(payload, envelope: top);
@@ -574,58 +564,4 @@ class OdooAuthService {
     return false;
   }
 
-  /// Message utilisateur à partir de plusieurs formes de réponses ACPEC / Odoo.
-  static String _acpecErrorMessage(Map<String, dynamic> m, [int depth = 0]) {
-    if (depth > 4) {
-      return 'Erreur API ACPEC (détail trop imbriqué).';
-    }
-    final buf = <String>[];
-
-    void take(dynamic v) {
-      if (v == null) return;
-      if (v is String && v.trim().isNotEmpty) {
-        buf.add(v.trim());
-        return;
-      }
-      if (v is Map) {
-        final nested = _acpecErrorMessage(
-          Map<String, dynamic>.from(v),
-          depth + 1,
-        );
-        if (nested.isNotEmpty && !nested.startsWith('Erreur API ACPEC')) {
-          buf.add(nested);
-        }
-        return;
-      }
-      if (v is List) {
-        for (final e in v) {
-          take(e);
-        }
-      }
-    }
-
-    for (final key in [
-      'message',
-      'error',
-      'reason',
-      'detail',
-      'description',
-      'msg',
-      'human_message',
-      'user_message',
-    ]) {
-      take(m[key]);
-    }
-
-    final data = m['data'];
-    if (data is Map && buf.isEmpty) {
-      return _acpecErrorMessage(Map<String, dynamic>.from(data), depth + 1);
-    }
-
-    if (buf.isEmpty) {
-      return 'Erreur API ACPEC (le serveur n’a pas renvoyé de message — '
-          'vérifier company_id / identifiant / journal Odoo).';
-    }
-    return buf.toSet().join(' — ');
-  }
 }
