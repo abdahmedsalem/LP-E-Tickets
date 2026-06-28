@@ -1193,7 +1193,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         elif expected in ('manager', 'admin'):
             if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_manager'):
                 return True
-        raise AccessError(_('Droits insuffisants pour cette opération.'))
+        raise AccessError('Droits insuffisants pour cette opération.')
 
     def _hash_public_value(self, value):
         return hashlib.sha256((value or '').encode('utf-8')).hexdigest()
