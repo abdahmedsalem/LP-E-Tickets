@@ -23,3 +23,4 @@ from . import test_admin_device_positive_validator_policy
 from . import test_client_wallet_operational_role_segregation
 from . import test_admin_manager_api_contract
 from . import test_station_qr_contract
+from . import test_role_based_smoke_h3
