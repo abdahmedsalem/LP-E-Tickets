@@ -729,3 +729,12 @@ Décision :
   - origine achat/lot propagée,
   - transactions append-only,
   - wallet comme projection des face lines.
+
+## Patch43H1 - Invariants runtime H0C/H0D/H0E
+
+| Invariant | Statut | Code | Test | Note |
+|---|---|---|---|---|
+| INV-H0C-MANAGER-POSITIVE-VALIDATOR | implémenté_patch43H0C | `acpec_fueltoken_api.controllers.api_admin.AcpecFuelTokenAdminApi`; `_raise_mobile_manager_backoffice_only`; inventaire fermé des endpoints manager mobile | `test_admin_sensitive_inventory_policy.py`; `test_mobile_security_runtime_docs.py`; tests runtime admin carnet/station/purchase/device | Validé H0C, ciblé API 144 tests OK puis H0E cible 153 tests OK. |
+| INV-H0D-PURCHASE-APPROVAL-PARTNER-TRUSTED-ACCESS | implémenté_patch43H0D | `AcpecFuelTokenAdminApi._require_purchase_partner_trusted_mobile_access_for_manager_api`; `purchase_approve` API-only | `test_admin_purchase_runtime_policy.py`; `test_mobile_security_runtime_docs.py` | Back-office et `purchase.action_approve()` restent inchangés. Validé H0D, cible API 146 tests OK. |
+| INV-H0E-CLIENT-WALLET-OPERATIONAL-ROLE-SEGREGATION | implémenté_patch43H0E | `acpec.fuel.wallet` helpers `_fueltoken_partner_has_non_empty_client_wallet`, `_assert_no_non_empty_client_wallet_for_operational_mobile_user`, `_assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role`; `fuel_station._validate_station_mobile_user`; `mobile_session_device_trust.action_trust_device`; `res.users` create/write guard | `test_client_wallet_operational_role_segregation.py`; `test_mobile_security_runtime_docs.py` | Validé H0E, cible API 153 tests OK et run élargi 318 tests OK. |
+| CHK-H0E1-NO-BACKUP-ARTIFACTS | vérifié_patch43H0E1 | repository hygiene; aucun `*.bak_patch43H0C/H0D/H0E` versionné ou présent sous `addons` | commande audit `find addons -name "*.bak_patch43H0E*" -o -name "*.bak_patch43H0D*" -o -name "*.bak_patch43H0C*"` | Cleanup commit `43142e1`, tag `security-runtime-v1-20260627-patch43H0E1`. |

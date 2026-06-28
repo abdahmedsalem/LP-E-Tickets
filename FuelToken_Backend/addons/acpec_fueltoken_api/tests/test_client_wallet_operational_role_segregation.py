@@ -15,7 +15,8 @@ def _acpec_test_mobile_phone(label):
 
 @tagged("post_install", "-at_install")
 class TestClientWalletOperationalRoleSegregation(TransactionCase):
-    # H0E: a partner carrying active FuelToken value must not be represented
+    # INV-H0E-CLIENT-WALLET-OPERATIONAL-ROLE-SEGREGATION:
+    # a partner carrying active FuelToken value must not be represented
     # by an operational mobile user: station or manager.
 
     @classmethod

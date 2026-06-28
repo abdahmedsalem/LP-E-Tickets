@@ -9,7 +9,7 @@ from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelToken
 
 @tagged("post_install", "-at_install")
 class TestAdminSensitiveInventoryPolicy(TransactionCase):
-    # H0C source-level inventory lock:
+    # INV-H0C-MANAGER-POSITIVE-VALIDATOR source-level inventory lock:
     # manager mobile = positive validator only.
 
     SENSITIVE_ADMIN_WRITE_METHODS = (
