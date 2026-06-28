@@ -874,3 +874,284 @@ La série H5A à H5C2 est close côté backend pour les erreurs techniques `ERR-
 
 <!-- PATCH43H5_SECURITY_ERROR_HARDENING_END -->
 
+
+---
+
+## Patch43H5G — Doctrine des sources de configuration sécurité mobile
+
+Date : 2026-06-28
+Type : documentation / doctrine uniquement
+Runtime : aucun changement
+Tests Docker : non requis
+
+### Objectif
+
+Ce patch fixe la doctrine de classification des paramètres liés à la sécurité mobile avant de poursuivre l’alignement Flutter/API.
+
+Il ne modifie pas le code runtime, ne migre aucun paramètre et ne change pas le comportement existant.
+Les écarts constatés sont documentés comme points ouverts, à traiter plus tard seulement s’ils deviennent une faille majeure ou une décision V2 explicite.
+
+### Doctrine retenue
+
+Les sources de configuration sont classées en trois familles.
+
+#### 1. Variables d’environnement / configuration de déploiement
+
+À utiliser pour :
+
+- identité runtime : production, développement, test ;
+- secrets techniques ;
+- clés, tokens et credentials externes ;
+- paramètres qui doivent être portés par le déploiement et non par un administrateur fonctionnel Odoo ;
+- garde-fous qui ne doivent pas être modifiables depuis la base.
+
+Exemples attendus :
+
+```text
+ACPEC_ENV
+ODOO_ENV
+ENV
+ACPEC_FUELTOKEN_DEV_MODE
+ACPEC_FUELTOKEN_TEST_MODE uniquement comme signal legacy/test à détecter
+SMS_TOKEN / SMS_VALIDATION_KEY cible doctrinale future
+secrets de dérivation / secrets techniques
+```
+
+Règle : la classification prod/dev/test ne doit pas dépendre de `ir.config_parameter`.
+
+#### 2. Modèle applicatif `acpec.mobile.security.setting`
+
+À utiliser pour les politiques de sécurité mobile applicatives auditées et contrôlées :
+
+- durées token/session ;
+- PIN mobile ;
+- tentatives et verrouillage ;
+- OTP expiration / longueur / tentatives ;
+- rate-limit / antiflood ;
+- seuils de readiness applicative ;
+- paramètres sécurité mobiles qui doivent être visibles, contrôlés et testables dans le back-office sécurité.
+
+Règle : les décisions de sécurité mobile applicative ne doivent pas être ajoutées directement dans `ir.config_parameter`.
+
+#### 3. `ir.config_parameter`
+
+À réserver à :
+
+- paramètres Odoo génériques ou historiques ;
+- compatibilité legacy ;
+- paramètres UI non critiques ;
+- paramètres fonctionnels non sensibles ;
+- source de migration vers `acpec.mobile.security.setting` lorsque nécessaire.
+
+Règle : `ir.config_parameter` ne doit pas devenir la source de vérité des politiques de sécurité mobile sensibles.
+
+### État actuel constaté
+
+#### Runtime prod/dev/test
+
+L’état actuel est conforme à la doctrine.
+
+Le runtime s’appuie sur :
+
+```text
+ACPEC_ENV
+ODOO_ENV
+ENV
+odoo.tools.config seulement comme fallback de déploiement
+```
+
+Il ne s’appuie pas sur `ir.config_parameter` pour classifier production / développement / test.
+
+Décision V1 : garder.
+
+#### Dev relax / OTP dev mode
+
+Le relax dev reste conditionné par :
+
+```text
+runtime dev-like
+ACPEC_FUELTOKEN_DEV_MODE
+```
+
+Le setting legacy `acpec_mobile_auth.otp_dev_mode` peut encore exister dans la table de settings sécurité, mais il ne doit pas redevenir une source runtime en production.
+
+Décision V1 : garder le comportement actuel.
+Action future éventuelle : maintenir uniquement l’alerte readiness si un legacy setting dangereux reste activé.
+
+#### Paramètres sécurité mobile numériques
+
+Les paramètres comme :
+
+```text
+access_token_minutes
+refresh_token_days
+refresh_token_grace_seconds
+mobile_pin_lock_seconds
+mobile_pin_max_attempts
+mobile_pin_hard_block_attempts
+otp_code_length
+otp_expiration_minutes
+otp_max_attempts
+otp_request_cooldown_seconds
+otp_limit_identifier_per_minute
+otp_limit_identifier_per_day
+otp_limit_ip_per_hour
+otp_limit_register_ip_per_day
+```
+
+sont portés par `acpec.mobile.security.setting`.
+
+Décision V1 : conforme, garder.
+
+#### Migration legacy depuis `ir.config_parameter`
+
+La migration legacy vers `acpec.mobile.security.setting` est acceptable si elle reste :
+
+- contrôlée ;
+- non destructive ;
+- limitée à la reprise d’anciens paramètres ;
+- sans faire de `ir.config_parameter` une source runtime prioritaire pour les politiques sensibles.
+
+Décision V1 : garder.
+
+#### Paramètres UI non critiques
+
+Les paramètres de couleur / compatibilité UI peuvent rester dans `ir.config_parameter`.
+
+Exemples :
+
+```text
+acpec_mobile_auth.color_brand_light
+acpec_mobile_auth.color_primary_light
+```
+
+Décision V1 : garder.
+
+#### Paramètres fonctionnels hors sécurité mobile auth
+
+Certains paramètres fonctionnels, par exemple une limite de taille de preuve d’achat, peuvent rester dans `ir.config_parameter` s’ils ne pilotent pas une décision de sécurité mobile auth.
+
+Décision V1 : garder, à documenter si nécessaire dans le module concerné.
+
+### Point ouvert principal : SMS gateway
+
+L’état actuel SMS est volontairement documenté comme legacy / ambigu.
+
+Constat actuel :
+
+```text
+sms_gateway runtime lit encore SMS_* depuis ir.config_parameter puis env.
+readiness production vérifie surtout les variables env.
+res.config.settings écrit encore des paramètres SMS_* dans ir.config_parameter.
+des tests existants verrouillent encore ce comportement historique.
+```
+
+Paramètres concernés :
+
+```text
+SMS_PROVIDER
+SMS_VALIDATION_KEY
+SMS_TOKEN
+SMS_URL
+SMS_DEFAULT_LANG
+```
+
+Doctrine cible probable :
+
+```text
+SMS_PROVIDER      : non secret, peut être app setting ou ICP encadré
+SMS_URL           : non secret relatif, peut être app setting ou ICP encadré
+SMS_DEFAULT_LANG  : non secret, peut rester ICP/app setting
+SMS_VALIDATION_KEY: secret, cible env/config
+SMS_TOKEN         : secret, cible env/config
+```
+
+Décision V1 :
+
+```text
+Ne pas migrer SMS_* maintenant.
+Ne pas modifier sms_gateway runtime.
+Ne pas modifier res.config.settings.
+Ne pas casser les tests existants.
+Classer le sujet comme OPEN-H5G-SMS-001.
+```
+
+Justification :
+
+- le comportement est historique et couvert par tests ;
+- le modifier avant Flutter peut créer un risque opérationnel SMS ;
+- aucune preuve actuelle ne montre une exposition publique directe des secrets SMS ;
+- le sujet est important mais relève plutôt d’un durcissement V2 ou d’une décision dédiée.
+
+Critère de réouverture immédiate en V1 :
+
+```text
+- secret SMS exposé publiquement ;
+- secret SMS loggé en clair ;
+- utilisateur non autorisé pouvant lire/modifier SMS_TOKEN ou SMS_VALIDATION_KEY ;
+- readiness production donnant un feu vert alors que les secrets sont absents ou incohérents ;
+- usage SMS permettant un bypass OTP ou une dégradation fail-open.
+```
+
+### Points ouverts
+
+#### OPEN-H5G-SMS-001 — Séparer secrets SMS et paramètres non secrets
+
+Décider plus tard si :
+
+- les secrets SMS doivent devenir env-only ;
+- les champs SMS secrets doivent être retirés de `res.config.settings` ;
+- les paramètres non secrets SMS doivent rester ICP ou migrer vers un modèle applicatif ;
+- les tests historiques doivent être adaptés.
+
+Statut V1 : ouvert, non bloquant.
+
+#### OPEN-H5G-ICP-LEGACY-001 — Nettoyage legacy `ir.config_parameter`
+
+Inventorier plus tard les anciens paramètres ICP migrés vers `acpec.mobile.security.setting` et décider s’ils doivent être conservés, ignorés, masqués ou supprimés.
+
+Statut V1 : ouvert, non bloquant.
+
+#### OPEN-H5G-QR-SECRET-001 — Revue séparée des secrets QR numériques
+
+Certains secrets de dérivation QR relèvent de la configuration de déploiement et non des settings sécurité mobile.
+Ce sujet ne doit pas être mélangé avec la doctrine des settings mobile auth.
+
+Statut V1 : ouvert, hors périmètre H5G.
+
+#### OPEN-H5H-DOCTRINE-CODE-ALIGNMENT — Revue doctrine/code globale
+
+Après H5G, faire une revue séparée d’alignement doctrine ↔ code ↔ tests sur :
+
+```text
+runtime prod/dev/test
+OTP dev-mode
+rate-limit / latence
+erreurs publiques ERR-* / SEC-*
+audit BO
+device trust
+rôles mobiles
+signup/register
+readiness fail-closed
+```
+
+Statut : prochaine étape avant Flutter.
+
+### Décision finale H5G
+
+Pour la V1 :
+
+```text
+Aucun changement runtime.
+Aucune migration SMS.
+Aucun changement Flutter.
+Aucun changement de settings existants.
+La doctrine est fixée.
+Les écarts non critiques sont documentés en OPEN.
+```
+
+Avocat du diable :
+
+Le point SMS/ICP n’est pas ignoré. Il est reconnu comme une dette de doctrine potentiellement importante.
+Mais le traiter maintenant sans preuve de faille majeure risquerait de détourner la stabilisation V1 et de casser un comportement opérationnel couvert par tests.
+
