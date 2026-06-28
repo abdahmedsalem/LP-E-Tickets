@@ -744,3 +744,133 @@ Décision :
 | Invariant | Statut | Code | Test | Note |
 |---|---|---|---|---|
 | INV-H2-MANAGER-MOBILE-API-CONTRACT | vérifié_patch43H2 | `acpec_fueltoken_api.controllers.api_admin.AcpecFuelTokenAdminApi`; endpoints `purchases_pending`, `purchase_detail`, `purchase_approve`, `stations_list`, `devices_pending_trust`, `device_approve_pending_trust`; helpers pagination/idempotency/company scope dans `api_common.py` | `test_admin_manager_api_contract.py`; complète `test_admin_sensitive_inventory_policy.py`, `test_sensitive_device_trust_gate.py`, `test_admin_purchase_runtime_policy.py` | H2 verrouille le contrat API manager mobile sans changement runtime. |
+
+<!-- PATCH43H5_SECURITY_ERROR_HARDENING_START -->
+
+## Patch43H5 — Durcissement des erreurs mobiles sensibles
+
+### Doctrine
+
+La série Patch43H5 sépare deux familles d’erreurs mobiles :
+
+- erreurs techniques inattendues : réponse publique `SERVER_ERROR`, référence `ERR-*`, marqueur BO agrégé ;
+- refus sensibles attendus : code public générique, message public générique, référence `SEC-*`, audit backend détaillé.
+
+Règle centrale :
+
+- Flutter ne reçoit pas la cause sensible détaillée ;
+- le backend conserve la cause exacte dans l’audit ou le marqueur technique ;
+- les secrets, OTP, PIN, action codes, QR brut, payloads sensibles et traces techniques ne sont pas exposés au mobile.
+
+### Patch43H5A — Erreurs techniques API mobile
+
+Tag : `security-runtime-v1-20260628-patch43H5A`
+
+Commit final : `36b7d7c patch43H5A document UI and dev language convention`
+
+Contenu :
+
+- modèle BO `acpec.mobile.api.error.marker` ;
+- agrégation par fingerprint ;
+- réponse publique `SERVER_ERROR` avec référence `ERR-*` ;
+- logs serveur redacted ;
+- pas de traceback/payload/header/token/OTP/PIN/action_code/QR brut en base ;
+- ACL réservée aux auditeurs sécurité mobile ;
+- purge cron.
+
+Tests validés : `352 tests, 0 failed, 0 error`.
+
+### Patch43H5B — Refus sensibles publics
+
+Tag : `security-runtime-v1-20260628-patch43H5B`
+
+Commit final : `48a0a24 merge patch43H5B mobile sensitive public error hardening`
+
+Contenu :
+
+- références `SEC-*` pour les refus sensibles attendus ;
+- champ `reference` dans l’audit sécurité mobile ;
+- séparation public/backend : code public générique côté Flutter, `debug_reason` détaillé côté backend ;
+- durcissement des familles `AUTH_REFUSED`, `RATE_LIMITED`, `DEVICE_NOT_ALLOWED`, `ACTION_REFUSED`, `QR_NOT_USABLE`, `TRANSFER_REFUSED`, `FORBIDDEN`, `REQUEST_REFUSED`, `SIGNUP_NOT_ALLOWED` ;
+- `idempotency_conflict` exposé comme `REQUEST_REFUSED + SEC-*` ;
+- QR station sensible exposé comme `QR_NOT_USABLE + SEC-*` ;
+- validations de forme utiles conservées en `VALIDATION_ERROR`.
+
+Tests validés : `354 tests, 0 failed, 0 error`.
+
+Nettoyage volontaire associé :
+
+- `FuelToken_Backend/Dockerfile`
+- `FuelToken_Backend/addons/acpec_api_tests.txt`
+- `FuelToken_Backend/addons/docker-compose.yml`
+- `FuelToken_Backend/addons/odoo.conf`
+
+### Patch43H5C1 — OTP dev-mode prod guard
+
+Tag : `security-runtime-v1-20260628-patch43H5C1`
+
+Commit final : `43ce4aa merge patch43H5C1 otp devmode prod guard test`
+
+Doctrine confirmée :
+
+- le code OTP dev fixe `000000` est conservé ;
+- le mode relax dev est conservé ;
+- l’anti-flood OTP peut être désactivé en dev relax ;
+- le relax dev exige runtime dev-like + `ACPEC_FUELTOKEN_DEV_MODE` ;
+- en prod, même avec `ACPEC_FUELTOKEN_DEV_MODE=1`, le runtime reste strict.
+
+Test ajouté :
+
+- `test_dev_fixed_otp_code_is_rejected_when_runtime_switches_to_prod`
+
+Tests validés : `355 tests, 0 failed, 0 error`.
+
+### Patch43H5C2 — RATE_LIMITED public backend
+
+Tag : `security-runtime-v1-20260628-patch43H5C2`
+
+Commit final : `e0e819a merge patch43H5C2 backend rate limited public hardening`
+
+Contenu :
+
+- `MobileAuthRateLimitError` reste une exception interne modèle ;
+- le message interne modèle reste `Trop de demandes OTP. Veuillez réessayer plus tard.` ;
+- la sortie publique API devient `RATE_LIMITED` avec message générique `Trop de tentatives. Réessayez plus tard.` ;
+- ajout d’une référence `SEC-*` ;
+- audit backend avec `debug_reason = auth_rate_limited` et `audit_code = RATE_LIMITED` ;
+- latence minimale auth/OTP appliquée via `started_at` ;
+- routes concernées : `request-otp`, `verify-otp`, `signup` ;
+- test route mis à jour avec numéro mobile de test `21...` ;
+- aucun nouveau `ir.config_parameter` n’est ajouté pour les settings sécurité mobile.
+
+Tests validés :
+
+- run ciblé auth/OTP : `338 tests, 0 failed, 0 error`
+- run complet : `355 tests, 0 failed, 0 error`
+
+### Points ouverts
+
+#### OPEN-H5C-FLUTTER-001 — Shape de `request_otp`
+
+Le backend conserve deux formes publiques :
+
+- compte connu : `challenge_id`, `challenge_ref`, `expires_at`, `delivery` ;
+- compte inconnu login/reset : message générique sans `challenge_id`.
+
+Ce point peut rester un oracle de forme. Il doit être repris côté Flutter/API contract, pas dans H5C2 backend.
+
+#### OPEN-H5C-SIGNUP-LATENCY-001 — Refus signup non-rate-limit
+
+H5C2 applique la latence aux rate-limits publics. Les refus signup/register non-rate-limit restent à analyser séparément si un durcissement timing plus strict est requis.
+
+### État final
+
+Dernier état confirmé :
+
+- `main == origin/main == origin/HEAD == e0e819affb94ae72da913836ebdb7a7e60cc5068`
+- tag `security-runtime-v1-20260628-patch43H5C2` sur HEAD
+
+La série H5A à H5C2 est close côté backend pour les erreurs techniques `ERR-*`, les refus sensibles `SEC-*`, le prod guard OTP dev-mode, et le rate-limit public backend.
+
+<!-- PATCH43H5_SECURITY_ERROR_HARDENING_END -->
+
