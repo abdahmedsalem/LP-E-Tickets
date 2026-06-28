@@ -92,15 +92,19 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     def _qr_check_payload(self, qr, station):
         can_consume = True
         reason = False
+        debug_reason = False
         if qr.state != 'active':
             can_consume = False
-            reason = _('Le QR n’est pas actif.')
+            reason = _('QR introuvable ou non utilisable.')
+            debug_reason = 'qr_not_active'
         elif qr.company_id != station.company_id:
             can_consume = False
-            reason = _('Le QR n’appartient pas à la société de la station.')
+            reason = _('QR introuvable ou non utilisable.')
+            debug_reason = 'qr_wrong_company'
         elif qr.expires_at and qr.expires_at <= fields.Datetime.now():
             can_consume = False
-            reason = _('Le QR a expiré.')
+            reason = _('QR introuvable ou non utilisable.')
+            debug_reason = 'qr_expired'
         return {
             'qr_id': qr.id,
             'name': qr.name,
@@ -114,6 +118,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             'company_id': qr.company_id.id,
             'can_consume': can_consume,
             'reason': reason,
+            'debug_reason': debug_reason,
         }
 
     @http.route('/api/acpec/fueltoken/v1/station/profile', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
@@ -130,13 +135,49 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     def check_qr(self, **kwargs):
         try:
             station, user = self._station_user()
-            qr = self._resolve_qr_from_payload(kwargs)
-            self._require_station_qr_company(qr, station)
+            try:
+                qr = self._resolve_qr_from_payload(kwargs)
+            except ValidationError as exc:
+                if 'QR introuvable' not in str(exc):
+                    raise
+                return self._sensitive_refusal_response(
+                    public_code='QR_NOT_USABLE',
+                    debug_reason='qr_not_found',
+                    purpose='station_qr_check',
+                    params=kwargs,
+                    user=user,
+                    company=station.company_id,
+                    audit_code='QR_NOT_USABLE',
+                )
+            try:
+                self._require_station_qr_company(qr, station)
+            except ValidationError:
+                return self._sensitive_refusal_response(
+                    public_code='QR_NOT_USABLE',
+                    debug_reason='qr_wrong_company',
+                    purpose='station_qr_check',
+                    params=kwargs,
+                    user=user,
+                    company=station.company_id,
+                    audit_code='QR_NOT_USABLE',
+                )
             with request.env.cr.savepoint():
                 qr._lock_records()
                 qr.invalidate_recordset()
                 qr.action_refresh_expiration_state()
-            return self._json_response(self._qr_check_payload(qr, station))
+            payload = self._qr_check_payload(qr, station)
+            if not payload.get('can_consume'):
+                return self._sensitive_refusal_response(
+                    public_code='QR_NOT_USABLE',
+                    debug_reason=payload.get('debug_reason') or 'qr_not_active',
+                    purpose='station_qr_check',
+                    params=kwargs,
+                    user=user,
+                    company=station.company_id,
+                    audit_code='QR_NOT_USABLE',
+                )
+            payload.pop('debug_reason', None)
+            return self._json_response(payload)
         except Exception as exc:
             return self._handle_exception_response(exc)
 
@@ -147,8 +188,30 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 self._require_fuel_group(user, 'station')
                 station = self._station_for_fueltoken_user(user)
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='station_qr_use')
-                qr = self._resolve_qr_from_payload(kwargs)
-                self._require_station_qr_company(qr, station)
+                try:
+                    qr = self._resolve_qr_from_payload(kwargs)
+                except ValidationError as exc:
+                    if 'QR introuvable' not in str(exc):
+                        raise
+                    self._raise_sensitive_action_error(
+                        code='QR_NOT_USABLE',
+                        public_code='QR_NOT_USABLE',
+                        purpose='station_qr_use',
+                        debug_reason='qr_not_found',
+                        user=user,
+                        params=kwargs,
+                    )
+                try:
+                    self._require_station_qr_company(qr, station)
+                except ValidationError:
+                    self._raise_sensitive_action_error(
+                        code='QR_NOT_USABLE',
+                        public_code='QR_NOT_USABLE',
+                        purpose='station_qr_use',
+                        debug_reason='qr_wrong_company',
+                        user=user,
+                        params=kwargs,
+                    )
                 request_hash_params = dict(kwargs)
                 request_hash_params['public_code'] = qr.public_code
                 request_hash_params.pop('qr_numeric_code', None)

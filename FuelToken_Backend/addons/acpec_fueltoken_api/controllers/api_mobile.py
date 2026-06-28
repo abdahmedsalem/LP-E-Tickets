@@ -904,11 +904,35 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 ('company_ids', 'in', [wallet.company_id.id]),
             ], limit=1)
             if not recipient_user:
-                raise ValidationError(_('Destinataire introuvable ou indisponible.'))
+                return self._sensitive_refusal_response(
+                    public_code='TRANSFER_REFUSED',
+                    debug_reason='recipient_not_found',
+                    purpose='carnet_transfer_recipient',
+                    params=kwargs,
+                    user=source_user,
+                    company=company,
+                    audit_code='RECIPIENT_NOT_ALLOWED',
+                )
             if recipient_user.id == source_user.id:
-                raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
+                return self._sensitive_refusal_response(
+                    public_code='TRANSFER_REFUSED',
+                    debug_reason='recipient_self_transfer',
+                    purpose='carnet_transfer_recipient',
+                    params=kwargs,
+                    user=source_user,
+                    company=company,
+                    audit_code='RECIPIENT_NOT_ALLOWED',
+                )
             if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
-                raise ValidationError(_('Destinataire introuvable ou indisponible.'))
+                return self._sensitive_refusal_response(
+                    public_code='TRANSFER_REFUSED',
+                    debug_reason='recipient_not_allowed',
+                    purpose='carnet_transfer_recipient',
+                    params=kwargs,
+                    user=source_user,
+                    company=company,
+                    audit_code='RECIPIENT_NOT_ALLOWED',
+                )
 
             return self._json_response({
                 'recipient_name': recipient_user.partner_id.display_name or recipient_phone,
@@ -963,13 +987,32 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     ('company_ids', 'in', [wallet.company_id.id]),
                 ], limit=1)
                 if not recipient_user:
-                    raise ValidationError(
-                        _("Aucun compte trouvé pour le numéro '%s'.") % recipient_phone
+                    self._raise_sensitive_action_error(
+                        code='RECIPIENT_NOT_ALLOWED',
+                        public_code='TRANSFER_REFUSED',
+                        purpose='carnet_transfer',
+                        debug_reason='recipient_not_found',
+                        user=source_user,
+                        params=kwargs,
                     )
                 if recipient_user.id == source_user.id:
-                    raise ValidationError(_('Impossible de transférer vers votre propre compte.'))
+                    self._raise_sensitive_action_error(
+                        code='RECIPIENT_NOT_ALLOWED',
+                        public_code='TRANSFER_REFUSED',
+                        purpose='carnet_transfer',
+                        debug_reason='recipient_self_transfer',
+                        user=source_user,
+                        params=kwargs,
+                    )
                 if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
-                    raise ValidationError(_('Le destinataire ne possède pas de compte FuelToken actif.'))
+                    self._raise_sensitive_action_error(
+                        code='RECIPIENT_NOT_ALLOWED',
+                        public_code='TRANSFER_REFUSED',
+                        purpose='carnet_transfer',
+                        debug_reason='recipient_not_allowed',
+                        user=source_user,
+                        params=kwargs,
+                    )
 
                 # ── 2. Idempotence (vérification avant création) ─────────────────
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='carnet_transfer')
@@ -981,7 +1024,14 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     ], limit=1)
                     if existing:
                         if existing.request_hash and existing.request_hash != request_hash:
-                            raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                            self._raise_sensitive_action_error(
+                                code='IDEMPOTENCY_PAYLOAD_MISMATCH',
+                                public_code='REQUEST_REFUSED',
+                                purpose='carnet_transfer',
+                                debug_reason='idempotency_payload_mismatch',
+                                user=source_user,
+                                params=kwargs,
+                            )
                         if existing.state == 'confirmed':
                             return self._json_response(self._transfer_payload(existing))
 

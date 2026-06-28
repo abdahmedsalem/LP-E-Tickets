@@ -42,6 +42,7 @@ class AcpecMobileSecurityAuditLog(models.Model):
     ], string='Sévérité', required=True, default='warning', index=True)
 
     code = fields.Char(string='Code', index=True)
+    reference = fields.Char(string='Référence publique', index=True, copy=False, readonly=True)
     public_message = fields.Text(string='Message public')
     debug_reason = fields.Text(string='Raison technique')
 
@@ -94,6 +95,7 @@ class AcpecMobileSecurityAuditLog(models.Model):
             'event_type',
             'severity',
             'code',
+            'reference',
             'public_message',
             'debug_reason',
             'user_id',

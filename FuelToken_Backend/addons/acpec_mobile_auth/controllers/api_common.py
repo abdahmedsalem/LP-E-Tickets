@@ -2,6 +2,7 @@ import hashlib
 import logging
 import traceback
 import uuid
+import time
 from datetime import datetime
 import re
 from contextlib import contextmanager
@@ -18,11 +19,12 @@ _logger = logging.getLogger(__name__)
 class MobileSensitiveActionError(AccessError):
     """Erreur sensible avec message public et raison technique auditée."""
 
-    def __init__(self, code, public_message, debug_reason=False):
+    def __init__(self, code, public_message, debug_reason=False, reference=False):
         super().__init__(public_message)
         self.acpec_sensitive_code = code
         self.acpec_public_message = public_message
         self.acpec_debug_reason = debug_reason or public_message
+        self.acpec_reference = reference or False
 
 
 class MobileSignupNotAllowedError(ValidationError):
@@ -71,10 +73,54 @@ class AcpecMobileAuthApiCommon(http.Controller):
     })
     REDACTED_LOG_VALUE = '***REDACTED***'
     API_ERROR_REFERENCE_PREFIX = 'ERR'
+    SECURITY_REFUSAL_REFERENCE_PREFIX = 'SEC'
     API_ERROR_SUMMARY_MAX_CHARS = 512
     API_ERROR_TRACEBACK_LOG_MAX_CHARS = 32768
     API_ERROR_PARAMS_LOG_MAX_CHARS = 4096
 
+    SENSITIVE_PUBLIC_ERROR_FAMILIES = {
+        'AUTH_REFUSED': 'Authentification impossible. Vérifiez les informations saisies.',
+        'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
+        'DEVICE_NOT_ALLOWED': 'Cet appareil n’est pas autorisé pour cette opération.',
+        'ACTION_REFUSED': 'Action impossible ou non autorisée.',
+        'QR_NOT_USABLE': 'QR introuvable ou non utilisable.',
+        'TRANSFER_REFUSED': 'Transfert impossible ou non autorisé.',
+        'FORBIDDEN': 'Vous n’êtes pas autorisé à effectuer cette opération.',
+        'REQUEST_REFUSED': 'Cette demande ne peut pas être traitée.',
+        'SIGNUP_NOT_ALLOWED': 'Impossible de finaliser l’inscription avec ces informations.',
+    }
+
+    SENSITIVE_DEBUG_REASONS = frozenset({
+        'auth_account_not_allowed',
+        'auth_otp_not_found',
+        'auth_otp_invalid',
+        'auth_otp_expired',
+        'auth_rate_limited',
+        'signup_account_exists',
+        'signup_not_allowed',
+        'signup_pending_account_request',
+        'register_otp_missing_or_unstable_device_uid_before_otp_consumption',
+        'device_missing_uid',
+        'device_pending_trust',
+        'device_blocked',
+        'device_not_trusted',
+        'session_invalid',
+        'action_code_missing',
+        'action_code_invalid_key',
+        'action_code_invalid',
+        'action_code_locked',
+        'pin_reset_required',
+        'qr_not_found',
+        'qr_wrong_company',
+        'qr_not_active',
+        'qr_expired',
+        'qr_consumed',
+        'recipient_not_found',
+        'recipient_not_allowed',
+        'recipient_self_transfer',
+        'idempotency_payload_mismatch',
+        'sensitive_action_denied',
+    })
 
     SENSITIVE_PUBLIC_MESSAGES = {
         'purchase_create': "La demande d’achat a échoué. Réessayez ou contactez l’administrateur.",
@@ -209,6 +255,90 @@ class AcpecMobileAuthApiCommon(http.Controller):
             uuid.uuid4().hex[:6].upper(),
         )
 
+    def _generate_mobile_security_reference(self):
+        return '%s-%s-%s' % (
+            self.SECURITY_REFUSAL_REFERENCE_PREFIX,
+            datetime.utcnow().strftime('%Y%m%d-%H%M%S'),
+            uuid.uuid4().hex[:6].upper(),
+        )
+
+    def _public_sensitive_message(self, public_code, purpose=False):
+        return self.SENSITIVE_PUBLIC_ERROR_FAMILIES.get(
+            public_code,
+            self._sensitive_public_message(purpose),
+        )
+
+    def _normalize_sensitive_debug_reason(self, reason, fallback='sensitive_action_denied'):
+        reason = (str(reason or '')).strip()
+        if reason in self.SENSITIVE_DEBUG_REASONS:
+            return reason
+        lowered = reason.lower()
+        if 'pending_account_request' in lowered or ('demande de compte' in lowered and 'attente' in lowered):
+            return 'signup_pending_account_request'
+        if 'already exists' in lowered or 'existe déjà' in lowered or 'déjà' in lowered:
+            return 'signup_account_exists'
+        if 'user_not_found' in lowered or 'not found' in lowered or 'introuvable' in lowered:
+            return 'auth_account_not_allowed'
+        if 'inactive' in lowered or 'inactif' in lowered:
+            return 'auth_account_not_allowed'
+        if 'not approved' in lowered or 'non approuvé' in lowered or 'rejeté' in lowered or 'rejected' in lowered:
+            return 'auth_account_not_allowed'
+        if 'expired' in lowered or 'expir' in lowered:
+            return 'auth_otp_expired'
+        if 'otp' in lowered and ('invalid' in lowered or 'invalide' in lowered):
+            return 'auth_otp_invalid'
+        if 'idempotency_conflict' in lowered or 'payload différent' in lowered:
+            return 'idempotency_payload_mismatch'
+        if 'action_code requis' in lowered or 'code d’action manquant' in lowered:
+            return 'action_code_missing'
+        if 'clé pin action invalide' in lowered or 'invalid_action_code_key' in lowered:
+            return 'action_code_invalid_key'
+        if 'pin mobile invalide' in lowered or 'invalid_action_code' in lowered:
+            return 'action_code_invalid'
+        if fallback in self.SENSITIVE_DEBUG_REASONS:
+            return fallback
+        return 'sensitive_action_denied'
+
+    def _public_sensitive_code_for_refusal(self, code=False, purpose=False, event_type=False, public_code=False):
+        if public_code:
+            return public_code
+        code = code or ''
+        event_type = event_type or ''
+        if code.startswith('DEVICE_') or event_type.startswith('device_'):
+            return 'DEVICE_NOT_ALLOWED'
+        if purpose == 'carnet_transfer' and code.startswith('RECIPIENT_'):
+            return 'TRANSFER_REFUSED'
+        if code.startswith('QR_') or purpose in ('station_qr_check', 'station_qr_use') and event_type.startswith('qr_'):
+            return 'QR_NOT_USABLE'
+        if code.startswith('IDEMPOTENCY_'):
+            return 'REQUEST_REFUSED'
+        if code in ('ACCESS_ERROR', 'FORBIDDEN'):
+            return 'FORBIDDEN'
+        return 'ACTION_REFUSED'
+
+    def _public_auth_started_at(self):
+        return time.monotonic()
+
+    def _public_auth_min_latency_seconds(self):
+        if hasattr(self, '_test_public_auth_min_latency_seconds'):
+            return max(float(getattr(self, '_test_public_auth_min_latency_seconds') or 0.0), 0.0)
+        try:
+            policy = request.env['acpec.mobile.security.policy'].sudo()
+            default_ms = 0 if policy.otp_dev_runtime_allowed() else 250
+            value_ms = policy.get_int_param('acpec_mobile_auth.public_auth_min_latency_ms', default_ms)
+            return max(float(value_ms or 0) / 1000.0, 0.0)
+        except Exception:
+            return 0.0
+
+    def _apply_public_auth_min_latency(self, started_at=False):
+        minimum = self._public_auth_min_latency_seconds()
+        if not minimum or started_at is False:
+            return
+        elapsed = max(time.monotonic() - started_at, 0.0)
+        remaining = minimum - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
+
     def _request_params_for_error_log(self, params=False):
         if params is not False:
             return params or {}
@@ -300,7 +430,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _handle_exception_response(self, exc, params=False, operation=False):
         if isinstance(exc, MobileSensitiveActionError):
             _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
-            return self._error_response(exc.acpec_sensitive_code, exc.acpec_public_message)
+            return self._error_response(
+                exc.acpec_sensitive_code,
+                exc.acpec_public_message,
+                reference=getattr(exc, 'acpec_reference', False),
+            )
         if isinstance(exc, MobileAuthRateLimitError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('RATE_LIMITED', str(exc))
@@ -309,6 +443,16 @@ class AcpecMobileAuthApiCommon(http.Controller):
             public_debug_reason = exc.acpec_public_debug_reason or self._public_auth_debug_reason(exc)
             return self._public_signup_not_allowed_response(debug_reason=public_debug_reason)
         if isinstance(exc, ValidationError):
+            message = str(exc)
+            lowered = message.lower()
+            if 'idempotency_conflict' in lowered or 'payload différent' in lowered:
+                return self._sensitive_refusal_response(
+                    public_code='REQUEST_REFUSED',
+                    debug_reason='idempotency_payload_mismatch',
+                    purpose='idempotency_payload_mismatch',
+                    params=params,
+                    audit_code='IDEMPOTENCY_PAYLOAD_MISMATCH',
+                )
             _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('VALIDATION_ERROR', str(exc))
         if isinstance(exc, AccessError):
@@ -394,6 +538,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         target_model=False,
         target_res_id=False,
         business_ref=False,
+        reference=False,
     ):
         """Build plain audit values with no raw secret and no recordset.
 
@@ -413,6 +558,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'event_type': event_type,
             'severity': severity,
             'code': code,
+            'reference': reference or False,
             'public_message': audit_public_message or False,
             'debug_reason': debug_reason or False,
             'user_id': user.id if user else False,
@@ -494,6 +640,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         target_model=False,
         target_res_id=False,
         business_ref=False,
+        reference=False,
     ):
         try:
             vals = self._mobile_security_audit_vals(
@@ -514,6 +661,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 target_model=target_model,
                 target_res_id=target_res_id,
                 business_ref=business_ref,
+                reference=reference,
             )
             self._audit_in_transaction(vals)
         except Exception:
@@ -533,15 +681,27 @@ class AcpecMobileAuthApiCommon(http.Controller):
         severity='warning',
         failed_count_before=False,
         failed_count_after=False,
+        public_code=False,
     ):
-        public_message = self._sensitive_public_message(purpose)
+        public_code = self._public_sensitive_code_for_refusal(
+            code=code,
+            purpose=purpose,
+            event_type=event_type,
+            public_code=public_code,
+        )
+        public_message = self._public_sensitive_message(public_code, purpose=purpose)
+        reference = self._generate_mobile_security_reference()
+        audit_debug_reason = self._normalize_sensitive_debug_reason(
+            debug_reason,
+            fallback=event_type or 'sensitive_action_denied',
+        )
         vals = self._mobile_security_audit_vals(
             event_type=event_type,
             severity=severity,
             code=code,
             purpose=purpose,
             public_message=public_message,
-            debug_reason=debug_reason,
+            debug_reason=audit_debug_reason,
             user=user,
             session=session,
             params=params,
@@ -549,9 +709,54 @@ class AcpecMobileAuthApiCommon(http.Controller):
             blocked=True,
             failed_count_before=failed_count_before,
             failed_count_after=failed_count_after,
+            reference=reference,
         )
         self._audit_committed(vals)
-        raise MobileSensitiveActionError(code, public_message, debug_reason)
+        raise MobileSensitiveActionError(public_code, public_message, audit_debug_reason, reference=reference)
+
+    def _sensitive_refusal_response(
+        self, *,
+        public_code,
+        debug_reason,
+        purpose=False,
+        params=False,
+        user=False,
+        session=False,
+        company=False,
+        event_type='sensitive_action_denied',
+        severity='warning',
+        audit_code=False,
+        target_model=False,
+        target_res_id=False,
+        business_ref=False,
+    ):
+        reference = self._generate_mobile_security_reference()
+        public_message = self._public_sensitive_message(public_code, purpose=purpose)
+        audit_debug_reason = self._normalize_sensitive_debug_reason(
+            debug_reason,
+            fallback=event_type or 'sensitive_action_denied',
+        )
+        vals = self._mobile_security_audit_vals(
+            event_type=event_type,
+            severity=severity,
+            code=audit_code or public_code,
+            purpose=purpose,
+            public_message=public_message,
+            debug_reason=audit_debug_reason,
+            user=user,
+            session=session,
+            company=company,
+            params=params,
+            success=False,
+            blocked=True,
+            target_model=target_model,
+            target_res_id=target_res_id,
+            business_ref=business_ref,
+            reference=reference,
+        )
+        self._audit_committed(vals)
+        return self._error_response(public_code, public_message, reference=reference)
+
 
     def _classify_pin_failure(self, exc, user, failed_count_before=False):
         debug_reason = str(exc)
@@ -651,44 +856,71 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _public_auth_debug_reason(self, exc):
         message = (str(exc) or '').lower()
         if 'demande de compte' in message and 'attente' in message:
-            return 'pending_account_request_exists'
+            return 'signup_pending_account_request'
         if 'déjà' in message or 'already exists' in message:
-            return 'account_exists'
+            return 'signup_account_exists'
         if 'introuvable' in message or 'not found' in message:
-            return 'user_not_found'
+            return 'auth_account_not_allowed'
         if 'inactif' in message or 'inactive' in message:
-            return 'user_inactive'
+            return 'auth_account_not_allowed'
         if 'non approuvé' in message or 'not approved' in message:
-            return 'user_not_approved'
+            return 'auth_account_not_allowed'
         if 'rejeté' in message or 'rejected' in message:
-            return 'user_rejected'
+            return 'auth_account_not_allowed'
         if 'expir' in message or 'expired' in message:
-            return 'otp_expired'
+            return 'auth_otp_expired'
         if 'otp' in message and ('invalide' in message or 'invalid' in message):
-            return 'otp_invalid'
-        return 'public_auth_refused'
+            return 'auth_otp_invalid'
+        return 'auth_account_not_allowed'
 
-    def _public_otp_request_accepted_response(self, debug_reason=False):
+    def _public_otp_request_accepted_response(self, debug_reason=False, started_at=False):
+        self._apply_public_auth_min_latency(started_at)
         return self._with_public_auth_debug(self._json_response({
             'message': _('Si les informations sont valides, un code de vérification sera envoyé.'),
         }), debug_reason=debug_reason)
 
-    def _public_otp_invalid_response(self, debug_reason=False):
+    def _public_otp_invalid_response(self, debug_reason=False, params=False, purpose='otp_verify', started_at=False):
+        reference = self._generate_mobile_security_reference()
+        public_code = 'AUTH_REFUSED'
+        public_message = self._public_sensitive_message(public_code, purpose=purpose)
+        audit_debug_reason = self._normalize_sensitive_debug_reason(
+            debug_reason,
+            fallback='auth_otp_invalid',
+        )
+        self._log_mobile_security_audit_event(
+            event_type='sensitive_action_denied',
+            severity='warning',
+            code=public_code,
+            purpose=purpose,
+            public_message=public_message,
+            debug_reason=audit_debug_reason,
+            params=params,
+            success=False,
+            blocked=True,
+            reference=reference,
+        )
+        self._apply_public_auth_min_latency(started_at)
         return self._with_public_auth_debug(self._error_response(
-            'OTP_INVALID_OR_EXPIRED',
-            _('Code de vérification invalide ou expiré.'),
-        ), debug_reason=debug_reason)
+            public_code,
+            public_message,
+            reference=reference,
+        ), debug_reason=audit_debug_reason)
 
-    def _public_account_not_found_response(self, debug_reason=False):
-        return self._with_public_auth_debug(self._error_response(
-            'ACCOUNT_NOT_FOUND',
-            _('Aucun compte mobile n’est associé à ce numéro. Veuillez vous inscrire pour créer un compte.'),
-        ), debug_reason=debug_reason)
+    def _public_account_not_found_response(self, debug_reason=False, started_at=False):
+        # Do not publicly refuse request-otp login/reset for an unknown account:
+        # a public error would still be an account-existence oracle.  Keep the
+        # same accepted shape as a valid OTP request; the SMS side effect remains
+        # naturally absent because no challenge is created.
+        return self._public_otp_request_accepted_response(
+            debug_reason=debug_reason,
+            started_at=started_at,
+        )
 
-    def _public_signup_not_allowed_response(self, debug_reason=False):
+    def _public_signup_not_allowed_response(self, debug_reason=False, reference=False):
         return self._with_public_auth_debug(self._error_response(
             'SIGNUP_NOT_ALLOWED',
             'Impossible de finaliser l’inscription avec ces informations.',
+            reference=reference,
         ), debug_reason=debug_reason)
 
     def _audit_mobile_signup_denial(
@@ -697,6 +929,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         params=False,
         company=False,
         public_debug_reason=False,
+        reference=False,
     ):
         """Audit internal signup/register denial without raising afterward.
 
@@ -720,6 +953,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             target_model='res.company' if company else False,
             target_res_id=company.id if company else False,
             business_ref=company.display_name if company else False,
+            reference=reference,
         )
 
     def _mobile_signup_not_allowed_response(
@@ -741,14 +975,17 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 or self._public_auth_debug_reason(exc)
             )
 
+        reference = self._generate_mobile_security_reference()
         self._audit_mobile_signup_denial(
-            debug_reason=debug_reason,
+            debug_reason=self._normalize_sensitive_debug_reason(debug_reason, fallback='signup_not_allowed'),
             params=params,
             company=company,
             public_debug_reason=public_debug_reason,
+            reference=reference,
         )
         return self._public_signup_not_allowed_response(
-            debug_reason=public_debug_reason or self._public_auth_debug_reason(Exception(debug_reason or ''))
+            debug_reason=public_debug_reason or self._public_auth_debug_reason(Exception(debug_reason or '')),
+            reference=reference,
         )
 
     def _mobile_manager_guard(self):
