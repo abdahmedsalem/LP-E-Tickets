@@ -35,37 +35,42 @@ D4  CONVENTIONS_DEVELOPPEMENT_ACPEC.md
     méthode de travail de l'agent. Préfixes : CONV-LIS/NOM/LANG/MOD/UI/VER/WORK.
 ```
 
-### Documents d'implémentation (subordonnés aux canoniques)
+### Références historiques d'implémentation (subordonnées, non obligatoires)
 
 ```text
 D5  refonte_runtime_dev_prod_fail_closed_patch36A.md
-    Détail de la classification d'environnement et de la porte fail-closed.
-    Subordonné à D3 : en cas de conflit, D3 fait foi.
+    Référence historique Patch36A sur la classification d'environnement et la porte
+    fail-closed. Si ce fichier n'est pas présent dans doc_refonte, D3 fait foi.
 
 D6  PATCH42C_SIGNUP_DEVICE_SESSION_DOCTRINE.md
-    Détail d'implémentation de l'inscription (contrat public, helpers, account.request).
-    Subordonné à D1 §4 : en cas de conflit, D1 fait foi.
+    Référence historique Patch42C sur l'inscription, le contrat public, les helpers
+    et account.request. Si ce fichier n'est pas présent dans doc_refonte, D1 §4 fait foi.
+
+H5G Doctrine des sources de configuration sécurité mobile
+    Source canonique : D3 §6.
+    État constaté, dette SMS/ICP et OPEN associés : traceability.md, section Patch43H5G.
 ```
 
 ## Résolution de conflit
 
 ```text
-1. Une doctrine canonique (D1-D4) prime sur un document d'implémentation (D5-D6).
+1. Une doctrine canonique (D1-D4) prime sur une référence historique ou un document d'implémentation (D5-D6).
 2. Entre canoniques, l'ordre est : securite > metier > conventions > UX > dev.
    Exemple : si une facilité dev (D3) contredit un contrôle de sécurité (D1), D1 gagne.
-3. Un document d'implémentation ne peut jamais autoriser ce qu'une canonique interdit.
+3. Une référence historique ou un document d'implémentation ne peut jamais autoriser ce qu'une canonique interdit.
 4. En cas de doute non tranché par ces règles : demander, ne pas supposer.
 ```
 
 ## Doctrines applicables par type de tâche
 
 ```text
-Inscription / OTP / session          => D1 (§1,§3,§4,§6), D3, D6
+Inscription / OTP / session          => D1 (§1,§3,§4,§6), D3, D6 si présent
 Confiance d'appareil / approbation   => D1 (§2), D3
 Transfert de carnet                  => D2 (§3,§6), D1 (§5)
 Émission / consommation de QR        => D2 (§4,§6), D1 (§5)
 Wallet / carnet / conservation       => D2 (§1,§2,§5,§6)
-Mode dev / configuration runtime     => D3, D5
+Mode dev / configuration runtime     => D3 (§1), D5 si présent
+Sources settings sécurité mobile     => D3 (§6), traceability.md Patch43H5G
 Tout patch, sans exception           => D4 (conventions) + AGENTS.md (protocole)
 ```
 
@@ -81,5 +86,7 @@ sans ligne dans la table est un trou de couverture. La maintenir à chaque patch
 - Version exacte d'Odoo (D4, CONV-VER-2) — requise avant tout patch dépendant version.
 - INV-Q3 (allocation auto : remplir un carnet entamé avant d'en ouvrir un nouveau) :
   confirmer ou passer en désignation manuelle exclusive.
-- Absorption éventuelle de D5/D6 dans D3/D1 puis archivage (sinon garder la subordination).
+- D5/D6 sont des références historiques absentes ou optionnelles dans doc_refonte ; ne pas
+  les traiter comme sources obligatoires. Si elles sont réintroduites, elles restent
+  subordonnées à D1/D3.
 ```

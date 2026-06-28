@@ -1155,3 +1155,23 @@ Avocat du diable :
 Le point SMS/ICP n’est pas ignoré. Il est reconnu comme une dette de doctrine potentiellement importante.
 Mais le traiter maintenant sans preuve de faille majeure risquerait de détourner la stabilisation V1 et de casser un comportement opérationnel couvert par tests.
 
+
+---
+
+## Patch43H5G2 — Alignement documentaire canonique doc_refonte
+
+Statut : doc-only.
+
+Objet :
+- correction des chemins canoniques dans `AGENTS.md` ;
+- clarification dans `00_index.md` que les références D5/D6 sont historiques ou
+  optionnelles si absentes du dossier canonique ;
+- élévation de la doctrine H5G des sources de configuration dans
+  `DOCTRINE_MODE_DEV_TEST_FUELTOKEN_V1.md` §6 ;
+- conservation de `OPEN-H5G-SMS-001` comme dette documentée non bloquante V1.
+
+Décision :
+- aucune modification runtime ;
+- aucun changement de tests ;
+- aucun changement SMS/ICP ;
+- aucun changement Flutter.
