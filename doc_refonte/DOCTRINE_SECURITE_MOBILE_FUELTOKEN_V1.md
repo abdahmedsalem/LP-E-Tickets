@@ -400,3 +400,17 @@ T-H0C-MANAGER-POSITIVE-VALIDATOR  Les tests source-level vérifient que seules l
 INV-H0D-PURCHASE-APPROVAL-PARTNER-TRUSTED-ACCESS  L'approbation d'achat via API manager mobile est plus stricte que l'approbation back-office. Elle exige le device trusted du manager, l'action_code, l'idempotency_key, le cloisonnement société, et un accès mobile actif trusted pour le `partner_id` de l'achat. Les objets économiques restent attachés au partenaire ; `purchase.action_approve()` n'est pas modifié par cet invariant.
 
 T-H0D-PURCHASE-APPROVAL-PARTNER-TRUSTED-ACCESS  Les tests runtime couvrent le refus si le partenaire de l'achat n'a aucun accès mobile trusted actif, le refus si son device est pending_trust ou blocked, et la réussite lorsque le manager et le partenaire satisfont les prérequis.
+
+## Addendum Patch43H2 - contrat API manager mobile
+
+INV-H2-MANAGER-MOBILE-API-CONTRACT  Le contrat API manager mobile V1 est fermé et stable. Le manager mobile n'a accès qu'aux six endpoints suivants : `purchases_pending`, `purchase_detail`, `purchase_approve`, `stations_list`, `devices_pending_trust`, `device_approve_pending_trust`.
+
+Les endpoints de lecture exigent un manager mobile sur device trusted et le cloisonnement société FuelToken, sans `action_code` ni `idempotency_key`. Les endpoints d'écriture positive (`purchase_approve`, `device_approve_pending_trust`) exigent `action_code`, device trusted, rôle manager, idempotency_key et hash de payload. Les endpoints back-office-only restent fail-closed via `_raise_mobile_manager_backoffice_only`.
+
+Contrat de liste V1 :
+- `purchases_pending` et `devices_pending_trust` sont paginés avec `limit`, `offset`, `count`, et métadonnées enrichies opt-in via `include_pagination_meta`.
+- `stations_list` reste volontairement non paginé en V1 : volume attendu faible et contrat historique `items + count` conservé.
+- `purchase_detail` retourne le détail d'un achat borné à la société FuelToken.
+- Les mutations retournent le payload métier mis à jour après succès.
+
+T-H2-MANAGER-MOBILE-API-CONTRACT  Un test source-level verrouille le périmètre des six endpoints, les guards par endpoint, les règles de pagination, les protections d'idempotence et les refus back-office-only. Ce test complète les tests runtime H0C/H0D/H0E sans changer le comportement runtime.
