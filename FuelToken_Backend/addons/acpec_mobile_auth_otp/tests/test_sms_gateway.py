@@ -238,6 +238,32 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         os.environ['ACPEC_FUELTOKEN_DEV_MODE'] = '1'
         self.assertFalse(policy.otp_dev_mode_enabled())
 
+    def test_dev_fixed_otp_code_is_rejected_when_runtime_switches_to_prod(self):
+        """A dev-created 000000 challenge must not be usable after prod runtime switch."""
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+
+        challenge, code = self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            '21000087',
+            purpose='register',
+            request_ip='10.43.5.1',
+        )
+
+        self.assertEqual(code, '000000')
+        self.assertEqual(challenge.state, 'pending')
+
+        os.environ['ACPEC_ENV'] = 'prod'
+        os.environ['ODOO_ENV'] = ''
+        os.environ['ENV'] = ''
+        os.environ['ACPEC_FUELTOKEN_DEV_MODE'] = '1'
+        os.environ['ACPEC_FUELTOKEN_TEST_MODE'] = ''
+
+        with self.assertRaisesRegex(AccessError, 'Code OTP invalide'):
+            challenge.verify('000000')
+
+        challenge.invalidate_recordset(['state', 'attempt_count'])
+        self.assertEqual(challenge.state, 'pending')
+        self.assertEqual(challenge.attempt_count, 1)
+
     def _public_controller_request_context(self, remote_addr='127.0.0.1'):
         fake_request = SimpleNamespace(
             env=self.env,
