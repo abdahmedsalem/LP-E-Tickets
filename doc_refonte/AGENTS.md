@@ -6,7 +6,8 @@ pas optionnel. Pour Claude Code, le copier aussi en `CLAUDE.md` ; pour Cursor, e
 
 ## Point d'entrée
 
-Avant toute chose, lire `doctrine/00_index.md`. Il liste les doctrines, leur portée,
+Avant toute chose, lire `doc_refonte/00_index.md` depuis la racine du dépôt
+ou `00_index.md` depuis ce dossier. Il liste les doctrines, leur portée,
 leur priorité en cas de conflit, et indique lesquelles s'appliquent à une tâche donnée.
 
 ## Protocole obligatoire avant tout patch
@@ -70,7 +71,7 @@ Un travail n'est terminé que si :
 
 ```text
 [ ] chaque INV-* visé a un test qui le vérifie, et le test cite l'ID de l'invariant ;
-[ ] la table doctrine/traceability.md est mise à jour (INV-* -> code -> test) ;
+[ ] la table `doc_refonte/traceability.md` est mise à jour (INV-* -> code -> test) ;
 [ ] la checklist de conformité de chaque doctrine applicable est cochée avec preuve ;
 [ ] aucun anti-pattern (ANTI-*) présent ;
 [ ] le patch est livré pour revue manuelle, écarts signalés.

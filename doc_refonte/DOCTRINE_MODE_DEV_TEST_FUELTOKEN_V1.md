@@ -186,3 +186,73 @@ DEV-GLB-2  Tout invariant de sécurité (sections device, session, actions sensi
 DEV-GLB-3  Toute difficulté de test se résout par la simulation d'entrées (§4),
            jamais par l'ajout d'une exception à un contrôle.
 ```
+
+---
+
+## 6. Sources de configuration et settings sécurité mobile
+
+### Principes
+
+La classification des sources de configuration sécurité mobile est une doctrine V1.
+Elle évite de mélanger trois responsabilités différentes :
+
+```text
+env/config                         = vérité de déploiement, runtime, secrets
+acpec.mobile.security.setting      = politique sécurité mobile applicative auditable
+ir.config_parameter                = legacy, UI non critique, fonctionnel non sensible
+```
+
+Cette section fixe la doctrine. Elle ne migre aucun paramètre existant et ne change pas
+le runtime V1.
+
+### Règles
+
+```text
+H5G-SRC-1  La classification production / développement / test vient de l'environnement
+           ou de la configuration de déploiement. Elle ne dépend jamais de
+           ir.config_parameter.
+
+H5G-SRC-2  Les secrets techniques, credentials externes, tokens et clés de prestataires
+           ont pour cible doctrinale env/config. Ils ne doivent pas être introduits comme
+           nouveaux paramètres sécurité dans ir.config_parameter.
+
+H5G-SRC-3  Les politiques sécurité mobile applicatives — durées token/session, PIN,
+           OTP, antiflood, rate-limit, readiness applicative — relèvent de
+           acpec.mobile.security.setting lorsqu'elles doivent être pilotables en base.
+
+H5G-SRC-4  ir.config_parameter reste acceptable pour la compatibilité legacy, les
+           paramètres UI non critiques et les paramètres fonctionnels non sensibles.
+           Il peut servir de source de migration contrôlée vers un modèle applicatif,
+           mais ne doit pas redevenir la source de vérité des politiques sensibles.
+
+H5G-SRC-5  Les facilités dev ne peuvent être activées par un simple paramètre en base.
+           Un setting legacy comme otp_dev_mode peut être détecté et signalé par
+           readiness, mais ne doit pas rouvrir une relaxation runtime en production.
+
+H5G-SRC-6  L'état SMS gateway V1 est reconnu comme legacy/historique : certains paramètres
+           SMS peuvent encore être lus depuis ir.config_parameter par le runtime existant.
+           Ce point est documenté comme OPEN-H5G-SMS-001 et ne doit pas être migré en V1
+           sans faille majeure démontrée ou décision dédiée.
+```
+
+### Décision V1
+
+```text
+Aucun changement runtime imposé par cette doctrine.
+Aucune migration SMS en V1.
+Aucun changement de sms_gateway ni de res.config.settings en V1.
+Les écarts non critiques restent ouverts et documentés.
+```
+
+### Critères de réouverture immédiate
+
+Le sujet SMS/ICP doit être rouvert avant V2 uniquement si l'un des cas suivants est
+démontré :
+
+```text
+- secret SMS exposé publiquement ;
+- secret SMS loggé en clair ;
+- utilisateur non autorisé pouvant lire ou modifier SMS_TOKEN / SMS_VALIDATION_KEY ;
+- readiness production donnant un feu vert malgré secrets absents ou incohérents ;
+- usage SMS permettant un bypass OTP ou une dégradation fail-open.
+```
