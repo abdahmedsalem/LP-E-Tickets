@@ -139,15 +139,25 @@ class TestPurchaseCreateRuntimePolicy(TransactionCase):
         public_message = error.get("message") or ""
 
         sensitive_expected_codes = {
-            "action_code": ("MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
-            "Device mobile en attente de validation": ("DEVICE_PENDING_TRUST",),
-            "PIN mobile invalide": ("INVALID_ACTION_CODE", "ACTION_CODE_DENIED"),
-            "Clé PIN action invalide": ("INVALID_ACTION_CODE_KEY",),
+            "action_code": ("ACTION_REFUSED",),
+            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED",),
+            "PIN mobile invalide": ("ACTION_REFUSED",),
+            "Clé PIN action invalide": ("ACTION_REFUSED",),
+            "idempotency_conflict": ("REQUEST_REFUSED",),
+            "QR introuvable": ("QR_NOT_USABLE",),
+        }
+        sensitive_expected_public_messages = {
+            "idempotency_conflict": "Cette demande ne peut pas être traitée.",
+            "QR introuvable": "QR introuvable ou non utilisable.",
         }
 
         if expected in sensitive_expected_codes:
             self.assertIn(code, sensitive_expected_codes[expected])
-            self.assertNotIn(expected, public_message)
+            self.assertTrue(str(error.get("reference") or "").startswith("SEC-"))
+            if expected in sensitive_expected_public_messages:
+                self.assertEqual(public_message, sensitive_expected_public_messages[expected])
+            else:
+                self.assertNotIn(expected, public_message)
             return
 
         self.assertIn(expected, repr(response))

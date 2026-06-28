@@ -9,6 +9,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
     @http.route('/api/acpec/mobile_auth/v1/request-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def request_otp(self, **kwargs):
+        started_at = self._public_auth_started_at()
         try:
             self._require_keys(kwargs, ['identifier'])
             identifier = self._get_clean_str(kwargs, 'identifier')
@@ -55,9 +56,15 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         debug_reason=str(exc),
                         public_debug_reason=debug_reason,
                     )
-                if purpose in ('login', 'reset') and debug_reason == 'user_not_found':
-                    return self._public_account_not_found_response(debug_reason=debug_reason)
-                return self._public_otp_request_accepted_response(debug_reason=debug_reason)
+                if purpose in ('login', 'reset') and debug_reason == 'auth_account_not_allowed':
+                    return self._public_account_not_found_response(
+                        debug_reason=debug_reason,
+                        started_at=started_at,
+                    )
+                return self._public_otp_request_accepted_response(
+                    debug_reason=debug_reason,
+                    started_at=started_at,
+                )
             data = {
                 'challenge_id': challenge.id,
                 'challenge_ref': challenge.name,
@@ -78,6 +85,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
     @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def verify_otp(self, **kwargs):
+        started_at = self._public_auth_started_at()
         try:
             self._require_keys(kwargs, ['code'])
             challenge_id = self._get_optional_int(kwargs, 'challenge_id', 0)
@@ -92,7 +100,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 raise ValidationError(_('challenge_id ou identifier est requis.'))
             challenge = request.env['acpec.mobile.auth.otp'].sudo().search(domain, order='id desc', limit=1)
             if not challenge:
-                return self._public_otp_invalid_response(debug_reason='otp_not_found')
+                return self._public_otp_invalid_response(debug_reason='auth_otp_not_found', params=kwargs, started_at=started_at)
             reset_secret_code = False
             reset_user = False
             if challenge.purpose == 'reset':
@@ -113,7 +121,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
                 reset_user = challenge.user_id.sudo()
                 if not reset_user:
-                    return self._public_otp_invalid_response(debug_reason='reset_user_not_found')
+                    return self._public_otp_invalid_response(debug_reason='auth_account_not_allowed', params=kwargs, started_at=started_at)
 
                 # Validate the new PIN before consuming the OTP.
                 reset_user._validate_mobile_pin(reset_secret_code)
@@ -183,11 +191,13 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 user = challenge.verify(code)
             except (AccessError, ValidationError) as exc:
                 return self._public_otp_invalid_response(
-                    debug_reason=self._public_auth_debug_reason(exc)
+                    debug_reason=self._public_auth_debug_reason(exc),
+                    params=kwargs,
+                    started_at=started_at,
                 )
             if challenge.purpose == 'reset':
                 if not user or user.id != reset_user.id:
-                    return self._public_otp_invalid_response(debug_reason='reset_user_mismatch')
+                    return self._public_otp_invalid_response(debug_reason='auth_account_not_allowed', params=kwargs, started_at=started_at)
 
                 user.sudo().set_mobile_pin(reset_secret_code)
                 payload = self._create_mobile_session_payload(user, kwargs)

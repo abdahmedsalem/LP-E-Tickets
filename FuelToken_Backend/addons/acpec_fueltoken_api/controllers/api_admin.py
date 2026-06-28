@@ -307,7 +307,14 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
 
                 if purchase.approval_idempotency_key == idempotency_key:
                     if purchase.approval_request_hash and purchase.approval_request_hash != request_hash:
-                        raise ValidationError('idempotency_conflict: même idempotency_key avec payload différent.')
+                        self._raise_sensitive_action_error(
+                            code='IDEMPOTENCY_PAYLOAD_MISMATCH',
+                            public_code='REQUEST_REFUSED',
+                            purpose='purchase_approve',
+                            debug_reason='idempotency_payload_mismatch',
+                            user=user,
+                            params=kwargs,
+                        )
                     if purchase.state == 'approved':
                         return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
 

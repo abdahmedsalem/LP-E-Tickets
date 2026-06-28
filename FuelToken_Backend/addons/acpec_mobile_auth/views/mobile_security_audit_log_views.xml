@@ -7,6 +7,7 @@
             <search string="Recherche journal d’audit sécurité mobile">
                 <field name="name" string="Référence"/>
                 <field name="code" string="Code"/>
+                <field name="reference" string="Référence publique"/>
                 <field name="operation" string="Opération"/>
                 <field name="user_id" string="Utilisateur mobile"/>
                 <field name="session_id" string="Session mobile"/>
@@ -39,6 +40,7 @@
                 <field name="event_type"/>
                 <field name="severity"/>
                 <field name="code"/>
+                <field name="reference"/>
                 <field name="operation"/>
                 <field name="user_id"/>
                 <field name="session_id"/>
@@ -64,6 +66,7 @@
                             <field name="event_type" readonly="1"/>
                             <field name="severity" readonly="1"/>
                             <field name="code" readonly="1"/>
+                            <field name="reference" readonly="1"/>
                             <field name="operation" readonly="1"/>
                             <field name="endpoint" readonly="1"/>
                             <field name="idempotency_key" readonly="1"/>

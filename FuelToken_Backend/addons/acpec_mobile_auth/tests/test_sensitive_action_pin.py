@@ -98,7 +98,8 @@ class TestSensitiveActionPin(TransactionCase):
         with self.assertRaises(MobileSensitiveActionError) as cm:
             controller._require_sensitive_action_pin({}, purpose='missing_pin')
 
-        self.assertEqual(cm.exception.acpec_sensitive_code, 'MISSING_ACTION_CODE')
+        self.assertEqual(cm.exception.acpec_sensitive_code, 'ACTION_REFUSED')
+        self.assertTrue(str(cm.exception.acpec_reference or '').startswith('SEC-'))
         self.assertNotIn('action_code requis', str(cm.exception))
 
     def test_sensitive_action_pin_rejects_wrong_code(self):
