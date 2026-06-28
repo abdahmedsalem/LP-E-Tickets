@@ -37,6 +37,33 @@ leur priorité en cas de conflit, et indique lesquelles s'appliquent à une tâc
   superflues.
 ```
 
+## Langues
+
+Règle générale : utilisateur métier en français, éléments techniques dev/API en anglais.
+
+- model names : anglais
+- field names : anglais
+- enum keys : anglais
+- API error codes : anglais
+- Python method names : anglais
+- XML ids : anglais
+- menu/action/view labels : français
+- field string/help : français
+- messages affichés à Flutter : français
+- messages techniques dans logs : anglais ou mixte, avec clés techniques stables
+
+Exemple log serveur :
+
+mobile_api_server_error reference=ERR-... endpoint=... exception_type=...
+
+Exemple UI Odoo :
+
+Incidents API mobile
+Nombre d’occurrences
+Dernière apparition
+
+
+
 ## Définition de « terminé »
 
 Un travail n'est terminé que si :
