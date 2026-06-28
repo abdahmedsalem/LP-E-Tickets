@@ -40,6 +40,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         params=kwargs,
                         debug_reason='A mobile account already exists for this identifier.',
                         public_debug_reason='account_exists',
+                        started_at=started_at,
                     )
 
             try:
@@ -55,6 +56,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         params=kwargs,
                         debug_reason=str(exc),
                         public_debug_reason=debug_reason,
+                        started_at=started_at,
                     )
                 if purpose in ('login', 'reset') and debug_reason == 'auth_account_not_allowed':
                     return self._public_account_not_found_response(
@@ -153,6 +155,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         company=audit_company,
                         debug_reason='register_otp_invalid_company_id_before_otp_consumption',
                         public_debug_reason='signup_not_allowed',
+                        started_at=started_at,
                     )
 
                 if register_company_id:
@@ -168,6 +171,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         company=audit_company,
                         debug_reason='register_otp_missing_or_unstable_device_uid_before_otp_consumption',
                         public_debug_reason='signup_not_allowed',
+                        started_at=started_at,
                     )
 
                 if not register_name:
@@ -190,6 +194,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         exc,
                         params=kwargs,
                         company=audit_company,
+                        started_at=started_at,
                     )
 
             try:
@@ -239,6 +244,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                             exc,
                             params=kwargs,
                             company=company,
+                            started_at=started_at,
                         )
                     except (AccessError, ValidationError) as exc:
                         return self._mobile_signup_not_allowed_response(
@@ -246,6 +252,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                             company=company,
                             debug_reason=str(exc),
                             public_debug_reason=self._public_auth_debug_reason(exc),
+                            started_at=started_at,
                         )
                 else:
                     account_request = request.env['acpec.mobile.auth.account.request'].sudo().search([

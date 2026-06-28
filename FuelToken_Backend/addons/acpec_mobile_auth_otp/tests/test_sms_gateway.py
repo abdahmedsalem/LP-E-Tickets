@@ -15,6 +15,7 @@ def _acpec_test_mobile_phone(label):
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.addons.acpec_mobile_auth.controllers.api_public import AcpecMobileAuthApiPublic
+from odoo.addons.acpec_mobile_auth.controllers.api_common import MobileSignupNotAllowedError
 
 MOBILE_SECURITY_SETTING_TEST_KEYS = [
     'acpec_mobile_auth.access_token_minutes',
@@ -375,6 +376,54 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             company=self.env.company,
         )
 
+    def test_signup_existing_account_has_latency_floor(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
+        identifier = '21009101'
+        self._create_mobile_user(
+            login=identifier,
+            mobile_phone=identifier,
+        )
+        controller = AcpecMobileAuthApiPublic()
+        controller._test_public_auth_min_latency_seconds = 0.250
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.time.sleep') as mocked_sleep:
+                    result = self._run_public_controller_call(lambda: controller.signup(
+                        name='Existing Signup Latency',
+                        signup_identifier=identifier,
+                        secret_code='1234',
+                        company_id=self.env.company.id,
+                    ))
+
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        mocked_sleep.assert_called()
+
+    def test_handle_exception_signup_not_allowed_has_latency_floor_and_audit(self):
+        controller = AcpecMobileAuthOtpApi()
+        controller._test_public_auth_min_latency_seconds = 0.250
+        exc = MobileSignupNotAllowedError(
+            'company_disabled_for_signup',
+            company=self.env.company,
+            public_debug_reason='signup_not_allowed',
+        )
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.time.sleep') as mocked_sleep:
+            result = self._run_public_controller_call(lambda: controller._handle_exception_response(
+                exc,
+                params={'signup_identifier': '21009104'},
+                operation='signup',
+                started_at=controller._public_auth_started_at(),
+            ))
+
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        mocked_sleep.assert_called()
+        self._assert_latest_signup_denial_audit('signup_not_allowed', company=self.env.company)
+
     def test_request_otp_register_existing_account_uses_generic_public_error(self):
         self._create_mobile_user(
             login='46009102',
@@ -393,6 +442,28 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
         self._assert_latest_signup_denial_audit('signup_account_exists')
+
+    def test_request_otp_register_existing_account_has_latency_floor(self):
+        identifier = '21009102'
+        self._create_mobile_user(
+            login=identifier,
+            mobile_phone=identifier,
+        )
+        controller = AcpecMobileAuthOtpApi()
+        controller._test_public_auth_min_latency_seconds = 0.250
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.time.sleep') as mocked_sleep:
+                    result = self._run_public_controller_call(lambda: controller.request_otp(
+                        identifier=identifier,
+                        purpose='register',
+                    ))
+
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        mocked_sleep.assert_called()
 
     def test_request_otp_login_unknown_identifier_returns_account_not_found(self):
         controller = AcpecMobileAuthOtpApi()
@@ -475,6 +546,44 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
         self._assert_latest_signup_denial_audit('signup_account_exists', company=self.env.company)
+
+    def test_verify_otp_register_duplicate_account_has_latency_floor(self):
+        self.env.company.write({'acpec_mobile_auth_enabled': True})
+        identifier = '21009103'
+        controller = AcpecMobileAuthOtpApi()
+        controller._test_public_auth_min_latency_seconds = 0.250
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+
+        challenge, code = otp_model.request_otp(
+            identifier,
+            purpose='register',
+            request_ip='127.0.0.1',
+        )
+
+        self._create_mobile_user(
+            login=identifier,
+            mobile_phone=identifier,
+        )
+
+        with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
+            with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.config', {'test_enable': False}):
+                with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.time.sleep') as mocked_sleep:
+                    result = self._run_public_controller_call(lambda: controller.verify_otp(
+                        challenge_id=challenge.id,
+                        code=code,
+                        name='Duplicate Register Latency',
+                        secret_code='1234',
+                        company_id=self.env.company.id,
+                        device_uid='ft-android-test-duplicate-register-21009103',
+                        device_name='Flutter Android',
+                        platform='android',
+                        app_version='test',
+                    ))
+
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        mocked_sleep.assert_called()
 
     def test_request_otp_login_unknown_identifier_debug_reason_is_runtime_gated(self):
 
