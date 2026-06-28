@@ -6,3 +6,4 @@ access_acpec_mobile_security_setting_admin,access.acpec.mobile.security.setting.
 access_acpec_mobile_security_audit_log_auditor,access.acpec.mobile.security.audit.log.auditor,model_acpec_mobile_security_audit_log,acpec_mobile_auth.group_mobile_security_auditor,1,0,0,0
 access_acpec_mobile_device_admin,access.acpec.mobile.device.admin,model_acpec_mobile_device,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,0
 access_acpec_mobile_device_trust_wizard_admin,access.acpec.mobile.device.trust.wizard.admin,model_acpec_mobile_device_trust_wizard,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,1
+access_acpec_mobile_api_error_marker_auditor,access.acpec.mobile.api.error.marker.auditor,model_acpec_mobile_api_error_marker,acpec_mobile_auth.group_mobile_security_auditor,1,1,0,0
