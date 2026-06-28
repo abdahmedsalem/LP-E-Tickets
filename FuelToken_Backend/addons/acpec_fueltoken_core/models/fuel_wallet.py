@@ -35,30 +35,55 @@ class AcpecFuelWallet(models.Model):
             rec.name = '%s - %s' % (rec.partner_id.display_name or '', rec.company_id.name or '')
 
     def _compute_quantities(self):
-        fields_to_zero = ['balance', 'qty_available', 'qty_qr_active', 'qty_qr_blocked', 'qty_consumed', 'qty_expired', 'amount_qr_active', 'amount_qr_blocked', 'amount_consumed', 'amount_expired']
+        fields_to_zero = [
+            'balance',
+            'qty_available',
+            'qty_qr_active',
+            'qty_qr_blocked',
+            'qty_consumed',
+            'qty_expired',
+            'amount_qr_active',
+            'amount_qr_blocked',
+            'amount_consumed',
+            'amount_expired',
+        ]
         for rec in self:
             for fname in fields_to_zero:
-                rec[fname] = 0
-        if not self.ids:
+                setattr(rec, fname, 0)
+
+        if not self:
             return
-        groups = self.env['acpec.fuel.face.line'].sudo().read_group(
+
+        groups = self.env['acpec.fuel.face.line'].sudo()._read_group(
             [('wallet_id', 'in', self.ids)],
-            ['wallet_id', 'face_value', 'qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
             ['wallet_id', 'face_value'],
-            lazy=False,
+            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
         )
         by_wallet = {wallet.id: {
-            'balance': 0, 'qty_available': 0, 'qty_qr_active': 0, 'qty_qr_blocked': 0, 'qty_consumed': 0, 'qty_expired': 0,
-            'amount_qr_active': 0, 'amount_qr_blocked': 0, 'amount_consumed': 0, 'amount_expired': 0,
+            'balance': 0,
+            'qty_available': 0,
+            'qty_qr_active': 0,
+            'qty_qr_blocked': 0,
+            'qty_consumed': 0,
+            'qty_expired': 0,
+            'amount_qr_active': 0,
+            'amount_qr_blocked': 0,
+            'amount_consumed': 0,
+            'amount_expired': 0,
         } for wallet in self}
-        for item in groups:
-            wallet_id = item['wallet_id'][0]
-            face_value = item.get('face_value') or 0
-            qty_available = item.get('qty_available') or 0
-            qty_qr_active = item.get('qty_qr_active') or 0
-            qty_qr_blocked = item.get('qty_qr_blocked') or 0
-            qty_consumed = item.get('qty_consumed') or 0
-            qty_expired = item.get('qty_expired') or 0
+
+        for wallet, face_value, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired in groups:
+            if not wallet:
+                continue
+            wallet_id = wallet.id
+            if wallet_id not in by_wallet:
+                continue
+            face_value = face_value or 0
+            qty_available = qty_available or 0
+            qty_qr_active = qty_qr_active or 0
+            qty_qr_blocked = qty_qr_blocked or 0
+            qty_consumed = qty_consumed or 0
+            qty_expired = qty_expired or 0
             values = by_wallet[wallet_id]
             values['qty_available'] += qty_available
             values['qty_qr_active'] += qty_qr_active
@@ -70,11 +95,11 @@ class AcpecFuelWallet(models.Model):
             values['amount_qr_blocked'] += qty_qr_blocked * face_value
             values['amount_consumed'] += qty_consumed * face_value
             values['amount_expired'] += qty_expired * face_value
+
         for rec in self:
             for fname, value in by_wallet[rec.id].items():
-                rec[fname] = value
+                setattr(rec, fname, value)
 
-    @api.model
     def get_or_create(self, partner, company):
         wallet = self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
         if wallet:

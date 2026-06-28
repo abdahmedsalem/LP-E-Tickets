@@ -249,28 +249,20 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         return ''
 
     def _wallet_breakdown_by_face_value(self, wallet):
-        groups = request.env['acpec.fuel.face.line'].sudo().read_group(
+        groups = request.env['acpec.fuel.face.line'].sudo()._read_group(
             [('wallet_id', '=', wallet.id)],
-            [
-                'face_value',
-                'qty_available:sum',
-                'qty_qr_active:sum',
-                'qty_qr_blocked:sum',
-                'qty_consumed:sum',
-                'qty_expired:sum',
-            ],
             ['face_value'],
-            lazy=False,
+            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
         )
-        items = []
-        for item in groups:
-            face_value = item.get('face_value') or 0
-            qty_available = item.get('qty_available') or 0
-            qty_qr_active = item.get('qty_qr_active') or 0
-            qty_qr_blocked = item.get('qty_qr_blocked') or 0
-            qty_consumed = item.get('qty_consumed') or 0
-            qty_expired = item.get('qty_expired') or 0
-            items.append({
+        result = []
+        for face_value, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired in groups:
+            face_value = face_value or 0
+            qty_available = qty_available or 0
+            qty_qr_active = qty_qr_active or 0
+            qty_qr_blocked = qty_qr_blocked or 0
+            qty_consumed = qty_consumed or 0
+            qty_expired = qty_expired or 0
+            result.append({
                 'face_value': face_value,
                 'qty_available': qty_available,
                 'amount_available': qty_available * face_value,
@@ -283,43 +275,42 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'qty_expired': qty_expired,
                 'amount_expired': qty_expired * face_value,
             })
-        return sorted(items, key=lambda item: item['face_value'])
+        return sorted(result, key=lambda item: item['face_value'])
 
     def _wallet_breakdown_by_carnet_type(self, wallet):
-        groups = request.env['acpec.fuel.face.line'].sudo().read_group(
+        groups = request.env['acpec.fuel.face.line'].sudo()._read_group(
             [('wallet_id', '=', wallet.id)],
-            [
-                'carnet_type_id',
-                'qty_available:sum',
-                'qty_qr_active:sum',
-                'qty_qr_blocked:sum',
-                'qty_consumed:sum',
-                'qty_expired:sum',
-            ],
             ['carnet_type_id'],
-            lazy=False,
+            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
         )
-        items = []
-        for item in groups:
-            carnet_type = item.get('carnet_type_id')
+        result = []
+        for carnet_type, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired in groups:
             if not carnet_type:
                 continue
-            carnet = request.env['acpec.fuel.carnet.type'].sudo().browse(carnet_type[0])
-            face_value = carnet.face_value or 0
-            qty_available = item.get('qty_available') or 0
-            items.append({
-                'carnet_type_id': carnet.id,
-                'carnet_type_code': carnet.code,
-                'carnet_type_name': self._carnet_type_label(carnet),
+            face_value = carnet_type.face_value or 0
+            qty_available = qty_available or 0
+            qty_qr_active = qty_qr_active or 0
+            qty_qr_blocked = qty_qr_blocked or 0
+            qty_consumed = qty_consumed or 0
+            qty_expired = qty_expired or 0
+            result.append({
+                'carnet_type_id': carnet_type.id,
+                'carnet_type_code': carnet_type.code,
+                'carnet_type_name': self._carnet_type_label(carnet_type),
+                'face_count': carnet_type.face_count,
                 'face_value': face_value,
                 'qty_available': qty_available,
                 'amount_available': qty_available * face_value,
-                'qty_qr_active': item.get('qty_qr_active') or 0,
-                'qty_qr_blocked': item.get('qty_qr_blocked') or 0,
-                'qty_consumed': item.get('qty_consumed') or 0,
-                'qty_expired': item.get('qty_expired') or 0,
+                'qty_qr_active': qty_qr_active,
+                'amount_qr_active': qty_qr_active * face_value,
+                'qty_qr_blocked': qty_qr_blocked,
+                'amount_qr_blocked': qty_qr_blocked * face_value,
+                'qty_consumed': qty_consumed,
+                'amount_consumed': qty_consumed * face_value,
+                'qty_expired': qty_expired,
+                'amount_expired': qty_expired * face_value,
             })
-        return items
+        return sorted(result, key=lambda item: (item['face_value'], item['carnet_type_code'] or ''))
 
     def _mobile_carnet_type_payload(self, rec):
         currency = rec.currency_id or rec.company_id.currency_id
