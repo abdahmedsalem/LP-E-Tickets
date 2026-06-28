@@ -59,7 +59,11 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
             try:
                 company = self._get_company(company_id)
             except MobileSignupNotAllowedError as exc:
-                return self._mobile_signup_not_allowed_response(exc, params=kwargs)
+                return self._mobile_signup_not_allowed_response(
+                    exc,
+                    params=kwargs,
+                    started_at=started_at,
+                )
 
             if identifier_vals['signup_identifier_type'] == 'phone':
                 request.env['acpec.mobile.auth.otp'].sudo()._check_request_rate_limits(
@@ -81,6 +85,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                     company=company,
                     debug_reason='A mobile account already exists for this identifier.',
                     public_debug_reason='account_exists',
+                    started_at=started_at,
                 )
 
             data = {
@@ -105,6 +110,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                         company=company,
                         debug_reason=str(exc),
                         public_debug_reason=self._public_auth_debug_reason(exc),
+                        started_at=started_at,
                     )
                 data.update({
                     'otp_challenge_id': challenge.id,

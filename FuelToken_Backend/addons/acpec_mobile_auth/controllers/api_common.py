@@ -448,8 +448,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return response
         if isinstance(exc, MobileSignupNotAllowedError):
             _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
-            public_debug_reason = exc.acpec_public_debug_reason or self._public_auth_debug_reason(exc)
-            return self._public_signup_not_allowed_response(debug_reason=public_debug_reason)
+            return self._mobile_signup_not_allowed_response(
+                exc,
+                params=params,
+                started_at=started_at,
+            )
         if isinstance(exc, ValidationError):
             message = str(exc)
             lowered = message.lower()
@@ -924,7 +927,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             started_at=started_at,
         )
 
-    def _public_signup_not_allowed_response(self, debug_reason=False, reference=False):
+    def _public_signup_not_allowed_response(self, debug_reason=False, reference=False, started_at=False):
+        self._apply_public_auth_min_latency(started_at)
         return self._with_public_auth_debug(self._error_response(
             'SIGNUP_NOT_ALLOWED',
             'Impossible de finaliser l’inscription avec ces informations.',
@@ -972,6 +976,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         company=False,
         debug_reason=False,
         public_debug_reason=False,
+        started_at=False,
     ):
         """Log internal technical denial then return generic public payload."""
         if exc:
@@ -994,6 +999,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return self._public_signup_not_allowed_response(
             debug_reason=public_debug_reason or self._public_auth_debug_reason(Exception(debug_reason or '')),
             reference=reference,
+            started_at=started_at,
         )
 
     def _mobile_manager_guard(self):
