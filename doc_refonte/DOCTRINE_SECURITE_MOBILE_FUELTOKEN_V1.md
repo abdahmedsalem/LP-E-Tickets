@@ -390,3 +390,13 @@ GLB-3  Toute décision de sécurité se prend côté backend ; le frontend ne fa
        qu'afficher l'état que le backend impose.
 GLB-4  Toute exception, ambiguïté ou état inconnu se résout en refus (fail-closed).
 ```
+
+## Addendum Patch43H1 - manager mobile valideur positif et approbation achat
+
+INV-H0C-MANAGER-POSITIVE-VALIDATOR  Le manager mobile FuelToken est un valideur positif limité. Il n'est pas un administrateur système mobile. Son périmètre API est fermé : lectures nécessaires à la décision, approbation d'achat et approbation de device pending_trust uniquement. Les rejets, créations/modifications structurelles station/carnet/type et rapports administratifs restent réservés au back-office/backend administratif.
+
+T-H0C-MANAGER-POSITIVE-VALIDATOR  Les tests source-level vérifient que seules les actions sensibles `purchase_approve` et `device_approve_pending_trust` utilisent `_sensitive_action_transaction`, que les lectures autorisées passent par `_admin_user`, et que les méthodes back-office-only échouent via `_raise_mobile_manager_backoffice_only`.
+
+INV-H0D-PURCHASE-APPROVAL-PARTNER-TRUSTED-ACCESS  L'approbation d'achat via API manager mobile est plus stricte que l'approbation back-office. Elle exige le device trusted du manager, l'action_code, l'idempotency_key, le cloisonnement société, et un accès mobile actif trusted pour le `partner_id` de l'achat. Les objets économiques restent attachés au partenaire ; `purchase.action_approve()` n'est pas modifié par cet invariant.
+
+T-H0D-PURCHASE-APPROVAL-PARTNER-TRUSTED-ACCESS  Les tests runtime couvrent le refus si le partenaire de l'achat n'a aucun accès mobile trusted actif, le refus si son device est pending_trust ou blocked, et la réussite lorsque le manager et le partenaire satisfont les prérequis.

@@ -8,8 +8,13 @@ from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelToken
 
 @tagged("post_install", "-at_install")
 class TestMobileSecurityRuntimeDocs(TransactionCase):
-    # H0C documentation lock: the admin mobile runtime matrix is intentionally
-    # restricted to positive validation only.
+    # Patch43H1 traceability lock.
+    # INV-H0C-MANAGER-POSITIVE-VALIDATOR:
+    #   admin mobile runtime matrix restricted to positive validation only.
+    # INV-H0D-PURCHASE-APPROVAL-PARTNER-TRUSTED-ACCESS:
+    #   purchase approval via mobile manager requires trusted access for partner.
+    # INV-H0E-CLIENT-WALLET-OPERATIONAL-ROLE-SEGREGATION:
+    #   non-empty client wallet is incompatible with station/manager role.
 
     def test_h0c_mobile_manager_positive_validator_matrix(self):
         source = inspect.getsource(AcpecFuelTokenAdminApi)

@@ -295,3 +295,11 @@ Une implémentation métier est conforme si et seulement si :
 [ ] chaque INV-* couvert par au moins un test citant son ID ;
 [ ] aucun anti-pattern (§7) présent.
 ```
+
+## Addendum Patch43H1 - séparation client économique / acteur opérationnel
+
+INV-H0E-CLIENT-WALLET-OPERATIONAL-ROLE-SEGREGATION  Les objets économiques FuelToken restent attachés au `partner_id`. Un partenaire dont la wallet Tickets Carburant est économiquement non vide ne peut pas être représenté par un utilisateur mobile opérationnel station ou manager. Inversement, un utilisateur mobile station/manager ne doit pas porter un `partner_id` ayant une valeur carburant active.
+
+La définition V1 de wallet économiquement non vide est volontairement pragmatique : présence de tickets disponibles, de faces en QR actif, de faces en QR bloqué, ou de QR actif/bloqué. L'historique consommé/expiré seul ne bloque pas en dur.
+
+T-H0E-CLIENT-WALLET-OPERATIONAL-ROLE-SEGREGATION  Les tests runtime couvrent le refus d'attribution de rôle manager/station à un partenaire avec wallet non vide, le refus d'affectation station, le refus de trust device pour un tel utilisateur opérationnel, et l'absence de blocage dur lorsque la wallet n'a plus de valeur active.
