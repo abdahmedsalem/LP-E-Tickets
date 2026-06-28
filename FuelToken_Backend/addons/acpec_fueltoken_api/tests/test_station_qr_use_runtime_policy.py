@@ -12,6 +12,7 @@ def _acpec_test_mobile_phone(label):
         value = (value * 16777619) % 10000000
     return "3%07d" % value
 
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_station as api_station_module
@@ -457,3 +458,110 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         )
         self._assert_error_contains(response, "Device mobile en attente de validation")
         self.assertFalse(self._tx_by_key(qr, key))
+
+    def _create_backoffice_manager_user(self, login):
+        user_model = self.env["res.users"].sudo().with_context(
+            acpec_mobile_allow_password_write=True,
+            no_reset_password=True,
+        )
+        return user_model.create({
+            "name": login,
+            "login": login,
+            "email": login,
+            "active": True,
+            "company_id": self.company.id,
+            "company_ids": [(6, 0, [self.company.id])],
+            "mobile_only": False,
+            "group_ids": [(6, 0, self._group_ids([
+                "base.group_user",
+                "acpec_fueltoken_base.group_fuel_manager",
+            ]))],
+        })
+
+    def _call_station_transactions(self, controller, payload=None):
+        fake_request = SimpleNamespace(env=self.env)
+        with patch.object(api_station_module, "request", fake_request):
+            return controller.station_transactions(**(payload or {}))
+
+    def test_station_consumption_transaction_starts_pending_regularization(self):
+        controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "regularization-pending-h3b",
+        )
+        key = "station-qr-regularization-pending-h3b"
+
+        response = self._call_use_qr(controller, self._payload(qr, key=key))
+        tx = self._tx_by_key(qr, key)
+
+        self.assertEqual(tx.regularization_state, "pending")
+        self.assertFalse(tx.regularization_reference)
+        self.assertEqual(qr.state, "consumed")
+        self.assertIn("regularization_state", repr(response))
+        self.assertIn("pending", repr(response))
+
+        default_list = self._call_station_transactions(controller)
+        self.assertIn(str(tx.id), repr(default_list))
+        regularized_list = self._call_station_transactions(controller, {"regularization_state": "regularized"})
+        self.assertNotIn(str(tx.id), repr(regularized_list))
+
+    def test_station_transactions_filter_pending_regularized_all(self):
+        controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "regularization-filter-h3b",
+        )
+        key = "station-qr-regularization-filter-h3b"
+        self._call_use_qr(controller, self._payload(qr, key=key))
+        tx = self._tx_by_key(qr, key)
+
+        manager = self._create_backoffice_manager_user("bo-regularization-filter-h3b@example.com")
+        tx.with_user(manager).action_mark_station_regularized("REG-H3B-001")
+        tx.invalidate_recordset(["regularization_state", "regularization_reference", "regularization_date", "regularized_by_id"])
+
+        self.assertEqual(tx.regularization_state, "regularized")
+        self.assertEqual(tx.regularization_reference, "REG-H3B-001")
+        self.assertEqual(tx.regularized_by_id.id, manager.id)
+        self.assertEqual(qr.state, "consumed")
+
+        pending_list = self._call_station_transactions(controller, {"regularization_state": "pending"})
+        self.assertNotIn(str(tx.id), repr(pending_list))
+        regularized_list = self._call_station_transactions(controller, {"regularization_state": "regularized"})
+        self.assertIn(str(tx.id), repr(regularized_list))
+        self.assertIn("REG-H3B-001", repr(regularized_list))
+        all_list = self._call_station_transactions(controller, {"regularization_state": "all"})
+        self.assertIn(str(tx.id), repr(all_list))
+
+    def test_station_mobile_user_cannot_regularize_transaction(self):
+        controller, station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "regularization-station-denied-h3b",
+        )
+        key = "station-qr-regularization-station-denied-h3b"
+        self._call_use_qr(controller, self._payload(qr, key=key))
+        tx = self._tx_by_key(qr, key)
+
+        with self.assertRaises(AccessError):
+            tx.with_user(station_user).action_mark_station_regularized("REG-H3B-DENIED")
+        tx.invalidate_recordset(["regularization_state", "regularization_reference"])
+        self.assertEqual(tx.regularization_state, "pending")
+        self.assertFalse(tx.regularization_reference)
+
+    def test_regularization_reference_is_not_unique(self):
+        controller1, _station_user1, _station1, _session1, _client_user1, qr1 = self._controller_with_consumable_qr(
+            "regularization-nonunique-a-h3b",
+        )
+        controller2, _station_user2, _station2, _session2, _client_user2, qr2 = self._controller_with_consumable_qr(
+            "regularization-nonunique-b-h3b",
+        )
+        key1 = "station-qr-regularization-nonunique-a-h3b"
+        key2 = "station-qr-regularization-nonunique-b-h3b"
+        self._call_use_qr(controller1, self._payload(qr1, key=key1))
+        self._call_use_qr(controller2, self._payload(qr2, key=key2))
+        tx1 = self._tx_by_key(qr1, key1)
+        tx2 = self._tx_by_key(qr2, key2)
+
+        manager = self._create_backoffice_manager_user("bo-regularization-nonunique-h3b@example.com")
+        (tx1 | tx2).with_user(manager).action_mark_station_regularized("REG-H3B-SAME")
+
+        tx1.invalidate_recordset(["regularization_state", "regularization_reference"])
+        tx2.invalidate_recordset(["regularization_state", "regularization_reference"])
+        self.assertEqual(tx1.regularization_state, "regularized")
+        self.assertEqual(tx2.regularization_state, "regularized")
+        self.assertEqual(tx1.regularization_reference, "REG-H3B-SAME")
+        self.assertEqual(tx2.regularization_reference, "REG-H3B-SAME")

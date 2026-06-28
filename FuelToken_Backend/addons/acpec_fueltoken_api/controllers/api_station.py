@@ -163,6 +163,8 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'amount_total': qr.amount_total,
                     'station_id': station.id,
                     'station_name': station.name,
+                    'regularization_state': tx.regularization_state,
+                    'regularization_reference': tx.regularization_reference or False,
                 })
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -175,11 +177,17 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             include_meta = self._include_pagination_meta(kwargs)
             date_from, date_to = self._date_range_params(kwargs)
             transaction_type = self._get_clean_str(kwargs, 'transaction_type')
+            regularization_state = self._get_clean_str(kwargs, 'regularization_state') or 'pending'
+            if regularization_state not in ('pending', 'regularized', 'all'):
+                raise ValidationError(_('Filtre regularization_state invalide.'))
             company = self._fueltoken_company()
             domain = [
                 ('station_id', '=', station.id),
                 ('company_id', '=', company.id),
+                ('transaction_type', '=', 'consommation_station'),
             ]
+            if regularization_state != 'all':
+                domain.append(('regularization_state', '=', regularization_state))
             tx_model = request.env['acpec.fuel.transaction'].sudo()
             _tx_filter_state, _tx_filter_value, tx_filter_error = self._apply_transaction_type_filter(
                 domain,
@@ -204,6 +212,9 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'wallet_id': tx.wallet_id.id if tx.wallet_id else False,
                     'partner_id': tx.wallet_id.partner_id.id if tx.wallet_id else False,
                     'partner_name': tx.wallet_id.partner_id.name if tx.wallet_id else False,
+                    'regularization_state': tx.regularization_state or False,
+                    'regularization_reference': tx.regularization_reference or False,
+                    'regularization_date': fields.Datetime.to_string(tx.regularization_date) if tx.regularization_date else False,
                 })
             return self._json_response({
                 'station': self._station_payload(station),

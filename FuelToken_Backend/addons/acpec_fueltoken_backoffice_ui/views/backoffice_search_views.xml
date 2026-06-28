@@ -69,7 +69,10 @@
                 <field name="purchase_id"/>
                 <field name="qr_id"/>
                 <field name="station_id"/>
+                <field name="regularization_reference"/>
                 <filter name="station_consumptions" string="Consommations station" domain="[('transaction_type', '=', 'consommation_station')]"/>
+                <filter name="station_regularization_pending" string="À régulariser" domain="[('transaction_type', '=', 'consommation_station'), ('regularization_state', '=', 'pending')]"/>
+                <filter name="station_regularization_regularized" string="Régularisées" domain="[('transaction_type', '=', 'consommation_station'), ('regularization_state', '=', 'regularized')]"/>
                 <filter name="qr_emissions" string="Émissions QR" domain="[('transaction_type', '=', 'emission_qr')]"/>
                 <filter name="carnet_transfers" string="Transferts de carnets" domain="[('transaction_type', '=', 'transfert_carnet')]"/>
                 <filter name="purchases" string="Achats de carnets" domain="[('transaction_type', 'in', ['purchase_submitted', 'purchase_approved'])]"/>
@@ -78,6 +81,7 @@
                     <filter name="group_wallet" string="Compte Tickets Carburant" context="{'group_by': 'wallet_id'}"/>
                     <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_station" string="Station" context="{'group_by': 'station_id'}"/>
+                    <filter name="group_regularization_state" string="Régularisation" context="{'group_by': 'regularization_state'}"/>
                     <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
                 </group>
             </search>
