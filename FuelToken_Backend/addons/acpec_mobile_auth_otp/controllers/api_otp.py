@@ -81,7 +81,12 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             data['otp_delivery'] = data['delivery']
             return self._json_response(data)
         except Exception as exc:
-            return self._handle_exception_response(exc)
+            return self._handle_exception_response(
+                exc,
+                params=kwargs,
+                operation='request_otp',
+                started_at=started_at,
+            )
 
     @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def verify_otp(self, **kwargs):
@@ -277,4 +282,9 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             payload['auth_method'] = 'otp'
             return self._json_response(payload)
         except Exception as exc:
-            return self._handle_exception_response(exc)
+            return self._handle_exception_response(
+                exc,
+                params=kwargs,
+                operation='verify_otp',
+                started_at=started_at,
+            )

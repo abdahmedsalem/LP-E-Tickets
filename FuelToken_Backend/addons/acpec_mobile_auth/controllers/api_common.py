@@ -427,7 +427,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         self._log_mobile_api_error_marker_committed(marker_vals)
         return reference
 
-    def _handle_exception_response(self, exc, params=False, operation=False):
+    def _handle_exception_response(self, exc, params=False, operation=False, started_at=False):
         if isinstance(exc, MobileSensitiveActionError):
             _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
             return self._error_response(
@@ -437,7 +437,15 @@ class AcpecMobileAuthApiCommon(http.Controller):
             )
         if isinstance(exc, MobileAuthRateLimitError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
-            return self._error_response('RATE_LIMITED', str(exc))
+            response = self._sensitive_refusal_response(
+                public_code='RATE_LIMITED',
+                debug_reason='auth_rate_limited',
+                purpose=operation or 'auth_rate_limit',
+                params=params,
+                audit_code='RATE_LIMITED',
+            )
+            self._apply_public_auth_min_latency(started_at)
+            return response
         if isinstance(exc, MobileSignupNotAllowedError):
             _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
             public_debug_reason = exc.acpec_public_debug_reason or self._public_auth_debug_reason(exc)

@@ -37,6 +37,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
     @http.route('/api/acpec/mobile_auth/v1/signup', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def signup(self, **kwargs):
+        started_at = self._public_auth_started_at()
         try:
             self._require_keys(kwargs, ['name', 'signup_identifier', 'secret_code', 'company_id'])
 
@@ -121,7 +122,12 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             return self._json_response(data)
         except Exception as exc:
-            return self._handle_exception_response(exc)
+            return self._handle_exception_response(
+                exc,
+                params=kwargs,
+                operation='signup',
+                started_at=started_at,
+            )
 
     @http.route([
         '/api/acpec/mobile_auth/v1/login',
