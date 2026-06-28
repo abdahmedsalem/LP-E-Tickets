@@ -12,8 +12,10 @@
         'acpec_mobile_auth_otp',
     ],
     'data': [
+        'security/ir.model.access.csv',
         # Les actions doivent être chargées avant les menuitem qui les référencent.
         'views/backoffice_search_views.xml',
+        'views/station_regularization_wizard_views.xml',
         'views/backoffice_action_views.xml',
         'views/mobile_users_backoffice_views.xml',
         'views/mobile_user_human_code_views.xml',
