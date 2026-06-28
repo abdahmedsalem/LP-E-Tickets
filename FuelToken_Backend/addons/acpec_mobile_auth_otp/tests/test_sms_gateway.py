@@ -332,6 +332,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             self.assertIn(debug_term, audit.debug_reason or '')
         if company:
             self.assertEqual(audit.company_id, company)
+        return audit
 
     def test_signup_existing_account_uses_generic_public_error(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
@@ -353,7 +354,12 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
-        self._assert_latest_signup_denial_audit('signup_account_exists', company=self.env.company)
+        audit = self._assert_latest_signup_denial_audit(
+            'signup_account_exists',
+            company=self.env.company,
+        )
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        self.assertEqual(result['error'].get('reference'), audit.reference)
 
     def test_signup_disabled_company_audits_technical_reason_without_public_leak(self):
         self.env.company.write({'acpec_mobile_auth_enabled': False})
@@ -371,10 +377,12 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
-        self._assert_latest_signup_denial_audit(
+        audit = self._assert_latest_signup_denial_audit(
             'signup_not_allowed',
             company=self.env.company,
         )
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        self.assertEqual(result['error'].get('reference'), audit.reference)
 
     def test_signup_existing_account_has_latency_floor(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
@@ -441,7 +449,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
-        self._assert_latest_signup_denial_audit('signup_account_exists')
+        audit = self._assert_latest_signup_denial_audit('signup_account_exists')
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        self.assertEqual(result['error'].get('reference'), audit.reference)
 
     def test_request_otp_register_existing_account_has_latency_floor(self):
         identifier = '21009102'
@@ -545,7 +555,12 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self._assert_public_error_is_not_enumerating(result)
         self.assertEqual(result['error']['code'], 'SIGNUP_NOT_ALLOWED')
         self.assertNotIn('debug_reason', result['error'])
-        self._assert_latest_signup_denial_audit('signup_account_exists', company=self.env.company)
+        audit = self._assert_latest_signup_denial_audit(
+            'signup_account_exists',
+            company=self.env.company,
+        )
+        self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
+        self.assertEqual(result['error'].get('reference'), audit.reference)
 
     def test_verify_otp_register_duplicate_account_has_latency_floor(self):
         self.env.company.write({'acpec_mobile_auth_enabled': True})
