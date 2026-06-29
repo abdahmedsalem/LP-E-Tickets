@@ -36,6 +36,7 @@ import '../../features/settings/screens/acpec_connection_step1_screen.dart';
 import '../../features/settings/screens/notifications_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/station/screens/scan_screen.dart';
+import '../../features/station/screens/station_manual_qr_screen.dart';
 import '../../features/station/screens/station_consumption_history_screen.dart';
 import '../../features/station/screens/station_home_screen.dart';
 import '../../features/station/screens/station_profile_screen.dart';
@@ -286,6 +287,10 @@ class AppRouter {
           ),
         ),
 
+        GoRoute(
+          path: '/station/manual',
+          builder: (_, _) => const StationManualQrScreen(),
+        ),
         // Station shell: home, scan, profile
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
