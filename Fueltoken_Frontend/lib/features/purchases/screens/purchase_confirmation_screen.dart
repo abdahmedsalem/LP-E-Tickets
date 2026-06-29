@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 
@@ -23,7 +24,10 @@ class PurchaseConfirmationArgs {
   final List<PurchaseConfirmationLine> lines;
   final String? proofPath;
   final Uint8List? proofBytes;
-  final Future<void> Function(String actionCode) onConfirm;
+  final Future<void> Function(
+    String actionCode,
+    SensitiveActionIntent intent,
+  ) onConfirm;
 }
 
 class PurchaseConfirmationLine {
@@ -60,8 +64,9 @@ class _PurchaseConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      final intent = SensitiveActionIntent.create('purchases-create');
       setState(() => _confirming = true);
-      await widget.args.onConfirm(actionCode);
+      await widget.args.onConfirm(actionCode, intent);
       if (!mounted) return;
       completed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -17,6 +16,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -161,11 +161,15 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
 
     if (actionCode != null && actionCode.isNotEmpty) {
       if (!mounted) return;
-      await _performSubmit(actionCode);
+      final intent = SensitiveActionIntent.create('qr-separer');
+      await _performSubmit(actionCode, intent);
     }
   }
 
-  Future<void> _performSubmit(String actionCode) async {
+  Future<void> _performSubmit(
+    String actionCode,
+    SensitiveActionIntent intent,
+  ) async {
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
     final user = context.read<AuthBloc>().state.user;
@@ -173,11 +177,11 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
 
     setState(() => _submitting = true);
     try {
-      final raw = await OdooFueltokenFacade().qrSeparer({
-        'public_code': parent.publicCode,
-        'action_code': actionCode,
-        'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
-      });
+      final raw = await OdooFueltokenFacade().qrSeparer(
+        intent.withAuthParams({
+          'public_code': parent.publicCode,
+        }, actionCode: actionCode),
+      );
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Séparation QR refusée par le serveur.',

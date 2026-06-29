@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -370,13 +369,13 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
             recipientPhone: phone,
             recipientName: recipientName,
             lines: confirmLines,
-            onConfirm: (actionCode) async {
-              final raw = await OdooFueltokenFacade().carnetsTransfer({
-                'recipient_phone': phone,
-                'lines': apiLines,
-                'action_code': actionCode,
-                'idempotency_key': 'ft-transfer-${const Uuid().v4()}',
-              });
+            onConfirm: (actionCode, intent) async {
+              final raw = await OdooFueltokenFacade().carnetsTransfer(
+                intent.withAuthParams({
+                  'recipient_phone': phone,
+                  'lines': apiLines,
+                }, actionCode: actionCode),
+              );
               final data = acpecRpcMapOrThrow(
                 raw,
                 fallbackMessage: 'Transfert refusé par le serveur.',

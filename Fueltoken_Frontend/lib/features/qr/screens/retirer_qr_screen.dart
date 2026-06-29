@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -17,6 +16,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -221,14 +221,15 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
     );
     if (actionCode == null || actionCode.isEmpty || !mounted) return;
 
+    final intent = SensitiveActionIntent.create('qr-retirer');
     setState(() => _submitting = true);
     try {
-      final raw = await OdooFueltokenFacade().qrRetirer({
-        'public_code': parent.publicCode,
-        'lines': picks,
-        'action_code': actionCode,
-        'idempotency_key': 'ft-qr-retirer-${const Uuid().v4()}',
-      });
+      final raw = await OdooFueltokenFacade().qrRetirer(
+        intent.withAuthParams({
+          'public_code': parent.publicCode,
+          'lines': picks,
+        }, actionCode: actionCode),
+      );
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Retrait QR refusé par le serveur.',
