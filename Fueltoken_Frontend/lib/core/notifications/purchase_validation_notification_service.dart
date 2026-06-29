@@ -32,6 +32,8 @@ class PurchaseValidationNotificationService {
       'Notifications pour les commandes de carnets validées ou rejetées';
   static const _prefsPrefix = 'ft_purchase_validation_notified_';
   static const _qrPrefsPrefix = 'ft_qr_expiration_notified_';
+  static const _stationConsumptionPrefsPrefix =
+      'ft_station_consumption_notified_';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -100,16 +102,31 @@ class PurchaseValidationNotificationService {
       await _syncTransferNotifications(user, notifiedIds);
       await _saveNotifiedIds(user.id, notifiedIds);
 
+      final stationPrefsInitialized = await _hasNotifiedIds(
+        user.id,
+        prefix: _stationConsumptionPrefsPrefix,
+      );
+      final stationNotifiedIds = await _loadNotifiedIds(
+        user.id,
+        prefix: _stationConsumptionPrefsPrefix,
+      );
+      await _syncStationConsumptionNotifications(
+        user,
+        stationNotifiedIds,
+        emitNew: stationPrefsInitialized,
+      );
+      await _saveNotifiedIds(
+        user.id,
+        stationNotifiedIds,
+        prefix: _stationConsumptionPrefsPrefix,
+      );
+
       final qrNotifiedIds = await _loadNotifiedIds(
         user.id,
         prefix: _qrPrefsPrefix,
       );
       await _syncQrExpirationNotifications(user, qrNotifiedIds);
-      await _saveNotifiedIds(
-        user.id,
-        qrNotifiedIds,
-        prefix: _qrPrefsPrefix,
-      );
+      await _saveNotifiedIds(user.id, qrNotifiedIds, prefix: _qrPrefsPrefix);
     } finally {
       _syncingUserIds.remove(user.id);
     }
@@ -166,6 +183,32 @@ class PurchaseValidationNotificationService {
       }
       notifiedIds.add(key);
       await _emitTransferNotification(tx);
+    }
+  }
+
+  Future<void> _syncStationConsumptionNotifications(
+    AppUser user,
+    Set<String> notifiedIds, {
+    required bool emitNew,
+  }) async {
+    try {
+      final consumptions = await _loadStationConsumptionTransactions(user);
+      for (final tx in consumptions) {
+        final key = _stationConsumptionKey(tx);
+        if (notifiedIds.contains(key) ||
+            NotificationsStore.instance.items.any((item) => item.id == key)) {
+          continue;
+        }
+        notifiedIds.add(key);
+        if (!emitNew) {
+          continue;
+        }
+        await _emitStationConsumptionNotification(user, tx);
+      }
+    } catch (e, st) {
+      debugPrint(
+        '[purchase-validation] sync des notifications de consommation station ignorée: $e\n$st',
+      );
     }
   }
 
@@ -299,16 +342,47 @@ class PurchaseValidationNotificationService {
     await NotificationsStore.instance.add(item);
   }
 
+  Future<void> _emitStationConsumptionNotification(
+    AppUser user,
+    BusinessTransaction tx,
+  ) async {
+    final item = await _buildStationConsumptionNotification(user, tx);
+
+    const androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'FuelToken',
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    await _plugin.show(
+      id: _notificationIdForStationConsumption(tx),
+      title: item.title,
+      body: item.body,
+      notificationDetails: details,
+    );
+
+    await NotificationsStore.instance.add(item);
+  }
+
   Future<void> _emitQrExpirationNotification(
     QrToken qr,
     DateTime expirationLocal,
     _QrExpirationThreshold threshold,
   ) async {
-    final item = _buildQrExpirationNotification(
-      qr,
-      expirationLocal,
-      threshold,
-    );
+    final item = _buildQrExpirationNotification(qr, expirationLocal, threshold);
 
     const androidDetails = AndroidNotificationDetails(
       _channelId,
@@ -453,6 +527,45 @@ class PurchaseValidationNotificationService {
     );
   }
 
+  Future<NotificationItem> _buildStationConsumptionNotification(
+    AppUser user,
+    BusinessTransaction tx, {
+    bool read = false,
+  }) async {
+    final dateLabel = Formatters.dateTime(tx.date);
+    final notificationDateLabel = Formatters.dateTime(DateTime.now());
+    final amount = tx.totalAmount.abs();
+    final amountLabel = amount > 0 ? Formatters.money(amount) : '';
+    final station = (tx.stationName ?? tx.stationId ?? '').trim();
+    final qrCode = await _resolveQrNumericCodeForTransaction(user, tx);
+
+    final title = qrCode == null ? 'QR consommé' : 'QR $qrCode consommé';
+    final body = _stationConsumptionBody(amountLabel, station);
+
+    return NotificationItem(
+      id: _stationConsumptionKey(tx),
+      title: title,
+      body: body,
+      timeLabel: dateLabel,
+      notificationDateLabel: notificationDateLabel,
+      category: 'station_consumption',
+      amountLabel: amountLabel.isEmpty ? null : amountLabel,
+      validationDateLabel: dateLabel,
+      qrPublicCode: tx.qrPublicCode,
+      actionRoute: '/transactions',
+      actionLabel: 'Voir',
+      read: read,
+    );
+  }
+
+  String _stationConsumptionBody(String amountLabel, String station) {
+    final place = station.isEmpty ? 'en station' : 'à $station';
+    if (amountLabel.isEmpty) {
+      return 'Utilisation confirmée $place';
+    }
+    return '$amountLabel utilisés $place';
+  }
+
   NotificationItem _buildQrExpirationNotification(
     QrToken qr,
     DateTime expirationLocal,
@@ -466,8 +579,7 @@ class PurchaseValidationNotificationService {
     final title = threshold == _QrExpirationThreshold.hours24
         ? 'QR expire dans 24h'
         : 'QR expire dans 7 jours';
-    final body =
-        '$amountLabel • Code $qrCode • Expire le $dateLabel';
+    final body = '$amountLabel • Code $qrCode • Expire le $dateLabel';
 
     return NotificationItem(
       id: _qrExpirationKey(qr, threshold),
@@ -482,7 +594,8 @@ class PurchaseValidationNotificationService {
       qrExpirationLines: [
         NotificationQrExpirationLineItem(
           faceValue: qr.totalAmount,
-          quantityLabel: '${Formatters.numberFr(qr.totalQty)} ticket${qr.totalQty > 1 ? 's' : ''}',
+          quantityLabel:
+              '${Formatters.numberFr(qr.totalQty)} ticket${qr.totalQty > 1 ? 's' : ''}',
           expirationLabel: dateLabel,
           lotLabel: threshold.displayLabel,
         ),
@@ -515,7 +628,8 @@ class PurchaseValidationNotificationService {
 
     switch (threshold) {
       case _QrExpirationThreshold.days7:
-        return remaining <= const Duration(days: 7) && remaining > const Duration(hours: 24);
+        return remaining <= const Duration(days: 7) &&
+            remaining > const Duration(hours: 24);
       case _QrExpirationThreshold.hours24:
         return remaining <= const Duration(hours: 24);
     }
@@ -566,6 +680,93 @@ class PurchaseValidationNotificationService {
     return Formatters.carnetTypeLabel(line.carnetSize, line.faceValue);
   }
 
+  Future<List<BusinessTransaction>> _loadStationConsumptionTransactions(
+    AppUser user,
+  ) async {
+    final out = <BusinessTransaction>[];
+    final seen = <String>{};
+    final now = DateTime.now();
+    final dateFrom = now.subtract(const Duration(days: 30));
+    const pageSize = 50;
+    const maxPages = 6;
+
+    for (var page = 0; page < maxPages; page++) {
+      final raw = await OdooFueltokenFacade().transactions({
+        'date_from': _apiDateTime(dateFrom),
+        'date_to': _apiDateTime(now),
+        'limit': pageSize,
+        'offset': page * pageSize,
+      });
+      final parsed = AcpecTransactionsMapper.parsePage(
+        raw,
+        userId: user.id,
+        userName: user.name,
+        requestedLimit: pageSize,
+        requestedOffset: page * pageSize,
+      );
+      final batch = parsed.items
+          .where((tx) => tx.type == TxType.stationConsumption)
+          .toList(growable: false);
+      for (final tx in batch) {
+        if (!seen.add(tx.id)) {
+          continue;
+        }
+        out.add(tx);
+      }
+      if (!parsed.hasMore || parsed.items.length < pageSize) {
+        break;
+      }
+    }
+
+    out.sort((a, b) => b.date.compareTo(a.date));
+    return out;
+  }
+
+  Future<String?> _resolveQrNumericCodeForTransaction(
+    AppUser user,
+    BusinessTransaction tx,
+  ) async {
+    final direct = _formatQrNumericCode(tx.qrPublicCode ?? tx.qrId);
+    if (direct != null) {
+      return direct;
+    }
+
+    final qrRef = (tx.qrPublicCode ?? tx.qrId ?? '').trim();
+    if (qrRef.isEmpty) {
+      return null;
+    }
+
+    try {
+      final raw = await OdooFueltokenFacade().qrDetail(
+        AcpecQrMapper.detailParamsForRouteId(qrRef),
+      );
+      final qr = AcpecQrMapper.fromRpcEnvelope(
+        raw,
+        ownerId: user.id,
+        ownerName: user.name,
+        companyId: AppEnvironment.companyIdForUser(user),
+      );
+      return _formatQrNumericCode(qr.qrNumericCode);
+    } catch (e, st) {
+      debugPrint(
+        '[purchase-validation] résolution du code QR consommé ignorée: $e\n$st',
+      );
+      return null;
+    }
+  }
+
+  String? _formatQrNumericCode(String? raw) {
+    final digits = (raw ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length != 12) {
+      return null;
+    }
+    return '${digits.substring(0, 4)}-${digits.substring(4, 8)}-${digits.substring(8, 12)}';
+  }
+
+  String _stationConsumptionKey(BusinessTransaction tx) {
+    return 'station-consumption-${tx.id}';
+  }
+
   Future<List<BusinessTransaction>> _loadReceivedTransfers(AppUser user) async {
     final out = <BusinessTransaction>[];
     final seen = <String>{};
@@ -614,6 +815,13 @@ class PurchaseValidationNotificationService {
     return raw & 0x7fffffff;
   }
 
+  int _notificationIdForStationConsumption(BusinessTransaction tx) {
+    final raw =
+        _stationConsumptionKey(tx).hashCode ^
+        tx.date.millisecondsSinceEpoch.hashCode;
+    return raw & 0x7fffffff;
+  }
+
   int _notificationIdForQrExpiration(
     QrToken qr,
     _QrExpirationThreshold threshold,
@@ -630,6 +838,14 @@ class PurchaseValidationNotificationService {
     final d = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}:${two(d.second)}';
+  }
+
+  Future<bool> _hasNotifiedIds(
+    String userId, {
+    String prefix = _prefsPrefix,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey('$prefix$userId');
   }
 
   Future<Set<String>> _loadNotifiedIds(
@@ -689,7 +905,3 @@ enum _QrExpirationThreshold {
     }
   }
 }
-
-
-
-

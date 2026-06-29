@@ -173,20 +173,19 @@ class FuelTokenAppState extends State<FuelTokenApp>
     final user = _authBloc.state.user;
     if (user == null || user.role != UserRole.user) return;
     _notificationPollTimer?.cancel();
-    _notificationPollTimer = Timer.periodic(
-      _purchaseNotificationPollDelay,
-      (_) {
-        final currentUser = _authBloc.state.user;
-        if (!mounted || currentUser == null || currentUser.role != UserRole.user) {
-          return;
-        }
-        unawaited(
-          PurchaseValidationNotificationService.instance.syncForUser(
-            currentUser,
-          ),
-        );
-      },
-    );
+    _notificationPollTimer = Timer.periodic(_purchaseNotificationPollDelay, (
+      _,
+    ) {
+      final currentUser = _authBloc.state.user;
+      if (!mounted ||
+          currentUser == null ||
+          currentUser.role != UserRole.user) {
+        return;
+      }
+      unawaited(
+        PurchaseValidationNotificationService.instance.syncForUser(currentUser),
+      );
+    });
   }
 
   void _cancelNotificationPolling() {
@@ -244,6 +243,15 @@ class FuelTokenAppState extends State<FuelTokenApp>
       FacesRefreshBus.instance.bump();
       ClientHistoryRefreshBus.instance.bump();
       PurchasesRefreshBus.instance.bump();
+
+      final currentUser = _authBloc.state.user;
+      if (currentUser != null && currentUser.role == UserRole.user) {
+        unawaited(
+          PurchaseValidationNotificationService.instance.syncForUser(
+            currentUser,
+          ),
+        );
+      }
     }
   }
 
