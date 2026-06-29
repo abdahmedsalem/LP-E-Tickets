@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -21,6 +20,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../shared/widgets/mini_qr.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
@@ -152,11 +152,10 @@ class _ScanScreenState extends State<ScanScreen> {
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      final raw = await OdooFueltokenFacade().stationQrUse({
-        'public_code': trimmed,
-        'action_code': actionCode,
-        'idempotency_key': const Uuid().v4(),
-      });
+      final intent = SensitiveActionIntent.create('station-qr-use');
+      final raw = await OdooFueltokenFacade().stationQrUse(
+        intent.withAuthParams({'public_code': trimmed}, actionCode: actionCode),
+      );
       final guarded = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Consommation QR refusée par le serveur.',

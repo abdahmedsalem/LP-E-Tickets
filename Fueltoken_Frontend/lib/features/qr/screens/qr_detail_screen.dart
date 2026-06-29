@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -18,6 +17,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -136,13 +136,14 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
       description: 'Saisissez votre PIN pour confirmer cette opération.',
     );
     if (actionCode == null || actionCode.isEmpty || !mounted) return;
+    final intent = SensitiveActionIntent.create('qr-separer');
     setState(() => _separating = true);
     try {
-      final raw = await OdooFueltokenFacade().qrSeparer({
-        'public_code': qr.publicCode,
-        'action_code': actionCode,
-        'idempotency_key': 'ft-qr-separer-${const Uuid().v4()}',
-      });
+      final raw = await OdooFueltokenFacade().qrSeparer(
+        intent.withAuthParams({
+          'public_code': qr.publicCode,
+        }, actionCode: actionCode),
+      );
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Séparation QR refusée par le serveur.',

@@ -9,7 +9,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -255,7 +254,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               lines: confirmLines,
               proofPath: proofPath,
               proofBytes: proofBytes,
-              onConfirm: (actionCode) async {
+              onConfirm: (actionCode, intent) async {
                 // Appel API réel: les erreurs remontent au confirmation screen
                 if (!AppEnvironment.useAcpecLiveData) {
                   throw Exception(
@@ -296,15 +295,14 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     ? proofPath.substring(cut + 1)
                     : proofPath;
                 final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
-                final idem = const Uuid().v4();
-                final raw = await OdooFueltokenFacade().purchasesCreate({
-                  'lines': rpcLines,
-                  'proof_filename': fileName,
-                  'proof_data': base64Encode(proofBytes),
-                  'payment_reference': payRef,
-                  'action_code': actionCode,
-                  'idempotency_key': idem,
-                });
+                final raw = await OdooFueltokenFacade().purchasesCreate(
+                  intent.withAuthParams({
+                    'lines': rpcLines,
+                    'proof_filename': fileName,
+                    'proof_data': base64Encode(proofBytes),
+                    'payment_reference': payRef,
+                  }, actionCode: actionCode),
+                );
                 final parsed = AcpecPurchasesMapper.parseCreateResult(raw);
                 // Stocker le résultat pour l'afficher après retour
                 _lastSubmitResult = (

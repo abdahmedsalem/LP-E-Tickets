@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -32,7 +33,10 @@ class TransferConfirmationArgs {
   final String? note;
 
   /// Callback appelé quand l'utilisateur confirme.
-  final Future<void> Function(String actionCode) onConfirm;
+  final Future<void> Function(
+    String actionCode,
+    SensitiveActionIntent intent,
+  ) onConfirm;
 }
 
 class TransferConfirmationLine {
@@ -76,8 +80,9 @@ class _TransferConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      final intent = SensitiveActionIntent.create('carnets-transfer');
       setState(() => _confirming = true);
-      await widget.args.onConfirm(actionCode);
+      await widget.args.onConfirm(actionCode, intent);
       if (!mounted) return;
       completed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {

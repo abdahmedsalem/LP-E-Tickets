@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -23,6 +22,7 @@ import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
@@ -521,8 +521,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     );
 
     if (actionCode != null && actionCode.isNotEmpty) {
+      final intent = SensitiveActionIntent.create('qr-issue');
       await _performEmit(
         actionCode: actionCode,
+        intent: intent,
         totalQty: totalQty,
         totalAmount: totalAmount,
         successLines: successLines,
@@ -532,6 +534,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
 
   Future<void> _performEmit({
     required String actionCode,
+    required SensitiveActionIntent intent,
     required int totalQty,
     required int totalAmount,
     required List<QrGenerationSuccessLine> successLines,
@@ -545,11 +548,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         if (linesPayload.isEmpty) {
           throw Exception('Aucune ligne à émettre (stock ou sélection vide).');
         }
-        final raw = await OdooFueltokenFacade().qrIssue({
-          'lines': linesPayload,
-          'action_code': actionCode,
-          'idempotency_key': 'ft-qr-${const Uuid().v4()}',
-        });
+        final raw = await OdooFueltokenFacade().qrIssue(
+          intent.withAuthParams({'lines': linesPayload}, actionCode: actionCode),
+        );
         final guarded = acpecRpcMapOrThrow(
           raw,
           fallbackMessage: 'Émission QR refusée par le serveur.',
