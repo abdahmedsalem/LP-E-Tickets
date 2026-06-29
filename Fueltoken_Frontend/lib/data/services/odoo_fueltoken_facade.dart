@@ -120,34 +120,10 @@ class OdooFueltokenFacade {
     params,
   );
 
-  Future<dynamic> adminPurchasesReject(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminPurchasesReject,
-    'ODOO_RPC_FUEL_ADMIN_PURCHASES_REJECT_PATH',
-    params,
-  );
-
   Future<dynamic> adminStationsList([Map<String, dynamic>? params]) => _call(
     OdooFueltokenRpcConfig.adminStationsList,
     'ODOO_RPC_FUEL_ADMIN_STATIONS_LIST_PATH',
     params ?? const {},
-  );
-
-  Future<dynamic> adminStationsCreate(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminStationsCreate,
-    'ODOO_RPC_FUEL_ADMIN_STATIONS_CREATE_PATH',
-    params,
-  );
-
-  Future<dynamic> adminStationsUpdate(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminStationsUpdate,
-    'ODOO_RPC_FUEL_ADMIN_STATIONS_UPDATE_PATH',
-    params,
-  );
-
-  Future<dynamic> adminStationsDisable(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminStationsDisable,
-    'ODOO_RPC_FUEL_ADMIN_STATIONS_DISABLE_PATH',
-    params,
   );
 
   Future<dynamic> adminReportsSummary([Map<String, dynamic>? params]) => _call(
@@ -168,24 +144,6 @@ class OdooFueltokenFacade {
   Future<dynamic> adminCarnetTypesList([Map<String, dynamic>? params]) => _call(
     OdooFueltokenRpcConfig.adminCarnetTypesList,
     'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_LIST_PATH',
-    params,
-  );
-
-  Future<dynamic> adminCarnetTypesCreate(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminCarnetTypesCreate,
-    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_CREATE_PATH',
-    params,
-  );
-
-  Future<dynamic> adminCarnetTypesUpdate(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminCarnetTypesUpdate,
-    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_UPDATE_PATH',
-    params,
-  );
-
-  Future<dynamic> adminCarnetTypesDelete(Map<String, dynamic> params) => _call(
-    OdooFueltokenRpcConfig.adminCarnetTypesDelete,
-    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_DELETE_PATH',
     params,
   );
 

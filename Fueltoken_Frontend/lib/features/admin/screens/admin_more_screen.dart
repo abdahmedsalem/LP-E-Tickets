@@ -34,16 +34,6 @@ class AdminMoreScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [
           _MoreTile(
-            icon: Icons.local_gas_station_outlined,
-            title: 'Stations',
-            subtitle: 'Liste et statut',
-            color: AppColors.accent,
-            scheme: scheme,
-            shadow: shadow,
-            onTap: () => context.push('/admin/stations'),
-          ),
-          const SizedBox(height: 10),
-          _MoreTile(
             icon: Icons.insights_outlined,
             title: 'Rapports',
             subtitle: 'Lots, QR, consommations',

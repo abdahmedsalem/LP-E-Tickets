@@ -67,34 +67,10 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/fueltoken/v1/admin/purchases/approve',
   );
 
-  /// Rejet d’un achat.
-  static const String adminPurchasesReject = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_PURCHASES_REJECT_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/purchases/reject',
-  );
-
   /// Liste des stations (admin).
   static const String adminStationsList = String.fromEnvironment(
     'ODOO_RPC_FUEL_ADMIN_STATIONS_LIST_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/admin/stations/list',
-  );
-
-  /// Création d’une station.
-  static const String adminStationsCreate = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_STATIONS_CREATE_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/stations/create',
-  );
-
-  /// Mise à jour (`station_id` + champs).
-  static const String adminStationsUpdate = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_STATIONS_UPDATE_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/stations/update',
-  );
-
-  /// Désactive une station côté serveur.
-  static const String adminStationsDisable = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_STATIONS_DISABLE_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/stations/disable',
   );
 
   /// Résumé global admin.
@@ -118,24 +94,6 @@ class OdooFueltokenRpcConfig {
   static const String adminCarnetTypesList = String.fromEnvironment(
     'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_LIST_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/admin/carnet-types/list',
-  );
-
-  /// Création admin d’un type de carnet.
-  static const String adminCarnetTypesCreate = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_CREATE_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/carnet-types/create',
-  );
-
-  /// Mise à jour d’un type de carnet (admin).
-  static const String adminCarnetTypesUpdate = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_UPDATE_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/carnet-types/update',
-  );
-
-  /// Désactivation d’un type de carnet (admin).
-  static const String adminCarnetTypesDelete = String.fromEnvironment(
-    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_DELETE_PATH',
-    defaultValue: '/api/acpec/fueltoken/v1/admin/carnet-types/delete',
   );
 
   static const String qrIssue = String.fromEnvironment(

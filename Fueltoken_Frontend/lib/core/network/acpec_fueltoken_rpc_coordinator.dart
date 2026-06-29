@@ -46,16 +46,6 @@ class AcpecFueltokenRpcCoordinator {
     }
     if (r.contains('/purchases/create')) return false;
     if (r.contains('/approve') || r.contains('/reject')) return false;
-    if (r.contains('/stations/create') ||
-        r.contains('/stations/update') ||
-        r.contains('/stations/disable')) {
-      return false;
-    }
-    if (r.contains('/carnet-types/create') ||
-        r.contains('/carnet-types/update') ||
-        r.contains('/carnet-types/delete')) {
-      return false;
-    }
     if (r.contains('/station/qr/check')) return false;
     if (r.contains('/wallet/')) return true;
     if (r.contains('/transactions')) return true;

@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -28,7 +28,6 @@ import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_pill.dart';
-import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -49,7 +48,7 @@ bool _isReasonableBusinessDate(DateTime date) {
 
 String _safeDateTimeDash(DateTime? date) {
   if (date == null || !_isReasonableBusinessDate(date)) {
-    return 'Non renseignée';
+    return 'Non renseignÃ©e';
   }
   return Formatters.dateTimeDash(date);
 }
@@ -72,9 +71,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseLot? _lot;
   bool _loading = false;
   bool _approving = false;
-  bool _rejecting = false;
-  bool _confirmingReject = false;
-  final _rejectReasonController = TextEditingController();
   String? _loadError;
 
   @override
@@ -83,17 +79,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     _refresh();
   }
 
-  @override
-  void dispose() {
-    _rejectReasonController.dispose();
-    super.dispose();
-  }
-
   void _handleBack() {
-    if (_confirmingReject) {
-      _cancelRejectFlow();
-      return;
-    }
     if (widget.adminMode) {
       context.go('/admin');
       return;
@@ -119,7 +105,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           _lot = null;
           _loading = false;
           _loadError =
-              'Cette commande ne peut pas être ouverte. Vérifiez le lien ou réessayez.';
+              'Cette commande ne peut pas Ãªtre ouverte. VÃ©rifiez le lien ou rÃ©essayez.';
         });
         return;
       }
@@ -162,7 +148,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 lot = lot.copyWith(proofs: mobileLot.proofs);
               }
             } catch (_) {
-              // Garde le détail admin sans preuves si le fallback mobile échoue.
+              // Garde le dÃ©tail admin sans preuves si le fallback mobile Ã©choue.
             }
           }
           if (lot.proofs.isEmpty) {
@@ -203,7 +189,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         setState(() {
           _loading = false;
           _loadError = e.isOdooSessionExpired
-              ? 'Session expirée. Reconnectez-vous.'
+              ? 'Session expirÃ©e. Reconnectez-vous.'
               : e.message;
           _lot = null;
         });
@@ -225,22 +211,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     });
   }
 
-  void _startRejectFlow() {
-    setState(() {
-      _confirmingReject = true;
-    });
-  }
-
-  void _cancelRejectFlow() {
-    setState(() {
-      _confirmingReject = false;
-      _rejectReasonController.clear();
-    });
-  }
-
   bool get _hideTechnicalRefs => false;
 
-  /// Télécharge les pièces jointes Odoo (`/web/content/`) quand lAPI ne renvoie que lURL.
+  /// TÃ©lÃ©charge les piÃ¨ces jointes Odoo (`/web/content/`) quand l'API ne renvoie que l'URL.
   Future<PurchaseLot> _enrichProofsFromUrls(PurchaseLot lot) async {
     if (lot.proofs.isEmpty) return lot;
     final enriched = <PurchaseProofSummary>[];
@@ -267,7 +240,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     return lot.copyWith(proofs: enriched);
   }
 
-  /// Identifiant serveur pour les routes `purchase_id` (URL ou id issu du détail chargé).
+  /// Identifiant serveur pour les routes `purchase_id` (URL ou id issu du dÃ©tail chargÃ©).
   int? _purchaseIdForRpc() {
     final fromRoute = AcpecPurchasesMapper.resolvePurchaseId(widget.lotId);
     if (fromRoute != null) return fromRoute;
@@ -281,13 +254,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   String _briefPurchaseActionError(Object e) {
     if (e is OdooJsonRpcException) {
       if (e.isOdooSessionExpired || e.isAuthRequired) {
-        return 'Session expirée. Reconnectez-vous.';
+        return 'Session expirÃ©e. Reconnectez-vous.';
       }
       final m = e.message.trim();
       if (m.length > 160 ||
           m.contains('Traceback') ||
           m.contains('Exception(')) {
-        return 'Lopération na pas abouti. Réessayez ou reconnectez-vous.';
+        return 'LÂ’opÃ©ration nÂ’a pas abouti. RÃ©essayez ou reconnectez-vous.';
       }
       return m;
     }
@@ -318,7 +291,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         });
         AcpecPurchasesMapper.assertAdminActionOk(
           raw,
-          fallback: 'Validation refusée.',
+          fallback: 'Validation refusÃ©e.',
         );
         AcpecFueltokenRpcCoordinator.shared.invalidate(
           OdooFueltokenRpcConfig.adminPurchasesPending,
@@ -355,14 +328,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (widget.adminMode) {
           AppMessage.success(
             context,
-            'Achat validé. Les tickets sont disponibles pour le client.',
+            'Achat validÃ©. Les tickets sont disponibles pour le client.',
           );
           context.pop(true);
           return;
         }
         AppMessage.success(
           context,
-          'Lot validé. Les tickets sont disponibles pour le client.',
+          'Lot validÃ©. Les tickets sont disponibles pour le client.',
         );
       } on OdooJsonRpcException catch (e) {
         if (mounted) {
@@ -386,101 +359,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
-  Future<void> _confirmReject() async {
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) return;
-
-    final trimmed = _rejectReasonController.text.trim();
-    if (trimmed.isEmpty) {
-      AppMessage.warning(
-        context,
-        'Indiquez un motif de rejet avant de confirmer.',
-      );
-      return;
-    }
-
-    if (AppEnvironment.useAcpecLiveData) {
-      if (user.role != UserRole.admin && !widget.adminMode) return;
-      final purchaseId = _purchaseIdForRpc();
-      if (purchaseId == null) {
-        if (mounted) {
-          AppMessage.error(
-            context,
-            'Impossible d\'effectuer cette action pour cette commande.',
-          );
-        }
-        return;
-      }
-
-      setState(() => _rejecting = true);
-      try {
-        final raw = await OdooFueltokenFacade().adminPurchasesReject({
-          'purchase_id': purchaseId,
-          'rejection_reason': trimmed,
-        });
-        AcpecPurchasesMapper.assertAdminActionOk(
-          raw,
-          fallback: 'Rejet refusé.',
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.adminPurchasesPending,
-          const {'state': 'all'},
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.adminPurchasesDetail,
-          {'purchase_id': purchaseId},
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.purchasesList,
-          const <String, dynamic>{},
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.purchasesDetail,
-          {'purchase_id': purchaseId},
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.walletCurrent,
-          Map<String, dynamic>.from(
-            OdooFueltokenRpcConfig.walletCurrentDefaultParams,
-          ),
-        );
-        WalletRefreshBus.instance.bump();
-        ClientHistoryRefreshBus.instance.bump();
-        PurchasesRefreshBus.instance.bump();
-        await _refresh();
-        if (!mounted) return;
-        _cancelRejectFlow();
-        if (widget.adminMode) {
-          AppMessage.success(
-            context,
-            'Achat rejeté. Le motif a été enregistré pour le client.',
-          );
-          context.pop(true);
-          return;
-        }
-        AppMessage.success(context, 'Lot rejeté. Le motif a été enregistré.');
-      } on OdooJsonRpcException catch (e) {
-        if (mounted) {
-          AppMessage.error(context, _briefPurchaseActionError(e));
-        }
-      } catch (err) {
-        if (mounted) {
-          AppMessage.error(context, _briefPurchaseActionError(err));
-        }
-      } finally {
-        if (mounted) setState(() => _rejecting = false);
-      }
-      return;
-    }
-
-    if (mounted) {
-      AppMessage.error(
-        context,
-        'Connexion serveur ACPEC requise pour rejeter ce lot.',
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -497,61 +375,21 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: _confirmingReject
-                    ? _RejectConfirmPanel(
-                        lot: _lot!,
-                        reasonController: _rejectReasonController,
-                        busy: _rejecting,
-                        onCancel: _cancelRejectFlow,
-                        onConfirm: _confirmReject,
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: (_approving || _rejecting)
-                                  ? null
-                                  : _startRejectFlow,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.danger,
-                                side: const BorderSide(color: AppColors.danger),
-                                minimumSize: const Size.fromHeight(48),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              icon: _rejecting
-                                  ? const AppInlineLoading(size: 18)
-                                  : const Icon(Icons.close_rounded),
-                              label: Text(_rejecting ? 'Rejet' : 'Rejeter'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: (_approving || _rejecting)
-                                  ? null
-                                  : _confirmApprove,
-                              style: FilledButton.styleFrom(
-                                minimumSize: const Size.fromHeight(48),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              icon: const Icon(Icons.verified_rounded),
-                              label: const Text('Valider lachat'),
-                            ),
-                          ),
-                        ],
-                      ),
+                child: FilledButton.icon(
+                  onPressed: _approving ? null : _confirmApprove,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.verified_rounded),
+                  label: const Text('Valider lÂ’achat'),
+                ),
               ),
             )
           : null,
@@ -560,7 +398,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ScreenHeader(
-              title: _confirmingReject ? 'Rejeter l’achat' : 'Détail achat',
+              title: 'DÃ©tail achat',
               onBack: _handleBack,
             ),
             Expanded(
@@ -605,7 +443,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           child: FilledButton.tonalIcon(
                             onPressed: _refresh,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Réessayer'),
+                            label: const Text('RÃ©essayer'),
                           ),
                         ),
                       ],
@@ -633,10 +471,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           if (widget.adminMode &&
                               _lot!.state == PurchaseLotState.submitted) ...[
                             const SizedBox(height: 16),
-                            if (_confirmingReject)
-                              const _AdminRejectStepsCard()
-                            else
-                              const _AdminValidationStepsCard(),
+                            const _AdminValidationStepsCard(),
                           ],
                           if (_lot!.state == PurchaseLotState.rejected &&
                               _lot!.rejectionReason != null) ...[
@@ -808,7 +643,7 @@ class _MetaCard extends StatelessWidget {
               lot.paymentReference!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.tag_outlined,
-              label: 'Référence de paiement',
+              label: 'RÃ©fÃ©rence de paiement',
               value: lot.paymentReference!.trim(),
             ),
           _InfoRow(
@@ -824,13 +659,13 @@ class _MetaCard extends StatelessWidget {
           if (lot.validationDate != null)
             _InfoRow(
               icon: Icons.verified_outlined,
-              label: 'Validé le',
+              label: 'ValidÃ© le',
               value: Formatters.dateTimeDash(lot.validationDate!),
             ),
           if (lot.validatorName != null && lot.validatorName!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.badge_outlined,
-              label: 'Validé par',
+              label: 'ValidÃ© par',
               value: lot.validatorName!.trim(),
             ),
         ],
@@ -1106,7 +941,7 @@ class _ProofsSection extends StatelessWidget {
       return const AppCard(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Aucune preuve de paiement jointe à cet achat.',
+          'Aucune preuve de paiement jointe Ã  cet achat.',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -1174,7 +1009,7 @@ class _ProofTile extends StatelessWidget {
     if (kIsWeb) {
       AppMessage.info(
         context,
-        'Téléchargement de preuve disponible dans l’application mobile.',
+        'TÃ©lÃ©chargement de preuve disponible dans lâ€™application mobile.',
       );
       return;
     }
@@ -1182,7 +1017,7 @@ class _ProofTile extends StatelessWidget {
       final bytes = await _resolveBytes();
       if (bytes == null || bytes.isEmpty) {
         if (context.mounted) {
-          AppMessage.error(context, 'Téléchargement indisponible.');
+          AppMessage.error(context, 'TÃ©lÃ©chargement indisponible.');
         }
         return;
       }
@@ -1193,11 +1028,11 @@ class _ProofTile extends StatelessWidget {
       await file.writeAsBytes(bytes, flush: true);
 
       if (context.mounted) {
-        AppMessage.success(context, 'Preuve téléchargée: ${file.path}');
+        AppMessage.success(context, 'Preuve tÃ©lÃ©chargÃ©e: ${file.path}');
       }
     } catch (_) {
       if (context.mounted) {
-        AppMessage.error(context, 'Impossible de télécharger la preuve.');
+        AppMessage.error(context, 'Impossible de tÃ©lÃ©charger la preuve.');
       }
     }
   }
@@ -1216,7 +1051,7 @@ class _ProofTile extends StatelessWidget {
               title: const Text('Preuve de paiement'),
               actions: [
                 IconButton(
-                  tooltip: 'Télécharger',
+                  tooltip: 'TÃ©lÃ©charger',
                   onPressed: () async {
                     await _downloadProof(ctx);
                   },
@@ -1267,7 +1102,7 @@ class _ProofTile extends StatelessWidget {
                               await _downloadProof(ctx);
                             },
                             icon: const Icon(Icons.download_rounded),
-                            label: const Text('Télécharger'),
+                            label: const Text('TÃ©lÃ©charger'),
                             style: FilledButton.styleFrom(
                               backgroundColor: scheme.primary,
                               foregroundColor: scheme.onPrimary,
@@ -1366,7 +1201,7 @@ class _ProofTile extends StatelessWidget {
                                 ),
                                 SizedBox(width: 5),
                                 Text(
-                                  'Télécharger',
+                                  'TÃ©lÃ©charger',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -1551,13 +1386,13 @@ class _AdminValidationStepsCard extends StatelessWidget {
           SizedBox(height: 12),
           _ValidationStep(
             index: 1,
-            title: 'Contrôler les preuves',
+            title: 'ContrÃ´ler les preuves',
             subtitle: 'Montant et documents de paiement.',
           ),
           _ValidationStep(
             index: 2,
             title: 'Valider ou rejeter',
-            subtitle: 'Le client verra le résultat sur sa commande.',
+            subtitle: 'Le client verra le rÃ©sultat sur sa commande.',
             isLast: true,
           ),
         ],
@@ -1631,195 +1466,6 @@ class _ValidationStep extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AdminRejectStepsCard extends StatelessWidget {
-  const _AdminRejectStepsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Rejet',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          SizedBox(height: 12),
-          _ValidationStep(
-            index: 1,
-            title: 'Motif visible client',
-            subtitle: 'Formulez une raison claire et factuelle.',
-          ),
-          _ValidationStep(
-            index: 2,
-            title: 'Aucun ticket généré',
-            subtitle: 'Le client pourra corriger et renvoyer une commande.',
-            isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RejectConfirmPanel extends StatelessWidget {
-  const _RejectConfirmPanel({
-    required this.lot,
-    required this.reasonController,
-    required this.busy,
-    required this.onCancel,
-    required this.onConfirm,
-  });
-
-  final PurchaseLot lot;
-  final TextEditingController reasonController;
-  final bool busy;
-  final VoidCallback onCancel;
-  final VoidCallback onConfirm;
-
-  static const _suggestedReasons = [
-    'Preuve non conforme.',
-    'Montant incohérent avec la commande.',
-    'Référence de paiement invalide.',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
-            boxShadow: AppColors.softShadow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.block_rounded,
-                    size: 20,
-                    color: AppColors.danger.withValues(alpha: 0.9),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Confirmer le rejet',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Rejeter ce lot pour ${lot.clientName}. '
-                'Le lot sera marqué rejeté avec le motif saisi.',
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: reasonController,
-                enabled: !busy,
-                autofocus: true,
-                maxLines: 4,
-                minLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: 'Motif de rejet',
-                  hintText: 'Ex. Preuve non conforme.',
-                  filled: true,
-                  fillColor: Colors.white,
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.line),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.line),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: AppColors.danger.withValues(alpha: 0.65),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final hint in _suggestedReasons)
-                    ActionChip(
-                      label: Text(
-                        hint,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onPressed: busy
-                          ? null
-                          : () {
-                              reasonController.text = hint;
-                            },
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: busy ? null : onCancel,
-                child: const Text('Annuler'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: busy ? null : onConfirm,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                ),
-                icon: busy
-                    ? AppInlineLoading(size: 22)
-                    : const Icon(Icons.close_rounded),
-                label: Text(busy ? 'Rejet' : 'Confirmer le rejet'),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

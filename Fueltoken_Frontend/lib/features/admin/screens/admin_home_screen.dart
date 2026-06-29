@@ -252,17 +252,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      width: tileWidth,
-                      child: _ActionCard(
-                        icon: Icons.local_gas_station_rounded,
-                        title: 'Station',
-                        accent: const Color(0xFF33A853),
-                        scheme: scheme,
-                        shadow: shadow,
-                        onTap: () => context.go('/admin/stations'),
-                      ),
-                    ),
-                    SizedBox(
                       width: constraints.maxWidth,
                       child: _ActionCard(
                         icon: Icons.bar_chart_rounded,
