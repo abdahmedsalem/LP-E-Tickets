@@ -11,7 +11,6 @@ import '../../features/admin/screens/admin_profile_screen.dart';
 import '../../features/admin/screens/admin_purchase_detail_screen.dart';
 import '../../features/admin/screens/admin_reports_screen.dart';
 import '../../features/admin/screens/admin_shell_scaffold.dart';
-import '../../features/admin/screens/admin_stations_screen.dart';
 import '../../features/admin/screens/admin_submitted_purchases_screen.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/screens/forgot_otp_flow_screens.dart';
@@ -58,7 +57,6 @@ class AppRouter {
         final atPinLockRoute = loc == '/session-pin-lock';
         final atActivationPendingRoute = loc == '/activation-pending';
         final hasUser = auth.user != null;
-        final deviceBlocked = hasUser && auth.user!.isDeviceBlocked;
         final deviceActivationPending =
             hasUser && auth.user!.isDeviceActivationPending;
         final atAuthRoute = {
@@ -71,7 +69,7 @@ class AppRouter {
           '/forgot-password/reset',
         }.contains(loc);
 
-        if (deviceBlocked || deviceActivationPending) {
+        if (deviceActivationPending) {
           if (!atActivationPendingRoute) return '/activation-pending';
           return null;
         }
@@ -391,10 +389,6 @@ class AppRouter {
               body: Center(child: Text('Gestion des comptes mobile.')),
             );
           },
-        ),
-        GoRoute(
-          path: '/admin/stations',
-          builder: (_, _) => const AdminStationsScreen(),
         ),
         GoRoute(
           path: '/admin/reports',
