@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../core/auth/auth_session_host.dart';
 import '../../core/auth/odoo_session_store.dart';
@@ -55,7 +56,7 @@ class OdooJsonRpcException implements Exception {
   bool get isAuthRequired {
     if (code == 401) return true;
     final pc = publicCode?.trim().toUpperCase();
-    if (pc == 'AUTH_REQUIRED' || pc == 'REFRESH_TOKEN_REQUIRED') return true;
+    if (pc != null && _isAuthBusinessCode(pc)) return true;
     final m = message.toLowerCase();
     if (m.contains('auth_required')) return true;
     if (m.contains('authentication required')) return true;
@@ -85,6 +86,125 @@ class OdooJsonRpcException implements Exception {
     final suffix = parts.isEmpty ? '' : '(${parts.join(', ')})';
     return 'OdooJsonRpcException$suffix: $message';
   }
+}
+
+class _BusinessAuthFailure {
+  const _BusinessAuthFailure({
+    required this.code,
+    required this.envelope,
+    this.reference,
+  });
+
+  final String code;
+  final String? reference;
+  final Map<String, dynamic> envelope;
+}
+
+/// Detects ACPEC auth/session failures carried inside a JSON-RPC `result`.
+///
+/// Some backend routes can return HTTP 200 + JSON-RPC success while the
+/// business envelope is refused (`ok: false`, `error.code: AUTH_REQUIRED`).
+/// These errors must be handled in the central JSON-RPC client, before mapper
+/// or screen code can swallow them as ordinary business errors.
+@visibleForTesting
+OdooJsonRpcException? odooJsonRpcAuthFailureFromBusinessResult(dynamic result) {
+  final failure = _findBusinessAuthFailure(result);
+  if (failure == null) return null;
+  return OdooJsonRpcException(
+    failure.code,
+    code: 401,
+    publicCode: failure.code,
+    reference: failure.reference,
+    data: failure.envelope,
+  );
+}
+
+_BusinessAuthFailure? _findBusinessAuthFailure(dynamic raw) {
+  if (raw is! Map) return null;
+  final root = Map<String, dynamic>.from(raw);
+  final rootFailure = _businessAuthFailureFromEnvelope(root);
+  if (rootFailure != null) return rootFailure;
+
+  final data = root['data'];
+  if (data is Map) {
+    return _businessAuthFailureFromEnvelope(Map<String, dynamic>.from(data));
+  }
+  return null;
+}
+
+_BusinessAuthFailure? _businessAuthFailureFromEnvelope(
+  Map<String, dynamic> envelope,
+) {
+  if (!_looksLikeBusinessFailure(envelope)) return null;
+
+  final error = envelope['error'];
+  final errorMap = error is Map ? Map<String, dynamic>.from(error) : null;
+  final code = _normalizeBusinessCode(
+    errorMap?['code'] ??
+        envelope['error_code'] ??
+        envelope['public_code'] ??
+        envelope['code'] ??
+        (error is String ? error : null),
+  );
+  if (!_isAuthBusinessCode(code)) return null;
+
+  final reference = _normalizeReference(
+    errorMap?['reference'] ??
+        errorMap?['ref'] ??
+        envelope['reference'] ??
+        envelope['ref'],
+  );
+  return _BusinessAuthFailure(
+    code: code,
+    reference: reference,
+    envelope: envelope,
+  );
+}
+
+bool _looksLikeBusinessFailure(Map<String, dynamic> envelope) {
+  bool isFalseValue(dynamic value) {
+    if (value == false || value == 0) return true;
+    if (value is String) {
+      final s = value.trim().toLowerCase();
+      return s == 'false' || s == '0' || s == 'no';
+    }
+    return false;
+  }
+
+  final status = envelope['status']?.toString().trim().toLowerCase();
+  final code = envelope['code']?.toString().trim().toLowerCase();
+  final error = envelope['error'];
+  return isFalseValue(envelope['ok']) ||
+      isFalseValue(envelope['success']) ||
+      status == 'error' ||
+      status == 'failed' ||
+      status == 'failure' ||
+      status == 'denied' ||
+      status == 'rejected' ||
+      code == 'error' ||
+      code == 'failed' ||
+      code == 'access_denied' ||
+      (error != null && error != false && error.toString().trim().isNotEmpty);
+}
+
+String _normalizeBusinessCode(dynamic value) {
+  final raw = value?.toString().trim();
+  if (raw == null || raw.isEmpty) return '';
+  final lower = raw.toLowerCase();
+  if (lower == 'false' || lower == 'null') return '';
+  return raw.toUpperCase().replaceAll('-', '_');
+}
+
+bool _isAuthBusinessCode(String code) {
+  return code == 'AUTH_REQUIRED' || code == 'REFRESH_TOKEN_REQUIRED';
+}
+
+String? _normalizeReference(dynamic value) {
+  final raw = value?.toString().trim();
+  if (raw == null || raw.isEmpty) return null;
+  final upper = raw.toUpperCase();
+  if (!upper.startsWith('SEC-') && !upper.startsWith('ERR-')) return null;
+  return raw;
 }
 
 String _sanitizeServerMessage(
@@ -333,6 +453,10 @@ class OdooJsonRpcClient {
         throw OdooJsonRpcException(msg, code: code, data: err['data']);
       }
       final result = map['result'];
+      final authFailure = odooJsonRpcAuthFailureFromBusinessResult(result);
+      if (authFailure != null) {
+        throw authFailure;
+      }
       await OdooSessionStore.captureFromHttpResponse(r);
       await OdooSessionStore.mergeSessionFromResult(result);
       return result;

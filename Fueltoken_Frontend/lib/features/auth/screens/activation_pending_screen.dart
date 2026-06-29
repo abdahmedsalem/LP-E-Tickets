@@ -13,7 +13,7 @@ class ActivationPendingScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('Activation en attente'),
+          title: const Text('État appareil'),
         ),
         body: SafeArea(
           child: BlocBuilder<AuthBloc, AuthState>(
@@ -24,6 +24,19 @@ class ActivationPendingScreen extends StatelessWidget {
               final stateLabel = trustState == null || trustState.isEmpty
                   ? 'en attente'
                   : trustState;
+              final deviceBlocked = user?.isDeviceBlocked == true;
+              final headline = deviceBlocked
+                  ? 'Appareil bloqué'
+                  : 'Activation en attente';
+              final body = deviceBlocked
+                  ? 'Ce téléphone n’est pas autorisé à utiliser les tickets carburant. Contactez l’administrateur.'
+                  : 'Vous pourrez utiliser les tickets carburant après validation de cet appareil par l’administrateur.';
+              final icon = deviceBlocked
+                  ? Icons.block_outlined
+                  : Icons.verified_user_outlined;
+              final refreshLabel = deviceBlocked
+                  ? 'Vérifier à nouveau'
+                  : 'Rafraîchir';
 
               return Center(
                 child: ConstrainedBox(
@@ -34,17 +47,17 @@ class ActivationPendingScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.verified_user_outlined, size: 72),
+                        Icon(icon, size: 72),
                         const SizedBox(height: 24),
                         Text(
-                          'Votre appareil est enregistré, mais il n’est pas encore approuvé.',
+                          headline,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Vous pourrez utiliser les tickets carburant après validation de cet appareil par l’administrateur.',
+                          body,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
@@ -78,7 +91,7 @@ class ActivationPendingScreen extends StatelessWidget {
                                   ),
                                 )
                               : const Icon(Icons.refresh),
-                          label: const Text('Rafraîchir'),
+                          label: Text(refreshLabel),
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
