@@ -39,10 +39,15 @@ class AcpecMobileApiErrorMarker(models.Model):
     reviewed_date = fields.Datetime(string='Date de revue', readonly=True)
     resolution_note = fields.Text(string='Note de résolution')
 
-    _sql_constraints = [
-        ('fingerprint_unique', 'unique(fingerprint)', 'L’empreinte de l’incident API mobile doit être unique.'),
-        ('name_unique', 'unique(name)', 'La référence de l’incident API mobile doit être unique.'),
-    ]
+    _fingerprint_unique = models.Constraint(
+        'unique(fingerprint)',
+        'L’empreinte de l’incident API mobile doit être unique.',
+    )
+
+    _name_unique = models.Constraint(
+        'unique(name)',
+        'La référence de l’incident API mobile doit être unique.',
+    )
 
     @api.model
     def _retention_days(self, key, default):
