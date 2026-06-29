@@ -65,9 +65,7 @@ class AcpecUserRoleResolver {
     final fromOdooGroupsId = _roleFromOdooGroupsId(m['groups_id']);
     if (fromOdooGroupsId != null) return fromOdooGroupsId;
 
-    if (_truthy(m['can_approve_account_requests']) ||
-        _truthy(m['can_manage_account_requests']) ||
-        _truthy(m['is_acpec_admin'])) {
+    if (_truthy(m['is_acpec_admin'])) {
       return UserRole.admin;
     }
 

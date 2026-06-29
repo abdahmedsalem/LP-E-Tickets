@@ -153,22 +153,4 @@ class OdooFueltokenRpcConfig {
     'ODOO_RPC_FUEL_STATION_QR_CHECK_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/station/qr/check',
   );
-
-  static const String adminAccountRequests = String.fromEnvironment(
-    'ODOO_ACPEC_ADMIN_ACCOUNT_REQUESTS_PATH',
-    defaultValue: '/api/acpec/mobile_auth/v1/admin/account-requests',
-  );
-
-  /// Préfixe admin sans slash final (`…/account-requests`).
-  static String get _adminRequestsBaseResolved {
-    return adminAccountRequests.trim().replaceAll(RegExp(r'/+$'), '');
-  }
-
-  /// Approbation d’une demande de compte.
-  static String adminAccountApproveRoute(int requestId) =>
-      '$_adminRequestsBaseResolved/$requestId/approve';
-
-  /// Rejet d’une demande de compte.
-  static String adminAccountRejectRoute(int requestId) =>
-      '$_adminRequestsBaseResolved/$requestId/reject';
 }

@@ -31,6 +31,19 @@ void main() {
       expect(endpoints, equals(_allowedFuelTokenAdminEndpoints));
     });
 
+    test('Mobile Auth account-request admin runtime stays absent', () {
+      final violations = _findForbiddenMarkersInLib(
+        markers: _forbiddenAccountRequestRuntimeMarkers,
+      );
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Mobile Auth account-request approval belongs to BO/audit '
+            'provisioning, not Flutter manager runtime.',
+      );
+    });
+
     test('Removed BO-only admin screens and routes stay absent', () {
       expect(
         File('lib/features/admin/screens/admin_stations_screen.dart')
@@ -78,6 +91,17 @@ const _forbiddenAdminUiRouteMarkers = <String>[
   'context.push("/admin/carnets")',
 ];
 
+const _forbiddenAccountRequestRuntimeMarkers = <String>[
+  'adminAccountRequests',
+  'adminAccountApproveRoute',
+  'adminAccountRejectRoute',
+  '/api/acpec/mobile_auth/v1/admin/account-requests',
+  '/admin/account-requests',
+  '/admin/accounts',
+  'can_approve_account_requests',
+  'can_manage_account_requests',
+];
+
 const _forbiddenRuntimeMarkers = <String>[
   'adminPurchasesReject',
   'adminStationsCreate',
@@ -95,10 +119,18 @@ const _forbiddenRuntimeMarkers = <String>[
   '/api/acpec/fueltoken/v1/admin/carnet-types/create',
   '/api/acpec/fueltoken/v1/admin/carnet-types/update',
   '/api/acpec/fueltoken/v1/admin/carnet-types/delete',
+  'adminAccountRequests',
+  'adminAccountApproveRoute',
+  'adminAccountRejectRoute',
+  '/api/acpec/mobile_auth/v1/admin/account-requests',
+  '/admin/account-requests',
+  '/admin/accounts',
+  'can_approve_account_requests',
+  'can_manage_account_requests',
   ..._forbiddenAdminUiRouteMarkers,
 ];
 
-List<String> _findForbiddenMarkersInLib() {
+List<String> _findForbiddenMarkersInLib({List<String>? markers}) {
   final root = Directory('lib');
   expect(root.existsSync(), isTrue);
 
@@ -112,7 +144,7 @@ List<String> _findForbiddenMarkersInLib() {
 
   for (final file in files) {
     final content = file.readAsStringSync();
-    for (final marker in _forbiddenRuntimeMarkers) {
+    for (final marker in markers ?? _forbiddenRuntimeMarkers) {
       if (content.contains(marker)) {
         violations.add('${file.path}: $marker');
       }

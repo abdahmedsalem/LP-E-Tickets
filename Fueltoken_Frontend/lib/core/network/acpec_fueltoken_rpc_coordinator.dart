@@ -64,11 +64,6 @@ class AcpecFueltokenRpcCoordinator {
     if (r.contains('/admin/purchases/detail')) return true;
     if (r.contains('/admin/stations/list')) return true;
     if (r.contains('/admin/reports/summary')) return true;
-    if (r.contains('/admin/account-requests') &&
-        !r.contains('/approve') &&
-        !r.contains('/reject')) {
-      return true;
-    }
     return false;
   }
 

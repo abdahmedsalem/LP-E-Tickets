@@ -383,14 +383,6 @@ class AppRouter {
               AdminPurchaseDetailScreen(purchaseId: st.pathParameters['id']!),
         ),
         GoRoute(
-          path: '/admin/accounts/:id',
-          builder: (_, _) {
-            return const Scaffold(
-              body: Center(child: Text('Gestion des comptes mobile.')),
-            );
-          },
-        ),
-        GoRoute(
           path: '/admin/reports',
           builder: (_, _) => const AdminReportsScreen(),
         ),
