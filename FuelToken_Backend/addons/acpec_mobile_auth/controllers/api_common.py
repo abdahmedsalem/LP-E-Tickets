@@ -80,6 +80,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     SENSITIVE_PUBLIC_ERROR_FAMILIES = {
         'AUTH_REFUSED': 'Authentification impossible. Vérifiez les informations saisies.',
+        'MOBILE_USER_BLOCKED': 'Ce compte mobile est bloqu\u00e9. Contactez l\u2019administrateur.',
         'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
         'DEVICE_NOT_ALLOWED': 'Cet appareil n’est pas autorisé pour cette opération.',
         'ACTION_REFUSED': 'Action impossible ou non autorisée.',
@@ -92,6 +93,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     SENSITIVE_DEBUG_REASONS = frozenset({
         'auth_account_not_allowed',
+        'mobile_user_blocked',
         'auth_otp_not_found',
         'auth_otp_invalid',
         'auth_otp_expired',
@@ -268,6 +270,40 @@ class AcpecMobileAuthApiCommon(http.Controller):
             self._sensitive_public_message(purpose),
         )
 
+    def _is_mobile_user_blocked_access_error(self, exc):
+        message = (str(exc) or '').strip().lower()
+        return (
+            'compte mobile bloqu\u00e9' in message
+            or 'mobile account blocked' in message
+        )
+
+    def _should_expose_mobile_user_blocked_code(self, operation=False):
+        operation = (operation or '').strip().lower()
+        if any(term in operation for term in (
+            'otp',
+            'signup',
+            'register',
+            'login',
+            'password',
+            'reset',
+            'public_auth',
+        )):
+            return False
+
+        path = (self._request_path() or '').strip().lower()
+        if any(fragment in path for fragment in (
+            '/otp',
+            '/request-otp',
+            '/verify-otp',
+            '/signup',
+            '/register',
+            '/password',
+            '/forgot',
+        )):
+            return False
+
+        return True
+
     def _normalize_sensitive_debug_reason(self, reason, fallback='sensitive_action_denied'):
         reason = (str(reason or '')).strip()
         if reason in self.SENSITIVE_DEBUG_REASONS:
@@ -281,6 +317,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return 'auth_account_not_allowed'
         if 'inactive' in lowered or 'inactif' in lowered:
             return 'auth_account_not_allowed'
+        if 'compte mobile bloqu\u00e9' in lowered or 'mobile account blocked' in lowered:
+            return 'mobile_user_blocked'
         if 'not approved' in lowered or 'non approuvé' in lowered or 'rejeté' in lowered or 'rejected' in lowered:
             return 'auth_account_not_allowed'
         if 'expired' in lowered or 'expir' in lowered:
@@ -468,6 +506,18 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return self._error_response('VALIDATION_ERROR', str(exc))
         if isinstance(exc, AccessError):
             _logger.warning('%s', self._redact_for_log(str(exc)))
+            if self._is_mobile_user_blocked_access_error(
+                exc
+            ) and self._should_expose_mobile_user_blocked_code(
+                operation=operation
+            ):
+                return self._sensitive_refusal_response(
+                    public_code='MOBILE_USER_BLOCKED',
+                    debug_reason='mobile_user_blocked',
+                    purpose=operation or 'mobile_user_blocked',
+                    params=params,
+                    audit_code='MOBILE_USER_BLOCKED',
+                )
             return self._error_response('ACCESS_ERROR', str(exc))
         reference = self._log_unhandled_mobile_api_exception(
             exc,
@@ -874,6 +924,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return 'auth_account_not_allowed'
         if 'inactif' in message or 'inactive' in message:
             return 'auth_account_not_allowed'
+        if 'compte mobile bloqu\u00e9' in message or 'mobile account blocked' in message:
+            return 'mobile_user_blocked'
         if 'non approuvé' in message or 'not approved' in message:
             return 'auth_account_not_allowed'
         if 'rejeté' in message or 'rejected' in message:

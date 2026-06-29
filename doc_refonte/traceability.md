@@ -1353,3 +1353,30 @@ Prochaine étape :
 ```text
 Flutter/API public error contract alignment.
 ```
+
+### Patch43H7 — mobile user blocked public API code
+
+Statut : implémenté_patch43H7.
+
+Date : 2026-06-29.
+
+Objet :
+- Ajout du code public explicite `MOBILE_USER_BLOCKED` pour les refus API/session liés à `mobile_state='blocked'`.
+- Migration Odoo 19 de la contrainte SQL de `acpec.mobile.api.error.marker` depuis `_sql_constraints` vers `models.Constraint(...)` afin de supprimer le warning registry.
+- Le lifecycle user blocked existait déjà : refus OTP/login, absence de session pour user blocked, révocation des sessions actives et réactivation sans restauration automatique du trust device.
+- H7 ne modifie pas ce lifecycle ; il renforce seulement le contrat d’erreur API public.
+- Les flux publics OTP/signup restent protégés contre l’énumération : `request-otp` / `verify-otp` ne deviennent pas des oracles publics de compte bloqué.
+
+Doctrine confirmée :
+- `MOBILE_USER_BLOCKED` concerne le compte mobile (`res.users.mobile_state='blocked'`).
+- `DEVICE_BLOCKED` concerne l’appareil durable / session device.
+- `MOBILE_USER_BLOCKED` ne doit pas être traité comme session expirée.
+- `MOBILE_USER_BLOCKED` doit être routé côté mobile vers un écran compte bloqué ou message compte bloqué, distinct de l’écran appareil bloqué.
+
+Tests :
+- `test_mobile_user_blocked_public_code.py`.
+- Couvre l’enregistrement du code public, la détection du message `Compte mobile bloqué.`, et la non-exposition dans les flux OTP publics.
+
+Impact invariants :
+- INV-D11 renforcé côté contrat API public.
+- INV-D12 inchangé : la réactivation user ne restaure pas automatiquement le trust device.
