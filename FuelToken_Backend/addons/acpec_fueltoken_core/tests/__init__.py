@@ -5,3 +5,4 @@ from . import test_d2_mechanical_invariants
 from . import test_carnet_transfer_lock_reread
 from . import test_purchase_lot_propagation
 from . import test_economic_identity_immutability
+from . import test_station_agent_assignment_doctrine

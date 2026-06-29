@@ -15,6 +15,7 @@
         'views/fuel_face_line_views.xml',
         'views/fuel_qr_views.xml',
         'views/fuel_station_views.xml',
+        'views/fuel_station_agent_assignment_views.xml',
         'views/fuel_transaction_views.xml',
         'views/fuel_carnet_transfer_views.xml',
     ],
