@@ -88,7 +88,7 @@ class AcpecFuelPurchaseCore(models.Model):
                     for carnet_sequence in range(1, carnet_qty + 1):
                         carnet_suffix = 'C%03d' % carnet_sequence
                         carnet_no = '%s-L%02d-%s' % (purchase_ref, line_index, carnet_suffix)
-                        carnet_short_code = '%s-%s' % (lot_short_code, carnet_suffix)
+                        carnet_short_code = face_model._generate_carnet_short_code(purchase.company_id)
 
                         face_line = face_model.create({
                             'wallet_id': wallet.id,

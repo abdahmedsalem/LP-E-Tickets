@@ -6,3 +6,4 @@ from . import test_carnet_transfer_lock_reread
 from . import test_purchase_lot_propagation
 from . import test_economic_identity_immutability
 from . import test_station_agent_assignment_doctrine
+from . import test_public_qr_carnet_short_code_format

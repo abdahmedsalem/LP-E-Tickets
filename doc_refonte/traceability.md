@@ -1380,3 +1380,25 @@ Tests :
 Impact invariants :
 - INV-D11 renforcé côté contrat API public.
 - INV-D12 inchangé : la réactivation user ne restaure pas automatiquement le trust device.
+
+### Patch43H8 — public QR name and carnet short code format
+
+Statut : implémenté_patch43H8.
+
+Date : 2026-06-29.
+
+Objet :
+- Le champ `name` de `acpec.fuel.qr` prend désormais le code QR numérique public au format `NNNN-NNNN-NNNN`.
+- `carnet_short_code` devient un code court public aléatoire au format `AANNNN`.
+- `carnet_no` reste inchangé et conserve son rôle de référence complète / traçabilité interne.
+- Les anciens carnets ne sont pas migrés dans ce patch ; la règle s’applique aux nouvelles générations.
+- `lot_short_code` reste conservé pour tri, audit et regroupement lot, mais n’est plus concaténé dans `carnet_short_code`.
+
+Doctrine confirmée :
+- Le code court affiché mobile est `carnet_short_code`, pas `carnet_no`.
+- Pas de format public `C001` / `C0001` pour `carnet_short_code`.
+- Le code QR manuel numérique reste le contrat station `qr_numeric_code`.
+
+Tests :
+- `test_public_qr_carnet_short_code_format.py`.
+- Couvre le format `AANNNN`, l’absence de `C001`, et l’abandon de la séquence QR visible dans `qr.name`.

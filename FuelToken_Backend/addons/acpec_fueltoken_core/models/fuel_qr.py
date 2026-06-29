@@ -17,7 +17,7 @@ class AcpecFuelQr(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
-    name = fields.Char(string='Référence interne', default='New', readonly=True, copy=False)
+    name = fields.Char(string='Code QR numérique', default='New', readonly=True, copy=False)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='wallet_id.company_id', store=True, readonly=True, index=True)
@@ -178,14 +178,17 @@ class AcpecFuelQr(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('name', 'New') == 'New':
-                vals['name'] = self.env['ir.sequence'].next_by_code('acpec.fuel.qr') or 'New'
             if not vals.get('public_code'):
                 vals['public_code'] = self._create_unique_public_code(prefix='QR', size=24)
             if vals.get('public_code') and (not vals.get('qr_numeric_code_hash') or not vals.get('qr_numeric_code_nonce')):
                 nonce, code_hash = self._build_unique_qr_numeric_code_values(vals['public_code'])
                 vals['qr_numeric_code_nonce'] = nonce
                 vals['qr_numeric_code_hash'] = code_hash
+            if vals.get('public_code') and vals.get('qr_numeric_code_nonce'):
+                digits = self._derive_qr_numeric_code_digits(vals['public_code'], vals['qr_numeric_code_nonce'])
+                vals['name'] = self._format_qr_numeric_code(digits)
+            elif vals.get('name', 'New') == 'New':
+                vals['name'] = vals.get('public_code') or 'New'
         return super().create(vals_list)
 
     @api.depends('line_ids.qty', 'line_ids.face_value', 'line_ids.expires_at')
