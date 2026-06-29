@@ -28,7 +28,7 @@ class AcpecFuelStationAgent(models.Model):
         readonly=True,
         index=True,
     )
-    active = fields.Boolean(default=True, index=True)
+    active = fields.Boolean(string='Affectation active', default=True, index=True)
     is_primary = fields.Boolean(string='Agent principal', default=False, index=True)
     date_start = fields.Date(string='Début', default=fields.Date.context_today)
     date_end = fields.Date(string='Fin')
@@ -74,3 +74,30 @@ class AcpecFuelStationAgent(models.Model):
         if self.date_end and self.date_end < today:
             return False
         return True
+
+    def _agent_date_ranges_overlap(self, other):
+        self.ensure_one()
+        if self.date_end and other.date_start and self.date_end < other.date_start:
+            return False
+        if other.date_end and self.date_start and other.date_end < self.date_start:
+            return False
+        return True
+
+    @api.constrains('user_id', 'station_id', 'active', 'date_start', 'date_end')
+    def _check_single_effective_station_per_user(self):
+        for rec in self:
+            if not rec.active or not rec.user_id or not rec.station_id or not rec.station_id.active:
+                continue
+
+            other_agents = self.search([
+                ('id', '!=', rec.id),
+                ('user_id', '=', rec.user_id.id),
+                ('active', '=', True),
+                ('station_id', '!=', rec.station_id.id),
+                ('station_id.active', '=', True),
+            ])
+            for other in other_agents:
+                if rec._agent_date_ranges_overlap(other):
+                    raise ValidationError(_(
+                        'Un agent station ne peut pas être actif sur plusieurs stations en même temps.'
+                    ))

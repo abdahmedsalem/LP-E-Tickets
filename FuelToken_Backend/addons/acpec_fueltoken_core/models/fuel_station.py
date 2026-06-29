@@ -76,6 +76,9 @@ class AcpecFuelStation(models.Model):
         if not user:
             raise ValidationError(_('Utilisateur station introuvable.'))
 
+        if 'active' in user._fields and not user.active:
+            raise ValidationError(_('L’utilisateur station doit être actif.'))
+
         required_groups = (
             'acpec_mobile_auth.group_mobile_auth_user',
             'acpec_fueltoken_base.group_fuel_station',
@@ -104,8 +107,12 @@ class AcpecFuelStation(models.Model):
                 'ni public, ni admin back-office FuelToken.'
             ))
 
-        if 'mobile_state' in user._fields and user.mobile_state != 'approved':
-            raise ValidationError(_('L’utilisateur mobile station doit être approuvé.'))
+        if 'mobile_state' in user._fields:
+            mobile_state = user.mobile_state
+            if mobile_state not in ('approved', 'self_registered'):
+                raise ValidationError(_(
+                    'L’utilisateur mobile station doit être auto-inscrit ou approuvé.'
+                ))
 
         self.env['acpec.fuel.wallet'].sudo()._assert_no_non_empty_client_wallet_for_operational_mobile_user(user)
 
