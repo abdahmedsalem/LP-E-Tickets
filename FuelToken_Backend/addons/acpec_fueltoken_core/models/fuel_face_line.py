@@ -103,6 +103,18 @@ class AcpecFuelFaceLine(models.Model):
                 return code
         raise ValidationError(_('Impossible de generer un code court lot unique.'))
 
+    @api.model
+    def _generate_carnet_short_code(self, company, max_attempts=100):
+        letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        digits = '0123456789'
+        domain_company = [('company_id', '=', company.id)] if company else []
+        for _attempt in range(max_attempts):
+            code = ''.join(secrets.choice(letters) for _ in range(2))
+            code += ''.join(secrets.choice(digits) for _ in range(4))
+            if not self.sudo().search_count(domain_company + [('carnet_short_code', '=', code)]):
+                return code
+        raise ValidationError(_('Impossible de generer un code court carnet unique.'))
+
     @api.depends('face_value', 'qty_available', 'qty_initial')
     def _compute_amounts(self):
         for rec in self:
