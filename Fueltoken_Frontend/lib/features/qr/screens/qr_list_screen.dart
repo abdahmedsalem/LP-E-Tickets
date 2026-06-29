@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/config/odoo_fueltoken_rpc_config.dart';
+import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
@@ -17,6 +17,7 @@ import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/history_aligned_page_header.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class QrListScreen extends StatefulWidget {
@@ -45,11 +46,15 @@ class _QrListScreenState extends State<QrListScreen> {
   void initState() {
     super.initState();
     _qrBusListener = () {
-      if (mounted && AppEnvironment.useAcpecLiveData) _refreshLive();
+      if (mounted && AppEnvironment.useAcpecLiveData) {
+        _refreshLive(force: true);
+      }
     };
     QrRefreshBus.instance.revision.addListener(_qrBusListener);
     if (AppEnvironment.useAcpecLiveData) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshLive());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _refreshLive(force: true),
+      );
     }
   }
 
@@ -64,8 +69,35 @@ class _QrListScreenState extends State<QrListScreen> {
     return {'state': _filterState!.apiListState};
   }
 
-  Future<void> _refreshLive() async {
+  void _invalidateQrListCache({bool allVariants = false}) {
+    if (!allVariants) {
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.qrList,
+        _listRpcParams(),
+      );
+      return;
+    }
+
+    const variants = <Map<String, dynamic>?>[
+      null,
+      <String, dynamic>{},
+      <String, dynamic>{'state': 'active'},
+      <String, dynamic>{'state': 'blocked'},
+      <String, dynamic>{'state': 'consumed'},
+      <String, dynamic>{'state': 'expired'},
+    ];
+
+    for (final params in variants) {
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.qrList,
+        params,
+      );
+    }
+  }
+
+  Future<void> _refreshLive({bool force = false}) async {
     if (!AppEnvironment.useAcpecLiveData) return;
+    if (force) _invalidateQrListCache(allVariants: true);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     setState(() {
@@ -107,7 +139,7 @@ class _QrListScreenState extends State<QrListScreen> {
   Future<void> _onSelectTab(QrState? state) async {
     setState(() => _filterState = state);
     if (AppEnvironment.useAcpecLiveData) {
-      await _refreshLive();
+      await _refreshLive(force: true);
     } else {
       setState(() {});
     }
@@ -160,7 +192,7 @@ class _QrListScreenState extends State<QrListScreen> {
       body: SafeArea(
         child: RefreshIndicator(
           color: scheme.primary,
-          onRefresh: _refreshLive,
+          onRefresh: () => _refreshLive(force: true),
           child: _QrListShell(
             filterRow: _QrFilterRow(
               selected: _filterState,
@@ -174,20 +206,14 @@ class _QrListScreenState extends State<QrListScreen> {
                     message: _liveError != null
                         ? _liveError!
                         : 'Aucun QR ne correspond a ce filtre.',
-                    onRefresh: _refreshLive,
+                    onRefresh: () => _refreshLive(force: true),
                   )
-                : GridView.builder(
+                : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.84,
-                        ),
                     itemCount: qrs.length,
-                    itemBuilder: (ctx, i) => _QRCard(qr: qrs[i]),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (ctx, i) => _QrCompactListTile(qr: qrs[i]),
                   ),
           ),
         ),
@@ -271,49 +297,221 @@ class _QrEmptyState extends StatelessWidget {
   }
 }
 
-class _QRCard extends StatelessWidget {
-  const _QRCard({required this.qr});
+class _QrCompactListTile extends StatelessWidget {
+  const _QrCompactListTile({required this.qr});
 
   final QrToken qr;
 
   QrState get _displayState =>
       qr.hasMixedExpiration ? QrState.blocked : qr.state;
 
-  String get _stateLabel => _displayState.label;
+  bool get _hasPublicCode => qr.publicCode.trim().isNotEmpty;
 
-  String get _dateStateLabel {
-    switch (_displayState) {
-      case QrState.active:
-        return 'Généré le';
-      case QrState.blocked:
-        return 'Bloqué depuis';
-      case QrState.consumed:
-        return 'Consommé le';
-      case QrState.expired:
-        return 'Expiré le';
+  String get _codeLabel {
+    final numeric = _formatQrNumericCode(qr.qrNumericCode);
+    if (numeric != null) {
+      return numeric;
     }
+
+    final fallback = qr.internalRef?.trim();
+    if (fallback != null && fallback.isNotEmpty) {
+      return fallback;
+    }
+
+    return 'Code numérique indisponible';
   }
 
-  DateTime? get _displayDate {
-    final created = qr.createdAt;
-    if (created.millisecondsSinceEpoch > 0) return created;
-    if (qr.expiresAt != null) return qr.expiresAt;
+  static String? _formatQrNumericCode(String? raw) {
+    final digits = (raw ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length != 12) {
+      return null;
+    }
+    return '${digits.substring(0, 4)}-${digits.substring(4, 8)}-${digits.substring(8, 12)}';
+  }
+
+  DateTime? get _effectiveExpiration {
+    final direct = qr.expiresAt;
+    if (direct != null && direct.year > 1970) {
+      return direct;
+    }
+
     DateTime? fallback;
     for (final line in qr.lines) {
-      if (fallback == null || line.expirationDate.isBefore(fallback)) {
-        fallback = line.expirationDate;
+      final d = line.expirationDate;
+      if (d.year <= 1970) {
+        continue;
+      }
+      if (fallback == null || d.isBefore(fallback)) {
+        fallback = d;
       }
     }
     return fallback;
   }
 
-  String get _dateLabel =>
-      '$_dateStateLabel ${DateFormat('dd-MM-yyyy HH:mm').format(_displayDate ?? DateTime.now())}';
+  String get _expirationLabel {
+    final exp = _effectiveExpiration;
+    if (exp == null) return 'Expiration non définie';
+    return 'Expire dès ${Formatters.dateTime(exp)}';
+  }
 
-  String get _amountLabel => Formatters.numberFr(qr.totalAmount);
-
-  Color get _amountColor {
+  String get _stateDateLabel {
     switch (_displayState) {
+      case QrState.consumed:
+        final consumed = qr.consumedAt;
+        if (consumed != null) {
+          return 'Consommé le ${Formatters.dateTime(consumed)}';
+        }
+        return 'Consommé';
+      case QrState.expired:
+        return _expirationLabel.replaceFirst('Expire dès', 'Expiré dès');
+      case QrState.blocked:
+        return qr.hasMixedExpiration
+            ? 'Expiration partielle détectée'
+            : 'Bloqué';
+      case QrState.active:
+        return _expirationLabel;
+    }
+  }
+
+  String get _quantityLabel {
+    final qty = qr.totalQty;
+    if (qty <= 0) return 'Aucun ticket';
+    return qty == 1 ? '1 ticket' : '$qty tickets';
+  }
+
+  String get _amountLabel =>
+      '${Formatters.numberFr(qr.totalAmount)} ${Formatters.defaultCurrency}';
+
+  String get _linesSummary {
+    final parts = <String>[];
+    final byFace = qr.aggregatedByFaceValue.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    for (final entry in byFace.take(3)) {
+      parts.add('${entry.value} × ${Formatters.numberFr(entry.key)}');
+    }
+    if (byFace.length > 3) {
+      parts.add('+${byFace.length - 3}');
+    }
+    return parts.isEmpty ? _quantityLabel : parts.join(' • ');
+  }
+
+  void _openDetail(BuildContext context) {
+    if (!_hasPublicCode) {
+      return;
+    }
+    final seg = AppEnvironment.useAcpecLiveData
+        ? Uri.encodeComponent(qr.publicCode)
+        : qr.id;
+    context.push('/qr/$seg');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canOpen = _hasPublicCode;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: canOpen ? () => _openDetail(context) : null,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.035),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _QrCodeLeadingIcon(state: _displayState),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _codeLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        StatusBadge.qr(_displayState),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      '$_quantityLabel • $_amountLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.body,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _linesSummary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _stateDateLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QrCodeLeadingIcon extends StatelessWidget {
+  const _QrCodeLeadingIcon({required this.state});
+
+  final QrState state;
+
+  Color get _foreground {
+    switch (state) {
       case QrState.active:
         return AppColors.leaderGreen;
       case QrState.blocked:
@@ -325,223 +523,30 @@ class _QRCard extends StatelessWidget {
     }
   }
 
-  bool get _hasQuantity => qr.totalQty > 0;
-  bool get _hasPublicCode => qr.publicCode.trim().isNotEmpty;
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = _hasQuantity
-        ? AppColors.leaderGreen.withValues(alpha: 0.28)
-        : AppColors.line.withValues(alpha: 0.95);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          if (!_hasPublicCode) return;
-          final seg = AppEnvironment.useAcpecLiveData
-              ? Uri.encodeComponent(qr.publicCode)
-              : qr.id;
-          context.push('/qr/$seg');
-        },
-        child: Ink(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: borderColor, width: 1.1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _QrThumbnail(data: qr.publicCode, state: _displayState),
-                const SizedBox(height: 10),
-                _QrStateBadge(state: _displayState, label: _stateLabel),
-                const SizedBox(height: 8),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: _amountLabel,
-                        style: GoogleFonts.poppins(
-                          fontSize: 18.5,
-                          fontWeight: FontWeight.w800,
-                          color: _amountColor,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' ${Formatters.defaultCurrency}',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
-                          height: 1.1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const Spacer(),
-                Text(
-                  _dateLabel,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QrThumbnail extends StatelessWidget {
-  const _QrThumbnail({required this.data, required this.state});
-
-  final String data;
-  final QrState state;
-
-  Color get _color {
+  Color get _background {
     switch (state) {
       case QrState.active:
-        return AppColors.ink;
+        return AppColors.successSurface;
       case QrState.blocked:
-        return const Color(0xFF92400E);
+        return AppColors.warningSurface;
       case QrState.consumed:
-        return AppColors.muted;
+        return AppColors.lineSoft;
       case QrState.expired:
-        return AppColors.danger;
+        return AppColors.dangerSurface;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final trimmed = data.trim();
-    if (trimmed.isEmpty) {
-      return Container(
-        width: 86,
-        height: 86,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFAFAFB),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: const Icon(
-          Icons.qr_code_2_rounded,
-          color: AppColors.muted,
-          size: 30,
-        ),
-      );
-    }
     return Container(
-      width: 76,
-      height: 76,
-      padding: const EdgeInsets.all(8),
+      width: 46,
+      height: 46,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFB),
+        color: _background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
       ),
-      child: QrImageView(
-        data: trimmed,
-        version: QrVersions.auto,
-        backgroundColor: Colors.transparent,
-        gapless: true,
-        eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: _color),
-        dataModuleStyle: QrDataModuleStyle(
-          dataModuleShape: QrDataModuleShape.square,
-          color: _color,
-        ),
-      ),
-    );
-  }
-}
-
-class _QrStateBadge extends StatelessWidget {
-  const _QrStateBadge({required this.state, required this.label});
-
-  final QrState state;
-  final String label;
-
-  ({Color bg, Color fg, Color icon, IconData glyph}) get _palette {
-    switch (state) {
-      case QrState.active:
-        return (
-          bg: AppColors.successSurface,
-          fg: AppColors.leaderGreenDark,
-          icon: AppColors.leaderGreen,
-          glyph: Icons.check_circle_rounded,
-        );
-      case QrState.blocked:
-        return (
-          bg: AppColors.warningSurface,
-          fg: const Color(0xFF92400E),
-          icon: AppColors.warning,
-          glyph: Icons.lock_outline_rounded,
-        );
-      case QrState.consumed:
-        return (
-          bg: AppColors.lineSoft,
-          fg: AppColors.body,
-          icon: AppColors.muted,
-          glyph: Icons.check_circle_rounded,
-        );
-      case QrState.expired:
-        return (
-          bg: AppColors.dangerSurface,
-          fg: AppColors.danger,
-          icon: AppColors.danger,
-          glyph: Icons.hourglass_bottom_rounded,
-        );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = _palette;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: palette.bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(palette.glyph, size: 13, color: palette.icon),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: palette.fg,
-              height: 1,
-            ),
-          ),
-        ],
-      ),
+      child: Icon(Icons.qr_code_2_rounded, color: _foreground, size: 25),
     );
   }
 }

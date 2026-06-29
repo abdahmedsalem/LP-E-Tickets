@@ -527,6 +527,38 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     }
   }
 
+  void _refreshClientReadModelsAfterQrIssue() {
+    const qrListCacheVariants = <Map<String, dynamic>?>[
+      null,
+      <String, dynamic>{},
+      <String, dynamic>{'state': 'active'},
+      <String, dynamic>{'state': 'blocked'},
+      <String, dynamic>{'state': 'consumed'},
+      <String, dynamic>{'state': 'expired'},
+    ];
+
+    for (final params in qrListCacheVariants) {
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.qrList,
+        params,
+      );
+    }
+
+    AcpecFueltokenRpcCoordinator.shared.invalidate(
+      OdooFueltokenRpcConfig.faces,
+      null,
+    );
+    AcpecFueltokenRpcCoordinator.shared.invalidate(
+      OdooFueltokenRpcConfig.transactions,
+      null,
+    );
+
+    QrRefreshBus.instance.bump();
+    FacesRefreshBus.instance.bump();
+    WalletRefreshBus.instance.bump();
+    ClientHistoryRefreshBus.instance.bump();
+  }
+
   Future<void> _performEmit({
     required String actionCode,
     required SensitiveActionIntent intent,
@@ -544,7 +576,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           throw Exception('Aucune ligne à émettre (stock ou sélection vide).');
         }
         final raw = await OdooFueltokenFacade().qrIssue(
-          intent.withAuthParams({'lines': linesPayload}, actionCode: actionCode),
+          intent.withAuthParams({
+            'lines': linesPayload,
+          }, actionCode: actionCode),
         );
         final guarded = acpecRpcMapOrThrow(
           raw,
@@ -559,24 +593,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           companyId: AppEnvironment.companyIdForUser(user),
         );
         if (!mounted) return;
-        // Invalider le cache RPC
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.qrList,
-          null,
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.faces,
-          null,
-        );
-        AcpecFueltokenRpcCoordinator.shared.invalidate(
-          OdooFueltokenRpcConfig.transactions,
-          null,
-        );
-        // Bumper tous les buses concernés par une émission QR
-        QrRefreshBus.instance.bump();
-        FacesRefreshBus.instance.bump();
-        WalletRefreshBus.instance.bump();
-        ClientHistoryRefreshBus.instance.bump();
+        _refreshClientReadModelsAfterQrIssue();
         setState(() {
           _request.clear();
           _emitting = false;
