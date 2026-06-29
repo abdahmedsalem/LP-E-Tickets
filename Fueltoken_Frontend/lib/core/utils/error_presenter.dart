@@ -9,7 +9,7 @@ class ErrorPresenter {
 
   static String message(Object error) {
     if (error is OdooJsonRpcException) {
-      if (error.isOdooSessionExpired) {
+      if (error.requiresReLogin) {
         return 'Votre session a expiré. Veuillez vous reconnecter.';
       }
       return _withReference(_sanitize(error.message), error.reference);
