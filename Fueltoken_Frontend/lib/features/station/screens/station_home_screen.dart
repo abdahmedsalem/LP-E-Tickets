@@ -117,6 +117,56 @@ class StationHomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: () => context.go('/station/manual'),
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFE2E6DD)),
+                  ),
+                  child: const Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Color(0xFFEAF6EE),
+                        child: Icon(
+                          Icons.pin_outlined,
+                          color: AppColors.leaderGreen,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Saisir un code manuel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Mode équivalent au scan du QR client',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 22),
               InkWell(
                 onTap: () => context.go('/station/journal'),
