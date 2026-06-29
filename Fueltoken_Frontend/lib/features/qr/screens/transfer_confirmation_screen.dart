@@ -9,6 +9,7 @@ import '../../../data/models/face_line.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/standard_confirmation_scaffold.dart';
 
 /// Arguments passés à [TransferConfirmationScreen].
 class TransferConfirmationArgs {
@@ -69,6 +70,17 @@ class TransferConfirmationScreen extends StatefulWidget {
 class _TransferConfirmationScreenState
     extends State<TransferConfirmationScreen> {
   bool _confirming = false;
+  bool _closing = false;
+
+  void _close(Object? result) {
+    if (!mounted || _closing) return;
+    _closing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    });
+  }
 
   Future<void> _onConfirm() async {
     if (_confirming) return;
@@ -85,11 +97,7 @@ class _TransferConfirmationScreenState
       await widget.args.onConfirm(actionCode, intent);
       if (!mounted) return;
       completed = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pop(true);
-        }
-      });
+      _close(true);
     } on OdooJsonRpcException catch (e) {
       if (mounted) {
         AppMessage.error(
@@ -116,6 +124,37 @@ class _TransferConfirmationScreenState
   @override
   Widget build(BuildContext context) {
     final args = widget.args;
+
+    return StandardConfirmationScaffold(
+      title: 'Confirmer l\'envoi',
+      introText: 'Vérifiez les carnets avant de confirmer.',
+      confirmLabel: 'Confirmer l\'envoi',
+      confirmIcon: Icons.send_rounded,
+      confirmIconSize: 17,
+      topSpacing: 14,
+      confirming: _confirming,
+      onConfirm: _onConfirm,
+      onCancel: () => _close(false),
+      onBack: () => _close(false),
+      content: [
+        _TransferConfirmationHeroCard(
+          recipientName: args.recipientName,
+          recipientPhone: args.recipientPhone,
+        ),
+        const SizedBox(height: 20),
+        const _TransferConfirmationSectionHeader(label: 'Carnets envoyés'),
+        const SizedBox(height: 14),
+        _TransferConfirmationLinesCard(lines: args.lines),
+        if (args.note != null && args.note!.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const _TransferConfirmationSectionHeader(label: 'Message'),
+          const SizedBox(height: 8),
+          _TransferConfirmationNoteCard(note: args.note!),
+        ],
+        const SizedBox(height: 24),
+        _TransferConfirmationDisclaimerText(recipientName: args.recipientName),
+      ],
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -179,7 +218,7 @@ class _TransferConfirmationScreenState
                 child: TextButton(
                   onPressed: _confirming
                       ? null
-                      : () => Navigator.of(context).pop(false),
+                      : () => _close(false),
                   child: const Text(
                     'Annuler',
                     style: TextStyle(
@@ -199,7 +238,7 @@ class _TransferConfirmationScreenState
           children: [
             ScreenHeader(
               title: 'Confirmer l\'envoi',
-              onBack: () => Navigator.of(context).pop(false),
+              onBack: () => _close(false),
             ),
             const SizedBox(height: 18),
             Expanded(
@@ -254,6 +293,213 @@ class _TransferConfirmationScreenState
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Sub-widgets
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+class _TransferConfirmationHeroCard extends StatelessWidget {
+  const _TransferConfirmationHeroCard({
+    required this.recipientName,
+    required this.recipientPhone,
+  });
+
+  final String recipientName;
+  final String recipientPhone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        children: [
+          _RecipientAvatar(name: recipientName),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Destinataire',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.muted,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  recipientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  recipientPhone,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransferConfirmationSectionHeader extends StatelessWidget {
+  const _TransferConfirmationSectionHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: GoogleFonts.poppins(
+        fontSize: 16.5,
+        fontWeight: FontWeight.w800,
+        color: AppColors.ink,
+        height: 1.1,
+      ),
+    );
+  }
+}
+
+class _TransferConfirmationLinesCard extends StatelessWidget {
+  const _TransferConfirmationLinesCard({required this.lines});
+
+  final List<TransferConfirmationLine> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalAmount = lines.fold<int>(0, (s, l) => s + l.totalAmount);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < lines.length; i++) ...[
+            _TransferLineRow(line: lines[i]),
+            if (i < lines.length - 1)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+              ),
+          ],
+          if (lines.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+            ),
+          _TransferTotalRow(totalAmount: totalAmount),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransferTotalRow extends StatelessWidget {
+  const _TransferTotalRow({required this.totalAmount});
+
+  final int totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Montant total',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.body,
+            ),
+          ),
+        ),
+        _AmountInline(
+          amount: totalAmount,
+          textAlign: TextAlign.right,
+          valueStyle: GoogleFonts.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
+          ),
+          unitStyle: GoogleFonts.poppins(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TransferConfirmationNoteCard extends StatelessWidget {
+  const _TransferConfirmationNoteCard({required this.note});
+
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Text(
+        note,
+        style: const TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w500,
+          color: AppColors.body,
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
+
+class _TransferConfirmationDisclaimerText extends StatelessWidget {
+  const _TransferConfirmationDisclaimerText({required this.recipientName});
+
+  final String recipientName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Le transfert vers $recipientName est définitif et ne peut pas être annulé après confirmation.',
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontSize: 12.5,
+        color: AppColors.muted,
+        height: 1.45,
+      ),
+    );
+  }
+}
 
 class _TransferHeroCard extends StatelessWidget {
   const _TransferHeroCard({
@@ -416,39 +662,37 @@ class _TransferLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _carnetTypeLabel(),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                if (line.faceLine.expirationDate.year < 9999) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Expire le ${Formatters.dateTimeDash(line.faceLine.expirationDate)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
-              ],
+    return Row(
+      children: [
+        Expanded(
+          flex: 7,
+          child: Text(
+            _carnetTypeLabel(),
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              height: 1.15,
             ),
           ),
-          const SizedBox(width: 12),
-          _AmountInline(
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 4,
+          child: Text(
+            Formatters.numberFr(line.carnetQty),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.muted,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 4,
+          child: _AmountInline(
             amount: line.totalAmount,
             textAlign: TextAlign.right,
             valueStyle: GoogleFonts.poppins(
@@ -456,14 +700,14 @@ class _TransferLineRow extends StatelessWidget {
               fontWeight: FontWeight.w800,
               color: const Color(0xFF2E7D32),
             ),
-            unitStyle: const TextStyle(
+            unitStyle: GoogleFonts.poppins(
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF2E7D32),
+              color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -496,19 +740,19 @@ class _TransferSummaryAmount extends StatelessWidget {
           ),
           const Spacer(),
           _AmountInline(
-            amount: totalAmount,
-            textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2E7D32),
-            ),
-            unitStyle: const TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF2E7D32),
-            ),
+          amount: totalAmount,
+          textAlign: TextAlign.right,
+          valueStyle: GoogleFonts.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
           ),
+          unitStyle: GoogleFonts.poppins(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+          ),
+        ),
         ],
       ),
     );

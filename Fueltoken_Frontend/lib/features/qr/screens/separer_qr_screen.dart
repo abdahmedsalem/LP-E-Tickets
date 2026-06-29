@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
@@ -249,7 +250,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
             children: [
               ScreenHeader(
                 title: 'Separer les tickets valides',
-                onBack: () => context.pop(),
+                onBack: () => popOrGo(context, '/qr'),
               ),
               const Expanded(
                 child: Padding(
@@ -279,7 +280,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
                 FilledButton(
                   onPressed: _parent == null
                       ? _loadParent
-                      : () => context.pop(),
+                      : () => popOrGo(context, '/qr'),
                   child: Text(_parent == null ? 'Réessayer' : 'Retour'),
                 ),
               ],
@@ -349,7 +350,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
               title: 'Separer les tickets valides',
               subtitle:
                   'Les tickets expirés restent séparés des tickets encore utilisables',
-              onBack: () => context.pop(),
+              onBack: () => popOrGo(context, '/qr'),
             ),
             Expanded(
               child: ListView(

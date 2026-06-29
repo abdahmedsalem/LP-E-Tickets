@@ -8,6 +8,18 @@ void popOrGoClientHome(BuildContext context) {
   popOrGoRoleHome(context, UserRole.user);
 }
 
+/// Retour sûr avec fallback vers une route donnée.
+///
+/// Utile pour les écrans ouverts soit via `go_router`, soit via une pile
+/// `Navigator` classique (`MaterialPageRoute`).
+void popOrGo(BuildContext context, String fallbackRoute, {Object? result}) {
+  if (context.canPop()) {
+    context.pop(result);
+    return;
+  }
+  context.go(fallbackRoute);
+}
+
 /// Retour selon le rôle (client / station / admin) quand on est à la racine d’un onglet.
 void popOrGoRoleHome(BuildContext context, UserRole role) {
   if (context.canPop()) {

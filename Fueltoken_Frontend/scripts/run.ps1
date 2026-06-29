@@ -97,7 +97,34 @@ if (-not $env:ODOO_FUEL_ENABLED) {
     $env:ODOO_FUEL_ENABLED = "true"
 }
 
+function Test-IsLoopbackUrl {
+    param([string]$Url)
+    if (-not $Url) { return $false }
+    $lower = $Url.ToLowerInvariant()
+    return $lower.Contains("127.0.0.1") -or $lower.Contains("localhost")
+}
+
+function Enable-AdbReverseForLocalOdoo {
+    if (-not (Test-IsLoopbackUrl $env:ODOO_JSONRPC_BASE_URL)) {
+        return
+    }
+
+    $adb = Get-Command adb -ErrorAction SilentlyContinue
+    if (-not $adb) {
+        Write-Host "adb introuvable - impossible d'activer le reverse pour 127.0.0.1." -ForegroundColor Yellow
+        return
+    }
+
+    try {
+        & adb reverse tcp:8069 tcp:8069 | Out-Null
+        Write-Host "ADB reverse actif: 127.0.0.1:8069 du téléphone -> PC:8069" -ForegroundColor Green
+    } catch {
+        Write-Host "Impossible d'activer adb reverse. Vérifiez que l'appareil Android est connecté." -ForegroundColor Yellow
+    }
+}
+
 Write-Host "Odoo: $($env:ODOO_JSONRPC_BASE_URL)" -ForegroundColor Green
+Enable-AdbReverseForLocalOdoo
 
 $defines = @(
     "--dart-define=ODOO_JSONRPC_BASE_URL=$($env:ODOO_JSONRPC_BASE_URL)",

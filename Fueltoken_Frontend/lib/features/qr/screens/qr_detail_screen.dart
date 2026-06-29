@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
@@ -228,7 +229,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
             children: [
               ScreenHeader(
                 title: 'Détails du QR',
-                onBack: () => context.pop(),
+                onBack: () => popOrGo(context, '/qr'),
               ),
               const Expanded(
                 child: Padding(
@@ -252,7 +253,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
             children: [
               ScreenHeader(
                 title: 'Détails du QR',
-                onBack: () => context.pop(),
+                onBack: () => popOrGo(context, '/qr'),
               ),
               Expanded(
                 child: ListView(
@@ -388,7 +389,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
           children: [
             ScreenHeader(
               title: 'Détail QR Code',
-              onBack: () => context.pop(),
+              onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
             Expanded(

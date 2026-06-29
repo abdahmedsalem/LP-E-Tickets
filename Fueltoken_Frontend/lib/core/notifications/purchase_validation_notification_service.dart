@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -118,30 +119,36 @@ class PurchaseValidationNotificationService {
     AppUser user,
     Set<String> notifiedIds,
   ) async {
-    final raw = await OdooFueltokenFacade().purchasesList(
-      const <String, dynamic>{'state': 'terminal'},
-    );
-    final lots = AcpecPurchasesMapper.fromRpcResult(
-      raw,
-      clientId: user.id,
-      clientName: user.name,
-      companyId: AppEnvironment.companyIdForUser(user),
-    );
-    final terminalLots = lots.where(
-      (lot) =>
-          lot.state == PurchaseLotState.approved ||
-          lot.state == PurchaseLotState.rejected,
-    );
+    try {
+      final raw = await OdooFueltokenFacade().purchasesList(
+        const <String, dynamic>{'state': 'terminal'},
+      );
+      final lots = AcpecPurchasesMapper.fromRpcResult(
+        raw,
+        clientId: user.id,
+        clientName: user.name,
+        companyId: AppEnvironment.companyIdForUser(user),
+      );
+      final terminalLots = lots.where(
+        (lot) =>
+            lot.state == PurchaseLotState.approved ||
+            lot.state == PurchaseLotState.rejected,
+      );
 
-    for (final lot in terminalLots) {
-      final key = 'purchase-${lot.id}';
-      if (notifiedIds.contains(key) ||
-          NotificationsStore.instance.items.any((item) => item.id == key)) {
-        await _refreshStoredPurchaseNotificationIfNeeded(lot);
-        continue;
+      for (final lot in terminalLots) {
+        final key = 'purchase-${lot.id}';
+        if (notifiedIds.contains(key) ||
+            NotificationsStore.instance.items.any((item) => item.id == key)) {
+          await _refreshStoredPurchaseNotificationIfNeeded(lot);
+          continue;
+        }
+        notifiedIds.add(key);
+        unawaited(_emitStatusNotification(lot));
       }
-      notifiedIds.add(key);
-      unawaited(_emitStatusNotification(lot));
+    } catch (e, st) {
+      debugPrint(
+        '[purchase-validation] sync des notifications d achats ignorée: $e\n$st',
+      );
     }
   }
 

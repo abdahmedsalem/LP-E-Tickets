@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
@@ -297,7 +298,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
             children: [
               ScreenHeader(
                 title: 'Retirer',
-                onBack: () => context.pop(),
+                onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
               const Expanded(
@@ -328,7 +329,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                 FilledButton(
                   onPressed: _parent == null
                       ? _loadParent
-                      : () => context.pop(),
+                      : () => popOrGo(context, '/qr'),
                   child: Text(_parent == null ? 'Réessayer' : 'Retour'),
                 ),
               ],
@@ -392,7 +393,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
           children: [
             ScreenHeader(
               title: 'Retirer',
-              onBack: () => context.pop(),
+              onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
             Expanded(

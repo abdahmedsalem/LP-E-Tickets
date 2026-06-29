@@ -33,7 +33,7 @@ class ScreenHeader extends StatelessWidget {
                   onTap: onBack ?? () {
                     final nav = Navigator.maybeOf(context);
                     if (nav != null && nav.canPop()) {
-                      nav.pop();
+                      nav.maybePop();
                     }
                   },
                 )

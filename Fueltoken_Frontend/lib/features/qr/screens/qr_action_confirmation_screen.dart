@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/standard_confirmation_scaffold.dart';
 
 class QrActionConfirmationArgs {
   const QrActionConfirmationArgs({
@@ -53,6 +53,17 @@ class QrActionConfirmationScreen extends StatefulWidget {
 class _QrActionConfirmationScreenState
     extends State<QrActionConfirmationScreen> {
   bool _confirming = false;
+  bool _closing = false;
+
+  void _close(Object? result) {
+    if (!mounted || _closing) return;
+    _closing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    });
+  }
 
   Future<void> _confirm() async {
     if (_confirming) return;
@@ -64,11 +75,7 @@ class _QrActionConfirmationScreenState
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       setState(() => _confirming = true);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pop(actionCode);
-        }
-      });
+      _close(actionCode);
     } finally {
       if (mounted) setState(() => _confirming = false);
     }
@@ -78,149 +85,94 @@ class _QrActionConfirmationScreenState
   Widget build(BuildContext context) {
     final args = widget.args;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton(
-                  onPressed: _confirming ? null : _confirm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF43A047),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _confirming
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          args.confirmLabel,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: TextButton(
-                  onPressed: _confirming
-                      ? null
-                      : () => Navigator.of(context).pop(false),
-                  child: const Text(
-                    'Annuler',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+    return StandardConfirmationScaffold(
+      title: args.title,
+      introText: args.subtitle ?? 'Vérifiez les éléments avant de confirmer.',
+      confirmLabel: args.confirmLabel,
+      confirmIcon: Icons.qr_code_rounded,
+      confirming: _confirming,
+      onConfirm: _confirm,
+      onCancel: () => _close(null),
+      onBack: () => _close(null),
+      content: [
+        if (args.showHero) ...[
+          _ConfirmationSectionCard(child: args.hero),
+          const SizedBox(height: 20),
+        ],
+        if (args.details != null) ...[
+          args.details!,
+          const SizedBox(height: 20),
+        ],
+        if (args.summaryRows.isNotEmpty) ...[
+          _SummaryRowsCard(rows: args.summaryRows),
+        ],
+        if (args.disclaimer != null) ...[
+          const SizedBox(height: 18),
+          Text(
+            args.disclaimer!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppColors.muted,
+              height: 1.5,
+            ),
           ),
-        ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ConfirmationSectionCard extends StatelessWidget {
+  const _ConfirmationSectionCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            ScreenHeader(
-              title: args.title,
-              onBack: _confirming
-                  ? null
-                  : () => Navigator.of(context).pop(false),
+      child: child,
+    );
+  }
+}
+
+class _SummaryRowsCard extends StatelessWidget {
+  const _SummaryRowsCard({required this.rows});
+
+  final List<QrActionSummaryRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            _SummaryRow(
+              label: rows[i].label,
+              value: rows[i].value,
+              valueColor: rows[i].valueColor,
             ),
-            const SizedBox(height: 18),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-                children: [
-                  if (args.subtitle != null) ...[
-                    Text(
-                      args.subtitle!,
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.muted,
-                        height: 1.35,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (args.showHero) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2FBF3),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFCFE8D1)),
-                      ),
-                      child: args.hero,
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (args.details != null) ...[
-                    args.details!,
-                    const SizedBox(height: 20),
-                  ],
-                  if (args.summaryRows.isNotEmpty) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < args.summaryRows.length; i++) ...[
-                            _SummaryRow(
-                              label: args.summaryRows[i].label,
-                              value: args.summaryRows[i].value,
-                              valueColor: args.summaryRows[i].valueColor,
-                            ),
-                            if (i < args.summaryRows.length - 1)
-                              const SizedBox(height: 12),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (args.disclaimer != null) ...[
-                    const SizedBox(height: 18),
-                    Text(
-                      args.disclaimer!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.muted,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ],
+            if (i < rows.length - 1)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(height: 1, color: const Color(0xFFE5E7EB)),
               ),
-            ),
           ],
-        ),
+        ],
       ),
     );
   }

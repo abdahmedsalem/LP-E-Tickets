@@ -4,11 +4,13 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -16,10 +18,10 @@ import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/carnet_type.dart';
+import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
@@ -45,14 +47,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
-
-  // Résultat temporaire après confirmation, pour afficher le dialog de succès.
-  ({
-    AcpecPurchaseCreateResult result,
-    String payRef,
-    List<PurchaseConfirmationLine> lines,
-  })?
-  _lastSubmitResult;
 
   @override
   void initState() {
@@ -210,6 +204,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     try {
       final user = context.read<AuthBloc>().state.user;
       if (user == null) return;
+      if (!user.isDeviceTrusted) {
+        AppMessage.error(
+          context,
+          'Cet appareil doit être validé par un administrateur avant de pouvoir créer une commande.',
+        );
+        return;
+      }
       if (_totalTickets() > _kMaxTicketsPerPurchase) {
         AppMessage.warning(
           context,
@@ -244,17 +245,15 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         AppMessage.error(context, 'La preuve de paiement est illisible.');
         return;
       }
-      _lastSubmitResult = null;
-
       // Naviguer vers l'écran de confirmation
-      final confirmed = await navigator.push<bool>(
+      final result = await navigator.push<AcpecPurchaseCreateResult>(
         MaterialPageRoute(
           builder: (_) => PurchaseConfirmationScreen(
             args: PurchaseConfirmationArgs(
               lines: confirmLines,
               proofPath: proofPath,
               proofBytes: proofBytes,
-              onConfirm: (actionCode, intent) async {
+              onConfirm: (actionCode) async {
                 // Appel API réel: les erreurs remontent au confirmation screen
                 if (!AppEnvironment.useAcpecLiveData) {
                   throw Exception(
@@ -266,6 +265,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
                   );
                 }
+                debugPrint('[purchase-submit] action_code reçu, préparation de la requête...');
                 final rpcLines = <Map<String, dynamic>>[];
                 for (final line in confirmLines) {
                   final t = line.carnetType;
@@ -295,21 +295,19 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     ? proofPath.substring(cut + 1)
                     : proofPath;
                 final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
-                final raw = await OdooFueltokenFacade().purchasesCreate(
-                  intent.withAuthParams({
-                    'lines': rpcLines,
-                    'proof_filename': fileName,
-                    'proof_data': base64Encode(proofBytes),
-                    'payment_reference': payRef,
-                  }, actionCode: actionCode),
-                );
-                final parsed = AcpecPurchasesMapper.parseCreateResult(raw);
-                // Stocker le résultat pour l'afficher après retour
-                _lastSubmitResult = (
-                  result: parsed,
-                  payRef: payRef,
-                  lines: confirmLines,
-                );
+                final idem = const Uuid().v4();
+                debugPrint('[purchase-submit] appel purchasesCreate vers le backend...');
+                final raw = await OdooFueltokenFacade().purchasesCreate({
+                  'lines': rpcLines,
+                  'proof_filename': fileName,
+                  'proof_data': base64Encode(proofBytes),
+                  'payment_reference': payRef,
+                  'action_code': actionCode,
+                  'idempotency_key': idem,
+                });
+                debugPrint('[purchase-submit] backend répondu: $raw');
+                debugPrint('[purchase-submit] parsing du résultat...');
+                return AcpecPurchasesMapper.parseCreateResult(raw);
               },
             ),
           ),
@@ -317,18 +315,16 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       );
 
       if (!mounted) return;
-      if (confirmed == true && _lastSubmitResult != null) {
-        final res = _lastSubmitResult!;
-        _lastSubmitResult = null;
+      if (result != null) {
         ClientHistoryRefreshBus.instance.bump();
         PurchasesRefreshBus.instance.bump();
         final confirmedAt = DateTime.now();
         if (!mounted) return;
         await showPurchaseSubmitSuccessDialog(
           context,
-          result: res.result,
+          result: result,
           confirmedAt: confirmedAt,
-          lines: res.lines,
+          lines: confirmLines,
         );
         if (!mounted) return;
         WidgetsBinding.instance.addPostFrameCallback((_) {

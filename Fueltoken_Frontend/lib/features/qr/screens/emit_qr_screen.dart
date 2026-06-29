@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
-import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
+import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
@@ -189,6 +189,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   letterSpacing: -0.4,
                   height: 1.05,
                 ),
+                onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
               Expanded(
@@ -233,7 +234,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                 largeTitlePadding: _emitQrHeaderPadding,
                 largeTitleGap: _emitQrHeaderGap,
                 largeTitleFontSize: _emitQrHeaderTitleSize,
-                onBack: () => popOrGoClientHome(context),
+                onBack: () => popOrGo(context, '/qr'),
                 largeTitleTextStyle: GoogleFonts.poppins(
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
@@ -499,20 +500,14 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const _ConfirmationSectionHeader(title: 'Tickets à émettre'),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
                 _EmitConfirmationLinesSection(
                   lines: selectedLines,
                   request: _request,
                 ),
               ],
             ),
-            summaryRows: [
-              QrActionSummaryRow(
-                label: 'Montant total',
-                value: Formatters.money(totalAmount),
-                valueColor: const Color(0xFF2E7D32),
-              ),
-            ],
+            summaryRows: const [],
             disclaimer:
                 'La génération créera un QR à partir des carnets sélectionnés.',
           ),
@@ -989,10 +984,19 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      radius: 22,
-      shadow: false,
+    final totalAmount = lines.fold<int>(
+      0,
+      (sum, line) => sum + (line.faceValue * (request[line.id] ?? 0)),
+    );
+
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+      ),
       child: Column(
         children: [
           for (var i = 0; i < lines.length; i++) ...[
@@ -1003,17 +1007,57 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
               expirationDate: lines[i].expirationDate,
             ),
             if (i < lines.length - 1)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: Color(0xFFE5E7EB),
-                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(height: 1, color: const Color(0xFFE5E7EB)),
               ),
           ],
+          if (lines.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+            ),
+          _EmitConfirmationTotalRow(totalAmount: totalAmount),
         ],
       ),
+    );
+  }
+}
+
+class _EmitConfirmationTotalRow extends StatelessWidget {
+  const _EmitConfirmationTotalRow({required this.totalAmount});
+
+  final int totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Montant total',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.body,
+            ),
+          ),
+        ),
+        _AmountInline(
+          amount: totalAmount,
+          textAlign: TextAlign.right,
+          valueStyle: GoogleFonts.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
+          ),
+          unitStyle: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -57,6 +57,18 @@ if [[ -z "${ODOO_JSONRPC_BASE_URL}" ]]; then
   echo "  Vérifiez : git pull && ls scripts/env/" >&2
 fi
 
+if [[ "${ODOO_JSONRPC_BASE_URL}" == *"127.0.0.1"* || "${ODOO_JSONRPC_BASE_URL}" == *"localhost"* ]]; then
+  if command -v adb >/dev/null 2>&1; then
+    if adb reverse tcp:8069 tcp:8069 >/dev/null 2>&1; then
+      echo "ADB reverse actif: 127.0.0.1:8069 du téléphone -> PC:8069" >&2
+    else
+      echo "adb reverse impossible pour l'instant (appareil non connecté ou non Android)." >&2
+    fi
+  else
+    echo "adb introuvable - reverse local ignoré." >&2
+  fi
+fi
+
 echo "Odoo → ${ODOO_JSONRPC_BASE_URL}" >&2
 
 DEFINES=(

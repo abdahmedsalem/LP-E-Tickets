@@ -4,14 +4,16 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
-import '../../../data/services/sensitive_action_intent.dart';
-import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/screen_header.dart';
 
 class PurchaseConfirmationArgs {
   const PurchaseConfirmationArgs({
@@ -24,10 +26,7 @@ class PurchaseConfirmationArgs {
   final List<PurchaseConfirmationLine> lines;
   final String? proofPath;
   final Uint8List? proofBytes;
-  final Future<void> Function(
-    String actionCode,
-    SensitiveActionIntent intent,
-  ) onConfirm;
+  final Future<AcpecPurchaseCreateResult> Function(String actionCode) onConfirm;
 }
 
 class PurchaseConfirmationLine {
@@ -53,10 +52,20 @@ class PurchaseConfirmationScreen extends StatefulWidget {
 class _PurchaseConfirmationScreenState
     extends State<PurchaseConfirmationScreen> {
   bool _confirming = false;
+  bool _closing = false;
+
+  void _close(Object? result) {
+    if (!mounted || _closing) return;
+    _closing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pop(result);
+      }
+    });
+  }
 
   Future<void> _onConfirm() async {
     if (_confirming) return;
-    var completed = false;
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
@@ -64,22 +73,31 @@ class _PurchaseConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      final intent = SensitiveActionIntent.create('purchases-create');
       setState(() => _confirming = true);
-      await widget.args.onConfirm(actionCode, intent);
+      debugPrint('[purchase-confirmation] PIN validé, lancement de onConfirm...');
+      AppMessage.info(context, 'Envoi de la demande en cours...');
+      final result = await widget.args.onConfirm(actionCode);
       if (!mounted) return;
-      completed = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pop(true);
-        }
-      });
-    } on OdooJsonRpcException {
-      return;
+      debugPrint('[purchase-confirmation] onConfirm terminé, fermeture avec résultat.');
+      _close(result);
+    } on OdooJsonRpcException catch (e) {
+      if (mounted) {
+        AppMessage.error(
+          context,
+          e.isOdooSessionExpired || e.isAuthRequired
+              ? 'Session expirée. Reconnectez-vous.'
+              : e.message,
+        );
+      }
     } catch (e) {
-      return;
+      if (mounted) {
+        AppMessage.error(
+          context,
+          e.toString().replaceFirst('Exception: ', '').trim(),
+        );
+      }
     } finally {
-      if (mounted && !completed) setState(() => _confirming = false);
+      if (mounted) setState(() => _confirming = false);
     }
   }
 
@@ -149,7 +167,7 @@ class _PurchaseConfirmationScreenState
                 width: double.infinity,
                 height: 44,
                 child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => _close(false),
                   child: const Text(
                     'Annuler',
                     style: TextStyle(
@@ -169,7 +187,7 @@ class _PurchaseConfirmationScreenState
           children: [
             ScreenHeader(
               title: "Confirmer l'achat",
-              onBack: () => Navigator.of(context).pop(false),
+              onBack: () => _close(false),
             ),
             const SizedBox(height: 14),
             Expanded(
