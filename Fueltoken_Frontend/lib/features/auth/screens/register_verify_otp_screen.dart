@@ -8,6 +8,7 @@ import '../../../core/validation/password_validators.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/services/odoo_auth_service.dart';
+import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
@@ -101,11 +102,28 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     } catch (e, st) {
       debugPrint('OTP verification failed: $e\n$st');
       if (mounted) {
-        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+        AppMessage.error(context, _displayOtpVerificationError(e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  String _displayOtpVerificationError(Object error) {
+    if (error is OdooJsonRpcException) {
+      final code = error.publicCode?.trim().toUpperCase();
+      final ref = error.reference?.trim();
+      if (code == 'AUTH_REFUSED' ||
+          code == 'REQUEST_REFUSED' ||
+          code == 'VALIDATION_ERROR') {
+        final suffix = ref != null && ref.isNotEmpty
+            ? '\nRéférence support : $ref'
+            : '';
+        return 'Code OTP introuvable, expiré ou déjà utilisé. '
+            'Demandez un nouveau code puis réessayez.$suffix';
+      }
+    }
+    return error.toString().replaceFirst('Exception: ', '');
   }
 
   bool _hasSessionTokens(Map<String, dynamic>? tokens) {

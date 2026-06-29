@@ -71,6 +71,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       final challengeId = _extractChallengeId(response);
       if (!mounted) return;
+      if (challengeId == null || challengeId <= 0) {
+        AppMessage.error(
+          context,
+          'Le serveur n’a pas confirmé le challenge OTP. Réessayez.',
+        );
+        return;
+      }
       AppMessage.info(context, 'Code OTP envoyé par SMS.');
       context.push(
         '/register/verify-otp',
@@ -92,24 +99,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   int? _extractChallengeId(Map<String, dynamic> response) {
-    dynamic candidate;
+    int? parseId(dynamic value) {
+      if (value == null || value == false) return null;
+      final raw = value.toString().trim();
+      if (raw.isEmpty) return null;
+      return int.tryParse(raw);
+    }
+
     final data = response['data'];
     if (data is Map) {
-      candidate =
-          data['otp_challenge_id'] ??
-          data['challenge_id'] ??
-          data['otpChallengeId'] ??
-          data['otp_challenge_ref'] ??
-          data['challenge_ref'];
+      final dataMap = Map<String, dynamic>.from(data);
+      final fromData =
+          parseId(dataMap['otp_challenge_id']) ??
+          parseId(dataMap['challenge_id']);
+      if (fromData != null && fromData > 0) return fromData;
     }
-    candidate ??=
-        response['otp_challenge_id'] ??
-        response['challenge_id'] ??
-        response['otp_challenge_ref'] ??
-        response['challenge_ref'];
-    final raw = candidate?.toString().trim() ?? '';
-    if (raw.isEmpty) return null;
-    return int.tryParse(raw);
+
+    final fromTop =
+        parseId(response['otp_challenge_id']) ??
+        parseId(response['challenge_id']);
+    if (fromTop != null && fromTop > 0) return fromTop;
+    return null;
   }
 
   @override
