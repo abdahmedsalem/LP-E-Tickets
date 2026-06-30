@@ -537,9 +537,8 @@ class PurchaseValidationNotificationService {
     final amount = tx.totalAmount.abs();
     final amountLabel = amount > 0 ? Formatters.money(amount) : '';
     final station = (tx.stationName ?? tx.stationId ?? '').trim();
-    final qrCode = await _resolveQrNumericCodeForTransaction(user, tx);
 
-    final title = qrCode == null ? 'QR consommé' : 'QR $qrCode consommé';
+    final title = 'QR consommé';
     final body = _stationConsumptionBody(amountLabel, station);
 
     return NotificationItem(
@@ -724,26 +723,6 @@ class PurchaseValidationNotificationService {
 
     out.sort((a, b) => b.date.compareTo(a.date));
     return out;
-  }
-
-  Future<String?> _resolveQrNumericCodeForTransaction(
-    AppUser user,
-    BusinessTransaction tx,
-  ) async {
-    final direct = _formatQrNumericCode(tx.qrPublicCode ?? tx.qrId);
-    if (direct != null) {
-      return direct;
-    }
-
-    final qrRef = (tx.qrPublicCode ?? tx.qrId ?? '').trim();
-    if (qrRef.isEmpty) {
-      return null;
-    }
-
-    debugPrint(
-      '[purchase-validation] résolution automatique du code manuel QR désactivée: reveal explicite requis.',
-    );
-    return null;
   }
 
   String _stationConsumptionKey(BusinessTransaction tx) {
