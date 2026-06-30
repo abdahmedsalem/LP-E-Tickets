@@ -26,8 +26,11 @@ class TestPublicQrCarnetShortCodeFormat(TransactionCase):
         self.assertIn("carnet_suffix = 'C%03d' % carnet_sequence", source)
         self.assertNotIn("carnet_short_code = '%s-%s' % (lot_short_code, carnet_suffix)", source)
 
-    def test_h8_qr_name_uses_numeric_code_not_sequence(self):
-        source = inspect.getsource(AcpecFuelQr.create)
-        self.assertIn("vals['name'] = self._format_qr_numeric_code(digits)", source)
-        self.assertIn("digits = self._derive_qr_numeric_code_digits", source)
-        self.assertNotIn("next_by_code('acpec.fuel.qr')", source)
+    def test_h11_qr_name_uses_sequence_not_manual_numeric_code(self):
+        model_source = inspect.getsource(AcpecFuelQr)
+        create_source = inspect.getsource(AcpecFuelQr.create)
+
+        self.assertNotIn("vals['name'] = self._format_qr_numeric_code(digits)", create_source)
+        self.assertNotIn("digits = self._derive_qr_numeric_code_digits", create_source)
+        self.assertIn("next_by_code('acpec.fuel.qr')", create_source)
+        self.assertIn("_check_name_is_not_qr_manual_code", model_source)
