@@ -7,7 +7,6 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
-                <field name="public_code"/>
                 <field name="source_partner_id"/>
                 <field name="dest_partner_id"/>
                 <field name="state"/>
@@ -46,7 +45,6 @@
                                    groups="base.group_multi_company"/>
                         </group>
                         <group string="Totaux">
-                            <field name="public_code" readonly="1"/>
                             <field name="face_qty_total" readonly="1"/>
                             <field name="amount_total" readonly="1"/>
                             <field name="confirmed_at" readonly="1"/>

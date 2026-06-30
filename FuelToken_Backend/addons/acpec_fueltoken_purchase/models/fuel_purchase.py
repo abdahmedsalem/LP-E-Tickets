@@ -314,6 +314,8 @@ class AcpecFuelPurchaseLine(models.Model):
     _name = 'acpec.fuel.purchase.line'
     _description = 'Ligne achat FuelToken'
     _order = 'purchase_id, id'
+    _rec_name = 'name'
+    name = fields.Char(string='Libellé', compute='_compute_name', store=True, readonly=True)
 
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot achat', required=True, ondelete='cascade', index=True)
     company_id = fields.Many2one('res.company', related='purchase_id.company_id', store=True, readonly=True)
@@ -329,6 +331,36 @@ class AcpecFuelPurchaseLine(models.Model):
         'CHECK(carnet_qty > 0)',
         'Le nombre de carnets doit etre positif.',
     )
+
+
+    @api.depends('purchase_id.name', 'carnet_qty', 'face_count', 'face_value', 'currency_id')
+    def _compute_name(self):
+        for rec in self:
+            lot_name = rec.purchase_id.name or _('Lot achat')
+            currency_name = rec.currency_id.name or ''
+            face_count = rec.face_count or 0
+            face_value = rec.face_value or 0.0
+
+            if float(face_value).is_integer():
+                face_value_label = str(int(face_value))
+            else:
+                face_value_label = ('%.2f' % face_value).rstrip('0').rstrip('.')
+
+            if face_count and face_value:
+                carnet_label = 'C%sT-%s%s' % (
+                    face_count,
+                    face_value_label,
+                    currency_name.replace(' ', ''),
+                )
+            elif rec.carnet_type_id:
+                carnet_label = rec.carnet_type_id.display_name
+            else:
+                carnet_label = _('Type carnet')
+
+            rec.name = '%s - %s' % (
+                lot_name,
+                carnet_label,
+            )
 
     @api.depends('carnet_qty', 'face_count', 'face_value')
     def _compute_amounts(self):

@@ -8,6 +8,7 @@ from odoo.tools import float_compare
 class AcpecFuelFaceLine(models.Model):
     _name = 'acpec.fuel.face.line'
     _description = 'Carnet de tickets'
+    _rec_name = 'carnet_short_code'
     _order = 'expires_at, lot_short_code, carnet_sequence, id'
 
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True, ondelete='restrict')

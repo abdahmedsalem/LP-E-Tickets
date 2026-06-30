@@ -57,7 +57,6 @@
         <field name="model">acpec.fuel.purchase</field>
         <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_list"/>
         <field name="arch" type="xml">
-            <field name="public_code" position="replace"/>
             <field name="face_qty_total" position="attributes">
                 <attribute name="string">Tickets</attribute>
             </field>
@@ -69,7 +68,6 @@
         <field name="model">acpec.fuel.purchase</field>
         <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet/group/group[1]/field[@name='public_code']" position="replace"/>
             <field name="face_qty_total" position="attributes">
                 <attribute name="string">Tickets</attribute>
             </field>
@@ -86,7 +84,6 @@
             </xpath>
             <xpath expr="//sheet/notebook" position="after">
                 <group string="Technique">
-                    <field name="public_code" readonly="1" string="Code public"/>
                 </group>
             </xpath>
         </field>
@@ -201,7 +198,6 @@
         <field name="model">acpec.fuel.qr</field>
         <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_qr_list"/>
         <field name="arch" type="xml">
-            <field name="public_code" position="replace"/>
             <field name="face_qty_total" position="attributes">
                 <attribute name="string">Tickets</attribute>
             </field>
@@ -213,7 +209,6 @@
         <field name="model">acpec.fuel.qr</field>
         <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_qr_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet/group/group[1]/field[@name='public_code']" position="replace"/>
             <field name="face_qty_total" position="attributes">
                 <attribute name="string">Tickets</attribute>
             </field>
@@ -224,10 +219,8 @@
                 <attribute name="string">Valeur du ticket</attribute>
                 <attribute name="optional">hide</attribute>
             </xpath>
-            <xpath expr="//field[@name='child_ids']//field[@name='public_code']" position="replace"/>
             <xpath expr="//sheet/notebook" position="after">
                 <group string="Technique">
-                    <field name="public_code" readonly="1" string="Code public"/>
                 </group>
             </xpath>
         </field>
@@ -255,7 +248,6 @@
         <field name="model">acpec.fuel.carnet.transfer</field>
         <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_carnet_transfer_list"/>
         <field name="arch" type="xml">
-            <field name="public_code" position="replace"/>
             <field name="face_qty_total" position="attributes">
                 <attribute name="string">Tickets</attribute>
             </field>
@@ -267,7 +259,6 @@
         <field name="model">acpec.fuel.carnet.transfer</field>
         <field name="inherit_id" ref="acpec_fueltoken_core.view_fuel_carnet_transfer_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='face_qty_total']/preceding-sibling::field[@name='public_code']" position="replace"/>
             <field name="face_qty_total" position="attributes">
                 <attribute name="string">Tickets</attribute>
             </field>
@@ -290,7 +281,6 @@
             </xpath>
             <xpath expr="//sheet/notebook" position="after">
                 <group string="Technique">
-                    <field name="public_code" readonly="1" string="Code public"/>
                 </group>
             </xpath>
         </field>

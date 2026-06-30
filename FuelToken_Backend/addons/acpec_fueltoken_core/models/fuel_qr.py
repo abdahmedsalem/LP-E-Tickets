@@ -651,7 +651,7 @@ class AcpecFuelQrLine(models.Model):
     company_id = fields.Many2one('res.company', related='qr_id.company_id', store=True, readonly=True)
     currency_id = fields.Many2one('res.currency', related='qr_id.currency_id', store=True, readonly=True)
     face_value = fields.Monetary(string='Valeur de face', required=True)
-    qty = fields.Integer(string='Quantité', required=True)
+    qty = fields.Integer(string='Tickets', required=True)
     amount = fields.Monetary(string='Montant', compute='_compute_amount', store=True)
     state = fields.Selection([
         ('active', 'Actif'),
