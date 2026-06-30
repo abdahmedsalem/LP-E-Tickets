@@ -16,8 +16,12 @@ class StationHomeScreen extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final firstName = user.name.trim().split(RegExp(r'\s+')).first;
-    final stationName = user.stationName ?? user.name;
+    final agentName = user.name.trim().isNotEmpty
+        ? user.name.trim()
+        : 'Agent station';
+    final stationName = user.stationName?.trim().isNotEmpty == true
+        ? user.stationName!.trim()
+        : 'Station';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -28,33 +32,85 @@ class StationHomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  InkWell(
+                    onTap: () => context.go('/station/profile'),
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.leaderGreen.withValues(alpha: 0.22),
+                            AppColors.accentTeal.withValues(alpha: 0.18),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: AppColors.leaderGreen.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.badge_outlined,
+                        color: AppColors.leaderGreenDark,
+                        size: 27,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Bonjour $firstName ??',
+                          agentName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.poppins(
-                            fontSize: 24,
+                            fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF111827),
-                            letterSpacing: -0.6,
+                            letterSpacing: -0.35,
                             height: 1.15,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          stationName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF6B7280),
-                          ),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.local_gas_station_rounded,
+                              size: 15,
+                              color: AppColors.leaderGreen,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Agent station · $stationName',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 4),
+                  _StationTopAction(
+                    icon: Icons.settings_outlined,
+                    semanticLabel: 'Profil agent station',
+                    onTap: () => context.go('/station/profile'),
                   ),
                 ],
               ),
@@ -218,6 +274,45 @@ class StationHomeScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StationTopAction extends StatelessWidget {
+  const _StationTopAction({
+    required this.icon,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String semanticLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFE6EAEF)),
+              boxShadow: AppColors.softShadow,
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: const Color(0xFF111827), size: 22),
           ),
         ),
       ),
