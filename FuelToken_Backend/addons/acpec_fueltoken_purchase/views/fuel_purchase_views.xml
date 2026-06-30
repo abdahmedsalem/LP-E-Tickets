@@ -21,17 +21,17 @@
             <form>
                 <header>
                     <button name="action_submit" type="object" string="Soumettre" invisible="state != 'draft'" class="btn-primary"/>
-                    <button name="action_approve" type="object" string="Valider" invisible="state not in ('draft', 'submitted')" class="btn-primary" groups="acpec_fueltoken_base.group_fuel_admin"/>
-                    <button name="action_reject" type="object" string="Rejeter" invisible="state not in ('draft', 'submitted')" groups="acpec_fueltoken_base.group_fuel_admin"/>
+                    <button name="action_approve" type="object" string="Valider" invisible="state not in ('draft', 'submitted')" class="btn-primary" groups="acpec_fueltoken_base.group_fuel_admin" confirm="Valider ce lot d'achat ? Les lignes, le client, la référence paiement et les preuves resteront verrouillés. Continuer ?"/>
+                    <button name="action_reject" type="object" string="Rejeter" invisible="state not in ('draft', 'submitted')" groups="acpec_fueltoken_base.group_fuel_admin" confirm="Rejeter ce lot d'achat ? Le lot restera verrouillé économiquement. Continuer ?"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected"/>
                 </header>
                 <sheet>
                     <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
                     <group>
                         <group>
-                            <field name="partner_id" readonly="state == 'approved'"/>
-                            <field name="company_id" readonly="state == 'approved'" groups="base.group_multi_company"/>
-                            <field name="payment_reference" readonly="state == 'approved'"/>
+                            <field name="partner_id" readonly="state != 'draft'" force_save="1"/>
+                            <field name="company_id" readonly="state != 'draft'" force_save="1" groups="base.group_multi_company"/>
+                            <field name="payment_reference" readonly="state != 'draft'" force_save="1"/>
                         </group>
                         <group>
                             <field name="amount_total" readonly="1"/>
@@ -42,7 +42,7 @@
                     </group>
                     <notebook>
                         <page string="Lignes de carnets">
-                            <field name="line_ids" readonly="state == 'approved'">
+                            <field name="line_ids" readonly="state != 'draft'" force_save="1">
                                 <list editable="bottom">
                                     <field name="carnet_type_id"/>
                                     <field name="carnet_qty"/>
@@ -54,7 +54,7 @@
                             </field>
                         </page>
                         <page string="Preuves de paiement">
-                            <field name="proof_attachment_ids" widget="many2many_binary" readonly="state == 'approved'"/>
+                            <field name="proof_attachment_ids" widget="many2many_binary" readonly="state != 'draft'" force_save="1"/>
                         </page>
                         <page string="Rejet">
                             <field name="rejection_reason"/>
