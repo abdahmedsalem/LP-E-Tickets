@@ -33,10 +33,8 @@ class TransferConfirmationArgs {
   final String? note;
 
   /// Callback appelé quand l'utilisateur confirme.
-  final Future<void> Function(
-    String actionCode,
-    SensitiveActionIntent intent,
-  ) onConfirm;
+  final Future<void> Function(String actionCode, SensitiveActionIntent intent)
+  onConfirm;
 }
 
 class TransferConfirmationLine {
@@ -54,7 +52,7 @@ class TransferConfirmationLine {
   int get totalAmount => totalFaces * faceLine.faceValue;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 class TransferConfirmationScreen extends StatefulWidget {
   const TransferConfirmationScreen({super.key, required this.args});
@@ -154,13 +152,12 @@ class _TransferConfirmationScreenState
         _TransferConfirmationDisclaimerText(recipientName: args.recipientName),
       ],
     );
-
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 // Sub-widgets
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -----------------------------------------------------------------------------
 
 class _TransferConfirmationHeroCard extends StatelessWidget {
   const _TransferConfirmationHeroCard({
@@ -369,7 +366,6 @@ class _TransferConfirmationDisclaimerText extends StatelessWidget {
   }
 }
 
-
 class _RecipientAvatar extends StatelessWidget {
   const _RecipientAvatar({required this.name});
   final String name;
@@ -408,8 +404,6 @@ class _RecipientAvatar extends StatelessWidget {
     );
   }
 }
-
-
 
 class _TransferLineRow extends StatelessWidget {
   const _TransferLineRow({required this.line});
@@ -475,7 +469,6 @@ class _TransferLineRow extends StatelessWidget {
     );
   }
 }
-
 
 class _AmountInline extends StatelessWidget {
   const _AmountInline({

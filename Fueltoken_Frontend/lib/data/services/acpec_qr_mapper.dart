@@ -101,7 +101,7 @@ class AcpecQrMapper {
     }
     if (s.contains('expir')) return QrState.expired;
     if (s.contains('bloqu') || s.contains('block')) return QrState.blocked;
-    // 'split'/'splitted' n'existe pas côté backend — un QR retirÃ© ou séparé
+    // 'split'/'splitted' n'existe pas côté backend — un QR retiré ou séparé
     // devient active (enfant) ou blocked/expired (parent).
 
     switch (s) {

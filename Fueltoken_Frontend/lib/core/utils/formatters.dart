@@ -45,7 +45,7 @@ class Formatters {
     final text = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (text.isNotEmpty) {
       final match = RegExp(
-        r'^carnet\s+([\d\s]+)\s*(?:x|×|Ã—|\*)\s*([\d\s]+)$',
+        r'^carnet\s+([\d\s]+)\s*(?:x|×|×|\*)\s*([\d\s]+)$',
         caseSensitive: false,
       ).firstMatch(text);
       if (match != null) {

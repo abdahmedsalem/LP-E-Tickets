@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -24,6 +24,8 @@ import '../../../data/models/user_role.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/sensitive_action_intent.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
@@ -48,7 +50,7 @@ bool _isReasonableBusinessDate(DateTime date) {
 
 String _safeDateTimeDash(DateTime? date) {
   if (date == null || !_isReasonableBusinessDate(date)) {
-    return 'Non renseignÃ©e';
+    return 'Non renseignée';
   }
   return Formatters.dateTimeDash(date);
 }
@@ -105,7 +107,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           _lot = null;
           _loading = false;
           _loadError =
-              'Cette commande ne peut pas Ãªtre ouverte. VÃ©rifiez le lien ou rÃ©essayez.';
+              'Cette commande ne peut pas être ouverte. Vérifiez le lien ou réessayez.';
         });
         return;
       }
@@ -148,7 +150,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 lot = lot.copyWith(proofs: mobileLot.proofs);
               }
             } catch (_) {
-              // Garde le dÃ©tail admin sans preuves si le fallback mobile Ã©choue.
+              // Garde le détail admin sans preuves si le fallback mobile échoue.
             }
           }
           if (lot.proofs.isEmpty) {
@@ -189,7 +191,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         setState(() {
           _loading = false;
           _loadError = e.isOdooSessionExpired
-              ? 'Session expirÃ©e. Reconnectez-vous.'
+              ? 'Session expirée. Reconnectez-vous.'
               : e.message;
           _lot = null;
         });
@@ -213,7 +215,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   bool get _hideTechnicalRefs => false;
 
-  /// TÃ©lÃ©charge les piÃ¨ces jointes Odoo (`/web/content/`) quand l'API ne renvoie que l'URL.
+  /// Télécharge les pièces jointes Odoo (`/web/content/`) quand l'API ne renvoie que l'URL.
   Future<PurchaseLot> _enrichProofsFromUrls(PurchaseLot lot) async {
     if (lot.proofs.isEmpty) return lot;
     final enriched = <PurchaseProofSummary>[];
@@ -240,7 +242,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     return lot.copyWith(proofs: enriched);
   }
 
-  /// Identifiant serveur pour les routes `purchase_id` (URL ou id issu du dÃ©tail chargÃ©).
+  /// Identifiant serveur pour les routes `purchase_id` (URL ou id issu du détail chargé).
   int? _purchaseIdForRpc() {
     final fromRoute = AcpecPurchasesMapper.resolvePurchaseId(widget.lotId);
     if (fromRoute != null) return fromRoute;
@@ -254,13 +256,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   String _briefPurchaseActionError(Object e) {
     if (e is OdooJsonRpcException) {
       if (e.isOdooSessionExpired || e.isAuthRequired) {
-        return 'Session expirÃ©e. Reconnectez-vous.';
+        return 'Session expirée. Reconnectez-vous.';
       }
       final m = e.message.trim();
       if (m.length > 160 ||
           m.contains('Traceback') ||
           m.contains('Exception(')) {
-        return 'LÂ’opÃ©ration nÂ’a pas abouti. RÃ©essayez ou reconnectez-vous.';
+        return 'L’opération n’a pas abouti. Réessayez ou reconnectez-vous.';
       }
       return m;
     }
@@ -284,14 +286,26 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         return;
       }
 
+      final actionCode = await showSensitiveActionCodeDialog(
+        context,
+        title: 'Confirmer la validation',
+        description: 'Saisissez votre code PIN pour valider cet achat.',
+      );
+      if (actionCode == null) return;
+      if (!mounted) return;
+
+      final intent = SensitiveActionIntent.create('purchase-approve');
+
       setState(() => _approving = true);
       try {
-        final raw = await OdooFueltokenFacade().adminPurchasesApprove({
-          'purchase_id': purchaseId,
-        });
+        final raw = await OdooFueltokenFacade().adminPurchasesApprove(
+          intent.withAuthParams({
+            'purchase_id': purchaseId,
+          }, actionCode: actionCode),
+        );
         AcpecPurchasesMapper.assertAdminActionOk(
           raw,
-          fallback: 'Validation refusÃ©e.',
+          fallback: 'Validation refusée.',
         );
         AcpecFueltokenRpcCoordinator.shared.invalidate(
           OdooFueltokenRpcConfig.adminPurchasesPending,
@@ -328,14 +342,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (widget.adminMode) {
           AppMessage.success(
             context,
-            'Achat validÃ©. Les tickets sont disponibles pour le client.',
+            'Achat validé. Les tickets sont disponibles pour le client.',
           );
           context.pop(true);
           return;
         }
         AppMessage.success(
           context,
-          'Lot validÃ©. Les tickets sont disponibles pour le client.',
+          'Lot validé. Les tickets sont disponibles pour le client.',
         );
       } on OdooJsonRpcException catch (e) {
         if (mounted) {
@@ -388,7 +402,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                     ),
                   ),
                   icon: const Icon(Icons.verified_rounded),
-                  label: const Text('Valider lÂ’achat'),
+                  label: const Text('Valider l’achat'),
                 ),
               ),
             )
@@ -397,10 +411,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ScreenHeader(
-              title: 'DÃ©tail achat',
-              onBack: _handleBack,
-            ),
+            ScreenHeader(title: 'Détail achat', onBack: _handleBack),
             Expanded(
               child: _loading
                   ? ListView(
@@ -443,7 +454,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           child: FilledButton.tonalIcon(
                             onPressed: _refresh,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('RÃ©essayer'),
+                            label: const Text('Réessayer'),
                           ),
                         ),
                       ],
@@ -643,7 +654,7 @@ class _MetaCard extends StatelessWidget {
               lot.paymentReference!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.tag_outlined,
-              label: 'RÃ©fÃ©rence de paiement',
+              label: 'Référence de paiement',
               value: lot.paymentReference!.trim(),
             ),
           _InfoRow(
@@ -659,13 +670,13 @@ class _MetaCard extends StatelessWidget {
           if (lot.validationDate != null)
             _InfoRow(
               icon: Icons.verified_outlined,
-              label: 'ValidÃ© le',
+              label: 'Validé le',
               value: Formatters.dateTimeDash(lot.validationDate!),
             ),
           if (lot.validatorName != null && lot.validatorName!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.badge_outlined,
-              label: 'ValidÃ© par',
+              label: 'Validé par',
               value: lot.validatorName!.trim(),
             ),
         ],
@@ -941,7 +952,7 @@ class _ProofsSection extends StatelessWidget {
       return const AppCard(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Aucune preuve de paiement jointe Ã  cet achat.',
+          'Aucune preuve de paiement jointe à cet achat.',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -1009,7 +1020,7 @@ class _ProofTile extends StatelessWidget {
     if (kIsWeb) {
       AppMessage.info(
         context,
-        'TÃ©lÃ©chargement de preuve disponible dans lâ€™application mobile.',
+        'Téléchargement de preuve disponible dans l’application mobile.',
       );
       return;
     }
@@ -1017,7 +1028,7 @@ class _ProofTile extends StatelessWidget {
       final bytes = await _resolveBytes();
       if (bytes == null || bytes.isEmpty) {
         if (context.mounted) {
-          AppMessage.error(context, 'TÃ©lÃ©chargement indisponible.');
+          AppMessage.error(context, 'Téléchargement indisponible.');
         }
         return;
       }
@@ -1028,11 +1039,11 @@ class _ProofTile extends StatelessWidget {
       await file.writeAsBytes(bytes, flush: true);
 
       if (context.mounted) {
-        AppMessage.success(context, 'Preuve tÃ©lÃ©chargÃ©e: ${file.path}');
+        AppMessage.success(context, 'Preuve téléchargée: ${file.path}');
       }
     } catch (_) {
       if (context.mounted) {
-        AppMessage.error(context, 'Impossible de tÃ©lÃ©charger la preuve.');
+        AppMessage.error(context, 'Impossible de télécharger la preuve.');
       }
     }
   }
@@ -1051,7 +1062,7 @@ class _ProofTile extends StatelessWidget {
               title: const Text('Preuve de paiement'),
               actions: [
                 IconButton(
-                  tooltip: 'TÃ©lÃ©charger',
+                  tooltip: 'Télécharger',
                   onPressed: () async {
                     await _downloadProof(ctx);
                   },
@@ -1102,7 +1113,7 @@ class _ProofTile extends StatelessWidget {
                               await _downloadProof(ctx);
                             },
                             icon: const Icon(Icons.download_rounded),
-                            label: const Text('TÃ©lÃ©charger'),
+                            label: const Text('Télécharger'),
                             style: FilledButton.styleFrom(
                               backgroundColor: scheme.primary,
                               foregroundColor: scheme.onPrimary,
@@ -1201,7 +1212,7 @@ class _ProofTile extends StatelessWidget {
                                 ),
                                 SizedBox(width: 5),
                                 Text(
-                                  'TÃ©lÃ©charger',
+                                  'Télécharger',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -1386,13 +1397,13 @@ class _AdminValidationStepsCard extends StatelessWidget {
           SizedBox(height: 12),
           _ValidationStep(
             index: 1,
-            title: 'ContrÃ´ler les preuves',
+            title: 'Contrôler les preuves',
             subtitle: 'Montant et documents de paiement.',
           ),
           _ValidationStep(
             index: 2,
             title: 'Valider ou rejeter',
-            subtitle: 'Le client verra le rÃ©sultat sur sa commande.',
+            subtitle: 'Le client verra le résultat sur sa commande.',
             isLast: true,
           ),
         ],

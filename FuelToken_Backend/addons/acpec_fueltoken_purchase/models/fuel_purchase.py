@@ -187,11 +187,26 @@ class AcpecFuelPurchase(models.Model):
         filename = '%s%s' % (filename_stem, extension)
         return filename, base64.b64encode(content).decode('ascii'), detected_mimetype
 
+    def _has_payment_proof_sudo(self):
+        """Return True if a purchase has at least one payment proof.
+
+        Mobile manager approval runs with the manager user, but mobile/portal
+        users may not have read ACL on ir.attachment.  Keep approval itself
+        under the manager user and only read proof existence with sudo.
+        """
+        self.ensure_one()
+        if self.sudo().proof_attachment_ids:
+            return True
+        return bool(self.env['ir.attachment'].sudo().search_count([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+        ]))
+
     def _check_before_submit(self):
         for rec in self:
             if not rec.line_ids:
                 raise ValidationError(_('Le lot achat doit contenir au moins une ligne.'))
-            if not rec.proof_attachment_ids:
+            if not rec._has_payment_proof_sudo():
                 raise ValidationError(_('La preuve de paiement est obligatoire.'))
             for line in rec.line_ids:
                 line._check_line_values()

@@ -36,13 +36,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
   _HistoryQuickFilter _quickFilter = _HistoryQuickFilter.all;
 
-  /// Types retirÃ©s de l'UI (ex. portefeuille) se comportent comme tous les filtres.
+  /// Types retirés de l'UI (ex. portefeuille) se comportent comme tous les filtres.
   TxType? get _effectiveFilter =>
       _filter == TxType.walletLedger ? null : _filter;
 
   static const int _pageSize = 20;
 
-  /// Limite de sÃ©curitÃ© pour charger tout l'historique sur une pÃ©riode (filtre type).
+  /// Limite de sécurité pour charger tout l'historique sur une période (filtre type).
   static const int _maxPagesFullRange = 80;
 
   final ScrollController _scroll = ScrollController();
@@ -280,7 +280,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecLoading = false;
         _acpecLoadingMore = false;
         _acpecError = e.isOdooSessionExpired
-            ? 'Session expirÃ©e. Reconnectez-vous.'
+            ? 'Session expirée. Reconnectez-vous.'
             : e.message;
         if (reset) _acpecItems = [];
       });
@@ -295,7 +295,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  /// Charge toutes les pages de la pÃ©riode (nÃ©cessaire pour un filtre type correct cÃ´tÃ© client).
+  /// Charge toutes les pages de la période (nécessaire pour un filtre type correct côté client).
   Future<void> _loadAcpecFullRange() async {
     if (!AppEnvironment.useAcpecLiveData) return;
     final user = context.read<AuthBloc>().state.user;
@@ -360,7 +360,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       setState(() {
         _acpecLoading = false;
         _acpecError = e.isOdooSessionExpired
-            ? 'Session expirÃ©e. Reconnectez-vous.'
+            ? 'Session expirée. Reconnectez-vous.'
             : e.message;
         _acpecItems = [];
       });
@@ -668,7 +668,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                                 ),
                                               )
                                             : Text(
-                                                "Fin de l'historique pour cette pÃ©riode",
+                                                "Fin de l'historique pour cette période",
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: AppColors.muted

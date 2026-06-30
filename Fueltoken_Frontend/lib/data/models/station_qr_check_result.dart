@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-/// RÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sultat de la vÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rification dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢un QR cÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â´tÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© station.
+/// Résultat de la vérification d’un QR côté station.
 class StationQrCheckResult extends Equatable {
   const StationQrCheckResult({
     required this.canConsume,
@@ -22,24 +22,18 @@ class StationQrCheckResult extends Equatable {
 
   factory StationQrCheckResult.fromRpc(dynamic raw) {
     if (raw is! Map) {
-      throw Exception(
-        'RÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ponse station/qr/check invalide.',
-      );
+      throw Exception('Réponse station/qr/check invalide.');
     }
     var m = Map<String, dynamic>.from(raw);
     if (m['ok'] == false) {
-      throw Exception(
-        m['message']?.toString() ??
-            'VÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rification QR refusÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©e.',
-      );
+      throw Exception(m['message']?.toString() ?? 'Vérification QR refusée.');
     }
     final d = m['data'];
     if (d is Map) {
       final dm = Map<String, dynamic>.from(d);
       if (dm['ok'] == false) {
         throw Exception(
-          dm['message']?.toString() ??
-              'VÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rification QR refusÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©e.',
+          dm['message']?.toString() ?? 'Vérification QR refusée.',
         );
       }
       m = dm;
@@ -151,9 +145,7 @@ class StationQrCheckResult extends Equatable {
       if (deny != null &&
           (deny.toLowerCase().contains('consom') ||
               deny.toLowerCase().contains('consum') ||
-              deny.toLowerCase().contains(
-                'dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©jÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ',
-              ) ||
+              deny.toLowerCase().contains('déjà ') ||
               deny.toLowerCase().contains('deja'))) {
         can = false;
         reason ??= deny;

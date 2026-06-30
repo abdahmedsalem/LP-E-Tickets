@@ -138,12 +138,23 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
                 'generated_face_qty': line.generated_face_qty,
                 'amount_total': line.amount_total,
             } for line in purchase.line_ids]
+            proof_attachments = purchase.sudo().proof_attachment_ids
+            if not proof_attachments:
+                proof_attachments = request.env['ir.attachment'].sudo().search([
+                    ('res_model', '=', purchase._name),
+                    ('res_id', '=', purchase.id),
+                ])
             data['proof_attachments'] = [{
                 'id': attachment.id,
                 'name': attachment.name,
+                'filename': attachment.name,
                 'mimetype': attachment.mimetype or False,
                 'file_size': attachment.file_size or 0,
-            } for attachment in purchase.proof_attachment_ids]
+                'size': attachment.file_size or 0,
+                'url': '/web/content/%s' % attachment.id,
+                'download_url': '/web/content/%s?download=true' % attachment.id,
+            } for attachment in proof_attachments]
+            data['proofs'] = data['proof_attachments']
         return data
 
     def _station_agent_payload(self, agent):
