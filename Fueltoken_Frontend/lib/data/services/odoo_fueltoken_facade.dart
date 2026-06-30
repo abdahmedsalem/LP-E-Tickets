@@ -165,6 +165,15 @@ class OdooFueltokenFacade {
     params,
   );
 
+  Future<dynamic> qrRevealCode(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.qrRevealCode,
+      'ODOO_RPC_FUEL_QR_REVEAL_CODE_PATH',
+      params,
+    );
+  }
+
   Future<dynamic> qrRetirer(Map<String, dynamic> params) {
     _ensureRemoteHostForQrActions();
     return _call(

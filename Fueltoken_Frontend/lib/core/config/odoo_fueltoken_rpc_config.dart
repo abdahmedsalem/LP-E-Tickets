@@ -111,6 +111,11 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/fueltoken/v1/mobile/qr/detail',
   );
 
+  static const String qrRevealCode = String.fromEnvironment(
+    'ODOO_RPC_FUEL_QR_REVEAL_CODE_PATH',
+    defaultValue: '/api/acpec/fueltoken/v1/mobile/qr/reveal-code',
+  );
+
   static const String qrRetirer = String.fromEnvironment(
     'ODOO_RPC_FUEL_QR_RETIRER_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/mobile/qr/retirer',
