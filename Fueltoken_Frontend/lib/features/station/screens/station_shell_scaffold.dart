@@ -68,14 +68,7 @@ class StationShellScaffold extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 112),
-                          Expanded(
-                            child: _StationBarTab(
-                              label: 'Profil',
-                              icon: Icons.person_outline_rounded,
-                              selected: selected == 2,
-                              onTap: () => _goTo(context, '/station/profile'),
-                            ),
-                          ),
+                          const Expanded(child: SizedBox.shrink()),
                         ],
                       ),
                     ),
