@@ -308,25 +308,12 @@ class _QrCompactListTile extends StatelessWidget {
   bool get _hasPublicCode => qr.publicCode.trim().isNotEmpty;
 
   String get _codeLabel {
-    final numeric = _formatQrNumericCode(qr.qrNumericCode);
-    if (numeric != null) {
-      return numeric;
-    }
-
     final fallback = qr.internalRef?.trim();
     if (fallback != null && fallback.isNotEmpty) {
       return fallback;
     }
 
-    return 'Code numérique indisponible';
-  }
-
-  static String? _formatQrNumericCode(String? raw) {
-    final digits = (raw ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length != 12) {
-      return null;
-    }
-    return '${digits.substring(0, 4)}-${digits.substring(4, 8)}-${digits.substring(8, 12)}';
+    return 'Référence QR indisponible';
   }
 
   DateTime? get _effectiveExpiration {

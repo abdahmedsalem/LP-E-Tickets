@@ -10,22 +10,29 @@ void main() {
       expect(
         discovered,
         equals(_allowedFlutterAcpecEndpoints),
-        reason: 'Every Flutter /api/acpec endpoint must be explicitly '
+        reason:
+            'Every Flutter /api/acpec endpoint must be explicitly '
             'reviewed and listed in this test.',
       );
     });
 
-    test('known BO/provisioning-only endpoints stay absent from Flutter lib', () {
-      final discovered = _discoverAcpecEndpointsInLib();
-      final forbidden = discovered.intersection(_forbiddenFlutterRuntimeEndpoints);
+    test(
+      'known BO/provisioning-only endpoints stay absent from Flutter lib',
+      () {
+        final discovered = _discoverAcpecEndpointsInLib();
+        final forbidden = discovered.intersection(
+          _forbiddenFlutterRuntimeEndpoints,
+        );
 
-      expect(
-        forbidden,
-        isEmpty,
-        reason: 'BO-only or provisioning-only endpoints must not be exposed '
-            'by the Flutter runtime.',
-      );
-    });
+        expect(
+          forbidden,
+          isEmpty,
+          reason:
+              'BO-only or provisioning-only endpoints must not be exposed '
+              'by the Flutter runtime.',
+        );
+      },
+    );
   });
 }
 
@@ -60,6 +67,7 @@ const _allowedFlutterAcpecEndpoints = <String>{
   '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
 
   // Station mobile.
+  '/api/acpec/fueltoken/v1/mobile/qr/reveal-code',
   '/api/acpec/fueltoken/v1/station/qr/use',
   '/api/acpec/fueltoken/v1/station/transactions',
   '/api/acpec/fueltoken/v1/station/profile',
@@ -96,12 +104,13 @@ Set<String> _discoverAcpecEndpointsInLib() {
 
   final endpointPattern = RegExp(r'/api/acpec/[A-Za-z0-9_./:-]+');
   final endpoints = <String>{};
-  final files = root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.dart'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final files =
+      root
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   for (final file in files) {
     final content = file.readAsStringSync();

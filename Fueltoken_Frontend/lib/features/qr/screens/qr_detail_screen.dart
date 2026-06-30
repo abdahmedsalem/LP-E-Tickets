@@ -45,6 +45,8 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
   QrToken? _qr;
   bool _loading = false;
   bool _separating = false;
+  bool _revealingManualCode = false;
+  String? _revealedQrManualCode;
   String? _error;
   late final VoidCallback _qrBusListener;
 
@@ -96,8 +98,12 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         companyId: AppEnvironment.companyIdForUser(user),
       );
       if (!mounted) return;
+      final previousPublicCode = _qr?.publicCode;
       setState(() {
         _qr = q;
+        if (previousPublicCode != q.publicCode || q.state != QrState.active) {
+          _revealedQrManualCode = null;
+        }
         _loading = false;
         _error = null;
       });
@@ -117,6 +123,72 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         _loading = false;
         _error = e.toString().replaceFirst('Exception: ', '');
       });
+    }
+  }
+
+  Future<void> _revealQrManualCode(QrToken qr) async {
+    if (_revealingManualCode) return;
+    if (!AppEnvironment.useAcpecLiveData) {
+      AppMessage.error(
+        context,
+        'Connexion serveur ACPEC requise pour révéler le code manuel.',
+      );
+      return;
+    }
+    if (qr.state != QrState.active) {
+      AppMessage.error(
+        context,
+        'Le code manuel ne peut être révélé que pour un QR actif.',
+      );
+      return;
+    }
+
+    final actionCode = await showSensitiveActionCodeDialog(
+      context,
+      title: 'Révéler le code manuel',
+      description:
+          'Saisissez votre PIN pour afficher temporairement le code manuel de consommation.',
+    );
+    if (actionCode == null || actionCode.isEmpty || !mounted) return;
+
+    final intent = SensitiveActionIntent.create('qr-reveal-code');
+    setState(() => _revealingManualCode = true);
+    try {
+      final raw = await OdooFueltokenFacade().qrRevealCode(
+        intent.withAuthParams({
+          'public_code': qr.publicCode,
+        }, actionCode: actionCode),
+      );
+      final payload = acpecRpcMapOrThrow(
+        raw,
+        fallbackMessage: 'Révélation du code manuel refusée par le serveur.',
+        publicErrorMessage:
+            'Le code manuel n’a pas pu être révélé. Réessayez ou contactez l’administrateur.',
+      );
+      final code =
+          (payload['qr_numeric_code'] ?? payload['qrNumericCode'])
+              ?.toString()
+              .trim() ??
+          '';
+      if (code.isEmpty) {
+        throw Exception('Code manuel non retourné par le serveur.');
+      }
+      if (!mounted) return;
+      setState(() => _revealedQrManualCode = code);
+      AppMessage.success(context, 'Code manuel révélé temporairement.');
+    } on OdooJsonRpcException catch (e) {
+      if (!mounted) return;
+      AppMessage.error(
+        context,
+        e.isOdooSessionExpired
+            ? 'Session expirée. Reconnectez-vous.'
+            : e.message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _revealingManualCode = false);
     }
   }
 
@@ -414,7 +486,13 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                       const SizedBox(height: 12),
                     ],
                     // Hero QR card
-                    _HeroQrCard(qr: qr, pill: pill),
+                    _HeroQrCard(
+                      qr: qr,
+                      pill: pill,
+                      manualCode: _revealedQrManualCode,
+                      revealingManualCode: _revealingManualCode,
+                      onRevealManualCode: () => _revealQrManualCode(qr),
+                    ),
                     const SizedBox(height: 22),
                     const SectionLabel('Contenu'),
                     const SizedBox(height: 8),
@@ -434,15 +512,25 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
 // Hero QR card
 
 class _HeroQrCard extends StatelessWidget {
-  const _HeroQrCard({required this.qr, required this.pill});
+  const _HeroQrCard({
+    required this.qr,
+    required this.pill,
+    required this.manualCode,
+    required this.revealingManualCode,
+    required this.onRevealManualCode,
+  });
+
   final QrToken qr;
   final ({String label, Color color}) pill;
+  final String? manualCode;
+  final bool revealingManualCode;
+  final VoidCallback? onRevealManualCode;
 
   @override
   Widget build(BuildContext context) {
     final isActive = qr.state == QrState.active;
     final showBadge = qr.state != QrState.active;
-    final qrNumericCode = qr.qrNumericCode?.trim() ?? '';
+    final qrManualCode = manualCode?.trim() ?? '';
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
       child: Column(
@@ -516,10 +604,13 @@ class _HeroQrCard extends StatelessWidget {
               ),
             ),
           ),
-          if (qrNumericCode.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _QrNumericCodePanel(code: qrNumericCode, isActive: isActive),
-          ],
+          const SizedBox(height: 14),
+          _QrNumericCodePanel(
+            code: qrManualCode,
+            isActive: isActive,
+            revealing: revealingManualCode,
+            onReveal: isActive ? onRevealManualCode : null,
+          ),
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
@@ -574,17 +665,28 @@ class _HeroQrCard extends StatelessWidget {
 }
 
 class _QrNumericCodePanel extends StatelessWidget {
-  const _QrNumericCodePanel({required this.code, required this.isActive});
+  const _QrNumericCodePanel({
+    required this.code,
+    required this.isActive,
+    required this.revealing,
+    required this.onReveal,
+  });
 
   final String code;
   final bool isActive;
+  final bool revealing;
+  final VoidCallback? onReveal;
 
   @override
   Widget build(BuildContext context) {
-    final codeColor = isActive ? AppColors.ink : AppColors.muted;
-    final helper = isActive
-        ? 'Scannez le QR ou saisissez ce code lors de la consommation.'
-        : 'Ce code suit le même état que le QR graphique.';
+    final revealed = code.trim().isNotEmpty;
+    final codeColor = isActive && revealed ? AppColors.ink : AppColors.muted;
+    final displayCode = revealed ? code.trim() : '••••-••••-••••';
+    final helper = !isActive
+        ? 'Le code manuel ne peut être révélé que pour un QR actif.'
+        : revealed
+        ? 'Présentez ce code uniquement à la station au moment de la consommation.'
+        : 'Code manuel masqué. Touchez l’œil et saisissez votre PIN pour l’afficher temporairement.';
 
     return Container(
       width: double.infinity,
@@ -597,19 +699,44 @@ class _QrNumericCodePanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            'Code QR numérique',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.muted,
-              letterSpacing: -0.1,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Code manuel',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              const SizedBox(width: 6),
+              if (!revealed)
+                SizedBox(
+                  width: 34,
+                  height: 34,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Révéler le code manuel',
+                    iconSize: 19,
+                    color: AppColors.muted,
+                    onPressed: revealing ? null : onReveal,
+                    icon: revealing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.visibility_outlined),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
-            code,
+            displayCode,
             textAlign: TextAlign.center,
             style: GoogleFonts.jetBrainsMono(
               fontSize: 20,

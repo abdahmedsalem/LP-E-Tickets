@@ -575,11 +575,15 @@ class PurchaseValidationNotificationService {
     final amountLabel = Formatters.money(qr.totalAmount);
     final dateLabel = Formatters.dateTime(expirationLocal);
     final notificationDateLabel = Formatters.dateTime(DateTime.now());
-    final qrCode = qr.publicCode.trim();
+    final qrRef = qr.internalRef?.trim();
+    final qrRefLabel = qrRef != null && qrRef.isNotEmpty
+        ? ' • Référence QR $qrRef'
+        : '';
+    final qrPublicCode = qr.publicCode.trim();
     final title = threshold == _QrExpirationThreshold.hours24
         ? 'QR expire dans 24h'
         : 'QR expire dans 7 jours';
-    final body = '$amountLabel • Code $qrCode • Expire le $dateLabel';
+    final body = '$amountLabel$qrRefLabel • Expire le $dateLabel';
 
     return NotificationItem(
       id: _qrExpirationKey(qr, threshold),
@@ -590,7 +594,7 @@ class PurchaseValidationNotificationService {
       category: 'qr_expiration',
       amountLabel: amountLabel,
       validationDateLabel: dateLabel,
-      qrPublicCode: qrCode.isEmpty ? null : qrCode,
+      qrPublicCode: qrPublicCode.isEmpty ? null : qrPublicCode,
       qrExpirationLines: [
         NotificationQrExpirationLineItem(
           faceValue: qr.totalAmount,
@@ -736,31 +740,10 @@ class PurchaseValidationNotificationService {
       return null;
     }
 
-    try {
-      final raw = await OdooFueltokenFacade().qrDetail(
-        AcpecQrMapper.detailParamsForRouteId(qrRef),
-      );
-      final qr = AcpecQrMapper.fromRpcEnvelope(
-        raw,
-        ownerId: user.id,
-        ownerName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
-      );
-      return _formatQrNumericCode(qr.qrNumericCode);
-    } catch (e, st) {
-      debugPrint(
-        '[purchase-validation] résolution du code QR consommé ignorée: $e\n$st',
-      );
-      return null;
-    }
-  }
-
-  String? _formatQrNumericCode(String? raw) {
-    final digits = (raw ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length != 12) {
-      return null;
-    }
-    return '${digits.substring(0, 4)}-${digits.substring(4, 8)}-${digits.substring(8, 12)}';
+    debugPrint(
+      '[purchase-validation] résolution automatique du code manuel QR désactivée: reveal explicite requis.',
+    );
+    return null;
   }
 
   String _stationConsumptionKey(BusinessTransaction tx) {
