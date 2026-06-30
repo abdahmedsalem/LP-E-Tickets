@@ -269,8 +269,8 @@ class TestRoleBasedSmokeH3(TransactionCase):
         self.assertTrue(qr)
         self.assertEqual(qr.state, "active")
         self.assertNotIn("qr_numeric_code", data)
-        self.assertTrue(data.get("public_code"))
         self.assertTrue(data.get("name"))
+        self.assertTrue(data.get("public_code"))
         return qr
 
     def _create_station_record(self, station_user, suffix):

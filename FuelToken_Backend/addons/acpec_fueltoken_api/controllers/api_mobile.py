@@ -784,32 +784,30 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
     @http.route('/api/acpec/fueltoken/v1/mobile/qr/reveal-code', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def qr_reveal_code(self, **kwargs):
-        try:
+        with self._sensitive_action_transaction(kwargs, purpose='qr_reveal_code') as authorized_user:
             self._require_keys(kwargs, ['public_code'])
-            with self._sensitive_action_transaction(kwargs, purpose='qr_reveal_code') as _authorized_user:
-                wallet = self._mobile_wallet()
-                qr = request.env['acpec.fuel.qr'].sudo().search([
-                    ('public_code', '=', kwargs.get('public_code')),
-                    ('wallet_id', '=', wallet.id),
-                ], limit=1)
-                if not qr:
-                    raise ValidationError(_('QR introuvable.'))
-                if qr.state != 'active':
-                    raise ValidationError(_('Le code manuel ne peut être révélé que pour un QR actif.'))
+            public_code = str(kwargs.get('public_code') or '').strip()
+            domain = [('public_code', '=', public_code)]
 
-                qr._ensure_qr_numeric_code_hash()
-                qr.invalidate_recordset(['qr_numeric_code_nonce', 'qr_numeric_code_hash'])
+            is_manager = authorized_user.has_group('acpec_fueltoken_base.group_fuel_manager')
+            is_admin = authorized_user.has_group('acpec_fueltoken_base.group_fuel_admin')
+            if is_manager or is_admin:
+                domain += self._company_domain_for_user(authorized_user, field_name='company_id')
+            else:
+                domain.append(('partner_id', '=', authorized_user.partner_id.id))
 
-                return self._json_response({
-                    'id': qr.id,
-                    'name': qr.name,
-                    'public_code': qr.public_code,
-                    'qr_numeric_code': qr._qr_numeric_code_display(),
-                    'state': qr.state,
-                    'expires_at': fields.Datetime.to_string(qr.expires_at) if qr.expires_at else False,
-                })
-        except Exception as exc:
-            return self._handle_exception_response(exc)
+            qr = request.env['acpec.fuel.qr'].sudo().search(domain, limit=1)
+            if not qr:
+                raise ValidationError(_('QR introuvable.'))
+
+            self._check_record_company_allowed(authorized_user, qr, field_name='company_id')
+            qr._ensure_qr_numeric_code_hash()
+            return {
+                'success': True,
+                'name': qr.name,
+                'public_code': qr.public_code,
+                'qr_numeric_code': qr._qr_numeric_code_display(),
+            }
 
     @http.route('/api/acpec/fueltoken/v1/mobile/qr/retirer', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def retirer_qr(self, **kwargs):

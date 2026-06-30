@@ -67,16 +67,21 @@ class AcpecFuelQr(models.Model):
     QR_NUMERIC_CODE_DIGITS = 12
     QR_NUMERIC_CODE_GROUP_SIZE = 4
 
-    @api.model
     def _is_qr_manual_code_label(self, value):
-        return bool(re.match(r'^\d{4}-\d{4}-\d{4}$', str(value or '').strip()))
+        value = str(value or '').strip()
+        parts = value.split('-')
+        return (
+            len(parts) == 3
+            and all(len(part) == 4 and part.isdigit() for part in parts)
+        )
 
     @api.constrains('name')
     def _check_name_is_not_qr_manual_code(self):
         for rec in self:
             if rec._is_qr_manual_code_label(rec.name):
-                raise ValidationError(_('La référence QR ne peut pas être le code manuel de consommation.'))
-
+                raise ValidationError(
+                    _('La référence QR ne peut pas être le code manuel.')
+                )
 
     def _qr_numeric_code_secret(self):
         secret = (
@@ -188,6 +193,7 @@ class AcpecFuelQr(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        Sequence = self.env['ir.sequence'].sudo()
         for vals in vals_list:
             if not vals.get('public_code'):
                 vals['public_code'] = self._create_unique_public_code(prefix='QR', size=24)
@@ -196,9 +202,7 @@ class AcpecFuelQr(models.Model):
                 vals['qr_numeric_code_nonce'] = nonce
                 vals['qr_numeric_code_hash'] = code_hash
             if vals.get('name', 'New') == 'New' or self._is_qr_manual_code_label(vals.get('name')):
-                vals['name'] = (
-                    self.env['ir.sequence'].next_by_code('acpec.fuel.qr') or 'New'
-                )
+                vals['name'] = Sequence.next_by_code('acpec.fuel.qr') or 'New'
         return super().create(vals_list)
 
     @api.depends('line_ids.qty', 'line_ids.face_value', 'line_ids.expires_at')
