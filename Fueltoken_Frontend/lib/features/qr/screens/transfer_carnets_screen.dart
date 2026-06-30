@@ -19,18 +19,13 @@ import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../transfer_carnets_logic.dart';
 import 'transfer_confirmation_screen.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../shared/widgets/app_message.dart';
-
-const _transferHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _transferHeaderGap = 18.0;
-const _transferHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 bool _isReasonableExpirationDate(DateTime date) {
   return date.year > 1971 && date.year < 2100;
@@ -83,24 +78,9 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
-      child: AppBarHeader(
-        title: 'Transférer',
-        showBack: true,
-        largeTitle: true,
-        largeTitlePadding: _transferHeaderPadding,
-        largeTitleGap: _transferHeaderGap,
-        largeTitleFontSize: _transferHeaderTitleSize,
-        largeTitleTextStyle: GoogleFonts.poppins(
-          fontSize: 32,
-          fontWeight: FontWeight.w700,
-          color: _headerNavy,
-          letterSpacing: -0.4,
-          height: 1.05,
-        ),
-      ),
+    return ScreenHeader(
+      title: 'Transférer',
+      onBack: () => context.pop(),
     );
   }
 
@@ -851,7 +831,7 @@ class _TransferLineCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Text(
                 _expirationLabel(line.expirationDate),
                 maxLines: 1,

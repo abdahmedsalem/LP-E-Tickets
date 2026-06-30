@@ -24,7 +24,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
-import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
@@ -32,10 +32,6 @@ import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
-const _emitQrHeaderPadding = EdgeInsets.fromLTRB(12, 8, 12, 0);
-const _emitQrHeaderGap = 18.0;
-const _emitQrHeaderTitleSize = 32.0;
-const _headerNavy = Color(0xFF0F2747);
 
 class EmitQrScreen extends StatefulWidget {
   const EmitQrScreen({super.key});
@@ -175,22 +171,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppBarHeader(
-                title: 'Générer QR Code',
-                showBack: true,
-                largeTitle: true,
-                largeTitlePadding: _emitQrHeaderPadding,
-                largeTitleGap: _emitQrHeaderGap,
-                largeTitleFontSize: _emitQrHeaderTitleSize,
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
-                onBack: () => popOrGo(context, '/qr'),
-              ),
+              ScreenHeader(
+              title: 'Générer QR Code',
+              onBack: () => popOrGo(context, '/qr'),
+            ),
               const SizedBox(height: 18),
               Expanded(
                 child: ListView(
@@ -227,22 +211,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppBarHeader(
-                title: 'Générer QR Code',
-                showBack: true,
-                largeTitle: true,
-                largeTitlePadding: _emitQrHeaderPadding,
-                largeTitleGap: _emitQrHeaderGap,
-                largeTitleFontSize: _emitQrHeaderTitleSize,
-                onBack: () => popOrGo(context, '/qr'),
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
-              ),
+              ScreenHeader(
+              title: 'Générer QR Code',
+              onBack: () => popOrGo(context, '/qr'),
+            ),
               const SizedBox(height: 18),
               Expanded(
                 child: ListView(
@@ -276,21 +248,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppBarHeader(
-                title: 'Générer QR Code',
-                showBack: true,
-                largeTitle: true,
-                largeTitlePadding: _emitQrHeaderPadding,
-                largeTitleGap: _emitQrHeaderGap,
-                largeTitleFontSize: _emitQrHeaderTitleSize,
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
-              ),
+              ScreenHeader(
+              title: 'Générer QR Code',
+              onBack: () => popOrGo(context, '/qr'),
+            ),
               const SizedBox(height: 18),
               Expanded(
                 child: ListView(
@@ -327,21 +288,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppBarHeader(
-                title: 'Générer QR Code',
-                showBack: true,
-                largeTitle: true,
-                largeTitlePadding: _emitQrHeaderPadding,
-                largeTitleGap: _emitQrHeaderGap,
-                largeTitleFontSize: _emitQrHeaderTitleSize,
-                largeTitleTextStyle: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _headerNavy,
-                  letterSpacing: -0.4,
-                  height: 1.05,
-                ),
-              ),
+              ScreenHeader(
+              title: 'Générer QR Code',
+              onBack: () => popOrGo(context, '/qr'),
+            ),
               const SizedBox(height: 18),
               Expanded(
                 child: Center(
@@ -393,20 +343,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppBarHeader(
+            ScreenHeader(
               title: 'Générer QR Code',
-              showBack: true,
-              largeTitle: true,
-              largeTitlePadding: _emitQrHeaderPadding,
-              largeTitleGap: _emitQrHeaderGap,
-              largeTitleFontSize: _emitQrHeaderTitleSize,
-              largeTitleTextStyle: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _headerNavy,
-                letterSpacing: -0.4,
-                height: 1.05,
-              ),
+              onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
             Expanded(
@@ -771,57 +710,87 @@ class _CompositionRow extends StatelessWidget {
     final isSelected = selected > 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: AppCard(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-        borderColor: isSelected
-            ? AppColors.leaderGreen.withValues(alpha: 0.38)
-            : AppColors.line,
-        shadow: true,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: AppColors.ink,
-                height: 1.15,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              _subtitle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(height: 1, color: const Color(0xFFEAECEF)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Text(
-                  'Quantité',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.muted,
-                    height: 1.2,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 110),
+        child: AppCard(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          borderColor: isSelected
+              ? AppColors.leaderGreen
+              : AppColors.line,
+          borderWidth: isSelected ? 1.5 : 1,
+          shadow: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 112),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _subtitle(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF667085),
+                            height: 1.08,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const Spacer(),
-                _Stepper(value: selected, max: available, onChange: onChange),
-              ],
-            ),
-          ],
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Text(
+                      '${Formatters.numberFr(faceValue)} ${Formatters.defaultCurrency}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        height: 1.08,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              Container(height: 1, color: const Color(0xFFEAECEF)),
+              const SizedBox(height: 1),
+              Row(
+                children: [
+                  Text(
+                    'Quantité',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const Spacer(),
+                  _Stepper(value: selected, max: available, onChange: onChange),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -855,7 +824,7 @@ class _Stepper extends StatelessWidget {
           child: Text(
             '$value',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -1140,9 +1109,9 @@ class _EmitConfirmationLineRow extends StatelessWidget {
                   color: AppColors.ink,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 16),
               Text(
-                'Expire le ${Formatters.dateTime(expirationDate)}',
+                'Expire le ${Formatters.dateTimeDash(expirationDate)}',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1249,3 +1218,4 @@ class _AmountInline extends StatelessWidget {
     );
   }
 }
+

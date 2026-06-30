@@ -881,9 +881,9 @@ class _CarnetCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(17),
             border: Border.all(
               color: isSelected
-                  ? AppColors.leaderGreen.withValues(alpha: 0.85)
+                  ? AppColors.leaderGreen
                   : const Color(0xFFEAECEF),
-              width: 1,
+              width: isSelected ? 1.5 : 1,
             ),
             boxShadow: isSelected
                 ? const []
