@@ -163,6 +163,11 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         with patch.object(api_mobile_module, "request", fake_request):
             return controller.issue_qr(**payload)
 
+    def _call_reveal_code(self, controller, payload):
+        fake_request = SimpleNamespace(env=self.env)
+        with patch.object(api_mobile_module, "request", fake_request):
+            return controller.qr_reveal_code(**payload)
+
     def _assert_error_contains(self, response, expected):
         self.assertIn("success", repr(response))
         self.assertIn("False", repr(response))
@@ -264,11 +269,62 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         self.assertTrue(qrs.request_hash)
         self.assertTrue(qrs.qr_numeric_code_hash)
         self.assertRegex(qrs._qr_numeric_code_display(), r'^\d{4}-\d{4}-\d{4}$')
-        self.assertIn(qrs._qr_numeric_code_display(), repr(first_response))
+        self.assertNotRegex(qrs.name or '', r'^\d{4}-\d{4}-\d{4}$')
+        self.assertIn(qrs.name, repr(first_response))
+        self.assertNotIn(qrs._qr_numeric_code_display(), repr(first_response))
         self.assertNotIn(qrs.qr_numeric_code_hash, repr(first_response))
+        self.assertNotIn('qr_numeric_code', repr(first_response))
 
         face_line.invalidate_recordset(["qty_available"])
         self.assertEqual(face_line.qty_available, face_line.qty_initial - 2)
+
+    def test_qr_reveal_code_returns_manual_code_with_action_pin(self):
+        controller, _user, _session, carnet_type, _purchase, _face_line, wallet = self._controller_with_stock(
+            "qr-reveal-code-43h11@example.com",
+            carnet_qty=1,
+        )
+        issue_response = self._call_issue_qr(
+            controller,
+            self._payload(carnet_type, key="qr-reveal-code-43h11", qty=2),
+        )
+        qrs = self._qr_by_key(wallet, "qr-reveal-code-43h11")
+        self.assertEqual(len(qrs), 1)
+
+        manual_code = qrs._qr_numeric_code_display()
+        self.assertRegex(manual_code, r'^\d{4}-\d{4}-\d{4}$')
+        self.assertNotRegex(qrs.name or '', r'^\d{4}-\d{4}-\d{4}$')
+        self.assertNotIn(manual_code, repr(issue_response))
+        self.assertNotIn('qr_numeric_code', repr(issue_response))
+
+        reveal_response = self._call_reveal_code(controller, {
+            "public_code": qrs.public_code,
+            "action_code": "1234",
+        })
+
+        self.assertIn(str(qrs.id), repr(reveal_response))
+        self.assertIn(qrs.name, repr(reveal_response))
+        self.assertIn(manual_code, repr(reveal_response))
+        self.assertIn('qr_numeric_code', repr(reveal_response))
+
+    def test_qr_reveal_code_requires_action_pin(self):
+        controller, _user, _session, carnet_type, _purchase, _face_line, wallet = self._controller_with_stock(
+            "qr-reveal-code-pin-43h11@example.com",
+            carnet_qty=1,
+        )
+        self._call_issue_qr(
+            controller,
+            self._payload(carnet_type, key="qr-reveal-code-pin-43h11", qty=1),
+        )
+        qrs = self._qr_by_key(wallet, "qr-reveal-code-pin-43h11")
+        self.assertEqual(len(qrs), 1)
+
+        manual_code = qrs._qr_numeric_code_display()
+        response = self._call_reveal_code(controller, {
+            "public_code": qrs.public_code,
+        })
+
+        self.assertNotIn(manual_code, repr(response))
+        self._assert_error_contains(response, "action_code")
 
     def test_issue_qr_can_use_explicit_face_line_id(self):
         controller, user, _session, carnet_type, purchase, _face_line, wallet = self._controller_with_stock(

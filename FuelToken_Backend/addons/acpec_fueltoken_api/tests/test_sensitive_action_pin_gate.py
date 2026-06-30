@@ -30,6 +30,7 @@ class TestSensitiveActionPinGate(TransactionCase):
             (AcpecFuelTokenMobileApi.create_purchase, "purchase_create"),
             (AcpecFuelTokenMobileApi.transfer_carnets, "carnet_transfer"),
             (AcpecFuelTokenMobileApi.issue_qr, "qr_issue"),
+            (AcpecFuelTokenMobileApi.qr_reveal_code, "qr_reveal_code"),
             (AcpecFuelTokenMobileApi.retirer_qr, "qr_retirer"),
             (AcpecFuelTokenMobileApi.separer_qr, "qr_separer"),
         )
