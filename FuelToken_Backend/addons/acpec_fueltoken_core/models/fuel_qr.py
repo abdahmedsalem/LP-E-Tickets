@@ -17,7 +17,7 @@ class AcpecFuelQr(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
-    name = fields.Char(string='Code QR numérique', default='New', readonly=True, copy=False)
+    name = fields.Char(string='Référence QR', default='New', readonly=True, copy=False)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='wallet_id.company_id', store=True, readonly=True, index=True)
@@ -66,6 +66,17 @@ class AcpecFuelQr(models.Model):
     )
     QR_NUMERIC_CODE_DIGITS = 12
     QR_NUMERIC_CODE_GROUP_SIZE = 4
+
+    @api.model
+    def _is_qr_manual_code_label(self, value):
+        return bool(re.match(r'^\d{4}-\d{4}-\d{4}$', str(value or '').strip()))
+
+    @api.constrains('name')
+    def _check_name_is_not_qr_manual_code(self):
+        for rec in self:
+            if rec._is_qr_manual_code_label(rec.name):
+                raise ValidationError(_('La référence QR ne peut pas être le code manuel de consommation.'))
+
 
     def _qr_numeric_code_secret(self):
         secret = (
@@ -184,11 +195,10 @@ class AcpecFuelQr(models.Model):
                 nonce, code_hash = self._build_unique_qr_numeric_code_values(vals['public_code'])
                 vals['qr_numeric_code_nonce'] = nonce
                 vals['qr_numeric_code_hash'] = code_hash
-            if vals.get('public_code') and vals.get('qr_numeric_code_nonce'):
-                digits = self._derive_qr_numeric_code_digits(vals['public_code'], vals['qr_numeric_code_nonce'])
-                vals['name'] = self._format_qr_numeric_code(digits)
-            elif vals.get('name', 'New') == 'New':
-                vals['name'] = vals.get('public_code') or 'New'
+            if vals.get('name', 'New') == 'New' or self._is_qr_manual_code_label(vals.get('name')):
+                vals['name'] = (
+                    self.env['ir.sequence'].next_by_code('acpec.fuel.qr') or 'New'
+                )
         return super().create(vals_list)
 
     @api.depends('line_ids.qty', 'line_ids.face_value', 'line_ids.expires_at')

@@ -19,7 +19,6 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         return request.env['acpec.fuel.wallet'].sudo().get_or_create(user.partner_id, company)
 
     def _qr_payload(self, qr):
-        qr._ensure_qr_numeric_code_hash()
         grouped = {}
         for line in qr.line_ids:
             key = str(line.face_value)
@@ -28,7 +27,6 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'id': qr.id,
             'name': qr.name,
             'public_code': qr.public_code,
-            'qr_numeric_code': qr._qr_numeric_code_display(),
             'state': qr.state,
             'amount_total': qr.amount_total,
             'face_qty_total': qr.face_qty_total,
@@ -781,6 +779,35 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             data = self._qr_payload(qr)
             data['technical_lines'] = self._qr_technical_lines_payload(qr)
             return self._json_response(data)
+        except Exception as exc:
+            return self._handle_exception_response(exc)
+
+    @http.route('/api/acpec/fueltoken/v1/mobile/qr/reveal-code', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    def qr_reveal_code(self, **kwargs):
+        try:
+            self._require_keys(kwargs, ['public_code'])
+            with self._sensitive_action_transaction(kwargs, purpose='qr_reveal_code') as _authorized_user:
+                wallet = self._mobile_wallet()
+                qr = request.env['acpec.fuel.qr'].sudo().search([
+                    ('public_code', '=', kwargs.get('public_code')),
+                    ('wallet_id', '=', wallet.id),
+                ], limit=1)
+                if not qr:
+                    raise ValidationError(_('QR introuvable.'))
+                if qr.state != 'active':
+                    raise ValidationError(_('Le code manuel ne peut être révélé que pour un QR actif.'))
+
+                qr._ensure_qr_numeric_code_hash()
+                qr.invalidate_recordset(['qr_numeric_code_nonce', 'qr_numeric_code_hash'])
+
+                return self._json_response({
+                    'id': qr.id,
+                    'name': qr.name,
+                    'public_code': qr.public_code,
+                    'qr_numeric_code': qr._qr_numeric_code_display(),
+                    'state': qr.state,
+                    'expires_at': fields.Datetime.to_string(qr.expires_at) if qr.expires_at else False,
+                })
         except Exception as exc:
             return self._handle_exception_response(exc)
 
