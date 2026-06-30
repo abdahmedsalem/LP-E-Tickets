@@ -71,7 +71,7 @@ class AcpecFuelCompanyGuardMixin(models.AbstractModel):
         ])
         return users.filtered(
             lambda user: self._user_has_group_id(user, fuel_user_group.id)
-            and getattr(user, 'mobile_state', False) == 'approved'
+            and getattr(user, 'mobile_state', False) in ('approved', 'self_registered')
         )[:1]
 
 
@@ -148,7 +148,7 @@ class AcpecFuelCarnetTransferCompanyGuard(models.Model):
 
             if not Guard._get_active_mobile_user_for_partner(rec.dest_partner_id, rec.company_id):
                 raise ValidationError(_(
-                    'Le membre destinataire doit avoir un compte mobile Tickets Carburant actif et approuvé '
+                    'Le membre destinataire doit avoir un compte mobile Tickets Carburant actif et éligible '
                     'avant de recevoir une distribution société.'
                 ))
 

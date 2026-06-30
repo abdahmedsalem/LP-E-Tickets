@@ -189,7 +189,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             user_digits = self._normalize_phone_digits(user.mobile_phone or user.login)
             if user_digits != target_digits and not (user_digits.endswith(target_digits) or target_digits.endswith(user_digits)):
                 continue
-            if not user.active or getattr(user, 'mobile_state', False) != 'approved':
+            if not user.active or getattr(user, 'mobile_state', False) not in ('approved', 'self_registered'):
                 continue
             if not self._user_has_group_id(user, fuel_user_group):
                 continue
@@ -201,7 +201,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             return user
 
         raise ValidationError(_(
-            'Aucun utilisateur mobile prêt trouvé pour ce numéro. Vérifiez que le membre a finalisé son inscription mobile.'
+            'Aucun utilisateur mobile éligible trouvé pour ce numéro. Vérifiez que le membre a finalisé son inscription mobile.'
         ))
 
     def _build_member_rows(self, distributor):
@@ -768,7 +768,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             if not member or member not in distributor.member_partner_ids.sudo():
                 raise ValidationError(_('Sélectionnez un membre autorisé.'))
             if not distributor._get_active_mobile_user_for_member(member):
-                raise ValidationError(_('Le membre sélectionné n’a pas de compte mobile actif et approuvé.'))
+                raise ValidationError(_('Le membre sélectionné n’a pas de compte mobile actif et éligible.'))
             lines = self._prepare_distribution_lines_from_post(distributor, wallet, post)
             transfer = distributor.sudo().action_distribute_to_member(
                 member,
