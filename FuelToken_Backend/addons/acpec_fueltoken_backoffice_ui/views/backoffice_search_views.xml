@@ -39,7 +39,6 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
-                <field name="public_code"/>
                 <field name="partner_id"/>
                 <field name="payment_reference"/>
                 <filter name="state_draft" string="Brouillons" domain="[('state', '=', 'draft')]"/>
@@ -94,7 +93,6 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
-                <field name="public_code"/>
                 <field name="wallet_id"/>
                 <field name="consumed_station_id"/>
                 <filter name="to_watch" string="À surveiller" domain="[('state', 'in', ['active', 'blocked'])]"/>
@@ -141,7 +139,6 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
-                <field name="public_code"/>
                 <field name="source_partner_id"/>
                 <field name="dest_partner_id"/>
                 <filter name="state_draft" string="Brouillons" domain="[('state', '=', 'draft')]"/>
