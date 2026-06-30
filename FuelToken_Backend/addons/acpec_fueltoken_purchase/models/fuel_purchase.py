@@ -24,6 +24,8 @@ class AcpecFuelPurchase(models.Model):
         ('rejected', 'Rejete'),
     ], string='Etat', default='draft', required=True, tracking=True, index=True)
     line_ids = fields.One2many('acpec.fuel.purchase.line', 'purchase_id', string='Lignes')
+    purchase_line_count = fields.Integer(string='Détail', compute='_compute_purchase_line_count')
+
     amount_total = fields.Monetary(string='Montant total', compute='_compute_totals', store=True)
     face_qty_total = fields.Integer(string='Nombre de faces', compute='_compute_totals', store=True)
     proof_attachment_ids = fields.Many2many(
@@ -202,6 +204,28 @@ class AcpecFuelPurchase(models.Model):
             ('res_id', '=', self.id),
         ]))
 
+    @api.depends('line_ids')
+    def _compute_purchase_line_count(self):
+        for rec in self:
+            rec.purchase_line_count = len(rec.line_ids)
+
+    def action_open_purchase_lines(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Détail du lot achat'),
+            'res_model': 'acpec.fuel.purchase.line',
+            'view_mode': 'list',
+            'views': [(self.env.ref('acpec_fueltoken_purchase.view_fuel_purchase_line_smart_list').id, 'list')],
+            'domain': [('purchase_id', '=', self.id)],
+            'context': {
+                'default_purchase_id': self.id,
+                'group_by': 'carnet_type_id',
+            },
+        }
+
+
+
     def _check_before_submit(self):
         for rec in self:
             if not rec.line_ids:
@@ -216,7 +240,10 @@ class AcpecFuelPurchase(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError(_('Seuls les lots en brouillon peuvent etre soumis.'))
-            rec.write({'state': 'submitted', 'submitted_at': fields.Datetime.now()})
+            rec.with_context(allow_fuel_purchase_workflow_update=True).write({
+                'state': 'submitted',
+                'submitted_at': fields.Datetime.now(),
+            })
 
     def action_approve(self):
         with self.env.cr.savepoint():
@@ -224,7 +251,7 @@ class AcpecFuelPurchase(models.Model):
             for rec in self:
                 if rec.state not in ('draft', 'submitted'):
                     raise UserError(_('Seuls les lots brouillon ou soumis peuvent etre valides.'))
-                rec.write({
+                rec.with_context(allow_fuel_purchase_workflow_update=True).write({
                     'state': 'approved',
                     'approved_at': fields.Datetime.now(),
                     'approved_by': self.env.user.id,
@@ -236,7 +263,7 @@ class AcpecFuelPurchase(models.Model):
         for rec in self:
             if rec.state == 'approved':
                 raise UserError(_('Un lot valide ne peut pas etre rejete.'))
-            rec.write({
+            rec.with_context(allow_fuel_purchase_workflow_update=True).write({
                 'state': 'rejected',
                 'rejected_at': fields.Datetime.now(),
                 'rejected_by': self.env.user.id,
@@ -256,13 +283,57 @@ class AcpecFuelPurchase(models.Model):
         """
         return True
 
+    _immutable_after_submission_fields = {
+        'line_ids',
+        'partner_id',
+        'company_id',
+        'proof_attachment_ids',
+        'payment_reference',
+        'name',
+        'public_code',
+        'idempotency_key',
+        'request_hash',
+        'approval_idempotency_key',
+        'approval_request_hash',
+        'amount_total',
+        'face_qty_total',
+    }
+
+    _workflow_fields = {
+        'state',
+        'submitted_at',
+        'approved_at',
+        'approved_by',
+        'rejected_at',
+        'rejected_by',
+    }
+
+    def _assert_purchase_mutation_allowed(self, vals):
+        protected = self._immutable_after_submission_fields.intersection(vals)
+        workflow = self._workflow_fields.intersection(vals)
+
+        if workflow and not self.env.context.get('allow_fuel_purchase_workflow_update'):
+            raise UserError(_('Le statut du lot achat ne peut etre modifie que par les actions Soumettre, Valider ou Rejeter.'))
+
+        if not protected:
+            return
+
+        locked = self.filtered(lambda rec: rec.state != 'draft')
+        if locked:
+            raise UserError(_('Un lot achat soumis, valide ou rejete ne peut pas etre modifie sur ses champs economiques.'))
+
     def write(self, vals):
-        protected = {'line_ids', 'partner_id', 'company_id', 'proof_attachment_ids', 'payment_reference'}
-        if protected.intersection(vals):
-            for rec in self:
-                if rec.state == 'approved':
-                    raise UserError(_('Un lot valide ne peut pas etre modifie sur ses champs sensibles.'))
+        self._assert_purchase_mutation_allowed(vals)
         return super().write(vals)
+
+    def _set_approval_idempotency(self, idempotency_key, request_hash):
+        self.ensure_one()
+        if not idempotency_key or not request_hash:
+            raise ValidationError(_('Les references techniques d idempotence de validation sont obligatoires.'))
+        return super(AcpecFuelPurchase, self).write({
+            'approval_idempotency_key': idempotency_key,
+            'approval_request_hash': request_hash,
+        })
 
     @api.model
     def create_from_api(self, partner, company, lines, proof_filename, proof_data, payment_reference=False, idempotency_key=False, request_hash=False):
@@ -332,6 +403,47 @@ class AcpecFuelPurchaseLine(models.Model):
         'Le nombre de carnets doit etre positif.',
     )
 
+
+
+    _immutable_line_fields = {
+        'purchase_id',
+        'carnet_type_id',
+        'carnet_qty',
+        'face_count',
+        'face_value',
+        'generated_face_qty',
+        'amount_total',
+    }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_purchase_line_update'):
+            purchase_ids = {
+                vals.get('purchase_id')
+                for vals in vals_list
+                if vals.get('purchase_id')
+            }
+            purchases = self.env['acpec.fuel.purchase'].browse(list(purchase_ids)).exists()
+            if purchases.filtered(lambda purchase: purchase.state != 'draft'):
+                raise UserError(_('Impossible d ajouter une ligne sur un lot achat soumis, valide ou rejete.'))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if (
+            self._immutable_line_fields.intersection(vals)
+            and not self.env.context.get('allow_fuel_purchase_line_update')
+            and self.mapped('purchase_id').filtered(lambda purchase: purchase.state != 'draft')
+        ):
+            raise UserError(_('Impossible de modifier une ligne de lot achat soumis, valide ou rejete.'))
+        return super().write(vals)
+
+    def unlink(self):
+        if (
+            not self.env.context.get('allow_fuel_purchase_line_update')
+            and self.mapped('purchase_id').filtered(lambda purchase: purchase.state != 'draft')
+        ):
+            raise UserError(_('Impossible de supprimer une ligne de lot achat soumis, valide ou rejete.'))
+        return super().unlink()
 
     @api.depends('purchase_id.name', 'carnet_qty', 'face_count', 'face_value', 'currency_id')
     def _compute_name(self):

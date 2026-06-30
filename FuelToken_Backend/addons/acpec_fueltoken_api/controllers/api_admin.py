@@ -332,10 +332,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
                 self._require_purchase_partner_trusted_mobile_access_for_manager_api(purchase)
 
                 with request.env.cr.savepoint():
-                    purchase.sudo().write({
-                        'approval_idempotency_key': idempotency_key,
-                        'approval_request_hash': request_hash,
-                    })
+                    purchase.sudo()._set_approval_idempotency(idempotency_key, request_hash)
                     purchase.with_user(user).action_approve()
                 return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:

@@ -5,6 +5,11 @@ from odoo.exceptions import ValidationError
 class AcpecFuelPurchaseCore(models.Model):
     _inherit = 'acpec.fuel.purchase'
 
+    face_line_count = fields.Integer(
+        string='Carnets',
+        compute='_compute_face_line_count',
+    )
+
     def action_submit(self):
         res = super().action_submit()
         tx_model = self.env['acpec.fuel.transaction'].sudo()
@@ -36,6 +41,26 @@ class AcpecFuelPurchaseCore(models.Model):
                 idempotency_key=purchase.idempotency_key, request_hash=purchase.request_hash,
             )
         return res
+
+    def _compute_face_line_count(self):
+        FaceLine = self.env['acpec.fuel.face.line'].sudo()
+        for purchase in self:
+            purchase.face_line_count = FaceLine.search_count([
+                ('purchase_id', '=', purchase.id),
+            ])
+
+    def action_open_face_lines(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Carnets du lot achat'),
+            'res_model': 'acpec.fuel.face.line',
+            'view_mode': 'list,form',
+            'domain': [('purchase_id', '=', self.id)],
+            'context': {
+                'group_by': 'carnet_type_id',
+            },
+        }
 
     def _create_face_lines_after_approval(self):
         """Create the real fuel value after purchase approval.

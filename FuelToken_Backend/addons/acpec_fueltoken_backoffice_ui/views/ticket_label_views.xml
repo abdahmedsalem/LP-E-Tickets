@@ -62,32 +62,32 @@
             </field>
         </field>
     </record>
-
-    <record id="view_fuel_purchase_form_ticket_labels" model="ir.ui.view">
-        <field name="name">acpec.fuel.purchase.form.ticket.labels</field>
-        <field name="model">acpec.fuel.purchase</field>
-        <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_form"/>
+    <record id="view_fuel_purchase_line_smart_list_ticket_labels" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.line.smart.list.ticket.labels</field>
+        <field name="model">acpec.fuel.purchase.line</field>
+        <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_line_smart_list"/>
         <field name="arch" type="xml">
-            <field name="face_qty_total" position="attributes">
-                <attribute name="string">Tickets</attribute>
-            </field>
-            <xpath expr="//field[@name='line_ids']//list/field[@name='face_count']" position="attributes">
-                <attribute name="string">Tickets par carnet</attribute>
-                <attribute name="optional">hide</attribute>
+            <xpath expr="//field[@name='carnet_type_id']" position="attributes">
+                <attribute name="string">Type de carnet</attribute>
             </xpath>
-            <xpath expr="//field[@name='line_ids']//list/field[@name='face_value']" position="attributes">
-                <attribute name="string">Valeur du ticket</attribute>
-                <attribute name="optional">hide</attribute>
+            <xpath expr="//field[@name='carnet_qty']" position="attributes">
+                <attribute name="string">Carnets</attribute>
             </xpath>
-            <xpath expr="//field[@name='line_ids']//list/field[@name='generated_face_qty']" position="attributes">
+            <xpath expr="//field[@name='face_count']" position="attributes">
+                <attribute name="string">Tickets / carnet</attribute>
+            </xpath>
+            <xpath expr="//field[@name='face_value']" position="attributes">
+                <attribute name="string">Valeur ticket</attribute>
+            </xpath>
+            <xpath expr="//field[@name='generated_face_qty']" position="attributes">
                 <attribute name="string">Tickets générés</attribute>
             </xpath>
-            <xpath expr="//sheet/notebook" position="after">
-                <group string="Technique">
-                </group>
+            <xpath expr="//field[@name='amount_total']" position="attributes">
+                <attribute name="string">Montant</attribute>
             </xpath>
         </field>
     </record>
+
 
     <!-- Wallet : lignes disponibles. -->
     <record id="view_fuel_wallet_form_ticket_labels" model="ir.ui.view">
