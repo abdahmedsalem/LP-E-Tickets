@@ -370,7 +370,7 @@ class AcpecFuelDistributor(models.Model):
         ])
         return users.filtered(
             lambda user: self._user_has_group_id(user, fuel_user_group.id)
-            and getattr(user, 'mobile_state', False) == 'approved'
+            and getattr(user, 'mobile_state', False) in ('approved', 'self_registered')
         )[:1]
 
     def _check_can_distribute_to_member(self, member_partner):
@@ -400,7 +400,7 @@ class AcpecFuelDistributor(models.Model):
         mobile_user = self._get_active_mobile_user_for_member(member_partner)
         if not mobile_user:
             raise ValidationError(_(
-                'Le membre destinataire doit avoir un compte mobile Tickets Carburant actif et approuvé '
+                'Le membre destinataire doit avoir un compte mobile Tickets Carburant actif et éligible '
                 'avant de recevoir une distribution société.'
             ))
 

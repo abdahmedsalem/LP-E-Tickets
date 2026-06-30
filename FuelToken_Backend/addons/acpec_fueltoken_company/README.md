@@ -79,7 +79,7 @@ Le seul groupe utilisateur attendu pour le partenaire société est le portail O
 
 Un membre peut être ajouté au roster d’un Compte Société même s’il n’est pas encore prêt côté mobile.
 
-Mais une distribution vers ce membre est refusée tant que le membre n’a pas un utilisateur mobile FuelToken actif et approuvé :
+Mais une distribution vers ce membre est refusée tant que le membre n’a pas un utilisateur mobile FuelToken actif et éligible :
 
 ::
 
@@ -87,7 +87,7 @@ Mais une distribution vers ce membre est refusée tant que le membre n’a pas u
     res.users.partner_id = membre
     res.users.company_ids contient company_id du Compte Société
     appartenance au groupe acpec_fueltoken_base.group_fuel_user vérifiée via res_groups_users_rel
-    res.users.mobile_state = approved
+    res.users.mobile_state in ('approved', 'self_registered')
 
 
 La distribution société ne valide jamais automatiquement un compte mobile, ne change jamais `mobile_state` et n’ajoute jamais de groupe mobile.
@@ -107,7 +107,7 @@ Méthodes principales sur `acpec.fuel.distributor` :
 
 ### Préparation wallets membres
 
-`action_prepare_member_wallets()` crée les wallets techniques des membres qui ont déjà un compte mobile actif et approuvé.
+`action_prepare_member_wallets()` crée les wallets techniques des membres qui ont déjà un compte mobile actif et éligible.
 
 Elle ne valide pas les utilisateurs mobiles. Les membres non prêts sont signalés dans le chatter.
 
@@ -133,7 +133,7 @@ La méthode vérifie :
 - le partenaire société est toujours portal-only ;
 - le destinataire est membre du Compte Société ;
 - le destinataire est un membre individuel ;
-- le destinataire a un compte mobile actif et approuvé ;
+- le destinataire a un compte mobile actif et éligible (`approved` ou `self_registered`) ;
 - le wallet société existe ou est créé à la demande ;
 - le wallet membre existe ou est créé à la demande ;
 - les lignes source appartiennent au wallet société ;
@@ -174,7 +174,7 @@ Le module contient aussi des garde-fous pour éviter que le Compte Société se 
 - un Compte Société ne peut pas recevoir de transfert entrant manuel ;
 - une société active peut distribuer uniquement vers ses membres ;
 - une société suspendue, clôturée ou archivée ne peut pas distribuer ;
-- une distribution vers un membre non mobile actif/approuvé est refusée ;
+- une distribution vers un membre non mobile actif/éligible est refusée ;
 - un Compte Société ne peut pas générer de QR ;
 - un achat pour une société suspendue/clôturée est refusé au moment de la soumission si le hook `_check_before_submit` est appelé par le module achat.
 
@@ -247,8 +247,8 @@ Mise à jour :
 Cas acceptés :
 
 - société `is_company = True` avec accès portail actif, sans groupe interne/mobile, avec membres individuels ;
-- préparation wallets membres pour membres déjà mobiles actifs/approuvés ;
-- distribution société active vers membre déclaré, mobile actif/approuvé, avec carnet transférable.
+- préparation wallets membres pour membres déjà mobiles actifs/éligibles ;
+- distribution société active vers membre déclaré, mobile actif/éligible, avec carnet transférable.
 
 Cas refusés :
 
@@ -271,7 +271,7 @@ groupes passent donc par la table standard `res_groups_users_rel` pour vérifier
 
 - l’accès portail standard ;
 - l’absence de groupes internes / mobile / station / back-office ;
-- le statut mobile actif et approuvé des membres avant distribution.
+- le statut mobile actif et éligible des membres avant distribution.
 
 ## Patch34F — Contrat Company Portal carnets
 
@@ -303,7 +303,7 @@ Règles conservées :
 - le Compte Société doit être actif ;
 - le membre doit appartenir à `member_partner_ids` ;
 - le membre doit être un partenaire individuel ;
-- le membre doit avoir un utilisateur mobile FuelToken actif et approuvé ;
+- le membre doit avoir un utilisateur mobile FuelToken actif et éligible (`approved` ou `self_registered`) ;
 - le wallet membre peut être créé techniquement à la demande ;
 - le compte mobile du membre n’est jamais approuvé automatiquement ;
 - aucune API mobile n’est modifiée ;

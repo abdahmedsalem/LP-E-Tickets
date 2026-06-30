@@ -207,7 +207,7 @@
                                             <div class="ft-muted small text-truncate"><span t-esc="row['phone'] or row['mobile_login'] or '—'"/><span t-if="row['email']"> · <span t-esc="row['email']"/></span></div>
                                         </div>
                                     </div>
-                                    <span t-if="row['mobile_ready']" class="ft-pill ft-pill-green">mobile actif</span>
+                                    <span t-if="row['mobile_ready']" class="ft-pill ft-pill-green">mobile éligible</span>
                                     <span t-else="" class="ft-pill ft-pill-muted">non prêt</span>
                                 </div>
                                 <div class="text-muted text-center py-4" t-if="not member_rows">Aucun membre rattaché.</div>
@@ -447,7 +447,7 @@
                 </div>
 
                 <div class="alert alert-info" role="alert">
-                    Ajoutez uniquement des membres dont vous connaissez le numéro exact. La recherche ne propose aucune liste publique : le membre doit déjà avoir un compte mobile Tickets Carburant actif et approuvé.
+                    Ajoutez uniquement des membres dont vous connaissez le numéro exact. La recherche ne propose aucune liste publique : le membre doit déjà avoir un compte mobile Tickets Carburant actif ou self-registered.
                 </div>
                 <div t-if="success" class="alert alert-success" role="alert" t-esc="success"/>
                 <div t-if="error" class="alert alert-danger" role="alert" t-esc="error"/>
@@ -501,7 +501,7 @@
                                             </td>
                                             <td><span t-esc="row['phone'] or row['mobile_login'] or '—'"/></td>
                                             <td>
-                                                <span t-if="row['mobile_ready']" class="badge text-bg-success">Mobile actif</span>
+                                                <span t-if="row['mobile_ready']" class="badge text-bg-success">Mobile éligible</span>
                                                 <span t-else="" class="badge text-bg-secondary">Non prêt</span>
                                             </td>
                                             <td class="text-end">
@@ -567,7 +567,7 @@
                                     </div>
                                 </div>
                                 <div t-if="not member_rows" class="alert alert-warning rounded-3" role="alert">
-                                    Aucun membre mobile actif n’est actuellement rattaché à ce compte société. Ajoutez d’abord un membre depuis la page Membres autorisés.
+                                    Aucun membre éligible à la distribution n’est actuellement rattaché à ce compte société. Ajoutez d’abord un membre mobile depuis la page Membres autorisés.
                                 </div>
                                 <div class="row g-3 align-items-center" t-if="member_rows">
                                     <div class="col-lg-6">
@@ -584,7 +584,7 @@
                                                 <t t-if="row['phone']"> - <t t-esc="row['phone']"/></t>
                                             </option>
                                         </select>
-                                        <div class="form-text">Seuls les membres autorisés avec compte mobile actif sont proposés.</div>
+                                        <div class="form-text">Seuls les membres autorisés avec compte mobile actif ou self-registered sont proposés.</div>
                                     </div>
                                     <div class="col-lg-6">
                                         <div class="ft-card p-3 border ft-selected-member d-none">
@@ -596,7 +596,7 @@
                                                         <div class="ft-muted small text-truncate ft-selected-member-contact">—</div>
                                                     </div>
                                                 </div>
-                                                <span class="ft-pill ft-pill-green">mobile actif</span>
+                                                <span class="ft-pill ft-pill-green">mobile éligible</span>
                                             </div>
                                         </div>
                                     </div>
