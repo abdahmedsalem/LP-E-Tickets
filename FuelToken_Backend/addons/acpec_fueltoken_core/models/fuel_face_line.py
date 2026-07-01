@@ -13,6 +13,11 @@ class AcpecFuelFaceLine(models.Model):
 
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True, ondelete='restrict')
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
+    client_mobile_phone = fields.Char(
+        string='Téléphone client',
+        compute='_compute_client_mobile_phone',
+        readonly=True,
+    )
     company_id = fields.Many2one('res.company', related='wallet_id.company_id', store=True, readonly=True, index=True)
     currency_id = fields.Many2one('res.currency', related='wallet_id.currency_id', store=True, readonly=True)
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d\'achat', required=True, index=True, ondelete='restrict')
@@ -117,6 +122,48 @@ class AcpecFuelFaceLine(models.Model):
         raise ValidationError(_('Impossible de generer un code court carnet unique.'))
 
     @api.depends('face_value', 'qty_available', 'qty_initial')
+    @api.depends('partner_id')
+    def _compute_client_mobile_phone(self):
+        Users = self.env['res.users'].sudo().with_context(active_test=False)
+        partner_ids = self.mapped('partner_id').ids
+        users_by_partner = {}
+
+        if partner_ids:
+            base_domain = [('partner_id', 'in', partner_ids)]
+            if 'mobile_only' in Users._fields:
+                base_domain.append(('mobile_only', '=', True))
+
+            preferred_domain = list(base_domain)
+            if 'mobile_state' in Users._fields:
+                preferred_domain.append(('mobile_state', 'in', ['approved', 'self_registered']))
+
+            preferred_users = Users.search(preferred_domain, order='id desc')
+            for user in preferred_users:
+                if user.partner_id and user.partner_id.id not in users_by_partner:
+                    users_by_partner[user.partner_id.id] = user
+
+            missing_partner_ids = [
+                partner_id for partner_id in partner_ids
+                if partner_id not in users_by_partner
+            ]
+            if missing_partner_ids:
+                fallback_domain = [('partner_id', 'in', missing_partner_ids)]
+                if 'mobile_only' in Users._fields:
+                    fallback_domain.append(('mobile_only', '=', True))
+                fallback_users = Users.search(fallback_domain, order='id desc')
+                for user in fallback_users:
+                    if user.partner_id and user.partner_id.id not in users_by_partner:
+                        users_by_partner[user.partner_id.id] = user
+
+        for rec in self:
+            user = users_by_partner.get(rec.partner_id.id)
+            mobile_phone = False
+            if user:
+                if 'mobile_phone' in Users._fields:
+                    mobile_phone = user.mobile_phone
+                mobile_phone = mobile_phone or user.login
+            rec.client_mobile_phone = mobile_phone or False
+
     def _compute_amounts(self):
         for rec in self:
             rec.amount_available = rec.face_value * rec.qty_available
