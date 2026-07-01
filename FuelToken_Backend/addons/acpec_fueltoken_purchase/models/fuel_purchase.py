@@ -24,6 +24,8 @@ class AcpecFuelPurchase(models.Model):
         ('rejected', 'Rejete'),
     ], string='Etat', default='draft', required=True, tracking=True, index=True)
     line_ids = fields.One2many('acpec.fuel.purchase.line', 'purchase_id', string='Lignes')
+    purchase_line_count = fields.Integer(string='Détail', compute='_compute_purchase_line_count')
+
     amount_total = fields.Monetary(string='Montant total', compute='_compute_totals', store=True)
     face_qty_total = fields.Integer(string='Nombre de faces', compute='_compute_totals', store=True)
     proof_attachment_ids = fields.Many2many(
@@ -202,6 +204,28 @@ class AcpecFuelPurchase(models.Model):
             ('res_id', '=', self.id),
         ]))
 
+    @api.depends('line_ids')
+    def _compute_purchase_line_count(self):
+        for rec in self:
+            rec.purchase_line_count = len(rec.line_ids)
+
+    def action_open_purchase_lines(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Détail du lot achat'),
+            'res_model': 'acpec.fuel.purchase.line',
+            'view_mode': 'list',
+            'views': [(self.env.ref('acpec_fueltoken_purchase.view_fuel_purchase_line_smart_list').id, 'list')],
+            'domain': [('purchase_id', '=', self.id)],
+            'context': {
+                'default_purchase_id': self.id,
+                'group_by': 'carnet_type_id',
+            },
+        }
+
+
+
     def _check_before_submit(self):
         for rec in self:
             if not rec.line_ids:
@@ -301,6 +325,15 @@ class AcpecFuelPurchase(models.Model):
     def write(self, vals):
         self._assert_purchase_mutation_allowed(vals)
         return super().write(vals)
+
+    def _set_approval_idempotency(self, idempotency_key, request_hash):
+        self.ensure_one()
+        if not idempotency_key or not request_hash:
+            raise ValidationError(_('Les references techniques d idempotence de validation sont obligatoires.'))
+        return super(AcpecFuelPurchase, self).write({
+            'approval_idempotency_key': idempotency_key,
+            'approval_request_hash': request_hash,
+        })
 
     @api.model
     def create_from_api(self, partner, company, lines, proof_filename, proof_data, payment_reference=False, idempotency_key=False, request_hash=False):

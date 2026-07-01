@@ -2,4 +2,41 @@
     <record id="view_fuel_face_line_list" model="ir.ui.view"><field name="name">acpec.fuel.face.line.list</field><field name="model">acpec.fuel.face.line</field><field name="arch" type="xml"><list><field name="wallet_id"/><field name="purchase_id"/><field name="carnet_short_code"/><field name="carnet_no"/><field name="carnet_type_id"/><field name="face_value"/><field name="qty_initial"/><field name="qty_available"/><field name="qty_qr_active"/><field name="qty_qr_blocked"/><field name="qty_consumed"/><field name="qty_expired"/><field name="expires_at"/></list></field></record>
     <record id="action_fuel_face_line" model="ir.actions.act_window"><field name="name">Carnets</field><field name="res_model">acpec.fuel.face.line</field><field name="view_mode">list,form</field></record>
     <menuitem id="menu_fuel_face_line" name="Carnets" parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations" action="action_fuel_face_line" sequence="30"/>
+
+    <record id="view_fuel_face_line_purchase_smart_list" model="ir.ui.view">
+        <field name="name">acpec.fuel.face.line.purchase.smart.list</field>
+        <field name="model">acpec.fuel.face.line</field>
+        <field name="arch" type="xml">
+            <list string="Carnets" create="0" edit="0" delete="0">
+                <field name="carnet_short_code" string="Carnet" width="120px"/>
+                <field name="carnet_no" string="Référence complète" optional="hide"/>
+                <field name="carnet_type_id" width="180px"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="face_value" widget="monetary" options="{'currency_field': 'currency_id'}" width="110px"/>
+                <field name="qty_initial" sum="Total initial" width="100px"/>
+                <field name="qty_available" sum="Total disponible" width="120px"/>
+                <field name="qty_qr_active" sum="Total QR actif" width="110px"/>
+                <field name="qty_qr_blocked" sum="Total QR bloqué" width="120px"/>
+                <field name="qty_consumed" sum="Total consommé" width="120px"/>
+                <field name="qty_expired" sum="Total expiré" width="100px"/>
+                <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total montant" width="130px"/>
+                <field name="amount_available" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total disponible" width="140px"/>
+                <field name="expires_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fuel_purchase_form_face_lines_button_h13" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.form.face.lines.button.h13</field>
+        <field name="model">acpec.fuel.purchase</field>
+        <field name="inherit_id" ref="acpec_fueltoken_purchase.view_fuel_purchase_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_face_lines" type="object" class="oe_stat_button" icon="fa-ticket">
+                    <field name="face_line_count" widget="statinfo" string="Carnets"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>
