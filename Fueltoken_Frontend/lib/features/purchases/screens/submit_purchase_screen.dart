@@ -264,7 +264,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
                   );
                 }
-                debugPrint('[purchase-submit] action_code reçu, préparation de la requête...');
+                debugPrint(
+                  '[purchase-submit] action_code reçu, préparation de la requête...',
+                );
                 final rpcLines = <Map<String, dynamic>>[];
                 for (final line in confirmLines) {
                   final t = line.carnetType;
@@ -277,10 +279,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       'Rafraîchissez la liste des offres.',
                     );
                   }
-                  final cq = acpecOdooCarnetQtyFromTicketSelection(
-                    line.carnetType,
-                    line.qty,
-                  );
+                  final cq = line.qty;
                   if (cq <= 0) continue;
                   rpcLines.add({'carnet_type_id': idOdoo, 'carnet_qty': cq});
                 }
@@ -295,7 +294,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     : proofPath;
                 final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
                 final idem = const Uuid().v4();
-                debugPrint('[purchase-submit] appel purchasesCreate vers le backend...');
+                debugPrint(
+                  '[purchase-submit] appel purchasesCreate vers le backend...',
+                );
                 final raw = await OdooFueltokenFacade().purchasesCreate({
                   'lines': rpcLines,
                   'proof_filename': fileName,
@@ -595,10 +596,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         top: true,
         child: Column(
           children: [
-            ScreenHeader(
-              title: 'Commander',
-              onBack: () => context.pop(),
-            ),
+            ScreenHeader(title: 'Commander', onBack: () => context.pop()),
             const SizedBox(height: 18),
             Expanded(
               child: ListView(
@@ -1207,7 +1205,9 @@ class _ProofPicker extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: hasFile ? AppColors.success.withValues(alpha: 0.28) : AppColors.line,
+              color: hasFile
+                  ? AppColors.success.withValues(alpha: 0.28)
+                  : AppColors.line,
               width: 1.2,
             ),
             boxShadow: [
@@ -1266,7 +1266,9 @@ class _ProofPicker extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      hasFile ? 'Preuve sélectionnée' : 'Ajouter la preuve de paiement',
+                      hasFile
+                          ? 'Preuve sélectionnée'
+                          : 'Ajouter la preuve de paiement',
                       style: GoogleFonts.poppins(
                         color: AppColors.ink,
                         fontWeight: FontWeight.w700,
