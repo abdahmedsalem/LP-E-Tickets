@@ -30,7 +30,23 @@ class AcpecFuelFaceLine(models.Model):
     qty_qr_blocked = fields.Integer(string='En QR bloque', default=0)
     qty_consumed = fields.Integer(string='Consommee', default=0)
     qty_expired = fields.Integer(string='Expiree', default=0)
+    qty_transferred_out = fields.Integer(string='Transferee sortante', default=0)
     expires_at = fields.Datetime(string='Expiration')
+    origin_face_line_id = fields.Many2one(
+        'acpec.fuel.face.line',
+        string='Carnet source du fragment',
+        index=True,
+        copy=False,
+        readonly=True,
+        ondelete='restrict',
+    )
+    is_transfer_fragment = fields.Boolean(
+        string='Fragment recu par transfert',
+        default=False,
+        index=True,
+        copy=False,
+        readonly=True,
+    )
     carnet_no = fields.Char(string='Reference complete carnet', index=True, copy=False, readonly=True)
     lot_short_code = fields.Char(string='Code court lot', index=True, copy=False, readonly=True)
     carnet_short_code = fields.Char(string='Code court carnet', index=True, copy=False, readonly=True)
@@ -57,6 +73,8 @@ class AcpecFuelFaceLine(models.Model):
         'lot_short_code',
         'carnet_short_code',
         'carnet_sequence',
+        'origin_face_line_id',
+        'is_transfer_fragment',
     ))
     _controlled_state_fields = frozenset((
         'wallet_id',
@@ -65,6 +83,7 @@ class AcpecFuelFaceLine(models.Model):
         'qty_qr_blocked',
         'qty_consumed',
         'qty_expired',
+        'qty_transferred_out',
     ))
 
     def _check_protected_write_vals(self, vals):
@@ -169,15 +188,39 @@ class AcpecFuelFaceLine(models.Model):
             rec.amount_available = rec.face_value * rec.qty_available
             rec.amount_total = rec.face_value * rec.qty_initial
 
-    @api.constrains('qty_initial', 'qty_available', 'qty_qr_active', 'qty_qr_blocked', 'qty_consumed', 'qty_expired', 'face_value')
+    @api.constrains(
+        'qty_initial',
+        'qty_available',
+        'qty_qr_active',
+        'qty_qr_blocked',
+        'qty_consumed',
+        'qty_expired',
+        'qty_transferred_out',
+        'face_value',
+    )
     def _check_quantities(self):
         for rec in self:
-            quantities = [rec.qty_initial, rec.qty_available, rec.qty_qr_active, rec.qty_qr_blocked, rec.qty_consumed, rec.qty_expired]
+            quantities = [
+                rec.qty_initial,
+                rec.qty_available,
+                rec.qty_qr_active,
+                rec.qty_qr_blocked,
+                rec.qty_consumed,
+                rec.qty_expired,
+                rec.qty_transferred_out,
+            ]
             if any(qty < 0 for qty in quantities):
                 raise ValidationError(_('Les quantites de faces ne peuvent pas etre negatives.'))
             if rec.face_value <= 0:
                 raise ValidationError(_('La valeur de face doit etre positive.'))
-            if rec.qty_initial != rec.qty_available + rec.qty_qr_active + rec.qty_qr_blocked + rec.qty_consumed + rec.qty_expired:
+            if rec.qty_initial != (
+                rec.qty_available
+                + rec.qty_qr_active
+                + rec.qty_qr_blocked
+                + rec.qty_consumed
+                + rec.qty_expired
+                + rec.qty_transferred_out
+            ):
                 raise ValidationError(_('Invariant de conservation des faces non respecte.'))
 
     def is_transferable_carnet_line(self):
@@ -192,7 +235,7 @@ class AcpecFuelFaceLine(models.Model):
             return False
         if self.qty_available != self.qty_initial:
             return False
-        if self.qty_qr_active or self.qty_qr_blocked or self.qty_consumed or self.qty_expired:
+        if self.qty_qr_active or self.qty_qr_blocked or self.qty_consumed or self.qty_expired or self.qty_transferred_out:
             return False
         return self.qty_available >= face_count and self.qty_available % face_count == 0
 

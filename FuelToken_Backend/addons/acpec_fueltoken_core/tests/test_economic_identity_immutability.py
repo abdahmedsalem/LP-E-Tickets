@@ -92,6 +92,12 @@ class TestEconomicIdentityImmutability(TransactionCase):
             face_line.write({'lot_short_code': 'BADG8'})
 
         with self.assertRaises(ValidationError):
+            face_line.write({'is_transfer_fragment': True})
+
+        with self.assertRaises(ValidationError):
+            face_line.write({'origin_face_line_id': transfer_face_line.id})
+
+        with self.assertRaises(ValidationError):
             face_line.write({'wallet_id': dest_wallet.id})
 
         # Cette mutation respecte la somme C2, mais contournerait les flux métier.

@@ -18,10 +18,12 @@ class AcpecFuelWallet(models.Model):
     qty_qr_blocked = fields.Integer(string='Faces en QR bloqué', compute='_compute_quantities', store=False)
     qty_consumed = fields.Integer(string='Faces consommées', compute='_compute_quantities', store=False)
     qty_expired = fields.Integer(string='Faces expirées', compute='_compute_quantities', store=False)
+    qty_transferred_out = fields.Integer(string='Faces transférées sortantes', compute='_compute_quantities', store=False)
     amount_qr_active = fields.Monetary(string='Montant en QR actif', compute='_compute_quantities', store=False)
     amount_qr_blocked = fields.Monetary(string='Montant en QR bloqué', compute='_compute_quantities', store=False)
     amount_consumed = fields.Monetary(string='Montant consommé', compute='_compute_quantities', store=False)
     amount_expired = fields.Monetary(string='Montant expiré', compute='_compute_quantities', store=False)
+    amount_transferred_out = fields.Monetary(string='Montant transféré sortant', compute='_compute_quantities', store=False)
     face_line_ids = fields.One2many('acpec.fuel.face.line', 'wallet_id', string='Carnets')
 
     _partner_company_unique = models.Constraint(
@@ -42,10 +44,12 @@ class AcpecFuelWallet(models.Model):
             'qty_qr_blocked',
             'qty_consumed',
             'qty_expired',
+            'qty_transferred_out',
             'amount_qr_active',
             'amount_qr_blocked',
             'amount_consumed',
             'amount_expired',
+            'amount_transferred_out',
         ]
         for rec in self:
             for fname in fields_to_zero:
@@ -57,7 +61,7 @@ class AcpecFuelWallet(models.Model):
         groups = self.env['acpec.fuel.face.line'].sudo()._read_group(
             [('wallet_id', 'in', self.ids)],
             ['wallet_id', 'face_value'],
-            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
+            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum', 'qty_transferred_out:sum'],
         )
         by_wallet = {wallet.id: {
             'balance': 0,
@@ -66,13 +70,15 @@ class AcpecFuelWallet(models.Model):
             'qty_qr_blocked': 0,
             'qty_consumed': 0,
             'qty_expired': 0,
+            'qty_transferred_out': 0,
             'amount_qr_active': 0,
             'amount_qr_blocked': 0,
             'amount_consumed': 0,
             'amount_expired': 0,
+            'amount_transferred_out': 0,
         } for wallet in self}
 
-        for wallet, face_value, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired in groups:
+        for wallet, face_value, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired, qty_transferred_out in groups:
             if not wallet:
                 continue
             wallet_id = wallet.id
@@ -84,17 +90,20 @@ class AcpecFuelWallet(models.Model):
             qty_qr_blocked = qty_qr_blocked or 0
             qty_consumed = qty_consumed or 0
             qty_expired = qty_expired or 0
+            qty_transferred_out = qty_transferred_out or 0
             values = by_wallet[wallet_id]
             values['qty_available'] += qty_available
             values['qty_qr_active'] += qty_qr_active
             values['qty_qr_blocked'] += qty_qr_blocked
             values['qty_consumed'] += qty_consumed
             values['qty_expired'] += qty_expired
+            values['qty_transferred_out'] += qty_transferred_out
             values['balance'] += qty_available * face_value
             values['amount_qr_active'] += qty_qr_active * face_value
             values['amount_qr_blocked'] += qty_qr_blocked * face_value
             values['amount_consumed'] += qty_consumed * face_value
             values['amount_expired'] += qty_expired * face_value
+            values['amount_transferred_out'] += qty_transferred_out * face_value
 
         for rec in self:
             for fname, value in by_wallet[rec.id].items():

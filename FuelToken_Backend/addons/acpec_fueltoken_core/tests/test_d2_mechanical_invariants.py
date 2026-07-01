@@ -99,11 +99,21 @@ class TestD2MechanicalInvariants(TransactionCase):
             + face_line.qty_qr_active
             + face_line.qty_qr_blocked
             + face_line.qty_consumed
-            + face_line.qty_expired,
+            + face_line.qty_expired
+            + face_line.qty_transferred_out,
         )
 
         with self.assertRaises(ValidationError):
             face_line.write({'qty_available': face_line.qty_available - 1})
+
+        with self.assertRaises(ValidationError):
+            face_line.write({'qty_transferred_out': face_line.qty_transferred_out + 1})
+
+        transfer_qty = 2
+        face_line.with_context(allow_fuel_face_line_state_update=True).write({
+            'qty_available': face_line.qty_available - transfer_qty,
+            'qty_transferred_out': face_line.qty_transferred_out + transfer_qty,
+        })
 
         face_line.invalidate_recordset([
             'qty_initial',
@@ -112,6 +122,7 @@ class TestD2MechanicalInvariants(TransactionCase):
             'qty_qr_blocked',
             'qty_consumed',
             'qty_expired',
+            'qty_transferred_out',
         ])
         self.assertEqual(
             face_line.qty_initial,
@@ -119,8 +130,15 @@ class TestD2MechanicalInvariants(TransactionCase):
             + face_line.qty_qr_active
             + face_line.qty_qr_blocked
             + face_line.qty_consumed
-            + face_line.qty_expired,
+            + face_line.qty_expired
+            + face_line.qty_transferred_out,
         )
+        self.assertEqual(face_line.qty_transferred_out, transfer_qty)
+
+        wallet = face_line.wallet_id
+        self.assertEqual(wallet.qty_transferred_out, transfer_qty)
+        self.assertEqual(wallet.amount_transferred_out, transfer_qty * face_line.face_value)
+        self.assertEqual(wallet.balance, face_line.qty_available * face_line.face_value)
 
     def test_g3_q8_qr_public_and_numeric_identifiers_are_generated_and_unique(self):
         wallet = self.Wallet.get_or_create(self.partner, self.company)

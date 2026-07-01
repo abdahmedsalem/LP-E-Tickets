@@ -4,6 +4,7 @@ import inspect
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelTokenAdminApi
+from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 
 
 @tagged("post_install", "-at_install")
@@ -76,3 +77,10 @@ class TestMobileSecurityRuntimeDocs(TransactionCase):
         self.assertIn("_assert_no_non_empty_client_wallet_for_operational_mobile_user", station_source)
         self.assertIn("_assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role", device_source)
         self.assertIn("_assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role", session_source)
+
+    def test_i0_mobile_read_contract_exposes_transferred_out_bucket(self):
+        source = inspect.getsource(AcpecFuelTokenMobileApi)
+        self.assertIn("qty_transferred_out", source)
+        self.assertIn("amount_transferred_out", source)
+        self.assertIn("is_transfer_fragment", source)
+        self.assertIn("origin_face_line_id", source)
