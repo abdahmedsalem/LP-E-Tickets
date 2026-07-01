@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -501,7 +500,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 10, top: 4),
       child: Text(
         text,
-        style: GoogleFonts.poppins(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.85,
@@ -556,7 +555,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                           color: scheme.onSurface,
@@ -565,7 +564,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontSize: 12,
                           color: scheme.onSurfaceVariant,
                           height: 1.25,
@@ -641,7 +640,7 @@ class _CompanyHeaderCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     color: AppColors.ink,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -750,7 +749,7 @@ class _StatsRow extends StatelessWidget {
         children: [
           Text(
             value,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 18,
               letterSpacing: -0.3,
@@ -761,7 +760,7 @@ class _StatsRow extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: labelColor,
@@ -816,7 +815,7 @@ class _LogoutTile extends StatelessWidget {
                     children: [
                       Text(
                         'Se déconnecter',
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: cs.onSurface,
@@ -825,7 +824,7 @@ class _LogoutTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         'Fin de session sur cet appareil',
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontSize: 12,
                           color: cs.onSurfaceVariant,
                           height: 1.2,

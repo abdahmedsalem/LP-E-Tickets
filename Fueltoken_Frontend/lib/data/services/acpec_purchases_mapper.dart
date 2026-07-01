@@ -106,10 +106,9 @@ class AcpecPurchasesMapper {
     }
     final top = Map<String, dynamic>.from(raw);
     if (top['ok'] == false) {
-      throw Exception(_responseErrorMessage(
-        top,
-        fallback: 'Liste des lots indisponible.',
-      ));
+      throw Exception(
+        _responseErrorMessage(top, fallback: 'Liste des lots indisponible.'),
+      );
     }
 
     final d = top['data'];
@@ -126,10 +125,9 @@ class AcpecPurchasesMapper {
     if (d is Map) {
       data = Map<String, dynamic>.from(d);
       if (data['ok'] == false) {
-        throw Exception(_responseErrorMessage(
-          data,
-          fallback: 'Liste des lots indisponible.',
-        ));
+        throw Exception(
+          _responseErrorMessage(data, fallback: 'Liste des lots indisponible.'),
+        );
       }
     }
 
@@ -454,10 +452,12 @@ class AcpecPurchasesMapper {
     }
     var root = Map<String, dynamic>.from(raw);
     if (root['ok'] == false) {
-      throw Exception(_responseErrorMessage(
-        root,
-        fallback: 'Détail de l’achat indisponible.',
-      ));
+      throw Exception(
+        _responseErrorMessage(
+          root,
+          fallback: 'Détail de l’achat indisponible.',
+        ),
+      );
     }
 
     Map<String, dynamic> envelope = root;
@@ -465,10 +465,12 @@ class AcpecPurchasesMapper {
     if (d is Map) {
       envelope = Map<String, dynamic>.from(d);
       if (envelope['ok'] == false) {
-        throw Exception(_responseErrorMessage(
-          envelope,
-          fallback: 'Détail de l’achat indisponible.',
-        ));
+        throw Exception(
+          _responseErrorMessage(
+            envelope,
+            fallback: 'Détail de l’achat indisponible.',
+          ),
+        );
       }
     } else if (d is List && d.isNotEmpty && d.first is Map) {
       envelope = Map<String, dynamic>.from(d.first as Map);

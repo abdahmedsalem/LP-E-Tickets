@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -506,7 +505,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                 children: [
                   Text(
                     'Entrez le numéro du destinataire, puis sélectionnez les tickets à transférer.',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: AppColors.muted,
@@ -537,7 +536,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: AppColors.ink,
@@ -578,7 +577,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       hintText: hintText,
-      hintStyle: GoogleFonts.poppins(
+      hintStyle: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w400,
         color: AppColors.muted,
@@ -650,7 +649,7 @@ class _TransferSelectionBottomBar extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: AmountInline(
                     amount: totalAmount,
-                    valueStyle: GoogleFonts.poppins(
+                    valueStyle: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink,
@@ -758,7 +757,7 @@ class _TransferTicketLineCard extends StatelessWidget {
                       carnetTypeLabel,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -815,7 +814,7 @@ class _TransferTicketLineCard extends StatelessWidget {
                 child: Text(
                   Formatters.numberFr(selected),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,

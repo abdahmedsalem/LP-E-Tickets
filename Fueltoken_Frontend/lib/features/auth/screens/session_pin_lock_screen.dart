@@ -137,8 +137,9 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                                 obscure: _obscure,
                                 hint: 'Confirmer le PIN',
                                 validator: (value) {
-                                  final err =
-                                      validateFourDigitNumericPassword(value);
+                                  final err = validateFourDigitNumericPassword(
+                                    value,
+                                  );
                                   if (err != null) return err;
                                   if (value != _pin.text) {
                                     return 'Les PIN ne correspondent pas.';
@@ -199,8 +200,8 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                                   ? null
                                   : () {
                                       context.read<AuthBloc>().add(
-                                            const AuthLogoutRequested(),
-                                          );
+                                        const AuthLogoutRequested(),
+                                      );
                                     },
                               child: Text(
                                 setup

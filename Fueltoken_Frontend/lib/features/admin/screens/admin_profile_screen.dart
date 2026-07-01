@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
@@ -97,7 +96,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         elevation: 0,
         title: Text(
           'Profil',
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 18,
             color: scheme.onSurface,
@@ -136,12 +135,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.24),
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     _initials(user.name),
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 22,
@@ -157,7 +158,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         user.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 19,
                           fontWeight: FontWeight.w800,
@@ -177,7 +178,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         ),
                         child: Text(
                           user.role.label,
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -194,7 +195,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           const SizedBox(height: 22),
           Text(
             'IDENTITÉ',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.85,
@@ -217,7 +218,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           const SizedBox(height: 22),
           Text(
             'AFFICHAGE',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.85,
@@ -240,17 +241,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               tileColor: Colors.white,
               title: Text(
                 'Mode sombre',
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurface,
                 ),
               ),
               subtitle: Text(
                 'Appliqué à toute l’app sur cet appareil.',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
               value: _darkPref,
               activeTrackColor: scheme.primary,
@@ -382,7 +380,7 @@ class _InfoTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurfaceVariant,
@@ -391,7 +389,7 @@ class _InfoTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: scheme.onSurface,

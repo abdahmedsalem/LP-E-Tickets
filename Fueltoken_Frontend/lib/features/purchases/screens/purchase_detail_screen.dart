@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_api_config.dart';
@@ -564,7 +563,8 @@ class _PurchaseHeroCard extends StatelessWidget {
                   children: [
                     Text(
                       lot.internalRef,
-                      style: GoogleFonts.jetBrainsMono(
+                      style: TextStyle(
+                        fontFamily: 'monospace',
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.muted,
@@ -575,7 +575,7 @@ class _PurchaseHeroCard extends StatelessWidget {
                       lot.clientName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -781,7 +781,7 @@ class _RejectionCard extends StatelessWidget {
                   children: [
                     Text(
                       'Motif de rejet',
-                      style: GoogleFonts.dmSans(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: AppColors.danger,
@@ -876,7 +876,7 @@ class _LinesCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   AmountInline(
                     amount: lot.lines[i].lineAmount,
-                    valueStyle: GoogleFonts.poppins(
+                    valueStyle: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: _purchaseAmountColor(lot.state),
                       fontSize: 14,
@@ -913,7 +913,7 @@ class _LinesCard extends StatelessWidget {
                 const Spacer(),
                 AmountInline(
                   amount: lot.totalAmount,
-                  valueStyle: GoogleFonts.poppins(
+                  valueStyle: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: _purchaseAmountColor(lot.state),
                     fontSize: 16,

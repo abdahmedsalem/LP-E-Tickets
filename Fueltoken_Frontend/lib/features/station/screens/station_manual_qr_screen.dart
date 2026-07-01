@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
+import '../../../data/services/odoo_jsonrpc_client.dart'
+    show OdooJsonRpcException;
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -114,9 +114,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     });
 
     try {
-      final raw = await OdooFueltokenFacade().stationQrCheck(
-        _payloadFor(code),
-      );
+      final raw = await OdooFueltokenFacade().stationQrCheck(_payloadFor(code));
       if (!mounted) return;
       setState(() {
         _checkData = _dataMap(raw);
@@ -219,7 +217,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
           children: [
             Text(
               stationName,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: AppColors.ink,
@@ -368,7 +366,9 @@ class _CheckResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusText = canConsume ? 'Consommable' : 'Non consommable';
-    final statusColor = canConsume ? AppColors.leaderGreen : Colors.red.shade700;
+    final statusColor = canConsume
+        ? AppColors.leaderGreen
+        : Colors.red.shade700;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),

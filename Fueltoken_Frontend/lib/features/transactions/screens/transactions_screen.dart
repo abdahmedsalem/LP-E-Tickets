@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -571,7 +570,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           _titleForRole(user.role),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             height: 1.2,
@@ -821,7 +820,7 @@ class _TxCardState extends State<_TxCard> {
                           _AmountInline(
                             amount: tx.totalAmount.abs(),
                             textAlign: TextAlign.right,
-                            valueStyle: GoogleFonts.poppins(
+                            valueStyle: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w800,
                               color: amountColor,
@@ -882,7 +881,7 @@ class _TxDetailBody extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Lignes',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
               color: AppColors.muted,
@@ -923,7 +922,7 @@ class _TxDetailRowWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               row.label,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.muted,
@@ -939,7 +938,7 @@ class _TxDetailRowWidget extends StatelessWidget {
             child: Text(
               row.value,
               textAlign: TextAlign.right,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink,
@@ -1078,7 +1077,7 @@ class _TxLineRow extends StatelessWidget {
           _AmountInline(
             amount: line.amount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
+            valueStyle: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w700,
               color: Colors.black,
@@ -1129,7 +1128,7 @@ class _TxLineRow extends StatelessWidget {
           _AmountInline(
             amount: line.amount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
+            valueStyle: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: Colors.black,
@@ -1360,7 +1359,7 @@ class _HistoryFilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             label,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: fg,

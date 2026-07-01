@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 
@@ -17,7 +16,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
         backgroundColor: Colors.white,
         title: Text(
           'Créer un compte',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -44,7 +43,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                 children: [
                   Text(
                     "L'inscription se fait désormais avec le code reçu par SMS.",
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.ink,
@@ -53,7 +52,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     "Renseignez vos informations sur l'ecran d'inscription, puis validez le code recu pour creer le compte.",
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 13.5,
                       height: 1.45,
                       color: AppColors.body,

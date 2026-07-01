@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
@@ -469,7 +468,7 @@ class _SeparationSummaryCard extends StatelessWidget {
             qrCode,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -548,7 +547,7 @@ class _SummaryStatBlock extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -582,7 +581,7 @@ class _SummaryStatRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w800,
             color: AppColors.ink,
@@ -639,7 +638,7 @@ class _SeparerConfirmationHero extends StatelessWidget {
                 qrCode,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.ink,
@@ -677,7 +676,7 @@ class _SeparerConfirmationLinesSection extends StatelessWidget {
         children: [
           Text(
             'Lignes du QR',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -718,7 +717,7 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
             children: [
               Text(
                 '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}',
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
@@ -739,7 +738,7 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
         const SizedBox(width: 12),
         AmountInline(
           amount: line.amount,
-          valueStyle: GoogleFonts.poppins(
+          valueStyle: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w800,
             color: isExpired ? AppColors.muted : AppColors.ink,
@@ -772,7 +771,7 @@ class _LineCard extends StatelessWidget {
               children: [
                 Text(
                   '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}',
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
@@ -793,7 +792,7 @@ class _LineCard extends StatelessWidget {
           const SizedBox(width: 8),
           AmountInline(
             amount: line.amount,
-            valueStyle: GoogleFonts.poppins(
+            valueStyle: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: isExpired ? AppColors.muted : AppColors.ink,

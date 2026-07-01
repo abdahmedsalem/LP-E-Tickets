@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
@@ -403,7 +402,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                 children: [
                   Text(
                     'Sélectionnez les lignes à retirer.',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w500,
                       color: AppColors.muted,
@@ -430,7 +429,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                             children: [
                               Text(
                                 'Sélection',
-                                style: GoogleFonts.poppins(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.muted,
@@ -439,7 +438,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 '$selectedLineCount ligne${selectedLineCount > 1 ? 's' : ''} sélectionnée${selectedLineCount > 1 ? 's' : ''}',
-                                style: GoogleFonts.poppins(
+                                style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.ink,
@@ -454,7 +453,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                           children: [
                             Text(
                               Formatters.numberFr(selectedAmount),
-                              style: GoogleFonts.poppins(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.ink,
@@ -485,7 +484,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                           ),
                           child: Text(
                             '$selectedLineCount',
-                            style: GoogleFonts.poppins(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
                               color: AppColors.leaderGreenDark,
@@ -555,7 +554,7 @@ class _RetirerLineCard extends StatelessWidget {
                             lineTitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: AppColors.ink,

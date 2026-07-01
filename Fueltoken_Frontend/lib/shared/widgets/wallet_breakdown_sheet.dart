@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../core/theme/app_colors.dart';
 
 import '../../core/utils/formatters.dart';
@@ -81,7 +79,7 @@ class WalletBreakdownBody extends StatelessWidget {
               Text(
                 'Répartition et suivi',
 
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 16,
 
                   fontWeight: FontWeight.w800,
@@ -258,7 +256,7 @@ class _WalletBreakdownHero extends StatelessWidget {
                       Text(
                         Formatters.numberFr(walletAmountMru),
 
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: Colors.white,
 
                           fontSize: 36,
@@ -385,7 +383,7 @@ class _WalletBreakdownEmptyState extends StatelessWidget {
 
             textAlign: TextAlign.center,
 
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 16,
 
               fontWeight: FontWeight.w800,
@@ -901,7 +899,7 @@ class _FaceBreakdownCard extends StatelessWidget {
                       Text(
                         'Billets à ${Formatters.money(fv)}',
 
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontSize: 15,
 
                           fontWeight: FontWeight.w800,
@@ -1059,7 +1057,8 @@ class _StatTile extends StatelessWidget {
               Text(
                 '${Formatters.numberFr(entry.qty)} u.',
 
-                style: GoogleFonts.jetBrainsMono(
+                style: TextStyle(
+                  fontFamily: 'monospace',
                   fontSize: 12,
 
                   fontWeight: FontWeight.w700,
@@ -1176,7 +1175,8 @@ class _SimpleFaceQtyGrid extends StatelessWidget {
                 Text(
                   Formatters.numberFr(entries[i].key * entries[i].value),
 
-                  style: GoogleFonts.jetBrainsMono(
+                  style: TextStyle(
+                    fontFamily: 'monospace',
                     fontSize: 15,
 
                     fontWeight: FontWeight.w800,
@@ -1287,7 +1287,7 @@ class _CarnetBreakdownCard extends StatelessWidget {
                     Text(
                       title,
 
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 14,
 
                         fontWeight: FontWeight.w800,
@@ -1556,7 +1556,7 @@ class _GenericKeyValueCard extends StatelessWidget {
 
                       textAlign: TextAlign.end,
 
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 12,
 
                         fontWeight: FontWeight.w600,
@@ -1641,7 +1641,7 @@ Widget _monoCard(BuildContext context, String body) {
     child: Text(
       body,
 
-      style: GoogleFonts.poppins(
+      style: TextStyle(
         fontSize: 12,
 
         height: 1.45,

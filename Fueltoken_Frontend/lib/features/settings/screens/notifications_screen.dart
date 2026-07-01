@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/notifications/purchase_validation_notification_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -89,7 +88,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           onPressed: _markAllRead,
                           child: Text(
                             'Tout lu',
-                            style: GoogleFonts.poppins(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
@@ -117,7 +116,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 'Non lues',
                                 trailing: Text(
                                   '${unreadItems.length}',
-                                  style: GoogleFonts.poppins(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.primary,
@@ -139,7 +138,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 'Lues',
                                 trailing: Text(
                                   '${readItems.length}',
-                                  style: GoogleFonts.poppins(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.muted,
@@ -211,7 +210,7 @@ class _NotificationCard extends StatelessWidget {
                   children: [
                     Text(
                       titleLabel,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.ink,
@@ -222,7 +221,7 @@ class _NotificationCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       dateLabel,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.muted,
@@ -274,7 +273,7 @@ class _NotificationCard extends StatelessWidget {
                   ] else ...[
                     Text(
                       item.body,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 12.2,
                         fontWeight: FontWeight.w500,
                         color: AppColors.body,
@@ -317,7 +316,7 @@ class _PurchaseLineTile extends StatelessWidget {
               carnet,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.ink,
@@ -331,7 +330,7 @@ class _PurchaseLineTile extends StatelessWidget {
               children: [
                 TextSpan(
                   text: Formatters.numberFr(line.totalAmount),
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 13.2,
                     fontWeight: FontWeight.w600,
                     color: AppColors.leaderGreen,
@@ -340,7 +339,7 @@ class _PurchaseLineTile extends StatelessWidget {
                 ),
                 TextSpan(
                   text: ' ${Formatters.defaultCurrency}',
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w500,
                     color: AppColors.leaderGreen.withValues(alpha: 0.72),
@@ -385,7 +384,7 @@ class _ReceiptLineTile extends StatelessWidget {
                       carnet,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.ink,
@@ -401,7 +400,7 @@ class _ReceiptLineTile extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: amount,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 13.2,
                         fontWeight: FontWeight.w600,
                         color: AppColors.leaderGreen,
@@ -410,7 +409,7 @@ class _ReceiptLineTile extends StatelessWidget {
                     ),
                     TextSpan(
                       text: ' ${Formatters.defaultCurrency}',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w500,
                         color: AppColors.leaderGreen.withValues(alpha: 0.72),
@@ -456,7 +455,7 @@ class _NotificationMetaTile extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.muted,
@@ -468,7 +467,7 @@ class _NotificationMetaTile extends StatelessWidget {
           Text(
             value,
             textAlign: TextAlign.right,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.ink,
@@ -573,7 +572,7 @@ class _QrExpirationTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.muted,
@@ -605,7 +604,7 @@ class _QrExpirationTile extends StatelessWidget {
                 Text(
                   amount,
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.leaderGreen,

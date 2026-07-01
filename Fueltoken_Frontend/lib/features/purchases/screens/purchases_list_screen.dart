@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/notifications/purchase_validation_notification_service.dart';
@@ -154,7 +153,8 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
             children: [
               ScreenHeader(
                 title: 'Mes achats',
-                subtitle: 'Chaque carte résume le carnet, le montant total et la date de validation.',
+                subtitle:
+                    'Chaque carte résume le carnet, le montant total et la date de validation.',
                 onBack: () => context.pop(),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
@@ -388,7 +388,7 @@ class _PurchaseTile extends StatelessWidget {
                                   typeLabel,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
+                                  style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w900,
                                     color: scheme.onSurface,
@@ -573,7 +573,7 @@ class _MetricBlock extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: alignRight ? TextAlign.right : TextAlign.left,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF111827),
@@ -691,7 +691,7 @@ class _EmptyPanel extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
               color: const Color(0xFF111827),

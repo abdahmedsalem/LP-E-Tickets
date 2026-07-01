@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
@@ -207,7 +206,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                     user.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
+                                    style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: -0.35,
@@ -271,7 +270,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
                           'Actions rapides',
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.2,
@@ -461,7 +460,7 @@ class _QuickActionCard extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: math.min(
                           12.0,
                           math.max(10.8, cardWidth * 0.102),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -420,7 +419,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                           const SizedBox(height: 14),
                           Text(
                             'Les tickets bloqués ne sont plus utilisables.',
-                            style: GoogleFonts.poppins(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: scheme.onSurfaceVariant,
@@ -638,7 +637,7 @@ class _CarnetsSummaryCard extends StatelessWidget {
         children: [
           Text(
             'Résumé portefeuille',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -739,7 +738,7 @@ class _CarnetSummaryMetric extends StatelessWidget {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w900,
                     color: AppColors.ink,
@@ -769,7 +768,7 @@ class _HistoryAlignedPageHeader extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.left,
-        style: GoogleFonts.poppins(
+        style: TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.w700,
           height: 1.2,
@@ -841,7 +840,7 @@ class _CarnetFilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             label,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: fg,
@@ -910,7 +909,7 @@ class _CarnetDetailScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Détail des tickets de ce carnet.',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: scheme.onSurfaceVariant,
@@ -934,7 +933,7 @@ class _CarnetDetailScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   Text(
                     'Les tickets bloqués ne sont plus utilisables.',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: scheme.onSurfaceVariant,
@@ -1036,7 +1035,7 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
@@ -1204,7 +1203,7 @@ class _CarnetDetailMetric extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -1292,7 +1291,7 @@ class _CarnetLineCard extends StatelessWidget {
                     'Carnet $_humanCarnetCode',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w900,
                       color: AppColors.ink,

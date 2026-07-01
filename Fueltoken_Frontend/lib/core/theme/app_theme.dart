@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
@@ -33,8 +32,8 @@ class AppTheme {
       brightness: Brightness.light,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.background,
-      fontFamily: GoogleFonts.poppins().fontFamily,
-      textTheme: GoogleFonts.poppinsTextTheme().apply(
+      fontFamily: TextStyle().fontFamily,
+      textTheme: ThemeData.light().textTheme.apply(
         bodyColor: AppColors.ink,
         displayColor: AppColors.ink,
       ),
@@ -45,7 +44,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: TextStyle(
           color: AppColors.ink,
           fontWeight: FontWeight.w700,
           fontSize: 17,
@@ -73,10 +72,7 @@ class AppTheme {
           ),
           // Avoid infinite min width inside Row/ListTile (was Size.fromHeight).
           minimumSize: const Size(0, 50),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -88,19 +84,13 @@ class AppTheme {
           ),
           side: const BorderSide(color: AppColors.line, width: 1),
           minimumSize: const Size(0, 50),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: colorScheme.primary,
-          textStyle: GoogleFonts.poppins(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -110,8 +100,8 @@ class AppTheme {
           horizontal: 14,
           vertical: 14,
         ),
-        hintStyle: GoogleFonts.poppins(color: AppColors.hint, fontSize: 14),
-        labelStyle: GoogleFonts.poppins(
+        hintStyle: TextStyle(color: AppColors.hint, fontSize: 14),
+        labelStyle: TextStyle(
           color: AppColors.muted,
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -148,7 +138,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surface,
-        labelStyle: GoogleFonts.poppins(
+        labelStyle: TextStyle(
           color: AppColors.body,
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -159,7 +149,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.ink,
-        contentTextStyle: GoogleFonts.poppins(
+        contentTextStyle: TextStyle(
           color: AppColors.textOnPrimary,
           fontSize: 13,
         ),
@@ -205,10 +195,11 @@ class AppTheme {
       brightness: Brightness.dark,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: bg,
-      fontFamily: GoogleFonts.poppins().fontFamily,
-      textTheme: GoogleFonts.poppinsTextTheme(
-        ThemeData.dark().textTheme,
-      ).apply(bodyColor: ink, displayColor: ink),
+      fontFamily: TextStyle().fontFamily,
+      textTheme: ThemeData.dark().textTheme.apply(
+        bodyColor: ink,
+        displayColor: ink,
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: bg,
         foregroundColor: ink,
@@ -216,7 +207,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: TextStyle(
           color: ink,
           fontWeight: FontWeight.w700,
           fontSize: 17,
@@ -243,10 +234,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(14),
           ),
           minimumSize: const Size(0, 50),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -258,19 +246,13 @@ class AppTheme {
           ),
           side: BorderSide(color: line.withValues(alpha: 0.9)),
           minimumSize: const Size(0, 50),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primaryLight,
-          textStyle: GoogleFonts.poppins(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -280,8 +262,8 @@ class AppTheme {
           horizontal: 14,
           vertical: 14,
         ),
-        hintStyle: GoogleFonts.poppins(color: muted, fontSize: 14),
-        labelStyle: GoogleFonts.poppins(
+        hintStyle: TextStyle(color: muted, fontSize: 14),
+        labelStyle: TextStyle(
           color: muted,
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -302,7 +284,7 @@ class AppTheme {
       dividerTheme: DividerThemeData(color: line, thickness: 1, space: 1),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surface,
-        contentTextStyle: GoogleFonts.poppins(color: ink, fontSize: 13),
+        contentTextStyle: TextStyle(color: ink, fontSize: 13),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

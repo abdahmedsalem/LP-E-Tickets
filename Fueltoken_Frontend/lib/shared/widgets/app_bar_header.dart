@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Custom in-screen app bar header — small back chevron, title + optional
@@ -72,7 +71,7 @@ class AppBarHeader extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style:
                   largeTitleTextStyle ??
-                  GoogleFonts.poppins(
+                  TextStyle(
                     fontSize: largeTitleFontSize ?? 32,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF0F2747),
@@ -86,7 +85,7 @@ class AppBarHeader extends StatelessWidget {
                 subtitle!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 13,
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
@@ -121,7 +120,7 @@ class AppBarHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style:
                       titleTextStyle ??
-                      GoogleFonts.poppins(
+                      TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: scheme.onSurface,
@@ -136,7 +135,7 @@ class AppBarHeader extends StatelessWidget {
                       subtitle!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 11,
                         color: scheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,

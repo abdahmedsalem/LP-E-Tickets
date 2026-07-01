@@ -563,5 +563,4 @@ class OdooAuthService {
 
     return false;
   }
-
 }

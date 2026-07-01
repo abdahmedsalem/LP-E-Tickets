@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -475,7 +474,7 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
                     if (qr.state == QrState.blocked) ...[
                       Text(
                         'Séparez les tickets utilisables des tickets expirés.',
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w400,
                           color: AppColors.muted,
@@ -705,7 +704,7 @@ class _QrNumericCodePanel extends StatelessWidget {
               Text(
                 'Code manuel',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.muted,
@@ -738,7 +737,8 @@ class _QrNumericCodePanel extends StatelessWidget {
           Text(
             displayCode,
             textAlign: TextAlign.center,
-            style: GoogleFonts.jetBrainsMono(
+            style: TextStyle(
+              fontFamily: 'monospace',
               fontSize: 20,
               fontWeight: FontWeight.w800,
               color: codeColor,
@@ -858,7 +858,7 @@ class _CompositionLineRow extends StatelessWidget {
                     _title(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 14.2,
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink,
@@ -870,7 +870,7 @@ class _CompositionLineRow extends StatelessWidget {
                 AmountInline(
                   amount: line.amount,
                   textAlign: TextAlign.right,
-                  valueStyle: GoogleFonts.poppins(
+                  valueStyle: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
@@ -924,7 +924,7 @@ class _DetailInfoRow extends StatelessWidget {
               flex: 5,
               child: Text(
                 label,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.muted,
@@ -937,7 +937,7 @@ class _DetailInfoRow extends StatelessWidget {
               child: Text(
                 value,
                 textAlign: TextAlign.right,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
