@@ -210,6 +210,15 @@ class OdooFueltokenFacade {
     );
   }
 
+  Future<dynamic> ticketsTransfer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.ticketsTransfer,
+      'ODOO_RPC_FUEL_TICKETS_TRANSFER_PATH',
+      params,
+    );
+  }
+
   Future<dynamic> stationQrUse(Map<String, dynamic> params) => _call(
     OdooFueltokenRpcConfig.stationQrUse,
     'ODOO_RPC_FUEL_STATION_QR_USE_PATH',

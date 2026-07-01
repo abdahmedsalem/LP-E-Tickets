@@ -136,6 +136,11 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
   );
 
+  static const String ticketsTransfer = String.fromEnvironment(
+    'ODOO_RPC_FUEL_TICKETS_TRANSFER_PATH',
+    defaultValue: '/api/acpec/fueltoken/v1/mobile/tickets/transfer',
+  );
+
   static const String stationQrUse = String.fromEnvironment(
     'ODOO_RPC_FUEL_STATION_QR_USE_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/station/qr/use',

@@ -25,6 +25,7 @@ class FaceLine extends Equatable {
   final int qrBlockedQty;
   final int consumedQty;
   final int expiredQty;
+  final int transferredOutQty;
   final DateTime expirationDate;
   final String ownerId;
 
@@ -48,6 +49,7 @@ class FaceLine extends Equatable {
     required this.qrBlockedQty,
     required this.consumedQty,
     required this.expiredQty,
+    this.transferredOutQty = 0,
     required this.expirationDate,
     required this.ownerId,
   });
@@ -58,7 +60,12 @@ class FaceLine extends Equatable {
 
   bool get conservationOk =>
       initialQty ==
-      availableQty + qrActiveQty + qrBlockedQty + consumedQty + expiredQty;
+      availableQty +
+          qrActiveQty +
+          qrBlockedQty +
+          consumedQty +
+          expiredQty +
+          transferredOutQty;
 
   FaceLine copyWith({
     int? availableQty,
@@ -66,6 +73,7 @@ class FaceLine extends Equatable {
     int? qrBlockedQty,
     int? consumedQty,
     int? expiredQty,
+    int? transferredOutQty,
   }) {
     return FaceLine(
       id: id,
@@ -87,6 +95,7 @@ class FaceLine extends Equatable {
       qrBlockedQty: qrBlockedQty ?? this.qrBlockedQty,
       consumedQty: consumedQty ?? this.consumedQty,
       expiredQty: expiredQty ?? this.expiredQty,
+      transferredOutQty: transferredOutQty ?? this.transferredOutQty,
       expirationDate: expirationDate,
       ownerId: ownerId,
     );
@@ -112,5 +121,6 @@ class FaceLine extends Equatable {
     qrBlockedQty,
     consumedQty,
     expiredQty,
+    transferredOutQty,
   ];
 }

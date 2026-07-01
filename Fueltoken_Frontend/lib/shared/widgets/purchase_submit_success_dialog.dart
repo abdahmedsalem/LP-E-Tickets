@@ -32,6 +32,7 @@ Future<void> showTransferSuccessDialog(
   required String recipientName,
   required String recipientPhone,
   List<TransferConfirmationLine> lines = const [],
+  String linesTitle = 'Carnets transférés',
 }) {
   return Navigator.of(context, rootNavigator: true).push<void>(
     MaterialPageRoute(
@@ -41,6 +42,7 @@ Future<void> showTransferSuccessDialog(
         recipientName: recipientName,
         recipientPhone: recipientPhone,
         lines: lines,
+        linesTitle: linesTitle,
       ),
     ),
   );
@@ -125,6 +127,7 @@ class TransferSuccessScreen extends StatelessWidget {
     required this.recipientName,
     required this.recipientPhone,
     this.lines = const [],
+    this.linesTitle = 'Carnets transférés',
   });
 
   final int totalAmount;
@@ -132,6 +135,7 @@ class TransferSuccessScreen extends StatelessWidget {
   final String recipientName;
   final String recipientPhone;
   final List<TransferConfirmationLine> lines;
+  final String linesTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +143,9 @@ class TransferSuccessScreen extends StatelessWidget {
       title: 'Transfert confirmé',
       icon: Icons.check_circle_rounded,
       accentColor: const Color(0xFF2B8F3A),
-      details: lines.isEmpty ? null : _TransferredLinesSection(lines: lines),
+      details: lines.isEmpty
+          ? null
+          : _TransferredLinesSection(lines: lines, title: linesTitle),
       rows: [
         _SuccessRowData(
           label: 'Client receveur',
@@ -368,9 +374,10 @@ class _PurchasedLinesSection extends StatelessWidget {
 }
 
 class _TransferredLinesSection extends StatelessWidget {
-  const _TransferredLinesSection({required this.lines});
+  const _TransferredLinesSection({required this.lines, required this.title});
 
   final List<TransferConfirmationLine> lines;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -386,7 +393,7 @@ class _TransferredLinesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Carnets transférés',
+            title,
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w800,

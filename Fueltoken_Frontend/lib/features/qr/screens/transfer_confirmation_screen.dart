@@ -17,8 +17,18 @@ class TransferConfirmationArgs {
     required this.recipientName,
     required this.lines,
     this.note,
-    required this.onConfirm,
-  });
+    this.noteRequired = false,
+    this.noteLabel = 'Message',
+    this.noteHint = 'Saisissez le motif du transfert',
+    this.title = 'Confirmer l\'envoi',
+    this.introText = 'Vérifiez les carnets avant de confirmer.',
+    this.confirmLabel = 'Confirmer l\'envoi',
+    this.confirmIcon = Icons.send_rounded,
+    this.sectionLabel = 'Carnets envoyés',
+    this.intentOperation = 'carnets-transfer',
+    this.onConfirm,
+    this.onConfirmWithNote,
+  }) : assert(onConfirm != null || onConfirmWithNote != null);
 
   /// Numéro de téléphone du destinataire (tel que saisi).
   final String recipientPhone;
@@ -29,12 +39,32 @@ class TransferConfirmationArgs {
   /// Lignes de transfert sélectionnées.
   final List<TransferConfirmationLine> lines;
 
-  /// Note optionnelle.
+  /// Note optionnelle affichée ou préremplie.
   final String? note;
 
-  /// Callback appelé quand l'utilisateur confirme.
-  final Future<void> Function(String actionCode, SensitiveActionIntent intent)
+  /// Demande la saisie du motif sur l'écran de confirmation avant le PIN.
+  final bool noteRequired;
+  final String noteLabel;
+  final String noteHint;
+
+  final String title;
+  final String introText;
+  final String confirmLabel;
+  final IconData confirmIcon;
+  final String sectionLabel;
+  final String intentOperation;
+
+  /// Callback appelé quand l'utilisateur confirme sans motif éditable.
+  final Future<void> Function(String actionCode, SensitiveActionIntent intent)?
   onConfirm;
+
+  /// Callback appelé quand l'écran de confirmation collecte le motif.
+  final Future<void> Function(
+    String actionCode,
+    SensitiveActionIntent intent,
+    String note,
+  )?
+  onConfirmWithNote;
 }
 
 class TransferConfirmationLine {
@@ -68,6 +98,19 @@ class _TransferConfirmationScreenState
     extends State<TransferConfirmationScreen> {
   bool _confirming = false;
   bool _closing = false;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController(text: widget.args.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
 
   void _close(Object? result) {
     if (!mounted || _closing) return;
@@ -83,15 +126,23 @@ class _TransferConfirmationScreenState
     if (_confirming) return;
     var completed = false;
     try {
+      var note = _noteController.text.trim();
+      if (widget.args.noteRequired && note.isEmpty) {
+        note = 'Motif non renseigné';
+      }
       final actionCode = await showSensitiveActionCodeDialog(
         context,
         title: 'Vérification du PIN',
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      final intent = SensitiveActionIntent.create('carnets-transfer');
+      final intent = SensitiveActionIntent.create(widget.args.intentOperation);
       setState(() => _confirming = true);
-      await widget.args.onConfirm(actionCode, intent);
+      if (widget.args.onConfirmWithNote != null) {
+        await widget.args.onConfirmWithNote!(actionCode, intent, note);
+      } else {
+        await widget.args.onConfirm!(actionCode, intent);
+      }
       if (!mounted) return;
       completed = true;
       _close(true);
@@ -123,10 +174,10 @@ class _TransferConfirmationScreenState
     final args = widget.args;
 
     return StandardConfirmationScaffold(
-      title: 'Confirmer l\'envoi',
-      introText: 'Vérifiez les carnets avant de confirmer.',
-      confirmLabel: 'Confirmer l\'envoi',
-      confirmIcon: Icons.send_rounded,
+      title: args.title,
+      introText: args.introText,
+      confirmLabel: args.confirmLabel,
+      confirmIcon: args.confirmIcon,
       confirmIconSize: 17,
       topSpacing: 14,
       confirming: _confirming,
@@ -139,14 +190,21 @@ class _TransferConfirmationScreenState
           recipientPhone: args.recipientPhone,
         ),
         const SizedBox(height: 20),
-        const _TransferConfirmationSectionHeader(label: 'Carnets envoyés'),
+        _TransferConfirmationSectionHeader(label: args.sectionLabel),
         const SizedBox(height: 14),
         _TransferConfirmationLinesCard(lines: args.lines),
-        if (args.note != null && args.note!.isNotEmpty) ...[
+        if (args.noteRequired ||
+            (args.note != null && args.note!.isNotEmpty)) ...[
           const SizedBox(height: 20),
-          const _TransferConfirmationSectionHeader(label: 'Message'),
+          _TransferConfirmationSectionHeader(label: args.noteLabel),
           const SizedBox(height: 8),
-          _TransferConfirmationNoteCard(note: args.note!),
+          if (args.noteRequired)
+            _TransferConfirmationNoteInput(
+              controller: _noteController,
+              hintText: args.noteHint,
+            )
+          else
+            _TransferConfirmationNoteCard(note: args.note!),
         ],
         const SizedBox(height: 24),
         _TransferConfirmationDisclaimerText(recipientName: args.recipientName),
@@ -315,6 +373,55 @@ class _TransferTotalRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TransferConfirmationNoteInput extends StatelessWidget {
+  const _TransferConfirmationNoteInput({
+    required this.controller,
+    required this.hintText,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      minLines: 2,
+      maxLines: 4,
+      textInputAction: TextInputAction.done,
+      style: GoogleFonts.poppins(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: AppColors.ink,
+        height: 1.35,
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        hintText: hintText,
+        hintStyle: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.muted,
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.line),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: AppColors.leaderGreen, width: 1.4),
+        ),
+      ),
     );
   }
 }

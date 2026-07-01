@@ -180,6 +180,9 @@ class AcpecFacesMapper {
         row['qty_consumed'] ?? row['consumed_qty'] ?? 0,
       );
       final expi = _parseAmount(row['qty_expired'] ?? row['expired_qty'] ?? 0);
+      final transferredOut = _parseAmount(
+        row['qty_transferred_out'] ?? row['transferred_out_qty'] ?? 0,
+      );
       final faceCount = _parseAmount(
         row['face_count'] ??
             row['carnet_face_count'] ??
@@ -187,7 +190,7 @@ class AcpecFacesMapper {
       );
 
       final effectiveInitial = initial > 0 ? initial : avail;
-      final sumParts = avail + qrA + qrB + cons + expi;
+      final sumParts = avail + qrA + qrB + cons + expi + transferredOut;
       var initialQty = effectiveInitial < avail ? avail : effectiveInitial;
       if (initialQty < sumParts) initialQty = sumParts;
       if (fv <= 0) continue;
@@ -268,6 +271,7 @@ class AcpecFacesMapper {
           qrBlockedQty: qrB,
           consumedQty: cons,
           expiredQty: expi,
+          transferredOutQty: transferredOut,
           expirationDate: exp,
           ownerId: ownerId,
         ),

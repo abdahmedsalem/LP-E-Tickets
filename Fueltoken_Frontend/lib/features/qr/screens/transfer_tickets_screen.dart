@@ -13,40 +13,39 @@ import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
-import '../../../data/services/acpec_rpc_result_guard.dart';
-import '../transfer_carnets_logic.dart';
-import 'transfer_confirmation_screen.dart';
-import '../../../shared/widgets/purchase_submit_success_dialog.dart';
-import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/amount_inline.dart';
+import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
-import '../../../shared/widgets/amount_inline.dart';
+import '../../../shared/widgets/purchase_submit_success_dialog.dart';
+import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../../../shared/widgets/app_message.dart';
+import 'transfer_confirmation_screen.dart';
 
-bool _isReasonableExpirationDate(DateTime date) {
+bool _isReasonableTicketExpirationDate(DateTime date) {
   return date.year > 1971 && date.year < 2100;
 }
 
-String _expirationLabel(DateTime date) {
-  if (!_isReasonableExpirationDate(date)) {
+String _ticketExpirationLabel(DateTime date) {
+  if (!_isReasonableTicketExpirationDate(date)) {
     return 'Expiration non renseignée';
   }
   return 'Expire le ${Formatters.dateTimeDash(date)}';
 }
 
-class TransferCarnetsScreen extends StatefulWidget {
-  const TransferCarnetsScreen({super.key});
+class TransferTicketsScreen extends StatefulWidget {
+  const TransferTicketsScreen({super.key});
 
   @override
-  State<TransferCarnetsScreen> createState() => _TransferCarnetsScreenState();
+  State<TransferTicketsScreen> createState() => _TransferTicketsScreenState();
 }
 
-class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
+class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
   final _phoneController = TextEditingController();
-  final Map<String, int> _selectedQtyByLineId = <String, int>{};
+  final Map<String, int> _selectedTicketsByLineId = <String, int>{};
 
   Map<String, int> _carnetSizeById = <String, int>{};
   Map<String, int> _carnetSizeByCode = <String, int>{};
@@ -80,7 +79,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: ScreenHeader(
-        title: 'Transfert de carnets',
+        title: 'Transfert de tickets',
         onBack: () {
           Navigator.of(context).maybePop();
         },
@@ -111,37 +110,48 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     return 0;
   }
 
-  List<FaceLine> get _transferableFaces {
+  List<FaceLine> get _transferableTicketLines {
     final lines = <FaceLine>[];
     for (final line in _faces) {
-      final size = _carnetSizeFor(line);
-      if (!isTransferableCarnetLine(line, size)) continue;
+      if (line.isExpired) continue;
+      if (line.availableQty <= 0) continue;
       lines.add(line);
     }
     lines.sort((a, b) {
-      final sizeA = _carnetSizeFor(a);
-      final sizeB = _carnetSizeFor(b);
+      if (a.expirationDate != b.expirationDate) {
+        return a.expirationDate.compareTo(b.expirationDate);
+      }
       if (a.faceValue != b.faceValue) return a.faceValue.compareTo(b.faceValue);
-      if (sizeA != sizeB) return sizeA.compareTo(sizeB);
-      return a.expirationDate.compareTo(b.expirationDate);
+      return a.carnetShortCode.compareTo(b.carnetShortCode);
     });
     return lines;
   }
 
-  int _selectedCarnetsFor(FaceLine line) => _selectedQtyByLineId[line.id] ?? 0;
+  int _selectedTicketsFor(FaceLine line) =>
+      _selectedTicketsByLineId[line.id] ?? 0;
 
-  int _selectedCarnetsTotal() =>
-      _selectedQtyByLineId.values.fold(0, (sum, qty) => sum + qty);
+  int _selectedTicketsTotal() =>
+      _selectedTicketsByLineId.values.fold(0, (sum, qty) => sum + qty);
 
   int _selectedTransferAmount() {
     var total = 0;
-    for (final line in _transferableFaces) {
-      final qty = _selectedQtyByLineId[line.id] ?? 0;
+    for (final line in _transferableTicketLines) {
+      final qty = _selectedTicketsByLineId[line.id] ?? 0;
       if (qty <= 0) continue;
-      final size = _carnetSizeFor(line);
-      total += qty * size * line.faceValue;
+      total += qty * line.faceValue;
     }
     return total;
+  }
+
+  void _setSelectedTickets(FaceLine line, int qty) {
+    final safeQty = qty.clamp(0, line.availableQty).toInt();
+    setState(() {
+      if (safeQty <= 0) {
+        _selectedTicketsByLineId.remove(line.id);
+      } else {
+        _selectedTicketsByLineId[line.id] = safeQty;
+      }
+    });
   }
 
   String _normalizeRecipientPhone(String input) {
@@ -197,25 +207,11 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     return 'Carnet';
   }
 
-  void _toggleLineSelection(FaceLine line) {
-    final size = _carnetSizeFor(line);
-    final maxCarnets = transferableCarnetCount(line, size);
-    if (maxCarnets <= 0) return;
-    final current = _selectedCarnetsFor(line);
-    setState(() {
-      if (current > 0) {
-        _selectedQtyByLineId.remove(line.id);
-      } else {
-        _selectedQtyByLineId[line.id] = maxCarnets;
-      }
-    });
-  }
-
   Future<void> _loadData() async {
     if (!AppEnvironment.useAcpecLiveData) {
       setState(() {
         _loading = false;
-        _error = 'Connexion serveur ACPEC requise pour transférer des carnets.';
+        _error = 'Connexion serveur ACPEC requise pour transférer des tickets.';
       });
       return;
     }
@@ -231,7 +227,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     try {
       final companyId = AppEnvironment.companyIdForUser(user);
       final facesRaw = await OdooFueltokenFacade().faces(
-        const <String, dynamic>{'transferable_only': true},
+        const <String, dynamic>{},
       );
       final catalogResult = await AcpecCarnetCatalogService.instance
           .loadAdminCatalog(companyId: companyId);
@@ -241,9 +237,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       final byCode = <String, int>{};
       final byName = <String, int>{};
       for (final type in catalogResult.types) {
-        if (type.id.trim().isNotEmpty) {
-          byId[type.id.trim()] = type.size;
-        }
+        if (type.id.trim().isNotEmpty) byId[type.id.trim()] = type.size;
         if (type.code.trim().isNotEmpty) {
           byCode[type.code.trim().toUpperCase()] = type.size;
         }
@@ -285,7 +279,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     if (currentPhone.isNotEmpty && phone == currentPhone) {
       AppMessage.warning(
         context,
-        'Vous ne pouvez pas transférer des carnets vers votre propre compte.',
+        'Vous ne pouvez pas transférer des tickets vers votre propre compte.',
       );
       return;
     }
@@ -300,36 +294,36 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       );
       return;
     }
-
-    // Construire les lignes de confirmation et les lignes API
     final confirmLines = <TransferConfirmationLine>[];
     final apiLines = <Map<String, dynamic>>[];
-    for (final line in _transferableFaces) {
-      final qty = _selectedQtyByLineId[line.id] ?? 0;
+    for (final line in _transferableTicketLines) {
+      final qty = _selectedTicketsByLineId[line.id] ?? 0;
       if (qty <= 0) continue;
+      if (qty > line.availableQty) {
+        AppMessage.error(
+          context,
+          'Quantité supérieure aux tickets disponibles.',
+        );
+        return;
+      }
       final faceLineId = int.tryParse(line.id);
       if (faceLineId == null) {
         AppMessage.error(
           context,
-          'Identifiant de face manquant. Rechargez les faces.',
+          'Identifiant de ticket manquant. Rechargez les carnets.',
         );
         return;
       }
-      final size = _carnetSizeFor(line);
       confirmLines.add(
-        TransferConfirmationLine(
-          faceLine: line,
-          carnetQty: qty,
-          carnetSize: size,
-        ),
+        TransferConfirmationLine(faceLine: line, carnetQty: qty, carnetSize: 1),
       );
-      apiLines.add({'face_line_id': faceLineId, 'carnet_qty': qty});
+      apiLines.add({'face_line_id': faceLineId, 'qty_tickets': qty});
     }
 
     if (confirmLines.isEmpty) {
       AppMessage.warning(
         context,
-        'Sélectionnez au moins un carnet à transférer.',
+        'Sélectionnez au moins un ticket à transférer.',
       );
       return;
     }
@@ -358,7 +352,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
 
     var confirmedRecipientName = recipientName;
 
-    // Naviguer vers l'écran de confirmation
     if (!mounted) return;
     final confirmed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -372,12 +365,13 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
             noteHint:
                 'Facultatif. Si vide, le transfert sera enregistré sans motif renseigné.',
             title: 'Confirmer le transfert',
-            introText: 'Vérifiez les carnets avant de confirmer.',
+            introText: 'Vérifiez les tickets avant de confirmer.',
             confirmLabel: 'Confirmer le transfert',
-            sectionLabel: 'Carnets transférés',
-            intentOperation: 'carnet-transfer',
+            confirmIcon: Icons.confirmation_number_outlined,
+            sectionLabel: 'Tickets transférés',
+            intentOperation: 'ticket-transfer',
             onConfirmWithNote: (actionCode, intent, note) async {
-              final raw = await OdooFueltokenFacade().carnetsTransfer(
+              final raw = await OdooFueltokenFacade().ticketsTransfer(
                 intent.withAuthParams({
                   'recipient_phone': phone,
                   'note': note,
@@ -386,7 +380,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
               );
               final data = acpecRpcMapOrThrow(
                 raw,
-                fallbackMessage: 'Transfert refusé par le serveur.',
+                fallbackMessage: 'Transfert de tickets refusé par le serveur.',
                 publicErrorMessage:
                     'Le transfert a échoué. Réessayez ou contactez l’administrateur.',
               );
@@ -403,11 +397,10 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     if (!mounted) return;
     if (confirmed == true) {
       final totalAmount = confirmLines.fold(0, (s, l) => s + l.totalAmount);
-      // Rafraîchir les sections concernées
       WalletRefreshBus.instance.bump();
       FacesRefreshBus.instance.bump();
       ClientHistoryRefreshBus.instance.bump();
-      setState(() => _selectedQtyByLineId.clear());
+      setState(() => _selectedTicketsByLineId.clear());
       if (!mounted) return;
       await showTransferSuccessDialog(
         context,
@@ -416,14 +409,12 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
         recipientName: confirmedRecipientName,
         recipientPhone: phone,
         lines: confirmLines,
+        linesTitle: 'Tickets transférés',
       );
       if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          context.go('/home');
-        }
+        if (mounted) context.go('/home');
       });
-      return;
     }
   }
 
@@ -484,7 +475,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       );
     }
 
-    final transferable = _transferableFaces;
+    final transferable = _transferableTicketLines;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -497,7 +488,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                 child: _TransferSelectionBottomBar(
                   totalLabel: 'TOTAL TRANSFERT',
                   totalAmount: _selectedTransferAmount(),
-                  hasSelection: _selectedCarnetsTotal() > 0,
+                  hasSelection: _selectedTicketsTotal() > 0,
                   submitting: _submitting,
                   onSubmit: _submitting ? null : _submit,
                 ),
@@ -514,7 +505,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 22, 16, 132),
                 children: [
                   Text(
-                    'Entrez le numéro du destinataire, puis sélectionnez les carnets à transférer.',
+                    'Entrez le numéro du destinataire, puis sélectionnez les tickets à transférer.',
                     style: GoogleFonts.poppins(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
@@ -528,16 +519,16 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                     SizedBox(
                       height: MediaQuery.sizeOf(context).height * 0.48,
                       child: const EmptyState(
-                        icon: Icons.send_rounded,
-                        title: 'Aucun carnet disponible',
-                        message: 'Vos carnets disponibles apparaîtront ici',
+                        icon: Icons.confirmation_number_outlined,
+                        title: 'Aucun ticket disponible',
+                        message: 'Vos tickets disponibles apparaîtront ici',
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être envoyés.',
+                        'Seuls les tickets disponibles et non expirés peuvent être transférés.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppColors.body, height: 1.35),
                       ),
@@ -551,55 +542,19 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                         fontWeight: FontWeight.w400,
                         color: AppColors.ink,
                       ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
+                      decoration: _inputDecoration(
                         hintText: 'Numéro de téléphone',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.muted,
-                        ),
-                        suffixIcon: const Icon(
-                          Icons.contact_page_outlined,
-                          size: 20,
-                          color: AppColors.muted,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFD8DDE6),
-                            width: 1.2,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFD8DDE6),
-                            width: 1.2,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: AppColors.leaderGreen,
-                            width: 1.4,
-                          ),
-                        ),
+                        suffixIcon: Icons.contact_page_outlined,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     for (var i = 0; i < transferable.length; i++) ...[
-                      _TransferLineCard(
+                      _TransferTicketLineCard(
                         line: transferable[i],
                         carnetTypeLabel: _carnetTypeLabelFor(transferable[i]),
-                        carnetSize: _carnetSizeFor(transferable[i]),
-                        selected: _selectedCarnetsFor(transferable[i]),
-                        onTap: () => _toggleLineSelection(transferable[i]),
+                        selected: _selectedTicketsFor(transferable[i]),
+                        onChanged: (qty) =>
+                            _setSelectedTickets(transferable[i], qty),
                       ),
                       if (i < transferable.length - 1)
                         const SizedBox(height: 10),
@@ -610,6 +565,36 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hintText,
+    required IconData suffixIcon,
+  }) {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      hintText: hintText,
+      hintStyle: GoogleFonts.poppins(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: AppColors.muted,
+      ),
+      suffixIcon: Icon(suffixIcon, size: 20, color: AppColors.muted),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFD8DDE6), width: 1.2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFD8DDE6), width: 1.2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.leaderGreen, width: 1.4),
       ),
     );
   }
@@ -723,55 +708,53 @@ class _TransferSelectionBottomBar extends StatelessWidget {
   }
 }
 
-class _TransferLineCard extends StatelessWidget {
-  const _TransferLineCard({
+class _TransferTicketLineCard extends StatelessWidget {
+  const _TransferTicketLineCard({
     required this.line,
     required this.carnetTypeLabel,
-    required this.carnetSize,
     required this.selected,
-    required this.onTap,
+    required this.onChanged,
   });
 
   final FaceLine line;
   final String carnetTypeLabel;
-  final int carnetSize;
   final int selected;
-  final VoidCallback onTap;
+  final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final transferableValue =
-        (line.availableQty ~/ carnetSize) * carnetSize * line.faceValue;
     final isSelected = selected > 0;
-    final compositionLabel =
-        '$carnetSize tickets × ${Formatters.money(line.faceValue)}';
+    final selectedAmount = selected * line.faceValue;
+    final subtitleParts = <String>[
+      _ticketExpirationLabel(line.expirationDate),
+      '${Formatters.numberFr(line.availableQty)} ticket(s) disponible(s)',
+    ];
+    final carnetCode = line.carnetShortCode.trim().isNotEmpty
+        ? line.carnetShortCode.trim()
+        : line.carnetNo.trim();
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? AppColors.leaderGreen
-                  : const Color(0xFFEAECEF),
-              width: isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: Column(
+        border: Border.all(
+          color: isSelected ? AppColors.leaderGreen : const Color(0xFFEAECEF),
+          width: isSelected ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       carnetTypeLabel,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -782,50 +765,109 @@ class _TransferLineCard extends StatelessWidget {
                         height: 1.08,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    isSelected
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    size: 20,
-                    color: isSelected ? AppColors.leaderGreen : AppColors.muted,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _expirationLabel(line.expirationDate),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
+                    if (carnetCode.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        carnetCode,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      compositionLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  AmountInline(amount: transferableValue),
-                ],
+              const SizedBox(width: 10),
+              Icon(
+                isSelected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                size: 20,
+                color: isSelected ? AppColors.leaderGreen : AppColors.muted,
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Text(
+            subtitleParts.join(' • '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _QtyButton(
+                icon: Icons.remove_rounded,
+                onTap: selected <= 0 ? null : () => onChanged(selected - 1),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 58,
+                child: Text(
+                  Formatters.numberFr(selected),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _QtyButton(
+                icon: Icons.add_rounded,
+                onTap: selected >= line.availableQty
+                    ? null
+                    : () => onChanged(selected + 1),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: selected == line.availableQty
+                    ? null
+                    : () => onChanged(line.availableQty),
+                child: const Text('Tout'),
+              ),
+              const Spacer(),
+              AmountInline(amount: selectedAmount, textAlign: TextAlign.right),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QtyButton extends StatelessWidget {
+  const _QtyButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 36,
+      height: 36,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          foregroundColor: AppColors.leaderGreen,
+          side: BorderSide(color: AppColors.line.withValues(alpha: 0.9)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
+        child: Icon(icon, size: 20),
       ),
     );
   }
