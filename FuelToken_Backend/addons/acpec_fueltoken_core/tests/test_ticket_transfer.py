@@ -71,7 +71,7 @@ class TestTicketTransfer(TransactionCase):
         return purchase, purchase_line, face_line
 
     def _create_ticket_transfer(self, source_wallet, dest_wallet, face_line, qty, suffix, note=True):
-        return self.TicketTransfer.create({
+        return self.TicketTransfer.with_context(allow_fuel_ticket_transfer_create=True).create({
             'source_wallet_id': source_wallet.id,
             'dest_wallet_id': dest_wallet.id,
             'company_id': self.company.id,
@@ -173,6 +173,42 @@ class TestTicketTransfer(TransactionCase):
         no_note = self._create_ticket_transfer(source_wallet, dest_wallet, face_line, 1, 'NO-NOTE-%s' % suffix, note=False)
         with self.assertRaises(ValidationError):
             no_note.action_confirm(actor_user=self.env.user)
+
+    def test_i1a_ticket_transfer_is_internal_create_only_and_bo_read_only(self):
+        suffix = uuid.uuid4().hex[:8]
+        source_partner, source_wallet = self._create_partner_wallet('I1A Source guard %s' % suffix)
+        _dest_partner, dest_wallet = self._create_partner_wallet('I1A Destination guard %s' % suffix)
+        _purchase, _purchase_line, face_line = self._create_purchase_with_face_line(source_partner, suffix)
+
+        vals = {
+            'source_wallet_id': source_wallet.id,
+            'dest_wallet_id': dest_wallet.id,
+            'company_id': self.company.id,
+            'idempotency_key': 'I1A-TKT-%s' % suffix,
+            'request_hash': 'I1A-HASH-%s' % suffix,
+            'note': 'Motif transfert I1A %s' % suffix,
+            'line_ids': [(0, 0, {
+                'source_face_line_id': face_line.id,
+                'qty_faces': 1,
+            })],
+        }
+
+        with self.assertRaises(UserError):
+            self.TicketTransfer.create(vals)
+
+        transfer = self.TicketTransfer.with_context(allow_fuel_ticket_transfer_create=True).create(vals)
+
+        with self.assertRaises(UserError):
+            transfer.write({'note': 'mutation BO interdite'})
+        transfer.with_context(allow_fuel_ticket_transfer_update=True).write({'note': 'mutation interne autorisée'})
+
+        with self.assertRaises(UserError):
+            transfer.line_ids.write({'qty_faces': 2})
+        transfer.line_ids.with_context(allow_fuel_ticket_transfer_update=True).write({'qty_faces': 1})
+
+        with self.assertRaises(UserError):
+            transfer.unlink()
+        transfer.with_context(allow_fuel_ticket_transfer_unlink=True).unlink()
 
     def test_i1_confirmed_ticket_transfer_is_immutable(self):
         suffix = uuid.uuid4().hex[:8]
