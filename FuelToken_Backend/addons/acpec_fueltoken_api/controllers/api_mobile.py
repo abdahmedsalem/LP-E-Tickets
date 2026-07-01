@@ -111,6 +111,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'qr_id': line.qr_id.id if line.qr_id else False,
             'qr_line_id': line.qr_line_id.id if line.qr_line_id else False,
             'transfer_id': line.transfer_id.id if line.transfer_id else False,
+            'ticket_transfer_id': line.ticket_transfer_id.id if line.ticket_transfer_id else False,
             'expiration_date': fields.Datetime.to_string(expiration) if expiration else False,
         }
 
@@ -147,21 +148,31 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def _tx_payload(self, tx):
         purchase = tx.purchase_id
         transfer = tx.transfer_id
+        ticket_transfer = tx.ticket_transfer_id
         purchase_event_state = self._purchase_event_state(tx)
         is_purchase_submitted = tx.transaction_type == 'purchase_submitted'
         is_purchase_approved = tx.transaction_type == 'purchase_approved'
 
-        # Direction du transfert de carnets : sortant (source) ou entrant (dest)
+        # Direction du transfert : sortant (source) ou entrant (dest).
         transfer_direction = False
         transfer_other_party = False
+        ticket_transfer_direction = False
+        ticket_transfer_other_party = False
+        wallet = tx.wallet_id
         if transfer:
-            wallet = tx.wallet_id
             if wallet and transfer.source_wallet_id == wallet:
                 transfer_direction = 'outgoing'
                 transfer_other_party = transfer.dest_partner_id.display_name or False
             elif wallet and transfer.dest_wallet_id == wallet:
                 transfer_direction = 'incoming'
                 transfer_other_party = transfer.source_partner_id.display_name or False
+        if ticket_transfer:
+            if wallet and ticket_transfer.source_wallet_id == wallet:
+                ticket_transfer_direction = 'outgoing'
+                ticket_transfer_other_party = ticket_transfer.dest_partner_id.display_name or False
+            elif wallet and ticket_transfer.dest_wallet_id == wallet:
+                ticket_transfer_direction = 'incoming'
+                ticket_transfer_other_party = ticket_transfer.source_partner_id.display_name or False
 
         return {
             'id': tx.id,
@@ -195,6 +206,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'transfer_id': transfer.id if transfer else False,
             'transfer_direction': transfer_direction,
             'transfer_other_party': transfer_other_party,
+            # Transfert de tickets : direction et autre partie
+            'ticket_transfer_id': ticket_transfer.id if ticket_transfer else False,
+            'ticket_transfer_direction': ticket_transfer_direction,
+            'ticket_transfer_other_party': ticket_transfer_other_party,
             'lines': [self._history_line_payload(line) for line in tx.line_ids],
         }
 
@@ -908,6 +923,162 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
             } for line in transfer.line_ids],
         }
+
+    def _ticket_transfer_payload(self, transfer):
+        return {
+            'id': transfer.id,
+            'name': transfer.name,
+            'public_code': transfer.public_code,
+            'state': transfer.state,
+            'created_at': fields.Datetime.to_string(transfer.create_date) if transfer.create_date else False,
+            'amount_total': transfer.amount_total,
+            'qty_tickets_total': transfer.face_qty_total,
+            'face_qty_total': transfer.face_qty_total,
+            'source_partner': transfer.source_partner_id.display_name,
+            'dest_partner': transfer.dest_partner_id.display_name,
+            'confirmed_at': fields.Datetime.to_string(transfer.confirmed_at) if transfer.confirmed_at else False,
+            'note': transfer.note or False,
+            'lines': [{
+                'source_face_line_id': line.source_face_line_id.id,
+                'dest_face_line_id': line.dest_face_line_id.id if line.dest_face_line_id else False,
+                'source_carnet_no': line.source_face_line_id.carnet_no,
+                'source_carnet_short_code': line.source_face_line_id.carnet_short_code,
+                'dest_carnet_no': line.dest_face_line_id.carnet_no if line.dest_face_line_id else False,
+                'dest_carnet_short_code': line.dest_face_line_id.carnet_short_code if line.dest_face_line_id else False,
+                'lot_short_code': line.source_face_line_id.lot_short_code,
+                'carnet_type_code': line.carnet_type_id.code,
+                'carnet_type_name': line.carnet_type_id.name,
+                'face_value': line.face_value,
+                'qty_tickets': line.qty_faces,
+                'qty_faces': line.qty_faces,
+                'amount_total': line.amount_total,
+                'expires_at': fields.Datetime.to_string(line.source_face_line_id.expires_at) if line.source_face_line_id.expires_at else False,
+            } for line in transfer.line_ids],
+        }
+
+    @http.route(
+        '/api/acpec/fueltoken/v1/mobile/tickets/transfer',
+        type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*',
+    )
+    def transfer_tickets(self, **kwargs):
+        """Transfert de tickets entiers disponibles vers un autre client mobile."""
+        try:
+            self._require_keys(kwargs, ['recipient_phone', 'lines', 'note'])
+            with self._sensitive_action_transaction(kwargs, purpose='ticket_transfer') as source_user:
+                self._require_fuel_group(source_user, 'client')
+                company = self._require_fueltoken_user_company(source_user)
+                source_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                    source_user.partner_id, company,
+                )
+
+                recipient_phone = self._get_clean_str(kwargs, 'recipient_phone')
+                if not recipient_phone:
+                    raise ValidationError('Le numéro de téléphone du destinataire est requis.')
+                parsed = self._parse_signup_identifier(recipient_phone)
+                recipient_phone = parsed['login']
+
+                recipient_user = request.env['res.users'].sudo().search([
+                    ('login', '=', recipient_phone),
+                    ('active', '=', True),
+                    ('company_ids', 'in', [source_wallet.company_id.id]),
+                ], limit=1)
+                if not recipient_user:
+                    self._raise_sensitive_action_error(
+                        code='RECIPIENT_NOT_ALLOWED',
+                        public_code='TRANSFER_REFUSED',
+                        purpose='ticket_transfer',
+                        debug_reason='recipient_not_found',
+                        user=source_user,
+                        params=kwargs,
+                    )
+                if recipient_user.id == source_user.id:
+                    self._raise_sensitive_action_error(
+                        code='RECIPIENT_NOT_ALLOWED',
+                        public_code='TRANSFER_REFUSED',
+                        purpose='ticket_transfer',
+                        debug_reason='recipient_self_transfer',
+                        user=source_user,
+                        params=kwargs,
+                    )
+                if not self._has_group_safe(recipient_user, 'acpec_fueltoken_base.group_fuel_user'):
+                    self._raise_sensitive_action_error(
+                        code='RECIPIENT_NOT_ALLOWED',
+                        public_code='TRANSFER_REFUSED',
+                        purpose='ticket_transfer',
+                        debug_reason='recipient_not_allowed',
+                        user=source_user,
+                        params=kwargs,
+                    )
+
+                note = self._get_clean_str(kwargs, 'note')
+                if not note:
+                    raise ValidationError('Le motif du transfert de tickets est obligatoire.')
+
+                idempotency_key = self._require_idempotency_key(kwargs, purpose='ticket_transfer')
+                request_hash = self._compute_idempotency_request_hash(kwargs, purpose='ticket_transfer')
+                existing = request.env['acpec.fuel.ticket.transfer'].sudo().search([
+                    ('source_wallet_id', '=', source_wallet.id),
+                    ('idempotency_key', '=', idempotency_key),
+                ], limit=1)
+                if existing:
+                    if existing.request_hash and existing.request_hash != request_hash:
+                        self._raise_sensitive_action_error(
+                            code='IDEMPOTENCY_PAYLOAD_MISMATCH',
+                            public_code='REQUEST_REFUSED',
+                            purpose='ticket_transfer',
+                            debug_reason='idempotency_payload_mismatch',
+                            user=source_user,
+                            params=kwargs,
+                        )
+                    if existing.state != 'confirmed':
+                        mobile_session = self._get_mobile_session(required=True)
+                        existing.action_confirm_mobile(
+                            actor_user=source_user,
+                            mobile_session=mobile_session,
+                        )
+                    return self._json_response(self._ticket_transfer_payload(existing))
+
+                dest_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
+                    recipient_user.partner_id, source_wallet.company_id,
+                )
+                raw_lines = kwargs.get('lines') or []
+                if not raw_lines:
+                    raise ValidationError('Au moins une ligne de transfert est requise.')
+
+                transfer_line_vals = []
+                for item in raw_lines:
+                    face_line_id = self._get_optional_int(item, 'face_line_id', 0)
+                    qty_tickets = self._get_optional_int(item, 'qty_tickets', 0)
+                    if not face_line_id or face_line_id <= 0:
+                        raise ValidationError("Paramètre 'face_line_id' invalide ou manquant.")
+                    if not qty_tickets or qty_tickets <= 0:
+                        raise ValidationError("Paramètre 'qty_tickets' doit être un entier positif.")
+                    transfer_line_vals.append({
+                        'source_face_line_id': face_line_id,
+                        'qty_faces': qty_tickets,
+                    })
+
+                with request.env.cr.savepoint():
+                    transfer = request.env['acpec.fuel.ticket.transfer'].sudo().with_context(
+                        allow_fuel_ticket_transfer_create=True,
+                    ).create({
+                        'source_wallet_id': source_wallet.id,
+                        'dest_wallet_id': dest_wallet.id,
+                        'company_id': source_wallet.company_id.id,
+                        'note': note,
+                        'idempotency_key': idempotency_key,
+                        'request_hash': request_hash,
+                        'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
+                    })
+                    mobile_session = self._get_mobile_session(required=True)
+                    transfer.action_confirm_mobile(
+                        actor_user=source_user,
+                        mobile_session=mobile_session,
+                    )
+
+                return self._json_response(self._ticket_transfer_payload(transfer))
+        except Exception as exc:
+            return self._handle_exception_response(exc)
 
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',

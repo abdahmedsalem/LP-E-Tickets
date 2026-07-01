@@ -8,6 +8,7 @@ from . import test_qr_issue_runtime_policy
 from . import test_qr_retirer_runtime_policy
 from . import test_qr_separer_runtime_policy
 from . import test_carnet_transfer_runtime_policy
+from . import test_ticket_transfer_runtime_policy
 from . import test_station_qr_use_runtime_policy
 from . import test_admin_purchase_runtime_policy
 from . import test_admin_station_runtime_policy
