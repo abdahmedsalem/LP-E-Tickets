@@ -1,0 +1,9 @@
+<odoo>
+    <record id="seq_acpec_fuel_ticket_transfer" model="ir.sequence">
+        <field name="name">FuelToken Ticket Transfer</field>
+        <field name="code">acpec.fuel.ticket.transfer</field>
+        <field name="prefix">TTR/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

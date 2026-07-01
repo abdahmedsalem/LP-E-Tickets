@@ -45,4 +45,35 @@
         <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_manager')), (4, ref('acpec_fueltoken_base.group_fuel_admin'))]"/>
         <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
     </record>
+
+    <!-- Règles d'accès pour les transferts de tickets -->
+    <record id="rule_fuel_ticket_transfer_user_own" model="ir.rule">
+        <field name="name">Transferts tickets client (source ou dest)</field>
+        <field name="model_id" ref="model_acpec_fuel_ticket_transfer"/>
+        <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_user'))]"/>
+        <field name="domain_force">['|', ('source_partner_id', '=', user.partner_id.id), ('dest_partner_id', '=', user.partner_id.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_fuel_ticket_transfer_manager_company" model="ir.rule">
+        <field name="name">Transferts tickets société</field>
+        <field name="model_id" ref="model_acpec_fuel_ticket_transfer"/>
+        <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_manager')), (4, ref('acpec_fueltoken_base.group_fuel_admin'))]"/>
+        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+    </record>
+    <record id="rule_fuel_ticket_transfer_line_user_own" model="ir.rule">
+        <field name="name">Lignes transfert tickets client</field>
+        <field name="model_id" ref="model_acpec_fuel_ticket_transfer_line"/>
+        <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_user'))]"/>
+        <field name="domain_force">['|', ('transfer_id.source_partner_id', '=', user.partner_id.id), ('transfer_id.dest_partner_id', '=', user.partner_id.id)]</field>
+    </record>
+    <record id="rule_fuel_ticket_transfer_line_manager_company" model="ir.rule">
+        <field name="name">Lignes transfert tickets société</field>
+        <field name="model_id" ref="model_acpec_fuel_ticket_transfer_line"/>
+        <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_manager')), (4, ref('acpec_fueltoken_base.group_fuel_admin'))]"/>
+        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+    </record>
+
 </odoo>
