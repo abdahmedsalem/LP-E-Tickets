@@ -250,16 +250,17 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         groups = request.env['acpec.fuel.face.line'].sudo()._read_group(
             [('wallet_id', '=', wallet.id)],
             ['face_value'],
-            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
+            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum', 'qty_transferred_out:sum'],
         )
         result = []
-        for face_value, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired in groups:
+        for face_value, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired, qty_transferred_out in groups:
             face_value = face_value or 0
             qty_available = qty_available or 0
             qty_qr_active = qty_qr_active or 0
             qty_qr_blocked = qty_qr_blocked or 0
             qty_consumed = qty_consumed or 0
             qty_expired = qty_expired or 0
+            qty_transferred_out = qty_transferred_out or 0
             result.append({
                 'face_value': face_value,
                 'qty_available': qty_available,
@@ -272,6 +273,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'amount_consumed': qty_consumed * face_value,
                 'qty_expired': qty_expired,
                 'amount_expired': qty_expired * face_value,
+                'qty_transferred_out': qty_transferred_out,
+                'amount_transferred_out': qty_transferred_out * face_value,
             })
         return sorted(result, key=lambda item: item['face_value'])
 
@@ -279,10 +282,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         groups = request.env['acpec.fuel.face.line'].sudo()._read_group(
             [('wallet_id', '=', wallet.id)],
             ['carnet_type_id'],
-            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum'],
+            ['qty_available:sum', 'qty_qr_active:sum', 'qty_qr_blocked:sum', 'qty_consumed:sum', 'qty_expired:sum', 'qty_transferred_out:sum'],
         )
         result = []
-        for carnet_type, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired in groups:
+        for carnet_type, qty_available, qty_qr_active, qty_qr_blocked, qty_consumed, qty_expired, qty_transferred_out in groups:
             if not carnet_type:
                 continue
             face_value = carnet_type.face_value or 0
@@ -291,6 +294,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             qty_qr_blocked = qty_qr_blocked or 0
             qty_consumed = qty_consumed or 0
             qty_expired = qty_expired or 0
+            qty_transferred_out = qty_transferred_out or 0
             result.append({
                 'carnet_type_id': carnet_type.id,
                 'carnet_type_code': carnet_type.code,
@@ -307,6 +311,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'amount_consumed': qty_consumed * face_value,
                 'qty_expired': qty_expired,
                 'amount_expired': qty_expired * face_value,
+                'qty_transferred_out': qty_transferred_out,
+                'amount_transferred_out': qty_transferred_out * face_value,
             })
         return sorted(result, key=lambda item: (item['face_value'], item['carnet_type_code'] or ''))
 
@@ -392,10 +398,12 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'qty_qr_blocked': wallet.qty_qr_blocked,
                 'qty_consumed': wallet.qty_consumed,
                 'qty_expired': wallet.qty_expired,
+                'qty_transferred_out': wallet.qty_transferred_out,
                 'amount_qr_active': wallet.amount_qr_active,
                 'amount_qr_blocked': wallet.amount_qr_blocked,
                 'amount_consumed': wallet.amount_consumed,
                 'amount_expired': wallet.amount_expired,
+                'amount_transferred_out': wallet.amount_transferred_out,
                 'breakdown_by_face_value': self._wallet_breakdown_by_face_value(wallet),
                 'breakdown_by_carnet_type': self._wallet_breakdown_by_carnet_type(wallet),
                 'near_expiration_faces': [{
@@ -409,6 +417,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'carnet_type': line.carnet_type_id.code,
                     'face_value': line.face_value,
                     'qty_available': line.qty_available,
+                    'qty_transferred_out': line.qty_transferred_out,
                     'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
                 } for line in near_lines],
                 'expired_faces': [{
@@ -696,6 +705,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'qty_qr_blocked': line.qty_qr_blocked,
                     'qty_consumed': line.qty_consumed,
                     'qty_expired': line.qty_expired,
+                    'qty_transferred_out': line.qty_transferred_out,
+                    'is_transfer_fragment': line.is_transfer_fragment,
+                    'origin_face_line_id': line.origin_face_line_id.id if line.origin_face_line_id else False,
                     'is_transferable': line.is_transferable_carnet_line(),
                     'transferable_carnets': line.transferable_carnet_count(),
                     'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
