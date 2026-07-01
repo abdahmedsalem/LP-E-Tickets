@@ -80,6 +80,13 @@
               sequence="10"
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
+    <menuitem id="menu_today_face_lines"
+              name="Tous les carnets"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_face_lines_to_validate"
+              sequence="36"/>
+
+
     <menuitem id="menu_today_station_consumptions"
               name="Dernières consommations"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
