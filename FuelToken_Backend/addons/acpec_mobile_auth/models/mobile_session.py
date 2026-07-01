@@ -1,10 +1,15 @@
 import hashlib
+import logging
 import secrets
 
 from dateutil.relativedelta import relativedelta
+from psycopg2 import errors as pg_errors
 
 from odoo import _, SUPERUSER_ID, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+
+
+_logger = logging.getLogger(__name__)
 
 
 class AcpecMobileSession(models.Model):
@@ -94,6 +99,8 @@ class AcpecMobileSession(models.Model):
         'UNIQUE(refresh_token_hash)',
         'Refresh token hash must be unique.',
     )
+
+    ACCESS_LAST_SEEN_TOUCH_MIN_SECONDS = 60
 
     @api.depends(
         'user_id',
@@ -605,6 +612,35 @@ class AcpecMobileSession(models.Model):
             'token_type': 'Bearer',
         }
 
+    def _should_touch_last_seen_at(self, now=False):
+        self.ensure_one()
+        if not self.last_seen_at:
+            return True
+        try:
+            now_dt = fields.Datetime.to_datetime(now or fields.Datetime.now())
+            last_seen_dt = fields.Datetime.to_datetime(self.last_seen_at)
+            if not now_dt or not last_seen_dt:
+                return True
+            return (now_dt - last_seen_dt).total_seconds() >= self.ACCESS_LAST_SEEN_TOUCH_MIN_SECONDS
+        except Exception:
+            return True
+
+    def _touch_last_seen_at_best_effort(self, now=False):
+        now = now or fields.Datetime.now()
+        for session in self.sudo().exists():
+            if not session._should_touch_last_seen_at(now=now):
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    session.write({'last_seen_at': now})
+            except (pg_errors.SerializationFailure, pg_errors.DeadlockDetected) as exc:
+                _logger.info(
+                    'mobile_session_last_seen_touch_skipped session_id=%s reason=%s',
+                    session.id,
+                    type(exc).__name__,
+                )
+        return True
+
     @api.model
     def authenticate_access_token(self, token):
         token_hash = self._hash_token(token)
@@ -621,7 +657,7 @@ class AcpecMobileSession(models.Model):
         except AccessError:
             session.sudo().write({'state': 'revoked', 'revoked_at': now})
             return self.browse()
-        session.sudo().write({'last_seen_at': now})
+        session._touch_last_seen_at_best_effort(now=now)
         return session
 
     @api.model
