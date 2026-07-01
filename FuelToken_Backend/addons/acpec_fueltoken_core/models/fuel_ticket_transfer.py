@@ -62,6 +62,10 @@ class AcpecFuelTicketTransfer(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_ticket_transfer_create'):
+            raise UserError(_(
+                'La création d un transfert de tickets est réservée au flux mobile backend contrôlé.'
+            ))
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = (
@@ -88,13 +92,17 @@ class AcpecFuelTicketTransfer(models.Model):
                 raise ValidationError(_('Le compte destinataire doit appartenir à la même société que le transfert.'))
 
     def write(self, vals):
-        if vals and any(rec.state == 'confirmed' for rec in self) and not self.env.context.get('allow_fuel_ticket_transfer_update'):
-            raise UserError(_('Un transfert ticket confirmé est immuable.'))
+        if vals and not self.env.context.get('allow_fuel_ticket_transfer_update'):
+            raise UserError(_(
+                'Les transferts de tickets sont en lecture seule hors flux interne contrôlé.'
+            ))
         return super().write(vals)
 
     def unlink(self):
-        if any(rec.state == 'confirmed' for rec in self):
-            raise UserError(_('Un transfert ticket confirmé ne peut pas être supprimé.'))
+        if not self.env.context.get('allow_fuel_ticket_transfer_unlink'):
+            raise UserError(_(
+                'Les transferts de tickets ne peuvent pas être supprimés hors flux interne contrôlé.'
+            ))
         return super().unlink()
 
     def _prepare_fragment_identity_vals(self, source_face_line, transfer_line):
@@ -200,7 +208,7 @@ class AcpecFuelTicketTransfer(models.Model):
                     'qty_available': src_face_line.qty_available - qty_to_transfer,
                     'qty_transferred_out': src_face_line.qty_transferred_out + qty_to_transfer,
                 })
-                trf_line.sudo().write({'dest_face_line_id': dest_face_line.id})
+                trf_line.sudo().with_context(allow_fuel_ticket_transfer_update=True).write({'dest_face_line_id': dest_face_line.id})
 
                 src_tx_lines.append({
                     'face_line_id': src_face_line.id,
@@ -253,7 +261,7 @@ class AcpecFuelTicketTransfer(models.Model):
                 "Un transfert ticket déjà confirmé ne peut pas être annulé. "
                 "Créez un transfert inverse si nécessaire."
             ))
-        self.write({'state': 'cancelled'})
+        self.with_context(allow_fuel_ticket_transfer_update=True).write({'state': 'cancelled'})
         return True
 
 
@@ -292,6 +300,14 @@ class AcpecFuelTicketTransferLine(models.Model):
         string='Montant', compute='_compute_amount_total', store=True,
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_ticket_transfer_create'):
+            raise UserError(_(
+                'La création d une ligne de transfert de tickets est réservée au flux interne contrôlé.'
+            ))
+        return super().create(vals_list)
+
     @api.depends('qty_faces', 'face_value')
     def _compute_amount_total(self):
         for rec in self:
@@ -304,11 +320,15 @@ class AcpecFuelTicketTransferLine(models.Model):
                 raise ValidationError(_('Le nombre de tickets à transférer doit être strictement positif.'))
 
     def write(self, vals):
-        if vals and any(line.transfer_id.state == 'confirmed' for line in self) and not self.env.context.get('allow_fuel_ticket_transfer_update'):
-            raise UserError(_('Une ligne de transfert ticket confirmé est immuable.'))
+        if vals and not self.env.context.get('allow_fuel_ticket_transfer_update'):
+            raise UserError(_(
+                'Les lignes de transfert de tickets sont en lecture seule hors flux interne contrôlé.'
+            ))
         return super().write(vals)
 
     def unlink(self):
-        if any(line.transfer_id.state == 'confirmed' for line in self):
-            raise UserError(_('Une ligne de transfert ticket confirmé ne peut pas être supprimée.'))
+        if not self.env.context.get('allow_fuel_ticket_transfer_unlink'):
+            raise UserError(_(
+                'Les lignes de transfert de tickets ne peuvent pas être supprimées hors flux interne contrôlé.'
+            ))
         return super().unlink()
