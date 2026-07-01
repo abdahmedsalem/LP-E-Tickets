@@ -1,11 +1,11 @@
-# Patch43I0 — Fondation invariant transfert partiel de tickets
+# Patch43I0 — Fondation invariant transfert de tickets
 
-Patch43I0 prépare le futur transfert partiel de tickets sans modifier le transfert carnet existant.
+Patch43I0 prépare le futur transfert de tickets sans modifier le transfert carnet existant.
 
 Doctrine figée :
 - le transfert carnet reste un flux de carnet intact ;
 - le transfert ticket sera un flux séparé ;
-- un transfert partiel ne réduit jamais qty_initial sur la ligne source ;
+- un transfert de tickets ne réduit jamais qty_initial sur la ligne source ;
 - les faces transférées sortantes sont portées par qty_transferred_out ;
 - qty_transferred_out fait partie des buckets protégés dans _controlled_state_fields ;
 - la lecture mobile expose qty_transferred_out et amount_transferred_out ;

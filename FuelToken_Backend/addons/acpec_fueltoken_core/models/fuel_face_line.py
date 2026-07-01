@@ -40,6 +40,14 @@ class AcpecFuelFaceLine(models.Model):
         readonly=True,
         ondelete='restrict',
     )
+    origin_ticket_transfer_line_id = fields.Many2one(
+        'acpec.fuel.ticket.transfer.line',
+        string='Ligne transfert ticket origine',
+        index=True,
+        copy=False,
+        readonly=True,
+        ondelete='restrict',
+    )
     is_transfer_fragment = fields.Boolean(
         string='Fragment recu par transfert',
         default=False,
@@ -74,6 +82,7 @@ class AcpecFuelFaceLine(models.Model):
         'carnet_short_code',
         'carnet_sequence',
         'origin_face_line_id',
+        'origin_ticket_transfer_line_id',
         'is_transfer_fragment',
     ))
     _controlled_state_fields = frozenset((

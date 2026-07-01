@@ -98,6 +98,9 @@ class TestEconomicIdentityImmutability(TransactionCase):
             face_line.write({'origin_face_line_id': transfer_face_line.id})
 
         with self.assertRaises(ValidationError):
+            face_line.write({'origin_ticket_transfer_line_id': 1})
+
+        with self.assertRaises(ValidationError):
             face_line.write({'wallet_id': dest_wallet.id})
 
         # Cette mutation respecte la somme C2, mais contournerait les flux métier.

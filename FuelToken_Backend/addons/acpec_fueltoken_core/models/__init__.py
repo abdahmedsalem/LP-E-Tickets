@@ -6,4 +6,5 @@ from . import fuel_station_agent
 from . import fuel_transaction
 from . import fuel_purchase
 from . import fuel_carnet_transfer
+from . import fuel_ticket_transfer
 from . import fuel_carnet_type_admin_idempotency

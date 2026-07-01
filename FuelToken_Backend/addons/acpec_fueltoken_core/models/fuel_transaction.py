@@ -19,6 +19,7 @@ class AcpecFuelTransaction(models.Model):
         ('expiration_faces', 'Expiration faces'),
         ('expiration_qr', 'Expiration QR'),
         ('transfert_carnet', 'Transfert de carnets'),
+        ('transfert_ticket', 'Transfert de tickets'),
     ], string='Type', required=True, index=True)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
@@ -53,7 +54,8 @@ class AcpecFuelTransaction(models.Model):
     qr_id = fields.Many2one('acpec.fuel.qr', string='QR', index=True)
     parent_qr_id = fields.Many2one('acpec.fuel.qr', string='QR parent', index=True)
     station_id = fields.Many2one('acpec.fuel.station', string='Station', index=True)
-    transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert', index=True)
+    transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert carnet', index=True)
+    ticket_transfer_id = fields.Many2one('acpec.fuel.ticket.transfer', string='Transfert ticket', index=True)
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     line_ids = fields.One2many('acpec.fuel.transaction.line', 'transaction_id', string='Lignes')
@@ -85,7 +87,7 @@ class AcpecFuelTransaction(models.Model):
             rec.qty_total = sum(rec.line_ids.mapped('qty'))
 
     @api.model
-    def log(self, transaction_type, company, wallet=False, purchase=False, qr=False, parent_qr=False, station=False, transfer=False, lines=False, note=False, idempotency_key=False, request_hash=False):
+    def log(self, transaction_type, company, wallet=False, purchase=False, qr=False, parent_qr=False, station=False, transfer=False, ticket_transfer=False, lines=False, note=False, idempotency_key=False, request_hash=False):
         vals = {
             'transaction_type': transaction_type,
             'company_id': company.id,
@@ -95,6 +97,7 @@ class AcpecFuelTransaction(models.Model):
             'parent_qr_id': parent_qr.id if parent_qr else False,
             'station_id': station.id if station else False,
             'transfer_id': transfer.id if transfer else False,
+            'ticket_transfer_id': ticket_transfer.id if ticket_transfer else False,
             'note': note or False,
             'idempotency_key': idempotency_key or False,
             'request_hash': request_hash or False,
@@ -226,7 +229,8 @@ class AcpecFuelTransactionLine(models.Model):
     face_line_id = fields.Many2one('acpec.fuel.face.line', string='Carnet', index=True)
     qr_id = fields.Many2one('acpec.fuel.qr', string='QR', index=True)
     qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne QR', index=True)
-    transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert', index=True)
+    transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert carnet', index=True)
+    ticket_transfer_id = fields.Many2one('acpec.fuel.ticket.transfer', string='Transfert ticket', index=True)
     face_value = fields.Monetary(string='Valeur de face', required=True)
     qty = fields.Integer(string='Quantité', required=True)
     amount = fields.Monetary(string='Montant', compute='_compute_amount', store=True)
