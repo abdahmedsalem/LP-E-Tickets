@@ -281,41 +281,62 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                       const SizedBox(height: 12),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 0.82,
-                                child: _QuickActionCard(
-                                  title: 'Acheter un carnet',
-                                  icon: Icons.add_shopping_cart_outlined,
-                                  onTap: () => context.push('/purchases/new'),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: 'Acheter des carnets',
+                                      icon: Icons.add_shopping_cart_outlined,
+                                      onTap: () =>
+                                          context.push('/purchases/new'),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: 'Créer un bon de retrait',
+                                      icon: Icons.qr_code_scanner_rounded,
+                                      highlighted: true,
+                                      onTap: () => context.push('/qr/emit'),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 0.82,
-                                child: _QuickActionCard(
-                                  title: 'Créer un QR',
-                                  icon: Icons.qr_code_scanner_rounded,
-                                  highlighted: true,
-                                  onTap: () => context.push('/qr/emit'),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: 'Transférer des carnets',
+                                      icon: Icons.account_tree_outlined,
+                                      onTap: () =>
+                                          context.push('/transfer-carnets'),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 0.82,
-                                child: _QuickActionCard(
-                                  title: 'Envoyer des carnets',
-                                  icon: Icons.account_tree_outlined,
-                                  onTap: () =>
-                                      context.push('/transfer-carnets'),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: 'Transférer des tickets',
+                                      icon: Icons.confirmation_number_outlined,
+                                      onTap: () =>
+                                          context.push('/transfer-tickets'),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -375,7 +396,7 @@ class _QuickActionCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
-        final circleDiameter = math.min(58.0, math.max(52.0, cardWidth * 0.46));
+        final circleDiameter = math.min(52.0, math.max(46.0, cardWidth * 0.38));
         final iconSize = circleDiameter * 0.44;
 
         return Material(
@@ -415,10 +436,10 @@ class _QuickActionCard extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: math.max(10.0, cardWidth * 0.08),
-                  vertical: math.max(12.0, cardWidth * 0.11),
+                  vertical: math.max(10.0, cardWidth * 0.07),
                 ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
                       width: circleDiameter,
@@ -434,7 +455,7 @@ class _QuickActionCard extends StatelessWidget {
                         size: iconSize,
                       ),
                     ),
-                    SizedBox(height: math.max(14.0, cardWidth * 0.11)),
+                    SizedBox(height: math.max(8.0, cardWidth * 0.055)),
                     Text(
                       title,
                       textAlign: TextAlign.center,

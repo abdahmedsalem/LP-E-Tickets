@@ -32,6 +32,7 @@ import '../../features/qr/screens/qr_list_screen.dart';
 import '../../features/qr/screens/retirer_qr_screen.dart';
 import '../../features/qr/screens/separer_qr_screen.dart';
 import '../../features/qr/screens/transfer_carnets_screen.dart';
+import '../../features/qr/screens/transfer_tickets_screen.dart';
 import '../../features/settings/screens/acpec_connection_step1_screen.dart';
 import '../../features/settings/screens/notifications_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
@@ -267,6 +268,10 @@ class AppRouter {
           builder: (_, _) => const TransferCarnetsScreen(),
         ),
         GoRoute(
+          path: '/transfer-tickets',
+          builder: (_, _) => const TransferTicketsScreen(),
+        ),
+        GoRoute(
           path: '/qr/:id',
           builder: (_, st) => QrDetailScreen(
             qrId: st.pathParameters['id']!,
@@ -416,6 +421,7 @@ class AppRouter {
     if (loc.startsWith('/settings')) return true;
     if (loc == '/notifications') return true;
     if (loc.startsWith('/purchases')) return true;
+    if (loc.startsWith('/transfer-')) return true;
     if (loc.startsWith('/qr')) return true;
     if (loc.startsWith('/wallet')) return true;
     return false;
