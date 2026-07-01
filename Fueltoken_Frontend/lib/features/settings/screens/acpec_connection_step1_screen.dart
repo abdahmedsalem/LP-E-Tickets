@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart'
     show kDebugMode, kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/odoo_api_config.dart';
@@ -22,7 +21,8 @@ class AcpecConnectionStep1Screen extends StatefulWidget {
       _AcpecConnectionStep1ScreenState();
 }
 
-class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen> {
+class _AcpecConnectionStep1ScreenState
+    extends State<AcpecConnectionStep1Screen> {
   final _facade = OdooFueltokenFacade();
 
   bool _loading = true;
@@ -97,8 +97,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error =
-              'Une erreur inattendue s?est produite. Réessayez plus tard.';
+          _error = 'Une erreur inattendue s?est produite. Réessayez plus tard.';
           _debugErrorDetail = e.toString();
           _loading = false;
         });
@@ -128,8 +127,9 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final pageBg = Colors.white;
-    final borderColor =
-        scheme.outline.withValues(alpha: scheme.brightness == Brightness.dark ? 0.5 : 0.35);
+    final borderColor = scheme.outline.withValues(
+      alpha: scheme.brightness == Brightness.dark ? 0.5 : 0.35,
+    );
 
     return Scaffold(
       backgroundColor: pageBg,
@@ -137,7 +137,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         backgroundColor: pageBg,
         title: Text(
           'État du service',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -164,13 +164,14 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
             else if (_error != null) ...[
               _errorState(context, scheme, borderColor),
             ] else ...[
-              if (_version != null) _versionUserSummary(context, scheme, borderColor),
+              if (_version != null)
+                _versionUserSummary(context, scheme, borderColor),
               if (_installedVersion.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
                   'Version installée : $_installedVersion',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 12,
                     color: scheme.onSurfaceVariant,
                   ),
@@ -179,7 +180,9 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
               const SizedBox(height: 28),
               _organizationsBlock(context, scheme, borderColor),
             ],
-            if (kDebugMode && _debugErrorDetail != null && _debugErrorDetail!.isNotEmpty) ...[
+            if (kDebugMode &&
+                _debugErrorDetail != null &&
+                _debugErrorDetail!.isNotEmpty) ...[
               const SizedBox(height: 24),
               _debugPanel(context, borderColor),
             ],
@@ -202,7 +205,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         Text(
           _error!,
           textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 15,
             height: 1.45,
             fontWeight: FontWeight.w600,
@@ -258,7 +261,9 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       );
     }
 
-    if (!v.latestVersion && v.messageRaw != null && v.messageRaw!.trim().isNotEmpty) {
+    if (!v.latestVersion &&
+        v.messageRaw != null &&
+        v.messageRaw!.trim().isNotEmpty) {
       return _statusCard(
         context,
         borderColor,
@@ -290,8 +295,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       iconColor: AppColors.success,
       surfaceTint: AppColors.successSurface.withValues(alpha: 0.45),
       title: 'Tout est en ordre',
-      body:
-          'Votre application est à jour et le service répond normalement.',
+      body: 'Votre application est à jour et le service répond normalement.',
     );
   }
 
@@ -336,7 +340,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: scheme.onSurface,
@@ -345,7 +349,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
                     const SizedBox(height: 8),
                     Text(
                       body,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 14,
                         height: 1.45,
                         color: scheme.onSurfaceVariant,
@@ -371,7 +375,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
       children: [
         Text(
           'Organisations disponibles',
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
@@ -382,10 +386,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         if (_companies.isEmpty)
           Text(
             'Aucune organisation à afficher pour le moment.',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
           )
         else
           ..._companies.map((c) => _orgTile(context, scheme, borderColor, c)),
@@ -418,14 +419,14 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
                 foregroundColor: AppColors.primary,
                 child: Text(
                   initial,
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 16),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   c.name,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: scheme.onSurface,
@@ -465,7 +466,7 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
         children: [
           Text(
             'Détail (mode développement)',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: scheme.onSurfaceVariant,
@@ -474,11 +475,10 @@ class _AcpecConnectionStep1ScreenState extends State<AcpecConnectionStep1Screen>
           const SizedBox(height: 6),
           SelectableText(
             _debugErrorDetail ?? '',
-            style: GoogleFonts.poppins(fontSize: 11, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
           ),
         ],
       ),
     );
   }
 }
-

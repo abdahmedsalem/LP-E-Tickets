@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// FuelToken typography helpers.
@@ -17,7 +16,7 @@ class AppTypography {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.poppins(
+    return TextStyle(
       fontSize: size,
       fontWeight: weight,
       color: color ?? AppColors.ink,
@@ -33,7 +32,8 @@ class AppTypography {
     Color? color,
     double? letterSpacing,
   }) {
-    return GoogleFonts.jetBrainsMono(
+    return TextStyle(
+      fontFamily: 'monospace',
       fontSize: size,
       fontWeight: weight,
       color: color ?? AppColors.ink,
@@ -48,7 +48,7 @@ class AppTypography {
     Color? color,
     double? height,
   }) {
-    return GoogleFonts.notoSansArabic(
+    return TextStyle(
       fontSize: size,
       fontWeight: weight,
       color: color ?? AppColors.ink,

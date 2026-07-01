@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
@@ -250,7 +249,7 @@ class _SuccessScaffold extends StatelessWidget {
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -261,7 +260,7 @@ class _SuccessScaffold extends StatelessWidget {
                       Text(
                         message!,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.muted,
@@ -348,7 +347,7 @@ class _PurchasedLinesSection extends StatelessWidget {
         children: [
           Text(
             'Carnets achetés',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -394,7 +393,7 @@ class _TransferredLinesSection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -445,7 +444,7 @@ class _TransferredLineRow extends StatelessWidget {
           flex: 5,
           child: Text(
             _carnetTypeLabel(),
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -480,7 +479,7 @@ class _GeneratedQrLinesSection extends StatelessWidget {
         children: [
           Text(
             'Carnets utilisés',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -534,7 +533,7 @@ class _GeneratedQrLineRow extends StatelessWidget {
             children: [
               Text(
                 _title(),
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
@@ -544,7 +543,7 @@ class _GeneratedQrLineRow extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.muted,
@@ -587,7 +586,7 @@ class _PurchasedLineRow extends StatelessWidget {
           flex: 5,
           child: Text(
             _carnetTypeLabel(),
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -600,7 +599,7 @@ class _PurchasedLineRow extends StatelessWidget {
           child: Text(
             '${Formatters.numberFr(line.qty)} carnets',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
@@ -652,7 +651,7 @@ class _SummaryRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
@@ -670,7 +669,7 @@ class _SummaryRow extends StatelessWidget {
               : Text(
                   value,
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     color: valueColor,

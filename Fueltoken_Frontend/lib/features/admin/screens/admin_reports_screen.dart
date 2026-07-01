@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -72,9 +71,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     if (AppEnvironment.useAcpecLiveData) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Rapports'),
-        ),
+        appBar: AppBar(title: const Text('Rapports')),
         body: _buildAcpecBody(),
         bottomNavigationBar: AdminBottomTabsBar(
           selectedIndex: 2,
@@ -97,9 +94,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Rapports'),
-      ),
+      appBar: AppBar(title: const Text('Rapports')),
       body: const ApiRequiredView(),
       bottomNavigationBar: AdminBottomTabsBar(
         selectedIndex: 2,
@@ -208,7 +203,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                       const SizedBox(height: 3),
                       Text(
                         '${Formatters.numberFr(s.transactions)} transactions',
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -386,7 +381,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: GoogleFonts.dmSans(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: AppColors.ink,
@@ -451,7 +446,7 @@ class _MetricTile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 Formatters.number(value),
-                style: GoogleFonts.dmSans(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: AppColors.ink,
@@ -470,4 +465,3 @@ class _MetricTile extends StatelessWidget {
     return child;
   }
 }
-

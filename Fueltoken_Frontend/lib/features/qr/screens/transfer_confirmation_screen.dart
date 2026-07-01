@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
@@ -246,7 +245,7 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
               children: [
                 Text(
                   'Destinataire',
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.muted,
@@ -257,7 +256,7 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
                   recipientName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
@@ -290,7 +289,7 @@ class _TransferConfirmationSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: GoogleFonts.poppins(
+      style: TextStyle(
         fontSize: 16.5,
         fontWeight: FontWeight.w800,
         color: AppColors.ink,
@@ -351,7 +350,7 @@ class _TransferTotalRow extends StatelessWidget {
         Expanded(
           child: Text(
             'Montant total',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.body,
@@ -361,12 +360,12 @@ class _TransferTotalRow extends StatelessWidget {
         _AmountInline(
           amount: totalAmount,
           textAlign: TextAlign.right,
-          valueStyle: GoogleFonts.poppins(
+          valueStyle: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF2E7D32),
           ),
-          unitStyle: GoogleFonts.poppins(
+          unitStyle: TextStyle(
             fontSize: 9.5,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
@@ -393,7 +392,7 @@ class _TransferConfirmationNoteInput extends StatelessWidget {
       minLines: 2,
       maxLines: 4,
       textInputAction: TextInputAction.done,
-      style: GoogleFonts.poppins(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: AppColors.ink,
@@ -403,7 +402,7 @@ class _TransferConfirmationNoteInput extends StatelessWidget {
         filled: true,
         fillColor: Colors.white,
         hintText: hintText,
-        hintStyle: GoogleFonts.poppins(
+        hintStyle: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: AppColors.muted,
@@ -501,7 +500,7 @@ class _RecipientAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           _initials,
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: Colors.white,
@@ -533,7 +532,7 @@ class _TransferLineRow extends StatelessWidget {
           flex: 7,
           child: Text(
             _carnetTypeLabel(),
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -547,7 +546,7 @@ class _TransferLineRow extends StatelessWidget {
           child: Text(
             Formatters.numberFr(line.carnetQty),
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
@@ -560,12 +559,12 @@ class _TransferLineRow extends StatelessWidget {
           child: _AmountInline(
             amount: line.totalAmount,
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
+            valueStyle: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF2E7D32),
             ),
-            unitStyle: GoogleFonts.poppins(
+            unitStyle: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF2E7D32).withValues(alpha: 0.82),

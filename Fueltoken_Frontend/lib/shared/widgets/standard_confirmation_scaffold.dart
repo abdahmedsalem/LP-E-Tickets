@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'screen_header.dart';
@@ -114,10 +113,7 @@ class StandardConfirmationScaffold extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            ScreenHeader(
-              title: title,
-              onBack: onBack,
-            ),
+            ScreenHeader(title: title, onBack: onBack),
             SizedBox(height: topSpacing),
             Expanded(
               child: ListView(
@@ -125,7 +121,7 @@ class StandardConfirmationScaffold extends StatelessWidget {
                 children: [
                   Text(
                     introText,
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: AppColors.muted,

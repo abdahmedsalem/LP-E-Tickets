@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
@@ -367,9 +366,6 @@ class _DateFilterChip extends StatelessWidget {
   }
 }
 
-
-
-
 class _StationHistoryRow extends StatelessWidget {
   const _StationHistoryRow({required this.transaction});
 
@@ -385,8 +381,8 @@ class _StationHistoryRow extends StatelessWidget {
     final qrTitleCode = qrCode.isEmpty
         ? '-'
         : qrCode.length > 8
-            ? qrCode.substring(0, 8)
-            : qrCode;
+        ? qrCode.substring(0, 8)
+        : qrCode;
 
     return AppCard(
       padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
@@ -400,7 +396,7 @@ class _StationHistoryRow extends StatelessWidget {
                   'Consommation QR - $qrTitleCode',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: AppColors.ink,
@@ -413,7 +409,7 @@ class _StationHistoryRow extends StatelessWidget {
                 Formatters.money(amount),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
                   color: AppColors.danger,
@@ -506,7 +502,7 @@ class _ConsumptionDetailSummary extends StatelessWidget {
                   clientName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
@@ -533,7 +529,7 @@ class _ConsumptionDetailSummary extends StatelessWidget {
             children: [
               Text(
                 '-${Formatters.number(amount)}',
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
                   color: AppColors.danger,
@@ -610,7 +606,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                           'Consommation station',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: scheme.onSurface,
@@ -696,7 +692,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                             ),
                             Text(
                               Formatters.money(line.amount),
-                              style: GoogleFonts.poppins(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
                                 color: scheme.onSurface,
@@ -947,4 +943,3 @@ class _SkeletonBlock extends StatelessWidget {
     );
   }
 }
-

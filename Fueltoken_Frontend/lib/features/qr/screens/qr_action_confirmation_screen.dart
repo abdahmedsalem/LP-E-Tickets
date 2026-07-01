@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
@@ -210,7 +209,7 @@ class _SummaryRow extends StatelessWidget {
           _AmountInline(
             amount: int.parse(value.replaceAll(RegExp(r'[^0-9]'), '').trim()),
             textAlign: TextAlign.right,
-            valueStyle: GoogleFonts.poppins(
+            valueStyle: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF2E7D32),
@@ -224,7 +223,7 @@ class _SummaryRow extends StatelessWidget {
         else
           Text(
             value,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: valueColor,

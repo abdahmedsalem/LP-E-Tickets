@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/validation/password_validators.dart';
@@ -46,7 +45,9 @@ Future<String?> showSensitiveActionCodeDialog(
             Future<void> closeDialog(String? value) async {
               FocusManager.instance.primaryFocus?.unfocus();
               try {
-                await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+                await SystemChannels.textInput.invokeMethod<void>(
+                  'TextInput.hide',
+                );
               } catch (_) {
                 // Ignore text input shutdown errors during dialog close.
               }
@@ -121,7 +122,7 @@ Future<String?> showSensitiveActionCodeDialog(
                             Text(
                               title,
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.ink,
@@ -168,7 +169,9 @@ Future<String?> showSensitiveActionCodeDialog(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                                 elevation: 0,
-                                side: const BorderSide(color: Color(0xFFE8EAED)),
+                                side: const BorderSide(
+                                  color: Color(0xFFE8EAED),
+                                ),
                               ),
                               child: const Text(
                                 'Annuler',
@@ -190,8 +193,8 @@ Future<String?> showSensitiveActionCodeDialog(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.leaderGreen,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                    AppColors.leaderGreen.withValues(alpha: 0.55),
+                                disabledBackgroundColor: AppColors.leaderGreen
+                                    .withValues(alpha: 0.55),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
@@ -247,7 +250,6 @@ Future<bool> showSensitiveActionAuthCodeDialog(
   );
 }
 
-
 /// Compatibilité ancienne API : vérifie le PIN mais ne transporte pas le code.
 Future<bool> showSensitiveActionPinDialog(
   BuildContext context, {
@@ -282,7 +284,10 @@ class _PinCodeBoxes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = controller.text.trim();
-    final dots = List.generate(kSecretCodeLength, (i) => i < value.length ? value[i] : '');
+    final dots = List.generate(
+      kSecretCodeLength,
+      (i) => i < value.length ? value[i] : '',
+    );
 
     return Column(
       children: [
@@ -325,15 +330,13 @@ class _PinCodeBoxes extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: active
-                            ? Colors.black
-                            : const Color(0xFFB8BDC6),
+                        color: active ? Colors.black : const Color(0xFFB8BDC6),
                         width: active ? 2 : 1.6,
                       ),
                     ),
                     child: Text(
                       filled ? (obscure ? '•' : dots[index]) : '',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w500,
                         color: Colors.black,

@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 
@@ -399,7 +398,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         const SizedBox(height: 16),
                         Text(
                           'Ajouter la preuve de paiement',
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink,
@@ -409,7 +408,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         const SizedBox(height: 6),
                         Text(
                           'Vérifiez le panier, puis joignez un reçu ou un virement avant de confirmer.',
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: AppColors.muted,
@@ -432,7 +431,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                             children: [
                               Text(
                                 'R\u00e9sum\u00e9 panier',
-                                style: GoogleFonts.inter(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.ink,
@@ -449,7 +448,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                           '${_qty[type.id] ?? 0} \u00d7 ${type.name}',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.inter(
+                                          style: TextStyle(
                                             fontSize: 12.5,
                                             fontWeight: FontWeight.w600,
                                             color: AppColors.ink2,
@@ -459,7 +458,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                       const SizedBox(width: 8),
                                       Text(
                                         '${Formatters.numberFr((_qty[type.id] ?? 0) * type.totalAmount)} $currency',
-                                        style: GoogleFonts.inter(
+                                        style: TextStyle(
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.w800,
                                           color: AppColors.ink,
@@ -474,7 +473,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                   Expanded(
                                     child: Text(
                                       '$totalCarnets carnet(s) / $totalTickets ticket(s)',
-                                      style: GoogleFonts.inter(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.muted,
@@ -483,7 +482,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                   ),
                                   Text(
                                     '${Formatters.numberFr(totalAmount)} $currency',
-                                    style: GoogleFonts.jetBrainsMono(
+                                    style: TextStyle(
+                                      fontFamily: 'monospace',
                                       fontSize: 17,
                                       fontWeight: FontWeight.w900,
                                       color: AppColors.ink,
@@ -497,7 +497,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         const SizedBox(height: 16),
                         Text(
                           'Preuve de paiement',
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink,
@@ -604,7 +604,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 children: [
                   Text(
                     'Sélectionnez les carnets et indiquez la quantité.',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: AppColors.muted,
@@ -903,7 +903,7 @@ class _CarnetCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
@@ -923,7 +923,7 @@ class _CarnetCard extends StatelessWidget {
                           type.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(
                             fontSize: 15.5,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink,
@@ -958,7 +958,7 @@ class _CarnetCard extends StatelessWidget {
                     children: [
                       Text(
                         'Quantité',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.muted,
@@ -1039,7 +1039,8 @@ class _BottomBar extends StatelessWidget {
                     children: [
                       Text(
                         Formatters.numberFr(totalAmount),
-                        style: GoogleFonts.jetBrainsMono(
+                        style: TextStyle(
+                          fontFamily: 'monospace',
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: AppColors.ink,
@@ -1129,7 +1130,7 @@ class _StepperPair extends StatelessWidget {
           child: Text(
             '$value',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -1256,7 +1257,7 @@ class _ProofPicker extends StatelessWidget {
                       ),
                       child: Text(
                         hasFile ? 'Prête' : 'Pièce requise',
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: hasFile ? AppColors.success : AppColors.muted,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
@@ -1269,7 +1270,7 @@ class _ProofPicker extends StatelessWidget {
                       hasFile
                           ? 'Preuve sélectionnée'
                           : 'Ajouter la preuve de paiement',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         color: AppColors.ink,
                         fontWeight: FontWeight.w700,
                         fontSize: 14.5,
@@ -1281,7 +1282,7 @@ class _ProofPicker extends StatelessWidget {
                       hasFile
                           ? path!.split(RegExp(r'[/\\]')).last
                           : 'PDF ou image, comme un reçu ou un virement.',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w400,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
@@ -31,7 +30,6 @@ import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
-
 
 class EmitQrScreen extends StatefulWidget {
   const EmitQrScreen({super.key});
@@ -172,9 +170,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-              title: 'Générer QR Code',
-              onBack: () => popOrGo(context, '/qr'),
-            ),
+                title: 'Générer QR Code',
+                onBack: () => popOrGo(context, '/qr'),
+              ),
               const SizedBox(height: 18),
               Expanded(
                 child: ListView(
@@ -183,7 +181,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   children: [
                     Text(
                       'Sélectionnez les carnets à inclure dans le QR.',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: AppColors.muted,
@@ -212,9 +210,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-              title: 'Générer QR Code',
-              onBack: () => popOrGo(context, '/qr'),
-            ),
+                title: 'Générer QR Code',
+                onBack: () => popOrGo(context, '/qr'),
+              ),
               const SizedBox(height: 18),
               Expanded(
                 child: ListView(
@@ -223,7 +221,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   children: [
                     Text(
                       'Sélectionnez les carnets à inclure dans le QR Code.',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: AppColors.muted,
@@ -249,9 +247,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-              title: 'Générer QR Code',
-              onBack: () => popOrGo(context, '/qr'),
-            ),
+                title: 'Générer QR Code',
+                onBack: () => popOrGo(context, '/qr'),
+              ),
               const SizedBox(height: 18),
               Expanded(
                 child: ListView(
@@ -260,7 +258,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   children: [
                     Text(
                       'Sélectionnez les carnets à inclure dans le QR Code.',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: AppColors.muted,
@@ -289,9 +287,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-              title: 'Générer QR Code',
-              onBack: () => popOrGo(context, '/qr'),
-            ),
+                title: 'Générer QR Code',
+                onBack: () => popOrGo(context, '/qr'),
+              ),
               const SizedBox(height: 18),
               Expanded(
                 child: Center(
@@ -355,7 +353,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                       children: [
                         Text(
                           'Choisissez un carnet et une quantité.',
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w400,
                             color: AppColors.muted,
@@ -614,7 +612,7 @@ class _BottomBar extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: _AmountInline(
                     amount: totalAmount,
-                    valueStyle: GoogleFonts.poppins(
+                    valueStyle: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF2E7D32),
@@ -714,9 +712,7 @@ class _CompositionRow extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 110),
         child: AppCard(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          borderColor: isSelected
-              ? AppColors.leaderGreen
-              : AppColors.line,
+          borderColor: isSelected ? AppColors.leaderGreen : AppColors.line,
           borderWidth: isSelected ? 1.5 : 1,
           shadow: true,
           child: Column(
@@ -733,7 +729,7 @@ class _CompositionRow extends StatelessWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(
                             fontSize: 15.5,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink,
@@ -762,7 +758,7 @@ class _CompositionRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
@@ -779,7 +775,7 @@ class _CompositionRow extends StatelessWidget {
                 children: [
                   Text(
                     'Quantité',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppColors.muted,
@@ -824,7 +820,7 @@ class _Stepper extends StatelessWidget {
           child: Text(
             '$value',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: AppColors.ink,
@@ -920,7 +916,7 @@ class _EmitConfirmationHero extends StatelessWidget {
               const SizedBox(height: 2),
               _AmountInline(
                 amount: totalAmount,
-                valueStyle: GoogleFonts.poppins(
+                valueStyle: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF2E7D32),
@@ -1022,7 +1018,7 @@ class _EmitConfirmationTotalRow extends StatelessWidget {
         Expanded(
           child: Text(
             'Montant total',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.body,
@@ -1032,7 +1028,7 @@ class _EmitConfirmationTotalRow extends StatelessWidget {
         _AmountInline(
           amount: totalAmount,
           textAlign: TextAlign.right,
-          valueStyle: GoogleFonts.poppins(
+          valueStyle: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF2E7D32),
@@ -1057,7 +1053,7 @@ class _ConfirmationSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: GoogleFonts.poppins(
+      style: TextStyle(
         fontSize: 16.5,
         fontWeight: FontWeight.w800,
         color: AppColors.ink,
@@ -1103,7 +1099,7 @@ class _EmitConfirmationLineRow extends StatelessWidget {
             children: [
               Text(
                 _title(),
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
@@ -1125,7 +1121,7 @@ class _EmitConfirmationLineRow extends StatelessWidget {
         _AmountInline(
           amount: amount,
           textAlign: TextAlign.right,
-          valueStyle: GoogleFonts.poppins(
+          valueStyle: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF2E7D32),
@@ -1218,4 +1214,3 @@ class _AmountInline extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/utils/formatters.dart';
 
@@ -26,14 +25,14 @@ class AmountInline extends StatelessWidget {
     final fallbackUnitColor = const Color(0xFF2E7D32).withValues(alpha: 0.82);
     final resolvedValueStyle =
         valueStyle ??
-        GoogleFonts.poppins(
+        TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w800,
           color: const Color(0xFF2E7D32),
         );
     final resolvedUnitStyle =
         (unitStyle ??
-                GoogleFonts.poppins(
+                TextStyle(
                   fontSize: unitFontSize,
                   fontWeight: FontWeight.w700,
                   color: fallbackUnitColor,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -534,7 +533,7 @@ class _ProfileSubCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: GoogleFonts.dmSans(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: scheme.onSurface,
@@ -584,7 +583,8 @@ class _ProfileRow extends StatelessWidget {
             child: Text(
               normalized,
               style: mono
-                  ? GoogleFonts.jetBrainsMono(
+                  ? TextStyle(
+                      fontFamily: 'monospace',
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: scheme.onSurface,

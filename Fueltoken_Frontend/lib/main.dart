@@ -30,7 +30,6 @@ import 'core/utils/wallet_refresh_bus.dart';
 import 'data/models/user_role.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/settings/data/notifications_store.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 Future<void> _clearPersistedAuthOnDesktopInterrupt() async {
   if (kIsWeb) return;
@@ -59,10 +58,6 @@ Future<void> _clearPersistedAuthOnDesktopInterrupt() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Les telephones de validation/production peuvent ne pas avoir acces
-  // a fonts.gstatic.com. Ne jamais bloquer l'app sur un telechargement
-  // runtime des polices Google Fonts.
-  GoogleFonts.config.allowRuntimeFetching = false;
   await _clearPersistedAuthOnDesktopInterrupt();
   if (AppEnvironment.blockReleaseWithoutApi) {
     runApp(

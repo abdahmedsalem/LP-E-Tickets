@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -245,7 +244,7 @@ class _ScanScreenState extends State<ScanScreen> {
                 Text(
                   'Consommation validée',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
@@ -256,7 +255,8 @@ class _ScanScreenState extends State<ScanScreen> {
                 Text(
                   Formatters.shortPublicCode(qr.publicCode),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.jetBrainsMono(
+                  style: TextStyle(
+                    fontFamily: 'monospace',
                     fontSize: 12,
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -287,7 +287,7 @@ class _ScanScreenState extends State<ScanScreen> {
                         children: [
                           Text(
                             Formatters.numberFr(qr.totalAmount),
-                            style: GoogleFonts.poppins(
+                            style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primaryDeep,
@@ -393,7 +393,7 @@ class _ScanHeader extends StatelessWidget {
         children: [
           Text(
             'Scanner QR Client',
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w800,
               height: 1.04,
@@ -406,7 +406,7 @@ class _ScanHeader extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 330),
             child: Text(
               'Scannez n\'importe quel code QR compatible et payez plus rapidement et facilement',
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 13.8,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
@@ -585,7 +585,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   Text(
                     'Vérification QR',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: scheme.onSurface,

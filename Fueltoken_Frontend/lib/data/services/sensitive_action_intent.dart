@@ -33,10 +33,7 @@ class SensitiveActionIntent {
     Map<String, dynamic> params, {
     required String actionCode,
   }) {
-    return <String, dynamic>{
-      ...params,
-      ...authParams(actionCode),
-    };
+    return <String, dynamic>{...params, ...authParams(actionCode)};
   }
 
   static String _normalizeOperation(String raw) {

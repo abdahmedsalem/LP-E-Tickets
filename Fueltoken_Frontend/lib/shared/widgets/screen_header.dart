@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({
@@ -30,12 +29,14 @@ class ScreenHeader extends StatelessWidget {
               if (showBack)
                 ScreenHeaderIconButton(
                   icon: Icons.arrow_back_rounded,
-                  onTap: onBack ?? () {
-                    final nav = Navigator.maybeOf(context);
-                    if (nav != null && nav.canPop()) {
-                      nav.maybePop();
-                    }
-                  },
+                  onTap:
+                      onBack ??
+                      () {
+                        final nav = Navigator.maybeOf(context);
+                        if (nav != null && nav.canPop()) {
+                          nav.maybePop();
+                        }
+                      },
                 )
               else
                 const SizedBox(width: 34, height: 34),
@@ -49,7 +50,7 @@ class ScreenHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             title,
-            style: GoogleFonts.poppins(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF111827),
@@ -63,7 +64,7 @@ class ScreenHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               subtitle!,
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 fontSize: 13,
                 color: const Color(0xFF4B5563),
                 fontWeight: FontWeight.w500,
@@ -98,11 +99,7 @@ class ScreenHeaderIconButton extends StatelessWidget {
           width: 34,
           height: 34,
           alignment: Alignment.center,
-          child: Icon(
-            icon,
-            size: 22,
-            color: const Color(0xFF374151),
-          ),
+          child: Icon(icon, size: 22, color: const Color(0xFF374151)),
         ),
       ),
     );

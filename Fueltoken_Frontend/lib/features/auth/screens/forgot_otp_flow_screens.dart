@@ -74,10 +74,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length != kOtpSmsCodeLength) {
       if (mounted) {
-        AppMessage.error(
-          context,
-          'Saisissez le code OTP a 6 chiffres.',
-        );
+        AppMessage.error(context, 'Saisissez le code OTP a 6 chiffres.');
       }
       return;
     }
@@ -389,11 +386,7 @@ class _PrimaryActionButton extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF065F46),
-              Color(0xFF2EA043),
-              Color(0xFF34D399),
-            ],
+            colors: [Color(0xFF065F46), Color(0xFF2EA043), Color(0xFF34D399)],
             stops: [0.0, 0.48, 1.0],
           ),
         ),
@@ -452,9 +445,7 @@ class _OtpField extends StatelessWidget {
         counterText: '',
         filled: true,
         fillColor: AppColors.background,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       ),
       onSubmitted: (_) {},
     );
