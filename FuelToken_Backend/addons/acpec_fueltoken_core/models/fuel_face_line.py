@@ -11,6 +11,7 @@ class AcpecFuelFaceLine(models.Model):
     _rec_name = 'carnet_short_code'
     _order = 'expires_at, lot_short_code, carnet_sequence, id'
 
+    name = fields.Char(string='Reference carnet', index=True, copy=False, readonly=True)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True, ondelete='restrict')
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     client_mobile_phone = fields.Char(
@@ -62,6 +63,10 @@ class AcpecFuelFaceLine(models.Model):
     amount_available = fields.Monetary(string='Montant disponible', compute='_compute_amounts')
     amount_total = fields.Monetary(string='Montant initial', compute='_compute_amounts')
 
+    _name_unique = models.Constraint(
+        'UNIQUE(company_id, name)',
+        'La reference carnet doit etre unique par societe.',
+    )
     _carnet_no_unique = models.Constraint(
         'UNIQUE(company_id, carnet_no)',
         'La reference complete du carnet doit etre unique par societe.',
@@ -72,6 +77,7 @@ class AcpecFuelFaceLine(models.Model):
     )
 
     _economic_identity_fields = frozenset((
+        'name',
         'purchase_id',
         'purchase_line_id',
         'carnet_type_id',
@@ -108,6 +114,23 @@ class AcpecFuelFaceLine(models.Model):
             % ', '.join(sorted(protected))
         )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            name = vals.get('name')
+            short_code = vals.get('carnet_short_code')
+            if name and short_code and name != short_code:
+                raise ValidationError(_('La reference carnet et le code court carnet doivent etre identiques.'))
+            if name and not short_code:
+                vals['carnet_short_code'] = name
+            elif short_code and not name:
+                vals['name'] = short_code
+            elif not name and not short_code:
+                code = self._generate_carnet_short_code()
+                vals['name'] = code
+                vals['carnet_short_code'] = code
+        return super().create(vals_list)
+
     def write(self, vals):
         self._check_protected_write_vals(vals)
         return super().write(vals)
@@ -138,16 +161,15 @@ class AcpecFuelFaceLine(models.Model):
         raise ValidationError(_('Impossible de generer un code court lot unique.'))
 
     @api.model
-    def _generate_carnet_short_code(self, company, max_attempts=100):
-        letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        digits = '0123456789'
+    def _generate_carnet_short_code(self, company=False, max_attempts=100):
         domain_company = [('company_id', '=', company.id)] if company else []
         for _attempt in range(max_attempts):
-            code = ''.join(secrets.choice(letters) for _ in range(2))
-            code += ''.join(secrets.choice(digits) for _ in range(4))
+            code = self.env['ir.sequence'].next_by_code('acpec.fuel.carnet')
+            if not code:
+                raise ValidationError(_('La sequence acpec.fuel.carnet est introuvable.'))
             if not self.sudo().search_count(domain_company + [('carnet_short_code', '=', code)]):
                 return code
-        raise ValidationError(_('Impossible de generer un code court carnet unique.'))
+        raise ValidationError(_('Impossible de generer une reference carnet unique.'))
 
     @api.depends('face_value', 'qty_available', 'qty_initial')
     @api.depends('partner_id')
