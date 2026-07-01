@@ -530,6 +530,26 @@ class AcpecMobileAuthApiCommon(http.Controller):
         safe = self._diagnostic_redact_for_log(payload or {})
         return self._truncate_log_text(safe, self.API_DIAGNOSTIC_LOG_MAX_CHARS)
 
+    def _api_diagnostic_label_for_log(self, value, fallback='unknown'):
+        if value is False or value is None:
+            return fallback
+        value = str(value).strip()
+        if not value:
+            return fallback
+        return self._truncate_log_text(value, 256)
+
+    def _api_diagnostic_endpoint_for_log(self, endpoint=False):
+        return self._api_diagnostic_label_for_log(
+            endpoint or self._request_path(),
+            fallback='unknown',
+        )
+
+    def _api_diagnostic_operation_for_log(self, operation=False):
+        return self._api_diagnostic_label_for_log(
+            operation,
+            fallback='unknown',
+        )
+
     def _log_api_diagnostic_in(self, endpoint, params=False, operation=False):
         status = self._api_diagnostic_logging_status()
         if not status.get('enabled'):
@@ -537,8 +557,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
         _logger.info(
             '%s endpoint=%s operation=%s mode=production_safe until=%s payload_redacted=%s',
             self.API_DIAGNOSTIC_MARKER_IN,
-            endpoint or self._request_path() or False,
-            operation or False,
+            self._api_diagnostic_endpoint_for_log(endpoint),
+            self._api_diagnostic_operation_for_log(operation),
             status.get('until') or False,
             self._api_diagnostic_payload_for_log(params or {}),
         )
@@ -557,8 +577,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
         _logger.info(
             '%s endpoint=%s operation=%s mode=production_safe until=%s duration_ms=%s response_redacted=%s',
             self.API_DIAGNOSTIC_MARKER_OUT,
-            endpoint or self._request_path() or False,
-            operation or False,
+            self._api_diagnostic_endpoint_for_log(endpoint),
+            self._api_diagnostic_operation_for_log(operation),
             status.get('until') or False,
             duration_ms,
             self._api_diagnostic_payload_for_log(response or {}),
@@ -569,8 +589,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
         _logger.warning(
             '%s endpoint=%s operation=%s code=%s reference=%s reason=%s params_redacted=%s',
             self.API_DIAGNOSTIC_MARKER_REFUSED,
-            endpoint or self._request_path() or False,
-            operation or False,
+            self._api_diagnostic_endpoint_for_log(endpoint),
+            self._api_diagnostic_operation_for_log(operation),
             code or False,
             reference or False,
             self._normalize_error_summary(reason or code or 'request_refused'),
@@ -579,7 +599,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         return True
 
     def _mobile_api_error_marker_vals(self, exc, reference, params=False, operation=False, endpoint=False):
-        endpoint = endpoint or self._request_path() or False
+        endpoint = self._api_diagnostic_endpoint_for_log(endpoint)
         exception_type = type(exc).__name__
         exception_summary = self._normalize_error_summary(str(exc) or exception_type)
         fingerprint_source = '%s|%s|%s' % (
@@ -606,7 +626,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'fingerprint': fingerprint,
             'code': 'SERVER_ERROR',
             'endpoint': endpoint,
-            'operation': operation or False,
+            'operation': self._api_diagnostic_operation_for_log(operation),
             'exception_type': exception_type,
             'exception_summary': exception_summary,
             'last_user_id': user_id,
@@ -648,8 +668,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             '%s mobile_api_server_error reference=%s endpoint=%s operation=%s uid=%s company_id=%s exception_type=%s exception_summary=%s params_redacted=%s\n%s',
             self.API_DIAGNOSTIC_MARKER_ERR,
             reference,
-            marker_vals.get('endpoint') or False,
-            marker_vals.get('operation') or False,
+            marker_vals.get('endpoint') or 'unknown',
+            marker_vals.get('operation') or 'unknown',
             marker_vals.get('last_user_id') or False,
             marker_vals.get('last_company_id') or False,
             marker_vals.get('exception_type') or False,
