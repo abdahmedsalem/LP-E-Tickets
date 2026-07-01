@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import inspect
 import base64
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -187,6 +188,16 @@ class TestTicketTransferRuntimePolicy(TransactionCase):
             ("source_wallet_id", "=", source_wallet.id),
             ("idempotency_key", "=", key),
         ])
+
+    def test_j0_transfer_tickets_has_diagnostic_logging_hooks(self):
+        source = inspect.getsource(AcpecFuelTokenMobileApi.transfer_tickets)
+        self.assertIn("_log_api_diagnostic_in", source)
+        self.assertIn("_log_api_diagnostic_out", source)
+        self.assertIn("endpoint = 'mobile.tickets.transfer'", source)
+        self.assertIn("operation = 'ticket_transfer'", source)
+        self.assertIn("operation=operation", source)
+        self.assertIn("endpoint=endpoint", source)
+        self.assertIn("params=kwargs", source)
 
     def test_transfer_tickets_requires_action_code_only(self):
         (

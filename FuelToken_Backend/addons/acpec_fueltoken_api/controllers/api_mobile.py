@@ -1,3 +1,4 @@
+import time
 from odoo import http, _, fields
 from odoo.exceptions import ValidationError
 from odoo.http import request
@@ -962,6 +963,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     )
     def transfer_tickets(self, **kwargs):
         """Transfert de tickets entiers disponibles vers un autre client mobile."""
+        endpoint = 'mobile.tickets.transfer'
+        operation = 'ticket_transfer'
+        started_at = time.monotonic()
+        self._log_api_diagnostic_in(endpoint, kwargs, operation=operation)
         try:
             self._require_keys(kwargs, ['recipient_phone', 'lines', 'note'])
             with self._sensitive_action_transaction(kwargs, purpose='ticket_transfer') as source_user:
@@ -1036,7 +1041,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                             actor_user=source_user,
                             mobile_session=mobile_session,
                         )
-                    return self._json_response(self._ticket_transfer_payload(existing))
+                    response = self._json_response(self._ticket_transfer_payload(existing))
+                    self._log_api_diagnostic_out(endpoint, response, operation=operation, started_at=started_at)
+                    return response
 
                 dest_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
                     recipient_user.partner_id, source_wallet.company_id,
@@ -1076,9 +1083,13 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         mobile_session=mobile_session,
                     )
 
-                return self._json_response(self._ticket_transfer_payload(transfer))
+                response = self._json_response(self._ticket_transfer_payload(transfer))
+                self._log_api_diagnostic_out(endpoint, response, operation=operation, started_at=started_at)
+                return response
         except Exception as exc:
-            return self._handle_exception_response(exc)
+            response = self._handle_exception_response(exc, params=kwargs, operation=operation, endpoint=endpoint)
+            self._log_api_diagnostic_out(endpoint, response, operation=operation, started_at=started_at)
+            return response
 
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
