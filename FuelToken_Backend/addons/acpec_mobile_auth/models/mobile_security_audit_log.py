@@ -32,6 +32,7 @@ class AcpecMobileSecurityAuditLog(models.Model):
         ('pin_locked', 'PIN verrouillé'),
         ('pin_hard_blocked', 'PIN bloqué définitivement'),
         ('pin_reset_required', 'Réinitialisation PIN requise'),
+        ('sensitive_action_busy', 'Action sensible déjà en cours'),
     ], string='Type d’événement', required=True, index=True)
 
     severity = fields.Selection([
