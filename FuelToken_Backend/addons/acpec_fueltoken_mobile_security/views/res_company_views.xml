@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_company_form_fuel_mobile_app_config" model="ir.ui.view">
+        <field name="name">res.company.form.fueltoken.mobile.app.config</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="acpec_mobile_auth.view_company_form_mobile_auth"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='acpec_mobile_app_config']/group[@name='acpec_mobile_app_auth_group']" position="after">
+                <group string="Tickets Carburant" name="acpec_mobile_app_fuel_group">
+                    <field name="acpec_fueltoken_enabled"/>
+                    <div class="text-muted">
+                        Une seule société peut être active pour Tickets Carburant.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
