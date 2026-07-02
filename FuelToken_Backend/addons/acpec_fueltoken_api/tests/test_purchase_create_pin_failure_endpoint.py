@@ -74,8 +74,8 @@ class TestPurchaseCreatePinFailureEndpoint(TransactionCase):
         # be committed as security state: failed_count=1 + INVALID_ACTION_CODE audit.
         response = controller.create_purchase(
             lines=[{'carnet_type_id': 999999, 'carnet_qty': 1}],
-            proof_filename='tiny-proof.txt',
-            proof_data=base64.b64encode(b'tiny proof').decode('ascii'),
+            proof_filename='tiny-proof.pdf',
+            proof_data=base64.b64encode(b'%PDF-1.4\\ntiny proof\\n').decode('ascii'),
             payment_reference='PIN-FAIL-43K1',
             action_code='9999',
             idempotency_key=key,

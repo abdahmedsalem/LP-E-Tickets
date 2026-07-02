@@ -297,10 +297,38 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         })
 
         self._assert_error_contains(response, "QR introuvable")
-        self.assertNotIn("qr_id", repr(response))
+
+        self.assertIsInstance(response, dict)
+        self.assertFalse(response.get("success"))
+        self.assertFalse(response.get("ok"))
+        self.assertNotIn("data", response)
+
+        error = response.get("error", {}) if isinstance(response, dict) else {}
+        self.assertIsInstance(error, dict)
+        self.assertEqual(error.get("code"), "QR_NOT_USABLE")
+        self.assertEqual(error.get("message"), "QR introuvable ou non utilisable.")
+        self.assertTrue(str(error.get("reference") or "").startswith("SEC-"))
+
+        forbidden_payload_keys = {
+            "qr_id",
+            "qr_public_code",
+            "public_code",
+            "qr_numeric_code",
+            "partner_id",
+            "partner_name",
+            "company_id",
+            "company_name",
+            "wallet_id",
+            "amount_total",
+            "face_qty_total",
+            "state",
+            "can_consume",
+            "reason",
+            "debug_reason",
+        }
+        self.assertFalse(forbidden_payload_keys.intersection(response.keys()))
+        self.assertFalse(forbidden_payload_keys.intersection(error.keys()))
         self.assertNotIn(foreign_qr.public_code, repr(response))
-        self.assertNotIn("partner_name", repr(response))
-        self.assertNotIn(str(foreign_qr.company_id.id), repr(response))
 
     def test_station_qr_use_rejects_foreign_company_before_consumption(self):
         controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
