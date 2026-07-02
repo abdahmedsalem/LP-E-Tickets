@@ -1,60 +1,46 @@
 # -*- coding: utf-8 -*-
-from datetime import timedelta
+from unittest.mock import patch
 
-from odoo import fields
 from odoo.tests.common import TransactionCase, tagged
 
+from odoo.addons.acpec_mobile_auth.controllers import api_common as api_common_module
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
 
 
 @tagged('post_install', '-at_install')
 class TestMobileApiDiagnosticLogging(TransactionCase):
-    """Production-safe diagnostic logging foundation."""
+    """Debug-only diagnostic logging foundation."""
 
     def _controller(self):
         controller = AcpecMobileAuthApiCommon()
         controller._test_env = self.env
         return controller
 
-    def _set_setting(self, key, value):
-        Setting = self.env['acpec.mobile.security.setting'].sudo()
-        record = Setting.search([('key', '=', key)], limit=1)
-        vals = {
-            'key': key,
-            'value': str(value),
-            'active': True,
-            'note': 'test diagnostic logging',
-        }
-        if record:
-            record.write(vals)
-        else:
-            Setting.create(vals)
-
-    def test_j0_diagnostic_requires_enabled_and_future_until(self):
+    def test_j4_legacy_diagnostic_settings_are_removed(self):
         controller = self._controller()
-        enabled_key = controller.API_DIAGNOSTIC_LOGGING_ENABLED_KEY
-        until_key = controller.API_DIAGNOSTIC_LOGGING_UNTIL_KEY
 
-        self.assertFalse(controller._api_diagnostic_logging_status()['enabled'])
+        legacy_enabled = 'acpec_mobile_auth.' + 'api_diagnostic_' + 'logging_enabled'
+        legacy_until = 'acpec_mobile_auth.' + 'api_diagnostic_' + 'logging_until'
+        removed_attrs = [
+            'API_DIAGNOSTIC_' + 'LOGGING_ENABLED_KEY',
+            'API_DIAGNOSTIC_' + 'LOGGING_UNTIL_KEY',
+            '_api_diagnostic_' + 'setting_value',
+            '_api_diagnostic_' + 'logging_status',
+        ]
 
-        self._set_setting(enabled_key, '1')
-        status = controller._api_diagnostic_logging_status()
-        self.assertFalse(status['enabled'])
-        self.assertEqual(status['reason'], 'missing_until')
+        for attr_name in removed_attrs:
+            self.assertFalse(hasattr(controller, attr_name), attr_name)
 
-        expired = fields.Datetime.now() - timedelta(minutes=1)
-        self._set_setting(until_key, fields.Datetime.to_string(expired))
-        status = controller._api_diagnostic_logging_status()
-        self.assertFalse(status['enabled'])
-        self.assertEqual(status['reason'], 'expired')
+        key_field = self.env['acpec.mobile.security.setting']._fields['key']
+        selection = key_field.selection
+        if callable(selection):
+            selection = selection(self.env['acpec.mobile.security.setting'])
+        selection_keys = [item[0] for item in selection]
 
-        future = fields.Datetime.now() + timedelta(hours=1)
-        self._set_setting(until_key, fields.Datetime.to_string(future))
-        status = controller._api_diagnostic_logging_status()
-        self.assertTrue(status['enabled'])
-        self.assertEqual(status['reason'], 'active')
+        self.assertNotIn(legacy_enabled, selection_keys)
+        self.assertNotIn(legacy_until, selection_keys)
 
-    def test_j0_diagnostic_payload_redacts_secrets_and_hashes_replay_values(self):
+    def test_j4_diagnostic_payload_redacts_secrets_and_hashes_replay_values(self):
         controller = self._controller()
         payload = {
             'recipient_phone': '47123456',
@@ -83,14 +69,67 @@ class TestMobileApiDiagnosticLogging(TransactionCase):
         self.assertEqual(safe['idempotency_key']['redacted'], True)
         self.assertEqual(safe['lines'][0]['qty_tickets'], '2')
 
-    def test_j0_diagnostic_logs_in_out_are_noop_when_disabled_and_safe_when_enabled(self):
+    def test_j4_diagnostic_in_out_are_debug_only_and_redacted(self):
         controller = self._controller()
-        self.assertFalse(controller._log_api_diagnostic_in('test.endpoint', {'action_code': '1234'}))
-        self.assertFalse(controller._log_api_diagnostic_out('test.endpoint', {'ok': True}))
-
-        controller._test_api_diagnostic_settings = {
-            controller.API_DIAGNOSTIC_LOGGING_ENABLED_KEY: '1',
-            controller.API_DIAGNOSTIC_LOGGING_UNTIL_KEY: fields.Datetime.to_string(fields.Datetime.now() + timedelta(hours=1)),
+        params = {
+            'recipient_phone': '47123456',
+            'action_code': '1234',
+            'access_token': 'access-token-secret',
         }
-        self.assertTrue(controller._log_api_diagnostic_in('test.endpoint', {'action_code': '1234'}))
-        self.assertTrue(controller._log_api_diagnostic_out('test.endpoint', {'ok': True}))
+
+        with patch.object(api_common_module._logger, 'isEnabledFor', return_value=False):
+            self.assertFalse(controller._log_api_diagnostic_in('test.endpoint', params, operation='test_operation'))
+            self.assertFalse(controller._log_api_diagnostic_out('test.endpoint', {'ok': True}, operation='test_operation'))
+
+        with self.assertLogs(api_common_module._logger.name, level='DEBUG') as logs:
+            self.assertTrue(controller._log_api_diagnostic_in('test.endpoint', params, operation='test_operation'))
+            self.assertTrue(controller._log_api_diagnostic_out(
+                'test.endpoint',
+                {'ok': True, 'refresh_token': 'refresh-token-secret'},
+                operation='test_operation',
+            ))
+
+        rendered = '\n'.join(logs.output)
+
+        self.assertIn(controller.API_DIAGNOSTIC_MARKER_IN, rendered)
+        self.assertIn(controller.API_DIAGNOSTIC_MARKER_OUT, rendered)
+        self.assertIn('mode=debug', rendered)
+        self.assertIn('endpoint=test.endpoint', rendered)
+        self.assertIn('operation=test_operation', rendered)
+        self.assertIn('method=', rendered)
+        self.assertIn('path=', rendered)
+        self.assertIn('db=', rendered)
+        self.assertIn('uid=', rendered)
+        self.assertIn('company_id=', rendered)
+
+        self.assertNotIn('1234', rendered)
+        self.assertNotIn('47123456', rendered)
+        self.assertNotIn('access-token-secret', rendered)
+        self.assertNotIn('refresh-token-secret', rendered)
+        self.assertIn('47****56', rendered)
+
+    def test_j4_refusal_marker_stays_structured_and_redacted(self):
+        controller = self._controller()
+
+        with self.assertLogs(api_common_module._logger.name, level='WARNING') as logs:
+            self.assertTrue(controller._log_api_refusal_marker(
+                'VALIDATION_ERROR',
+                reason='action code rejected',
+                params={
+                    'action_code': '1234',
+                    'recipient_phone': '47123456',
+                },
+                operation='test_operation',
+                endpoint='test.endpoint',
+                reference='SEC-TEST',
+            ))
+
+        rendered = '\n'.join(logs.output)
+        self.assertIn(controller.API_DIAGNOSTIC_MARKER_REFUSED, rendered)
+        self.assertIn('endpoint=test.endpoint', rendered)
+        self.assertIn('operation=test_operation', rendered)
+        self.assertIn('code=VALIDATION_ERROR', rendered)
+        self.assertIn('reference=SEC-TEST', rendered)
+        self.assertNotIn('1234', rendered)
+        self.assertNotIn('47123456', rendered)
+        self.assertIn('47****56', rendered)
