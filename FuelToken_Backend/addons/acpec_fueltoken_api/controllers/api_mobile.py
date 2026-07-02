@@ -1,3 +1,6 @@
+import base64
+import binascii
+import os
 import time
 from odoo import http, _, fields
 from odoo.exceptions import ValidationError
@@ -7,6 +10,95 @@ from .api_common import AcpecFuelTokenApiCommon
 
 
 class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
+
+    PURCHASE_PAYMENT_PROOF_MAX_BYTES = 5 * 1024 * 1024
+    PURCHASE_PAYMENT_PROOF_BASE64_MARGIN_CHARS = 8192
+    PURCHASE_PAYMENT_PROOF_ALLOWED_EXTENSIONS = frozenset(('jpg', 'jpeg', 'png', 'pdf'))
+    PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE = bytes.fromhex('ffd8ff')
+    PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE = bytes.fromhex('89504e470d0a1a0a')
+    PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE = b'%PDF-'
+
+    def _purchase_payment_proof_invalid_message(self):
+        # Do not wrap this message in _().
+        # This helper can run in lightweight controller tests before a real
+        # HTTP request/controller env exists; Odoo translation may inspect
+        # self.env.uid and crash with AttributeError("'NoneType' object has no attribute 'uid'").
+        return 'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.'
+
+    def _purchase_payment_proof_max_base64_chars(self):
+        return ((self.PURCHASE_PAYMENT_PROOF_MAX_BYTES + 2) // 3) * 4
+
+    def _validate_purchase_payment_proof(self, proof_filename, proof_data):
+        """Validate mobile purchase payment proof before action_code.
+
+        Only mobile purchase creation sends files in V1. The backend remains
+        the authority even if the mobile app also validates type/size: unsupported
+        proof payloads are rejected before the sensitive action transaction so
+        an invalid file never consumes a PIN/action_code attempt.
+        """
+        message = self._purchase_payment_proof_invalid_message()
+
+        def reject():
+            return False, False, message
+
+        raw_name = str(proof_filename or '').strip()
+        raw_name = raw_name.replace('\\', '/')
+        filename = os.path.basename(raw_name)
+        if not filename or filename in ('.', '..') or '.' not in filename:
+            return reject()
+
+        extension = filename.rsplit('.', 1)[1].lower()
+        if extension not in self.PURCHASE_PAYMENT_PROOF_ALLOWED_EXTENSIONS:
+            return reject()
+
+        if proof_data in (None, False, ''):
+            return reject()
+
+        max_base64_chars = self._purchase_payment_proof_max_base64_chars()
+        max_text_chars = max_base64_chars + self.PURCHASE_PAYMENT_PROOF_BASE64_MARGIN_CHARS
+
+        # DoS guard: reject an abnormally large text payload BEFORE split(),
+        # join(), base64 decoding, or any other allocation-heavy processing.
+        if isinstance(proof_data, bytes):
+            if len(proof_data) > max_text_chars:
+                return reject()
+            try:
+                proof_text = proof_data.decode('ascii')
+            except Exception:
+                return reject()
+        elif isinstance(proof_data, str):
+            if len(proof_data) > max_text_chars:
+                return reject()
+            proof_text = proof_data
+        else:
+            return reject()
+
+        if proof_text.lstrip()[:5].lower() == 'data:':
+            return reject()
+
+        compact_data = ''.join(proof_text.split())
+        if not compact_data or len(compact_data) > max_base64_chars:
+            return reject()
+
+        try:
+            raw = base64.b64decode(compact_data, validate=True)
+        except (binascii.Error, ValueError):
+            return reject()
+
+        if not raw or len(raw) > self.PURCHASE_PAYMENT_PROOF_MAX_BYTES:
+            return reject()
+
+        if extension in ('jpg', 'jpeg'):
+            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE)
+        elif extension == 'png':
+            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE)
+        else:
+            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE)
+
+        if not valid_signature:
+            return reject()
+
+        return filename, compact_data, False
 
     def _carnet_type_label(self, carnet):
         if not carnet:
@@ -452,6 +544,18 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def create_purchase(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines', 'proof_data'])
+
+            proof_filename, proof_data, proof_error = self._validate_purchase_payment_proof(
+                kwargs.get('proof_filename'),
+                kwargs.get('proof_data'),
+            )
+            if proof_error:
+                return self._error_response('PAYMENT_PROOF_INVALID', proof_error)
+
+            kwargs = dict(kwargs)
+            kwargs['proof_filename'] = proof_filename
+            kwargs['proof_data'] = proof_data
+
             with self._sensitive_action_transaction(kwargs, purpose='purchase_create') as _authorized_user:
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_create')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_create')
@@ -460,8 +564,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     wallet.partner_id,
                     wallet.company_id,
                     kwargs.get('lines') or [],
-                    kwargs.get('proof_filename') or _('preuve_paiement.pdf'),
-                    kwargs.get('proof_data'),
+                    proof_filename,
+                    proof_data,
                     payment_reference=kwargs.get('payment_reference'),
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
