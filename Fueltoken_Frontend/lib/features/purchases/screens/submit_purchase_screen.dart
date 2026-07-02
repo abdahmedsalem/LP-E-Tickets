@@ -15,6 +15,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/purchase_payment_proof_guard.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
@@ -41,6 +42,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   final Set<String> _selectedTypeIds = {};
 
   String? _proofPath;
+  String? _proofFilename;
   Uint8List? _proofBytes;
   bool _submitting = false;
   bool _loadingOffers = false;
@@ -162,17 +164,39 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     });
   }
 
+  void _clearProof() {
+    setState(() {
+      _proofPath = null;
+      _proofFilename = null;
+      _proofBytes = null;
+    });
+  }
+
   Future<void> _pickProof() async {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+        allowedExtensions: PurchasePaymentProofGuard.allowedExtensions,
         allowMultiple: false,
-        withData: true,
+        // Sur mobile, on évite de charger le fichier en mémoire avant d'avoir
+        // contrôlé extension + taille. Sur web, FilePicker a besoin des bytes.
+        withData: kIsWeb,
       );
 
       final file = result?.files.single;
       if (file == null) return;
+
+      final filename = PurchasePaymentProofGuard.normalizedFilename(file.name);
+      final metadataError = PurchasePaymentProofGuard.validateFileNameAndSize(
+        filename: filename,
+        sizeBytes: file.size,
+      );
+      if (metadataError != null) {
+        if (!mounted) return;
+        _clearProof();
+        AppMessage.error(context, metadataError);
+        return;
+      }
 
       final bytes =
           file.bytes ??
@@ -182,12 +206,25 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
       if (bytes == null || bytes.isEmpty) {
         if (!mounted) return;
+        _clearProof();
         AppMessage.error(context, 'La preuve de paiement est illisible.');
         return;
       }
 
+      final contentError = PurchasePaymentProofGuard.validateBytes(
+        filename: filename,
+        bytes: bytes,
+      );
+      if (contentError != null) {
+        if (!mounted) return;
+        _clearProof();
+        AppMessage.error(context, contentError);
+        return;
+      }
+
       setState(() {
-        _proofPath = file.path ?? file.name;
+        _proofPath = file.path ?? filename;
+        _proofFilename = filename;
         _proofBytes = bytes;
       });
     } catch (_) {
@@ -220,7 +257,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         AppMessage.warning(context, 'Indiquez au moins un ticket.');
         return;
       }
-      if (_proofPath == null) {
+      if (_proofPath == null || _proofFilename == null) {
         AppMessage.error(context, 'La preuve de paiement est obligatoire.');
         return;
       }
@@ -241,6 +278,14 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (!mounted) return;
       if (proofBytes == null || proofBytes.isEmpty) {
         AppMessage.error(context, 'La preuve de paiement est illisible.');
+        return;
+      }
+      final proofValidationError = PurchasePaymentProofGuard.validateBytes(
+        filename: _proofFilename,
+        bytes: proofBytes,
+      );
+      if (proofValidationError != null) {
+        AppMessage.error(context, proofValidationError);
         return;
       }
       // Naviguer vers l'écran de confirmation
@@ -285,12 +330,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 if (rpcLines.isEmpty) {
                   throw Exception('Aucune ligne valide à envoyer.');
                 }
-                final slash = proofPath.lastIndexOf('/');
-                final back = proofPath.lastIndexOf('\\');
-                final cut = math.max(slash, back);
-                final fileName = cut >= 0
-                    ? proofPath.substring(cut + 1)
-                    : proofPath;
+                final fileName = _proofFilename?.trim() ?? '';
+                if (fileName.isEmpty) {
+                  throw Exception('La preuve de paiement est obligatoire.');
+                }
                 final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
                 final idem = const Uuid().v4();
                 debugPrint(
@@ -1281,7 +1324,7 @@ class _ProofPicker extends StatelessWidget {
                     Text(
                       hasFile
                           ? path!.split(RegExp(r'[/\\]')).last
-                          : 'PDF ou image, comme un reçu ou un virement.',
+                          : 'JPG, PNG ou PDF — taille maximale ${PurchasePaymentProofGuard.maxSizeLabel}.',
                       style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 12,
