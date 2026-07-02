@@ -1,3 +1,5 @@
+from psycopg2 import IntegrityError
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -110,17 +112,37 @@ class AcpecFuelWallet(models.Model):
                 setattr(rec, fname, value)
 
     def get_or_create(self, partner, company):
-        wallet = self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
+        partner = partner.sudo().exists() if partner else self.env['res.partner']
+        company = company.sudo().exists() if company else self.env['res.company']
+
+        if len(partner) != 1:
+            raise ValidationError(_('Un seul partenaire est requis pour créer le compte Tickets Carburant.'))
+        if len(company) != 1:
+            raise ValidationError(_('Une seule société est requise pour créer le compte Tickets Carburant.'))
+
+        Wallet = self.sudo()
+        domain = [
+            ('partner_id', '=', partner.id),
+            ('company_id', '=', company.id),
+        ]
+
+        wallet = Wallet.search(domain, limit=1)
         if wallet:
             return wallet
+
         try:
-            return self.sudo().create({'partner_id': partner.id, 'company_id': company.id})
-        except Exception:
-            # Deux requêtes simultanées peuvent avoir passé le search() avant que l'une n'insère.
-            # La contrainte unique partner_company_unique lève une IntegrityError — on la gère
-            # gracieusement en relisant le wallet désormais existant.
-            self.env.cr.rollback()
-            return self.sudo().search([('partner_id', '=', partner.id), ('company_id', '=', company.id)], limit=1)
+            with self.env.cr.savepoint():
+                return Wallet.create({
+                    'partner_id': partner.id,
+                    'company_id': company.id,
+                })
+        except IntegrityError as error:
+            if getattr(error.diag, 'constraint_name', False) != 'acpec_fuel_wallet_partner_company_unique':
+                raise
+            wallet = Wallet.search(domain, limit=1)
+            if wallet:
+                return wallet
+            raise
 
     @api.model
     def _fueltoken_user_has_group_xmlid(self, user, xmlid):
