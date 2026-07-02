@@ -65,6 +65,7 @@ const _allowedFlutterAcpecEndpoints = <String>{
   '/api/acpec/fueltoken/v1/mobile/qr/separer',
   '/api/acpec/fueltoken/v1/mobile/carnets/transfer',
   '/api/acpec/fueltoken/v1/mobile/carnets/transfer/recipient',
+  '/api/acpec/fueltoken/v1/mobile/tickets/transfer',
 
   // Station mobile.
   '/api/acpec/fueltoken/v1/mobile/qr/reveal-code',

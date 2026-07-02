@@ -36,13 +36,32 @@ void main() {
       expect(error.displayMessage, contains('Demande refusée'));
       expect(error.displayMessage, contains('ERR-XYZ'));
     });
+
+    test('maps backend payment proof invalid code locally', () {
+      final error = AcpecPublicApiError.fromBusinessEnvelope({
+        'ok': false,
+        'success': false,
+        'error': {
+          'code': 'PAYMENT_PROOF_INVALID',
+          'message': 'raw backend message must not drive Flutter UX',
+        },
+      });
+
+      expect(error.code, 'PAYMENT_PROOF_INVALID');
+      expect(error.displayMessage, contains('Preuve de paiement invalide'));
+      expect(error.displayMessage, contains('JPG'));
+      expect(error.displayMessage, contains('PNG'));
+      expect(error.displayMessage, contains('PDF'));
+      expect(error.displayMessage, isNot(contains('raw backend message')));
+    });
   });
 
   group('acpecRpcMapOrThrow', () {
-    test('throws on business error using code mapping, not backend message', () {
-      expect(
-        () => acpecRpcMapOrThrow(
-          {
+    test(
+      'throws on business error using code mapping, not backend message',
+      () {
+        expect(
+          () => acpecRpcMapOrThrow({
             'ok': false,
             'success': false,
             'error': {
@@ -50,16 +69,15 @@ void main() {
               'message': 'raw backend wording',
               'reference': 'SEC-DEVICE-1',
             },
-          },
-          fallbackMessage: 'fallback',
-        ),
-        throwsA(
-          isA<OdooJsonRpcException>()
-              .having((e) => e.publicCode, 'publicCode', 'DEVICE_NOT_ALLOWED')
-              .having((e) => e.reference, 'reference', 'SEC-DEVICE-1')
-              .having((e) => e.message, 'message', isNot(contains('raw'))),
-        ),
-      );
-    });
+          }, fallbackMessage: 'fallback'),
+          throwsA(
+            isA<OdooJsonRpcException>()
+                .having((e) => e.publicCode, 'publicCode', 'DEVICE_NOT_ALLOWED')
+                .having((e) => e.reference, 'reference', 'SEC-DEVICE-1')
+                .having((e) => e.message, 'message', isNot(contains('raw'))),
+          ),
+        );
+      },
+    );
   });
 }

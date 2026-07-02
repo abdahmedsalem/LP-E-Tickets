@@ -42,6 +42,8 @@ class AcpecPublicApiError {
     'DEVICE_NOT_ALLOWED':
         'Cet appareil n’est pas autorisé à utiliser Tickets Carburant.',
     'ACTION_REFUSED': 'Action refusée. Vérifiez votre code puis réessayez.',
+    'PAYMENT_PROOF_INVALID':
+        'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.',
     'QR_NOT_USABLE': 'Ce QR ne peut pas être utilisé.',
     'TRANSFER_REFUSED': 'Le transfert a été refusé.',
     'REQUEST_REFUSED': 'Demande refusée. Réessayez ou contactez le support.',
