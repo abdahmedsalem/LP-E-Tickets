@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -17,7 +17,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// Carnets disponibles — vue par face et par carnet.
+/// Carnets disponibles â€” vue par face et par carnet.
 class FacesDetailScreen extends StatefulWidget {
   const FacesDetailScreen({super.key});
 
@@ -418,15 +418,6 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                             stateColor: stateColor,
                           ),
                           const SizedBox(height: 14),
-                          Text(
-                            'Les tickets bloqués ne sont plus utilisables.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: scheme.onSurfaceVariant,
-                              height: 1.35,
-                            ),
-                          ),
                           const SizedBox(height: 16),
                           Text(
                             'Détail des tickets',
@@ -712,13 +703,13 @@ class _CarnetSummaryMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: accent.withValues(alpha: 0.14)),
+        border: Border.all(color: AppColors.lineSoft),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: accent),
+          Icon(icon, size: 18, color: AppColors.muted),
           const SizedBox(width: 7),
           Expanded(
             child: Column(
@@ -931,16 +922,7 @@ class _CarnetDetailScreen extends StatelessWidget {
                     stateLabel: stateLabel,
                     stateColor: stateColor,
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Les tickets bloqués ne sont plus utilisables.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurfaceVariant,
-                      height: 1.35,
-                    ),
-                  ),
+                 
                   const SizedBox(height: 16),
                   Text(
                     'Détail des tickets',
@@ -1000,129 +982,98 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
     final ticketsLabel = ticketsAvailableLabel.trim().isNotEmpty
         ? ticketsAvailableLabel.trim()
         : Formatters.numberFr(displayQty);
-    final amountLabel = totalAmountLabel.trim().isNotEmpty
-        ? '$availableAmountLabel / $totalAmountLabel'
-        : availableAmountLabel;
+    final amountLabel = availableAmountLabel.trim().isNotEmpty
+        ? availableAmountLabel.trim()
+        : totalAmountLabel.trim();
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.zero,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryTint,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(
-              Icons.layers_outlined,
-              size: 20,
-              color: AppColors.primaryDeep,
-            ),
+          _DetailInfoRow(
+            label: 'Type de carnet',
+            value: carnetTypeLabel.trim().isNotEmpty
+                ? carnetTypeLabel
+                : 'Non disponible',
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    height: 1.15,
-                  ),
-                ),
-                if (carnetTypeLabel.trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    carnetTypeLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                if (fullCarnetNo.trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'N° complet : $fullCarnetNo',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.8,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                Text(
-                  'Tickets disponibles : $ticketsLabel',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12.3,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                if (amountLabel.trim().isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    'Montant disponible : $amountLabel',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.3,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  'Expire le ${Formatters.dateTime(expirationDate)}',
-                  style: TextStyle(
-                    fontSize: 12.2,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _DetailInfoRow(
+            label: 'Code de référence',
+            value: title.trim().isNotEmpty ? title : 'Non disponible',
           ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: stateColor.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: stateColor.withValues(alpha: 0.18)),
-            ),
-            child: Text(
-              stateLabel,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: stateColor,
-              ),
-            ),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _DetailInfoRow(
+            label: 'N° complet du carnet',
+            value: fullCarnetNo.trim().isNotEmpty ? fullCarnetNo : 'Non disponible',
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _DetailInfoRow(
+            label: 'Tickets disponibles',
+            value: ticketsLabel,
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _DetailInfoRow(
+            label: 'Montant disponible',
+            value: amountLabel.isNotEmpty ? amountLabel : 'Non disponible',
+          ),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _DetailInfoRow(
+            label: 'Date d\'expiration',
+            value: Formatters.dateTimeDash(expirationDate),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DetailInfoRow extends StatelessWidget {
+  const _DetailInfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 7,
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1230,130 +1181,73 @@ class _CarnetLineCard extends StatelessWidget {
   final int carnetSize;
   final VoidCallback onTap;
 
-  String get _humanCarnetCode {
-    final shortCode = line.carnetShortCode.trim();
-    if (shortCode.isNotEmpty) {
-      return shortCode;
-    }
+  String get _titleLabel => carnetTypeLabel.trim().isEmpty
+      ? 'Carnet'
+      : carnetTypeLabel.trim();
 
-    final fallback = line.carnetNo.trim();
-    if (fallback.isNotEmpty) {
-      return fallback;
-    }
-
-    return 'Code carnet indisponible';
+  String get _availabilityLabel {
+    final value = _ticketAvailabilityLabel(line.availableQty, carnetSize);
+    return value;
   }
 
-  String get _availableTicketsLabel {
-    return 'Tickets disponibles : ${_ticketAvailabilityLabel(line.availableQty, carnetSize)}';
-  }
 
   @override
   Widget build(BuildContext context) {
-    final isExpired = line.isExpired;
-    final statusLabel = isExpired
-        ? 'Expiré'
-        : line.availableQty > 0
-        ? 'Disponible'
-        : 'Indisponible';
-    final statusColor = isExpired
-        ? AppColors.danger
-        : line.availableQty > 0
-        ? AppColors.success
-        : AppColors.warning;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
         onTap: onTap,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.primaryTint,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.confirmation_number_outlined,
-                size: 20,
-                color: AppColors.primaryDeep,
-              ),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Carnet $_humanCarnetCode',
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _titleLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.ink,
-                      height: 1.12,
+                      height: 1.15,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    carnetTypeLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.muted,
-                      height: 1.2,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _availabilityLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryDeep,
+                    height: 1,
+                    letterSpacing: -0.2,
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _availableTicketsLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.3,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.muted,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
                     'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
                       color: AppColors.muted,
-                      height: 1.2,
+                      fontWeight: FontWeight.w600,
+                      height: 1.15,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: statusColor.withValues(alpha: 0.18)),
-              ),
-              child: Text(
-                statusLabel,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  color: statusColor,
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -1361,3 +1255,4 @@ class _CarnetLineCard extends StatelessWidget {
     );
   }
 }
+
