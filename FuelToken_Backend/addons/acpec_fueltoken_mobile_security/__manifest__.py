@@ -11,6 +11,7 @@
         'security/ir.model.access.csv',
         'views/mobile_phone_change_views.xml',
         'views/mobile_user_blocking_views.xml',
+        'views/res_company_views.xml',
     ],
     'installable': True,
     'application': False,

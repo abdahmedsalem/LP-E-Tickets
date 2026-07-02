@@ -6,8 +6,8 @@
         <field name="inherit_id" ref="base.view_company_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Mobile Auth">
-                    <group>
+                <page string="Config App mobile" name="acpec_mobile_app_config">
+                    <group string="Application mobile" name="acpec_mobile_app_auth_group">
                         <field name="acpec_mobile_auth_enabled"/>
                     </group>
                 </page>
