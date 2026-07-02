@@ -27,6 +27,17 @@ class MobileSensitiveActionError(AccessError):
         self.acpec_reference = reference or False
 
 
+class MobileSessionExpiredError(AccessError):
+    """Erreur publique stable pour access token/session mobile expiré."""
+
+    def __init__(self, public_message=False, debug_reason=False):
+        message = public_message or 'Session mobile invalide ou expirée.'
+        super().__init__(message)
+        self.acpec_public_code = 'SESSION_EXPIRED'
+        self.acpec_public_message = message
+        self.acpec_debug_reason = debug_reason or 'session_invalid'
+
+
 class MobileSignupNotAllowedError(ValidationError):
     """Refus signup/register non énumérant.
 
@@ -702,6 +713,18 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 exc,
                 params=params,
                 started_at=started_at,
+            )
+        if isinstance(exc, MobileSessionExpiredError):
+            self._log_api_refusal_marker(
+                exc.acpec_public_code,
+                reason=exc.acpec_debug_reason,
+                params=params,
+                operation=operation,
+                endpoint=endpoint,
+            )
+            return self._error_response(
+                exc.acpec_public_code,
+                exc.acpec_public_message,
             )
         if isinstance(exc, ValidationError):
             message = str(exc)
@@ -1580,7 +1603,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         session = request.env['acpec.mobile.session'].sudo().authenticate_access_token(token)
         if not session:
             if required:
-                raise AccessError(_('Session mobile invalide ou expirée.'))
+                raise MobileSessionExpiredError()
             return request.env['acpec.mobile.session']
         return session
 
