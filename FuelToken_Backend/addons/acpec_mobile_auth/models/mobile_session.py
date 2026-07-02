@@ -809,6 +809,18 @@ class AcpecMobileSession(models.Model):
                 session.message_post(body='Session mobile révoquée par %s.' % (self.env.user.display_name,))
         return True
 
+    def _revoke_for_mobile_logout(self):
+        """Revoke the current mobile session from the public logout endpoint.
+
+        This is not a device-trust action: logout must not approve, block,
+        reset, or otherwise change device trust.
+        """
+        now = fields.Datetime.now()
+        for session in self.sudo().exists():
+            if session.state == 'active':
+                session.write({'state': 'revoked', 'revoked_at': now})
+        return True
+
     def _check_single_trust_target_per_user(self):
         """Fail closed for ambiguous bulk approval on a same user.
 

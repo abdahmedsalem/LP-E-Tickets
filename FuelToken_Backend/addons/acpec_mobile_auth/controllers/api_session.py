@@ -44,7 +44,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         try:
             session = self._get_mobile_session(required=False)
             if session:
-                session.action_revoke()
+                session._revoke_for_mobile_logout()
             if not request.env.user._is_public():
                 request.session.logout(keep_db=True)
             return self._json_response({'message': _('Logged out successfully.')})
