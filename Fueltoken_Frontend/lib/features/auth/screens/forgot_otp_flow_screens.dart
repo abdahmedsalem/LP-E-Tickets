@@ -32,7 +32,12 @@ class ForgotVerifyOtpScreen extends StatefulWidget {
 }
 
 class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _otp = TextEditingController();
+  final _pin = TextEditingController();
+  final _pinConfirm = TextEditingController();
+
+  bool _obscurePin = true;
   bool _busy = false;
   int? _challengeId;
 
@@ -45,6 +50,8 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
   @override
   void dispose() {
     _otp.dispose();
+    _pin.dispose();
+    _pinConfirm.dispose();
     super.dispose();
   }
 
@@ -78,19 +85,23 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
       }
       return;
     }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _busy = true);
     try {
       await OdooAuthService.instance.verifyPasswordResetOtp(
         identifier: widget.args.identifier,
         code: clean,
+        pin: _pin.text,
         challengeId: _challengeId,
       );
-      if (!mounted) return;
-      context.push(
-        '/forgot-password/reset',
-        extra: ForgotResetRouteArgs(identifier: widget.args.identifier),
+      await AuthRepository.instance.syncLocalPinIfExists(
+        identifier: widget.args.identifier,
+        newPin: _pin.text,
       );
+      if (!mounted) return;
+      AppMessage.info(context, 'PIN mis a jour. Connectez-vous.');
+      context.go('/login');
     } catch (e) {
       if (mounted) {
         AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
@@ -104,31 +115,70 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
   Widget build(BuildContext context) {
     return _ForgotFlowScaffold(
       onBack: () => context.pop(),
-      title: 'Verification du code',
-      subtitle: 'Saisissez le code recu par SMS.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _FlowCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _OtpField(controller: _otp),
-                const SizedBox(height: 18),
-                _PrimaryActionButton(
-                  label: 'Continuer',
-                  busy: _busy,
-                  onTap: _submit,
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _busy ? null : _resend,
-                  child: const Text('Renvoyer le code'),
-                ),
-              ],
+      title: 'Verification et nouveau PIN',
+      subtitle:
+          'Saisissez le code recu par SMS puis choisissez votre nouveau PIN.',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FlowCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _OtpField(controller: _otp),
+                  const SizedBox(height: 14),
+                  _PasswordField(
+                    controller: _pin,
+                    obscure: _obscurePin,
+                    label: 'Nouveau PIN',
+                    hint: '4 chiffres',
+                    trailing: IconButton(
+                      splashRadius: 20,
+                      iconSize: 20,
+                      color: const Color(0xFF7A8798),
+                      icon: Icon(
+                        _obscurePin
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePin = !_obscurePin),
+                    ),
+                    validator: validateFourDigitNumericPassword,
+                  ),
+                  const SizedBox(height: 14),
+                  _PasswordField(
+                    controller: _pinConfirm,
+                    obscure: _obscurePin,
+                    label: 'Confirmer le PIN',
+                    hint: 'Ressaisir le PIN',
+                    validator: (v) {
+                      final err = validateFourDigitNumericPassword(v);
+                      if (err != null) return err;
+                      if (v != _pin.text) {
+                        return 'Les PIN ne correspondent pas.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _PrimaryActionButton(
+                    label: 'Enregistrer le PIN',
+                    busy: _busy,
+                    onTap: _submit,
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _busy ? null : _resend,
+                    child: const Text('Renvoyer le code'),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

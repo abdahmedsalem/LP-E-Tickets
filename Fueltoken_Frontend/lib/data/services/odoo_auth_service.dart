@@ -371,6 +371,7 @@ class OdooAuthService {
   Future<Map<String, dynamic>> verifyPasswordResetOtp({
     required String identifier,
     required String code,
+    required String pin,
     int? challengeId,
   }) async {
     final route = OdooAuthRpcConfig.verifyOtpRoute;
@@ -380,6 +381,8 @@ class OdooAuthService {
       );
     }
     final idForRpc = localMrDigitsFromFull(identifier);
+    final platform = DeviceInstallStore.currentPlatformName();
+    final deviceUid = await DeviceInstallStore.readOrCreate();
     final result = await _api.callRoute(
       route,
       params: {
@@ -387,6 +390,11 @@ class OdooAuthService {
         'identifier': idForRpc,
         'code': code.trim(),
         'purpose': 'forgot_password',
+        'secret_code': pin.trim(),
+        'device_uid': deviceUid,
+        'device_name': kIsWeb ? 'Flutter Web' : 'Flutter $platform',
+        'platform': platform,
+        'app_version': 'dev',
       },
     );
     _ensureAcpecEnvelopeSuccess(result);
