@@ -229,7 +229,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
         const <String, dynamic>{},
       );
       final catalogResult = await AcpecCarnetCatalogService.instance
-          .loadAdminCatalog(companyId: companyId);
+          .loadMobileCatalogFacesOnly(companyId: companyId);
 
       final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
       final byId = <String, int>{};

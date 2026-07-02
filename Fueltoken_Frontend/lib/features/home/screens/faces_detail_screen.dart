@@ -69,9 +69,10 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     try {
-      final result = await AcpecCarnetCatalogService.instance.loadAdminCatalog(
-        companyId: AppEnvironment.companyIdForUser(user),
-      );
+      final result = await AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(
+            companyId: AppEnvironment.companyIdForUser(user),
+          );
       if (!mounted) return;
       final byId = <String, int>{};
       final byCode = <String, int>{};

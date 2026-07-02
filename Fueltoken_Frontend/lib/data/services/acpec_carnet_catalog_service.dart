@@ -548,9 +548,14 @@ class AcpecCarnetCatalogService {
     return result;
   }
 
-  /// Chargement admin « Types de ticket » : types puis faces uniquement.
+  /// Chargement léger types + faces.
+  ///
+  /// Par défaut, cette méthode garde le comportement historique admin.
+  /// Les écrans mobiles doivent passer [preferAdminList] à false afin de
+  /// consommer `/mobile/carnet-types` et jamais `/admin/carnet-types/list`.
   Future<AcpecCarnetCatalogLoadResult> loadCatalogFacesOnly({
     required String companyId,
+    bool preferAdminList = true,
   }) async {
     lastCatalogTypesFromAdminList = false;
     if (!AppEnvironment.useAcpecLiveData) {
@@ -564,7 +569,7 @@ class AcpecCarnetCatalogService {
     String? ctPreview;
     final ctRpc = await _tryFetchCarnetTypesRpc(
       companyId,
-      preferAdminList: true,
+      preferAdminList: preferAdminList,
     );
     ctPreview = ctRpc.preview;
     ctErr = ctRpc.err;
@@ -607,15 +612,14 @@ class AcpecCarnetCatalogService {
     lastLoadResult = result;
     if (DiagnosticConfig.showTechnicalDiagnostics) {
       developer.log(
-        'Résumé (admin types): carnetTypesErr=${ctErr != null}, facesErr=${fErr != null}, types=${types.length}',
+        'Résumé (types/faces): carnetTypesErr=${ctErr != null}, facesErr=${fErr != null}, types=${types.length}',
         name: 'AcpecCarnetCatalog',
       );
     }
     return result;
   }
 
-  /// Types pour l’écran admin : en ACPEC live, uniquement [loadCatalogFacesOnly] ;
-  /// pour les achats client l’agrégation complète reste [loadCatalog].
+  /// Types pour l’écran admin : en ACPEC live, utilise la route admin dédiée.
   Future<AcpecCarnetCatalogLoadResult> loadAdminCatalog({
     required String companyId,
   }) async {
@@ -627,6 +631,22 @@ class AcpecCarnetCatalogService {
     }
 
     return loadCatalogFacesOnly(companyId: companyId);
+  }
+
+  /// Types pour les écrans mobiles nécessitant seulement types + faces.
+  ///
+  /// Cette méthode ne doit jamais appeler `/admin/carnet-types/list`.
+  Future<AcpecCarnetCatalogLoadResult> loadMobileCatalogFacesOnly({
+    required String companyId,
+  }) async {
+    lastCatalogTypesFromAdminList = false;
+    if (!AppEnvironment.useAcpecLiveData) {
+      const r = AcpecCarnetCatalogLoadResult(types: []);
+      lastLoadResult = r;
+      return r;
+    }
+
+    return loadCatalogFacesOnly(companyId: companyId, preferAdminList: false);
   }
 
   /// Types proposés à l’achat : en démo locale, dépôt mémoire ; en ACPEC live,

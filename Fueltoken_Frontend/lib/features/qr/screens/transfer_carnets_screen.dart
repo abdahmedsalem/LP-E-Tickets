@@ -233,7 +233,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
         const <String, dynamic>{'transferable_only': true},
       );
       final catalogResult = await AcpecCarnetCatalogService.instance
-          .loadAdminCatalog(companyId: companyId);
+          .loadMobileCatalogFacesOnly(companyId: companyId);
 
       final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
       final byId = <String, int>{};
