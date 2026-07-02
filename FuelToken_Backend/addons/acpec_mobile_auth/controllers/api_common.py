@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from odoo import http, _, fields, api, SUPERUSER_ID
 from odoo.exceptions import AccessError, ValidationError
 
-from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
+from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError, MobileSensitivePinBusy
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -108,6 +108,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
         'DEVICE_NOT_ALLOWED': 'Cet appareil n’est pas autorisé pour cette opération.',
         'ACTION_REFUSED': 'Action impossible ou non autorisée.',
+        'ACTION_IN_PROGRESS': 'Une autre opération sensible est déjà en cours. Réessayez dans quelques secondes.',
         'QR_NOT_USABLE': 'QR introuvable ou non utilisable.',
         'TRANSFER_REFUSED': 'Transfert impossible ou non autorisé.',
         'FORBIDDEN': 'Vous n’êtes pas autorisé à effectuer cette opération.',
@@ -146,6 +147,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         'recipient_self_transfer',
         'idempotency_payload_mismatch',
         'sensitive_action_denied',
+        'sensitive_action_busy',
     })
 
     SENSITIVE_PUBLIC_MESSAGES = {
@@ -366,6 +368,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return public_code
         code = code or ''
         event_type = event_type or ''
+        if code == 'ACTION_IN_PROGRESS':
+            return 'ACTION_IN_PROGRESS'
         if code.startswith('DEVICE_') or event_type.startswith('device_'):
             return 'DEVICE_NOT_ALLOWED'
         if purpose == 'carnet_transfer' and code.startswith('RECIPIENT_'):
@@ -893,6 +897,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 env['acpec.mobile.security.audit.log'].sudo().log_event(**vals)
                 return
             with env.registry.cursor() as cr:
+                # Never let the independent audit cursor wait indefinitely: it
+                # may contend with a row lock still held by the refused request.
+                cr.execute("SET LOCAL lock_timeout = '1000ms'")
                 committed_env = api.Environment(cr, SUPERUSER_ID, dict(env.context))
                 committed_env['acpec.mobile.security.audit.log'].sudo().log_event(**vals)
         except Exception:
@@ -958,6 +965,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         severity='warning',
         failed_count_before=False,
         failed_count_after=False,
+        audit_in_current_transaction=False,
         public_code=False,
     ):
         public_code = self._public_sensitive_code_for_refusal(
@@ -988,7 +996,13 @@ class AcpecMobileAuthApiCommon(http.Controller):
             failed_count_after=failed_count_after,
             reference=reference,
         )
-        self._audit_committed(vals)
+        if audit_in_current_transaction:
+            # Counter-mutating failures: audit atomically with the counter
+            # write in the same transaction, and avoid opening a second cursor
+            # that would contend with the res_users lock we still hold.
+            self._audit_in_transaction(vals)
+        else:
+            self._audit_committed(vals)
         raise MobileSensitiveActionError(public_code, public_message, audit_debug_reason, reference=reference)
 
     def _sensitive_refusal_response(
@@ -1038,6 +1052,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _classify_pin_failure(self, exc, user, failed_count_before=False):
         debug_reason = str(exc)
         failed_count_after = user.mobile_pin_failed_count or 0
+
+        # Lock contention is a transient availability condition, detected by
+        # type (never by message string): it must not count as a failed PIN.
+        if isinstance(exc, MobileSensitivePinBusy):
+            return 'sensitive_action_busy', 'ACTION_IN_PROGRESS', 'warning', (failed_count_before or 0)
 
         if user.mobile_pin_required or not user.mobile_pin_set:
             return 'pin_hard_blocked', 'PIN_RESET_REQUIRED', 'critical', failed_count_after
@@ -1760,12 +1779,17 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 event_type=event_type,
                 severity=severity,
                 purpose=purpose,
-                debug_reason=str(exc),
+                debug_reason=('sensitive_action_busy' if code == 'ACTION_IN_PROGRESS' else str(exc)),
                 user=user,
                 session=session,
                 params=params,
                 failed_count_before=failed_count_before,
                 failed_count_after=failed_count_after,
+                audit_in_current_transaction=code in (
+                    'INVALID_ACTION_CODE',
+                    'ACTION_CODE_LOCKED',
+                    'PIN_RESET_REQUIRED',
+                ),
             )
 
         user.invalidate_recordset([

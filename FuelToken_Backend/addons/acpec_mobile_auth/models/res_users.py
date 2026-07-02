@@ -1,12 +1,17 @@
 import hashlib
 import hmac
+import logging
 import re
 import secrets
 
 from dateutil.relativedelta import relativedelta
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import AccessDenied, AccessError, UserError, ValidationError
+
+from odoo.addons.acpec_mobile_auth.exceptions import MobileSensitivePinBusy
+
+_logger = logging.getLogger(__name__)
 
 
 class ResUsers(models.Model):
@@ -329,43 +334,154 @@ class ResUsers(models.Model):
             })
         return True
 
+    _MOBILE_PIN_STATE_FIELDS = [
+        'mobile_pin_hash',
+        'mobile_pin_salt',
+        'mobile_pin_set',
+        'mobile_pin_required',
+        'mobile_pin_failed_count',
+        'mobile_pin_locked_until',
+    ]
+
+    def _assert_mobile_pin_usable(self, user, now):
+        """Reject unusable PIN state (unset/required, or currently locked).
+
+        Neither branch mutates any counter, so this is safe to evaluate on an
+        unlocked read.  The French wording is kept because
+        _classify_pin_failure still maps it to the right refusal code.
+        """
+        if (
+            user.mobile_pin_required
+            or not user.mobile_pin_set
+            or not user.mobile_pin_hash
+            or not user.mobile_pin_salt
+        ):
+            raise AccessError(_('Le PIN mobile doit être défini avant cette opération.'))
+        if user.mobile_pin_locked_until and user.mobile_pin_locked_until > now:
+            raise AccessError(_('Trop de tentatives PIN. Veuillez réessayer plus tard.'))
+
+    def _lock_mobile_pin_user_bounded(self, user, timeout_ms=3000):
+        """Take a short, bounded row lock on res_users for counter updates.
+
+        Patch43K1 policy: only the wrong-PIN path calls this (it raises right
+        after, so no business action follows while the lock is held). The happy
+        path and the valid-PIN-after-failure reset never call it. The wait is
+        bounded by lock_timeout so a stuck peer can never block a mobile request
+        indefinitely.  A timeout surfaces as MobileSensitivePinBusy so the
+        caller reports "action already in progress" WITHOUT counting a failed
+        attempt.  Contention still serializes writers (bounded wait, not
+        NOWAIT), so the failure counter stays accurate.
+        """
+        cr = self.env.cr
+        cr.execute("SELECT current_setting('lock_timeout')")
+        previous_timeout = cr.fetchone()[0]
+        try:
+            with cr.savepoint():
+                # SET LOCAL is savepoint-scoped: a rollback below reverts it.
+                cr.execute("SET LOCAL lock_timeout = %s", ('%dms' % int(timeout_ms),))
+                cr.execute('SELECT id FROM res_users WHERE id = %s FOR UPDATE', (user.id,))
+        except Exception as exc:
+            # 55P03 = lock_not_available (lock_timeout elapsed). The savepoint
+            # rollback already cleared the aborted state and reverted SET LOCAL.
+            if getattr(exc, 'pgcode', None) == '55P03':
+                raise MobileSensitivePinBusy(_(
+                    'Une autre opération sensible est déjà en cours pour ce compte. '
+                    'Veuillez réessayer dans quelques secondes.'
+                ))
+            raise
+        finally:
+            # Restore the prior lock_timeout for the rest of the request tx
+            # (matters on the valid-PIN-after-failure path, which continues
+            # into the business action after the reset).
+            cr.execute("SET LOCAL lock_timeout = %s", (previous_timeout,))
+
+    def _reset_mobile_pin_counters_committed(self, user):
+        """Clear PIN failure counters in a short, independent transaction.
+
+        A valid PIN entered after earlier failures must reset the counters, but
+        the sensitive business action that follows must NOT run while holding a
+        res_users row lock.  ANY write to res_users on the request cursor holds
+        that row lock until the request commits — i.e. across the whole business
+        action.  We therefore commit the reset on its own cursor, which releases
+        the lock immediately, before the business transaction proceeds.
+
+        Best-effort and bounded: on contention we skip it (the counter
+        self-heals on the next valid PIN) rather than blocking or failing an
+        otherwise-valid action.  A lost update here is benign — a valid PIN
+        legitimately resets, and if a concurrent failure wins the counter simply
+        stays higher.
+        """
+        try:
+            with self.env.registry.cursor() as cr:
+                cr.execute("SET LOCAL lock_timeout = '3000ms'")
+                env = api.Environment(cr, SUPERUSER_ID, {})
+                locked_user = env['res.users'].browse(user.id)
+                if locked_user.mobile_pin_failed_count or locked_user.mobile_pin_locked_until:
+                    locked_user.write({
+                        'mobile_pin_failed_count': 0,
+                        'mobile_pin_locked_until': False,
+                    })
+                # cursor __exit__ commits and releases the row lock
+        except Exception:
+            _logger.warning(
+                'Réinitialisation du compteur PIN ignorée (contention/erreur), '
+                'auto-guérison au prochain PIN valide',
+                exc_info=True,
+            )
+
     def check_mobile_pin(self, pin, purpose=False):
         """Validate a mobile PIN for an authenticated mobile user.
 
         Patch 7.0 only provides this primitive. It must be called later from
         concrete sensitive actions after _require_mobile_auth(), never from a
         public generic /verify-pin endpoint.
+
+        Locking policy (Patch43K1):
+        - The request transaction NEVER holds a res_users row lock into the
+          business action. In PostgreSQL a FOR UPDATE (or any write) taken on
+          the request cursor is held until that transaction commits, i.e. across
+          the whole business action; RELEASE SAVEPOINT does not free it. So no
+          res_users lock/write is left pending on the request cursor here.
+        - Valid PIN, nothing to reset: no lock at all.
+        - Valid PIN after earlier failures: counters are reset in a SEPARATE
+          committed transaction (see _reset_mobile_pin_counters_committed) that
+          releases its lock immediately, before the business action runs.
+        - Wrong PIN: the increment is serialized under a short bounded lock and
+          then RAISES; no business action follows a raise, so holding that lock
+          until the (fast) error commit blocks nothing.
+        - Lock contention raises MobileSensitivePinBusy and is never counted as
+          a failed attempt.
         """
         pin = self._validate_mobile_pin(pin)
         now = fields.Datetime.now()
+        pin_fields = self._MOBILE_PIN_STATE_FIELDS
         for user in self.sudo():
             if not user.id:
                 raise AccessError(_('Utilisateur mobile invalide.'))
 
-            # Count concurrent failures correctly for the same user.
-            self.env.cr.execute('SELECT id FROM res_users WHERE id = %s FOR UPDATE', (user.id,))
-            user.invalidate_recordset([
-                'mobile_pin_hash',
-                'mobile_pin_salt',
-                'mobile_pin_set',
-                'mobile_pin_required',
-                'mobile_pin_failed_count',
-                'mobile_pin_locked_until',
-            ])
-
-            if user.mobile_pin_required or not user.mobile_pin_set or not user.mobile_pin_hash or not user.mobile_pin_salt:
-                raise AccessError(_('Le PIN mobile doit être défini avant cette opération.'))
-            if user.mobile_pin_locked_until and user.mobile_pin_locked_until > now:
-                raise AccessError(_('Trop de tentatives PIN. Veuillez réessayer plus tard.'))
+            # Unlocked read: enough to authorize the common valid-PIN case.
+            user.invalidate_recordset(pin_fields)
+            user._assert_mobile_pin_usable(user, now)
 
             candidate = user._hash_mobile_pin(pin, user.mobile_pin_salt)
-            if hmac.compare_digest(candidate or '', user.mobile_pin_hash or ''):
+            pin_is_valid = hmac.compare_digest(candidate or '', user.mobile_pin_hash or '')
+
+            if pin_is_valid:
                 if user.mobile_pin_failed_count or user.mobile_pin_locked_until:
-                    user.write({
-                        'mobile_pin_failed_count': 0,
-                        'mobile_pin_locked_until': False,
-                    })
+                    # Valid PIN after earlier failures: reset the counters in a
+                    # SEPARATE committed transaction so the business action that
+                    # follows never runs while holding a res_users row lock.
+                    user._reset_mobile_pin_counters_committed(user)
                 continue
+
+            # Wrong PIN: serialize the counter update under a short bounded lock,
+            # then raise. No business action runs after a raise, so holding the
+            # lock until the request commits does not block anything. Re-read
+            # authoritative state under the lock so a concurrent lockout or
+            # hard-block is honoured and the increment starts from a fresh count.
+            user._lock_mobile_pin_user_bounded(user)
+            user.invalidate_recordset(pin_fields)
+            user._assert_mobile_pin_usable(user, now)
 
             failed_count = (user.mobile_pin_failed_count or 0) + 1
             vals = {'mobile_pin_failed_count': failed_count}
@@ -393,6 +509,7 @@ class ResUsers(models.Model):
             self.env.flush_all()
             raise AccessError(_('PIN mobile invalide.'))
         return True
+
 
     @api.model
     def _acpec_legacy_mobile_pin_users(self):
