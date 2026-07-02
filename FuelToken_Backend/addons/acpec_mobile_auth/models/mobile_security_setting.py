@@ -22,8 +22,6 @@ class AcpecMobileSecuritySetting(models.Model):
         ('acpec_mobile_auth.otp_limit_ip_per_hour', 'OTP limit per IP per hour'),
         ('acpec_mobile_auth.otp_limit_register_ip_per_day', 'Registration OTP limit per IP per day'),
         ('acpec_mobile_auth.otp_dev_mode', 'OTP dev mode database flag'),
-        ('acpec_mobile_auth.api_diagnostic_logging_enabled', 'Enable production-safe API diagnostic logging'),
-        ('acpec_mobile_auth.api_diagnostic_logging_until', 'API diagnostic logging expiration datetime'),
     ]
 
     key = fields.Selection(

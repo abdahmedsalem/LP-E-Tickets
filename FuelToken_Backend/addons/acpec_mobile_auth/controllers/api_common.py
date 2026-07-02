@@ -83,9 +83,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
     API_ERROR_SUMMARY_MAX_CHARS = 512
     API_ERROR_TRACEBACK_LOG_MAX_CHARS = 32768
     API_ERROR_PARAMS_LOG_MAX_CHARS = 4096
-
-    API_DIAGNOSTIC_LOGGING_ENABLED_KEY = 'acpec_mobile_auth.api_diagnostic_logging_enabled'
-    API_DIAGNOSTIC_LOGGING_UNTIL_KEY = 'acpec_mobile_auth.api_diagnostic_logging_until'
     API_DIAGNOSTIC_LOG_MAX_CHARS = 4096
     API_DIAGNOSTIC_SCALAR_MAX_CHARS = 256
     API_DIAGNOSTIC_LIST_MAX_ITEMS = 20
@@ -481,50 +478,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         return self._diagnostic_scalar_for_log(value)
 
-    def _api_diagnostic_setting_value(self, key):
-        test_values = getattr(self, '_test_api_diagnostic_settings', None)
-        if isinstance(test_values, dict) and key in test_values:
-            return test_values.get(key)
-        try:
-            env = self._api_env()
-            return env['acpec.mobile.security.setting'].sudo().get_active_value(key)
-        except Exception:
-            return None
-
-    def _api_diagnostic_now(self):
-        test_now = getattr(self, '_test_api_diagnostic_now', False)
-        if test_now:
-            return test_now
-        return fields.Datetime.now()
-
-    def _api_diagnostic_logging_status(self):
-        enabled_raw = self._api_diagnostic_setting_value(self.API_DIAGNOSTIC_LOGGING_ENABLED_KEY)
-        enabled = str(enabled_raw or '').strip().casefold() in ('1', 'true', 'yes', 'y', 'on')
-        if not enabled:
-            return {'enabled': False, 'reason': 'disabled'}
-
-        until_raw = self._api_diagnostic_setting_value(self.API_DIAGNOSTIC_LOGGING_UNTIL_KEY)
-        if until_raw in (False, None, ''):
-            return {'enabled': False, 'reason': 'missing_until'}
-        try:
-            until_dt = fields.Datetime.to_datetime(until_raw)
-        except Exception:
-            until_dt = False
-        if not until_dt:
-            return {'enabled': False, 'reason': 'invalid_until'}
-
-        now_dt = self._api_diagnostic_now()
-        if until_dt < now_dt:
-            return {
-                'enabled': False,
-                'reason': 'expired',
-                'until': fields.Datetime.to_string(until_dt),
-            }
-        return {
-            'enabled': True,
-            'reason': 'active',
-            'until': fields.Datetime.to_string(until_dt),
-        }
 
     def _api_diagnostic_payload_for_log(self, payload):
         safe = self._diagnostic_redact_for_log(payload or {})
@@ -550,23 +503,57 @@ class AcpecMobileAuthApiCommon(http.Controller):
             fallback='unknown',
         )
 
+    def _api_diagnostic_request_context_for_log(self):
+        context = {
+            'method': False,
+            'path': False,
+            'db': False,
+            'uid': False,
+            'company_id': False,
+        }
+        try:
+            context['path'] = self._request_path()
+        except Exception:
+            context['path'] = False
+        try:
+            context['method'] = request.httprequest.method
+        except Exception:
+            context['method'] = False
+        try:
+            context['db'] = request.db
+        except Exception:
+            context['db'] = False
+        try:
+            env = self._api_env()
+            user = env.user
+            if user and user.exists():
+                context['uid'] = user.id
+                context['company_id'] = user.company_id.id if user.company_id else False
+        except Exception:
+            context['uid'] = False
+            context['company_id'] = False
+        return context
+
     def _log_api_diagnostic_in(self, endpoint, params=False, operation=False):
-        status = self._api_diagnostic_logging_status()
-        if not status.get('enabled'):
+        if not _logger.isEnabledFor(logging.DEBUG):
             return False
-        _logger.info(
-            '%s endpoint=%s operation=%s mode=production_safe until=%s payload_redacted=%s',
+        context = self._api_diagnostic_request_context_for_log()
+        _logger.debug(
+            '%s endpoint=%s operation=%s mode=debug method=%s path=%s db=%s uid=%s company_id=%s payload_redacted=%s',
             self.API_DIAGNOSTIC_MARKER_IN,
             self._api_diagnostic_endpoint_for_log(endpoint),
             self._api_diagnostic_operation_for_log(operation),
-            status.get('until') or False,
+            context.get('method') or False,
+            context.get('path') or False,
+            context.get('db') or False,
+            context.get('uid') or False,
+            context.get('company_id') or False,
             self._api_diagnostic_payload_for_log(params or {}),
         )
         return True
 
     def _log_api_diagnostic_out(self, endpoint, response=False, operation=False, started_at=False):
-        status = self._api_diagnostic_logging_status()
-        if not status.get('enabled'):
+        if not _logger.isEnabledFor(logging.DEBUG):
             return False
         duration_ms = False
         if started_at is not False:
@@ -574,12 +561,11 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 duration_ms = int(max(time.monotonic() - started_at, 0.0) * 1000)
             except Exception:
                 duration_ms = False
-        _logger.info(
-            '%s endpoint=%s operation=%s mode=production_safe until=%s duration_ms=%s response_redacted=%s',
+        _logger.debug(
+            '%s endpoint=%s operation=%s mode=debug duration_ms=%s response_redacted=%s',
             self.API_DIAGNOSTIC_MARKER_OUT,
             self._api_diagnostic_endpoint_for_log(endpoint),
             self._api_diagnostic_operation_for_log(operation),
-            status.get('until') or False,
             duration_ms,
             self._api_diagnostic_payload_for_log(response or {}),
         )
@@ -690,7 +676,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 reference=getattr(exc, 'acpec_reference', False),
                 endpoint=endpoint,
             )
-            _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
             return self._error_response(
                 exc.acpec_sensitive_code,
                 exc.acpec_public_message,
@@ -698,7 +683,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
             )
         if isinstance(exc, MobileAuthRateLimitError):
             self._log_api_refusal_marker('RATE_LIMITED', reason=str(exc), params=params, operation=operation, endpoint=endpoint)
-            _logger.warning('%s', self._redact_for_log(str(exc)))
             response = self._sensitive_refusal_response(
                 public_code='RATE_LIMITED',
                 debug_reason='auth_rate_limited',
@@ -710,7 +694,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return response
         if isinstance(exc, MobileSignupNotAllowedError):
             self._log_api_refusal_marker('SIGNUP_NOT_ALLOWED', reason=exc.acpec_debug_reason, params=params, operation=operation, endpoint=endpoint)
-            _logger.warning('%s', self._redact_for_log(exc.acpec_debug_reason))
             return self._mobile_signup_not_allowed_response(
                 exc,
                 params=params,
@@ -735,11 +718,9 @@ class AcpecMobileAuthApiCommon(http.Controller):
                     audit_code='IDEMPOTENCY_PAYLOAD_MISMATCH',
                 )
             self._log_api_refusal_marker('VALIDATION_ERROR', reason=str(exc), params=params, operation=operation, endpoint=endpoint)
-            _logger.warning('%s', self._redact_for_log(str(exc)))
             return self._error_response('VALIDATION_ERROR', str(exc))
         if isinstance(exc, AccessError):
             self._log_api_refusal_marker('ACCESS_ERROR', reason=str(exc), params=params, operation=operation, endpoint=endpoint)
-            _logger.warning('%s', self._redact_for_log(str(exc)))
             if self._is_mobile_user_blocked_access_error(
                 exc
             ) and self._should_expose_mobile_user_blocked_code(
