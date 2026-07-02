@@ -93,6 +93,24 @@ class TestMobilePinResetOtp(TransactionCase):
                 purpose=purpose,
             )
 
+    def _call_request_otp(self, **kwargs):
+        fake_request = self._fake_request()
+        controller = AcpecMobileAuthOtpApi()
+        with patch.dict(os.environ, {
+            'ACPEC_ENV': 'dev',
+            'ODOO_ENV': '',
+            'ENV': '',
+            'ACPEC_FUELTOKEN_DEV_MODE': '1',
+            'ACPEC_FUELTOKEN_TEST_MODE': '',
+            'SMS_PROVIDER': '',
+            'SMS_VALIDATION_KEY': '',
+            'SMS_TOKEN': '',
+            'SMS_URL': '',
+        }, clear=False), \
+             patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', fake_request), \
+             patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', fake_request):
+            return controller.request_otp(**kwargs)
+
     def _call_verify_otp(self, **kwargs):
         fake_request = self._fake_request()
         controller = AcpecMobileAuthOtpApi()
@@ -116,6 +134,26 @@ class TestMobilePinResetOtp(TransactionCase):
         with self.assertRaises(AccessError):
             user.check_mobile_pin(new_pin, purpose='new_pin_must_not_be_active')
         user.sudo().write({'mobile_pin_locked_until': False})
+
+    def test_request_otp_forgot_pin_aliases_create_reset_challenge(self):
+        for idx, alias in enumerate(('forgot_password', 'forgot_pin'), start=1):
+            user = self._create_mobile_user(
+                'forgot-pin-alias-%s-30d@example.com' % alias.replace('_', '-'),
+                mobile_phone='3252476%s' % idx,
+            )
+
+            self._call_request_otp(
+                identifier=user.login,
+                purpose=alias,
+            )
+
+            challenge = self.env['acpec.mobile.auth.otp'].sudo().search([
+                ('identifier', '=', user.login),
+            ], order='id desc', limit=1)
+
+            self.assertTrue(challenge)
+            self.assertEqual(challenge.purpose, 'reset')
+            self.assertEqual(challenge.user_id, user)
 
     def test_action_reset_mobile_pin_clears_pin_without_defining_new_one(self):
         user = self._create_mobile_user('admin-reset-pin-30d@example.com')

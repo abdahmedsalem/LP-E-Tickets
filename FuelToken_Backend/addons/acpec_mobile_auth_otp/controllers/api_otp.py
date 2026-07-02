@@ -7,6 +7,12 @@ from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuth
 
 class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
 
+    def _normalize_public_otp_purpose(self, purpose):
+        purpose = (purpose or 'login').strip()
+        if purpose in ('forgot_password', 'forgot_pin'):
+            return 'reset'
+        return purpose or 'login'
+
     @http.route('/api/acpec/mobile_auth/v1/request-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def request_otp(self, **kwargs):
         started_at = self._public_auth_started_at()
@@ -14,7 +20,9 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             self._require_keys(kwargs, ['identifier'])
             identifier = self._get_clean_str(kwargs, 'identifier')
             signup_identifier_type = self._get_clean_str(kwargs, 'signup_identifier_type')
-            purpose = self._get_clean_str(kwargs, 'purpose') or 'login'
+            purpose = self._normalize_public_otp_purpose(
+                self._get_clean_str(kwargs, 'purpose') or 'login'
+            )
 
             if purpose == 'register':
                 identifier_vals = self._parse_signup_identifier(
