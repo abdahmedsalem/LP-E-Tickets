@@ -12,6 +12,11 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
             session = self._get_mobile_session(required=False)
             if session:
                 return self._json_response(self._session_payload(session))
+            if self._get_bearer_token():
+                return self._error_response(
+                    'SESSION_EXPIRED',
+                    'Session mobile invalide ou expirée.',
+                )
             return self._error_response('AUTH_REQUIRED', _('Authentification mobile requise.'))
         except Exception as exc:
             return self._handle_exception_response(exc)
