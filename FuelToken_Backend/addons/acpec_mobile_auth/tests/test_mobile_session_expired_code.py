@@ -45,7 +45,12 @@ class TestMobileSessionExpiredCode(TransactionCase):
         source = Path(api_common.__file__).read_text(encoding='utf-8')
 
         self.assertIn('class MobileSessionExpiredError', source)
-        self.assertIn('isinstance(exc, MobileSessionExpiredError)', source)
+        self.assertIn('class MobileSessionClosedError', source)
+        self.assertIn(
+            'isinstance(exc, (MobileSessionExpiredError, MobileSessionClosedError))',
+            source,
+        )
         self.assertIn("raise MobileSessionExpiredError()", source)
         self.assertIn("exc.acpec_public_code", source)
+        self.assertIn("action=getattr(exc, 'acpec_public_action', False)", source)
         self.assertIn("'SESSION_EXPIRED'", source)

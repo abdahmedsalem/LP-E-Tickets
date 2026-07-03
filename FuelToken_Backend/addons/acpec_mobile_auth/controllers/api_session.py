@@ -1,7 +1,8 @@
 from odoo import http, _
+from odoo.exceptions import AccessError
 from odoo.http import request
 
-from .api_common import AcpecMobileAuthApiCommon
+from .api_common import AcpecMobileAuthApiCommon, MobileSessionClosedError
 
 
 class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
@@ -34,11 +35,18 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         try:
             refresh_token = self._get_refresh_token(kwargs)
             if not refresh_token:
-                return self._error_response('REFRESH_TOKEN_REQUIRED', _('Refresh token requis.'))
-            token_data = request.env['acpec.mobile.session'].sudo().refresh_with_token(
-                refresh_token,
-                self._session_device_values(kwargs),
-            )
+                return self._error_response(
+                    'REFRESH_TOKEN_REQUIRED',
+                    _('Refresh token requis.'),
+                    action='LOGOUT_REQUIRED',
+                )
+            try:
+                token_data = request.env['acpec.mobile.session'].sudo().refresh_with_token(
+                    refresh_token,
+                    self._session_device_values(kwargs),
+                )
+            except AccessError as exc:
+                raise MobileSessionClosedError(debug_reason='refresh_session_closed') from exc
             session = token_data.pop('session')
             return self._json_response(self._session_payload(session, tokens=token_data))
         except Exception as exc:
