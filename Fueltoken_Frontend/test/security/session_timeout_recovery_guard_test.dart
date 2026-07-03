@@ -15,7 +15,10 @@ void main() {
         expect(source, contains("action == 'REFRESH_REQUIRED'"));
         expect(source, contains('publicAction'));
         expect(source, isNot(contains('Session mobile invalide ou expirée')));
+        expect(source, contains('_refreshSingleFlight()'));
         expect(source, contains('_trySilentRefresh()'));
+        expect(source, contains('_hasSessionChangedSinceRequest'));
+        expect(source, contains('_SilentRefreshStatus.transientFailure'));
         expect(source, contains('suppressAuthRecovery: true'));
       },
     );
@@ -45,7 +48,7 @@ void main() {
     );
 
     test(
-      'repository boot restore also clears both stores if refresh fails',
+      'repository boot restore preserves tokens on transient refresh failure',
       () {
         final source = File(
           'lib/data/repositories/auth_repository.dart',
@@ -53,8 +56,45 @@ void main() {
 
         expect(source, contains('tryRestoreRemoteSession'));
         expect(source, contains('refreshSession'));
-        expect(source, contains('await OdooSessionStore.clear();'));
-        expect(source, contains('await AuthTokenStore.clear();'));
+        expect(source, contains('on OdooJsonRpcException catch (e)'));
+        expect(
+          source,
+          contains('e.requiresLogout || e.isAuthRequired || e.isOdooSessionExpired'),
+        );
+        expect(
+          source,
+          contains('Erreur réseau / timeout / SERVER_ERROR : conserver la session.'),
+        );
+      },
+    );
+
+    test(
+      'refresh recovery uses stale-token check and single-flight latch',
+      () {
+        final source = File(
+          'lib/data/services/odoo_jsonrpc_client.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('Future<_SilentRefreshResult>? _refreshInFlight'));
+        expect(source, contains('late final Future<_SilentRefreshResult> tracked'));
+        expect(source, contains('_refreshInFlight = tracked'));
+        expect(source, contains('_hasSessionChangedSinceRequest'));
+        expect(source, contains('previousAccessToken: accessTokenUsedAtSend'));
+        expect(source, contains('previousSessionId: sessionIdUsedAtSend'));
+        expect(source, contains('suppressAuthRecovery: true'));
+      },
+    );
+
+    test(
+      'transient refresh failure does not clear local auth',
+      () {
+        final source = File(
+          'lib/data/services/odoo_jsonrpc_client.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('_SilentRefreshStatus.transientFailure'));
+        expect(source, contains('throw refresh.error ?? e;'));
+        expect(source, contains('Erreur transitoire pendant /refresh'));
       },
     );
 

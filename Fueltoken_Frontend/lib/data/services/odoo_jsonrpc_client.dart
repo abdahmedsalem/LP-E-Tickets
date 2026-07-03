@@ -79,7 +79,12 @@ class OdooJsonRpcException implements Exception {
     final action = normalizedPublicAction;
     if (action == 'LOGOUT_REQUIRED') return true;
     final pc = normalizedPublicCode;
-    return pc == 'SESSION_CLOSED' || pc == 'REFRESH_TOKEN_REQUIRED';
+    return pc == 'SESSION_CLOSED' ||
+        pc == 'REFRESH_TOKEN_REQUIRED' ||
+        pc == 'REFRESH_TOKEN_INVALID' ||
+        pc == 'REFRESH_TOKEN_EXPIRED' ||
+        pc == 'DEVICE_BLOCKED' ||
+        pc == 'MOBILE_USER_BLOCKED';
   }
 
   /// Session mobile expirée / jeton refusé (réponse ACPEC ou HTTP 401).
@@ -246,7 +251,11 @@ bool _isAuthBusinessCode(String code) {
   return code == 'AUTH_REQUIRED' ||
       code == 'SESSION_EXPIRED' ||
       code == 'SESSION_CLOSED' ||
-      code == 'REFRESH_TOKEN_REQUIRED';
+      code == 'REFRESH_TOKEN_REQUIRED' ||
+      code == 'REFRESH_TOKEN_INVALID' ||
+      code == 'REFRESH_TOKEN_EXPIRED' ||
+      code == 'DEVICE_BLOCKED' ||
+      code == 'MOBILE_USER_BLOCKED';
 }
 
 bool _isAuthBusinessAction(String action) {
@@ -294,6 +303,27 @@ String _sanitizeServerMessage(
   return msg;
 }
 
+enum _SilentRefreshStatus { refreshed, terminalFailure, transientFailure }
+
+class _SilentRefreshResult {
+  const _SilentRefreshResult._(this.status, [this.error]);
+
+  const _SilentRefreshResult.refreshed()
+    : this._(_SilentRefreshStatus.refreshed);
+
+  const _SilentRefreshResult.terminal([OdooJsonRpcException? error])
+    : this._(_SilentRefreshStatus.terminalFailure, error);
+
+  const _SilentRefreshResult.transient([OdooJsonRpcException? error])
+    : this._(_SilentRefreshStatus.transientFailure, error);
+
+  final _SilentRefreshStatus status;
+  final OdooJsonRpcException? error;
+
+  bool get refreshed => status == _SilentRefreshStatus.refreshed;
+  bool get terminalFailure => status == _SilentRefreshStatus.terminalFailure;
+}
+
 /// JSON-RPC client for ACPEC / Odoo `type='jsonrpc'` controllers.
 ///
 /// Body: `{ "jsonrpc":"2.0", "method":"call", "params": { ... }, "id": n }` posted to a
@@ -303,6 +333,10 @@ class OdooJsonRpcClient {
 
   final Dio _dio;
   int _nextId = 1;
+
+  Future<_SilentRefreshResult>? _refreshInFlight;
+  Future<void>? _logoutCleanupInFlight;
+  bool _terminalLogoutInProgress = false;
 
   static Dio _createDio() {
     return Dio(
@@ -395,12 +429,20 @@ class OdooJsonRpcClient {
     bool omitSessionHeaders = false,
     bool suppressAuthRecovery = false,
   }) async {
+    final sessionIdUsedAtSend = omitSessionHeaders
+        ? null
+        : await OdooSessionStore.readSessionId();
+    final accessTokenUsedAtSend = omitSessionHeaders
+        ? null
+        : await OdooSessionStore.readAccessToken();
     try {
       return await _postJsonRpcOnce(
         path: path,
         params: params,
         extraHeaders: extraHeaders,
         omitSessionHeaders: omitSessionHeaders,
+        sessionIdOverride: sessionIdUsedAtSend,
+        accessTokenOverride: accessTokenUsedAtSend,
       );
     } on OdooJsonRpcException catch (e) {
       if (suppressAuthRecovery || omitSessionHeaders) {
@@ -420,40 +462,120 @@ class OdooJsonRpcClient {
       if (!e.requiresReLogin) {
         rethrow;
       }
-      final refreshed = await _trySilentRefresh();
-      if (!refreshed) {
-        await _clearLocalAuthAndNotify();
-        throw OdooJsonRpcException(
-          'SESSION_CLOSED',
-          code: 401,
-          publicCode: 'SESSION_CLOSED',
-          publicAction: 'LOGOUT_REQUIRED',
-          reference: e.reference,
-          data: e.data,
+
+      final staleSession = await _hasSessionChangedSinceRequest(
+        previousSessionId: sessionIdUsedAtSend,
+        previousAccessToken: accessTokenUsedAtSend,
+      );
+      if (staleSession) {
+        AcpecFueltokenRpcCoordinator.shared.clearCache();
+        return postJsonRpc(
+          path: path,
+          params: params,
+          extraHeaders: extraHeaders,
+          omitSessionHeaders: omitSessionHeaders,
+          suppressAuthRecovery: true,
         );
       }
-      AcpecFueltokenRpcCoordinator.shared.clearCache();
-      return postJsonRpc(
-        path: path,
-        params: params,
-        extraHeaders: extraHeaders,
-        omitSessionHeaders: omitSessionHeaders,
-        suppressAuthRecovery: true,
-      );
+
+      final refresh = await _refreshSingleFlight();
+      if (refresh.refreshed) {
+        AcpecFueltokenRpcCoordinator.shared.clearCache();
+        return postJsonRpc(
+          path: path,
+          params: params,
+          extraHeaders: extraHeaders,
+          omitSessionHeaders: omitSessionHeaders,
+          suppressAuthRecovery: true,
+        );
+      }
+      if (refresh.terminalFailure) {
+        final terminalError = refresh.error;
+        await _clearLocalAuthAndNotify();
+        throw OdooJsonRpcException(
+          terminalError?.publicCode ?? 'SESSION_CLOSED',
+          code: 401,
+          publicCode: terminalError?.publicCode ?? 'SESSION_CLOSED',
+          publicAction: terminalError?.publicAction ?? 'LOGOUT_REQUIRED',
+          reference: terminalError?.reference ?? e.reference,
+          data: terminalError?.data ?? e.data,
+        );
+      }
+
+      // Erreur transitoire pendant /refresh : réseau, timeout, SERVER_ERROR.
+      // On garde la session locale et on remonte l'erreur au caller.
+      throw refresh.error ?? e;
     }
   }
 
-  Future<void> _clearLocalAuthAndNotify() async {
-    await OdooSessionStore.clear();
-    await AuthTokenStore.clear();
-    AuthSessionHost.instance.notifySessionExpired();
+  Future<void> _clearLocalAuthAndNotify() {
+    _terminalLogoutInProgress = true;
+    final inFlight = _logoutCleanupInFlight;
+    if (inFlight != null) return inFlight;
+    final cleanup = () async {
+      await OdooSessionStore.clear();
+      await AuthTokenStore.clear();
+      AuthSessionHost.instance.notifySessionExpired();
+    }();
+    _logoutCleanupInFlight = cleanup;
+    return cleanup;
   }
 
-  Future<bool> _trySilentRefresh() async {
+  bool _tokenChanged(String? previous, String? current) {
+    final p = previous?.trim();
+    final c = current?.trim();
+    return p != null && p.isNotEmpty && c != null && c.isNotEmpty && p != c;
+  }
+
+  Future<bool> _hasSessionChangedSinceRequest({
+    String? previousSessionId,
+    String? previousAccessToken,
+  }) async {
+    final currentSessionId = await OdooSessionStore.readSessionId();
+    final currentAccessToken = await OdooSessionStore.readAccessToken();
+    return _tokenChanged(previousSessionId, currentSessionId) ||
+        _tokenChanged(previousAccessToken, currentAccessToken);
+  }
+
+  Future<_SilentRefreshResult> _refreshSingleFlight() {
+    if (_terminalLogoutInProgress) {
+      return Future<_SilentRefreshResult>.value(
+        _SilentRefreshResult.terminal(
+          OdooJsonRpcException(
+            'SESSION_CLOSED',
+            code: 401,
+            publicCode: 'SESSION_CLOSED',
+            publicAction: 'LOGOUT_REQUIRED',
+          ),
+        ),
+      );
+    }
+    final current = _refreshInFlight;
+    if (current != null) return current;
+
+    late final Future<_SilentRefreshResult> tracked;
+    tracked = _trySilentRefresh().whenComplete(() {
+      if (identical(_refreshInFlight, tracked)) {
+        _refreshInFlight = null;
+      }
+    });
+    _refreshInFlight = tracked;
+    return tracked;
+  }
+
+  Future<_SilentRefreshResult> _trySilentRefresh() async {
     final route = OdooAuthRpcConfig.refreshRoute.trim();
-    if (route.isEmpty) return false;
+    if (route.isEmpty) {
+      return _SilentRefreshResult.terminal(
+        OdooJsonRpcException('REFRESH_TOKEN_REQUIRED', code: 401),
+      );
+    }
     final refresh = await OdooSessionStore.readRefreshToken();
-    if (refresh == null || refresh.isEmpty) return false;
+    if (refresh == null || refresh.isEmpty) {
+      return _SilentRefreshResult.terminal(
+        OdooJsonRpcException('REFRESH_TOKEN_REQUIRED', code: 401),
+      );
+    }
 
     final previousSessionId = await OdooSessionStore.readSessionId();
     final previousAccessToken = await OdooSessionStore.readAccessToken();
@@ -467,7 +589,9 @@ class OdooJsonRpcClient {
       );
 
       final authFailure = odooJsonRpcAuthFailureFromBusinessResult(result);
-      if (authFailure != null) return false;
+      if (authFailure != null) {
+        return _SilentRefreshResult.terminal(authFailure);
+      }
 
       final nextSessionId = await OdooSessionStore.readSessionId();
       final nextAccessToken = await OdooSessionStore.readAccessToken();
@@ -481,12 +605,23 @@ class OdooJsonRpcClient {
           nextAccessToken.isNotEmpty &&
           nextAccessToken != previousAccessToken;
 
-      return sessionRotated || accessRotated;
+      if (sessionRotated || accessRotated) {
+        return const _SilentRefreshResult.refreshed();
+      }
+      return _SilentRefreshResult.terminal(
+        OdooJsonRpcException('SESSION_CLOSED', code: 401),
+      );
     } on OdooJsonRpcException catch (e) {
-      if (e.requiresLogout) return false;
-      return false;
+      if (e.requiresLogout || e.isAuthRequired || e.isOdooSessionExpired) {
+        return _SilentRefreshResult.terminal(e);
+      }
+      return _SilentRefreshResult.transient(e);
     } catch (_) {
-      return false;
+      return _SilentRefreshResult.transient(
+        OdooJsonRpcException(
+          'Impossible de joindre le serveur. Vérifiez votre connexion.',
+        ),
+      );
     }
   }
 
@@ -495,6 +630,8 @@ class OdooJsonRpcClient {
     Map<String, dynamic>? params,
     Map<String, String>? extraHeaders,
     required bool omitSessionHeaders,
+    String? sessionIdOverride,
+    String? accessTokenOverride,
   }) async {
     _ensureConfigured();
     final url = _join(OdooApiConfig.baseUrlTrimmed, path);
@@ -510,10 +647,10 @@ class OdooJsonRpcClient {
         : await OdooSessionStore.cookieHeader();
     final sid = omitSessionHeaders
         ? null
-        : await OdooSessionStore.readSessionId();
+        : (sessionIdOverride ?? await OdooSessionStore.readSessionId());
     final bearer = omitSessionHeaders
         ? null
-        : await OdooSessionStore.readAccessToken();
+        : (accessTokenOverride ?? await OdooSessionStore.readAccessToken());
     final db = OdooApiConfig.databaseNameTrimmed;
     final cookiePresent = cookie != null && cookie.isNotEmpty;
     try {
@@ -564,6 +701,8 @@ class OdooJsonRpcClient {
       }
       await OdooSessionStore.captureFromHttpResponse(r);
       await OdooSessionStore.mergeSessionFromResult(result);
+      _terminalLogoutInProgress = false;
+      _logoutCleanupInFlight = null;
       return result;
     } on OdooJsonRpcException {
       rethrow;
