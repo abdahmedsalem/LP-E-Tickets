@@ -24,6 +24,7 @@ from . import test_mobile_api_error_marker
 from . import test_mobile_user_blocked_public_code
 from . import test_mobile_api_diagnostic_logging
 from . import test_mobile_session_last_seen_concurrency
+from . import test_mobile_device_last_seen_concurrency
 from . import test_mobile_logout_no_device_trust_write
 from . import test_mobile_session_expired_code
 from . import test_mobile_session_action_contract
