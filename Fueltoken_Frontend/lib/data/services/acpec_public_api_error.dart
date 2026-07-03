@@ -57,7 +57,7 @@ class AcpecPublicApiError {
         'Votre session a expiré. Veuillez vous reconnecter.',
     'SERVER_ERROR': 'Erreur serveur. Réessayez plus tard.',
     'PASSWORD_LOGIN_DISABLED':
-        'La connexion par PIN legacy est désactivée. Utilisez le flux OTP.',
+        'La connexion par PIN legacy est désactivée. Utilisez le flux SMS.',
     'NAME_REQUIRED': 'Le nom est obligatoire.',
     'SECRET_CODE_REQUIRED': 'Le PIN est obligatoire.',
     'SECRET_CODE_INVALID': 'PIN invalide.',

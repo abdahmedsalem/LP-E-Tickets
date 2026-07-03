@@ -227,7 +227,7 @@ class AuthRepository {
   }) async {
     if (!OdooApiConfig.isConfigured ||
         OdooAuthRpcConfig.requestOtpRoute.isEmpty) {
-      throw Exception('Connexion OTP ACPEC indisponible.');
+      throw Exception('Connexion par SMS indisponible.');
     }
     try {
       return await OdooAuthService.instance.requestLoginOtp(
@@ -245,7 +245,7 @@ class AuthRepository {
   }) async {
     if (!OdooApiConfig.isConfigured ||
         OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
-      throw Exception('Vérification OTP ACPEC indisponible.');
+      throw Exception('Vérification par SMS indisponible.');
     }
     try {
       final user = AcpecRoleOverrides.apply(

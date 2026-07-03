@@ -290,7 +290,7 @@ class OdooAuthService {
     final route = OdooAuthRpcConfig.verifyOtpRoute;
     if (route.isEmpty) {
       throw StateError(
-        'Vérification OTP ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL '
+        'Vérification par SMS indisponible : définissez ODOO_JSONRPC_BASE_URL '
         '(et route verify par défaut `/api/acpec/mobile_auth/v1/verify-otp`).',
       );
     }
@@ -323,7 +323,7 @@ class OdooAuthService {
     final route = OdooAuthRpcConfig.requestOtpRoute;
     if (route.isEmpty) {
       throw StateError(
-        'OTP ACPEC indisponible : définissez ODOO_JSONRPC_BASE_URL '
+        'Envoi SMS indisponible : définissez ODOO_JSONRPC_BASE_URL '
         '(et route request-otp par défaut `/api/acpec/mobile_auth/v1/request-otp`).',
       );
     }
@@ -427,10 +427,10 @@ class OdooAuthService {
       final otpDelivery = dm['otp_delivery']?.toString();
       if (otpDelivery == 'configured_provider' ||
           otpDelivery == 'dev_response') {
-        return 'Un code OTP a été envoyé.';
+        return 'Un code SMS a été envoyé.';
       }
     }
-    return 'Compte cree. Verifiez le code OTP pour activer votre acces.';
+    return 'Compte créé. Vérifiez le code SMS pour activer votre accès.';
   }
 
   Future<Map<String, dynamic>> submitSignupRequestDetailed({

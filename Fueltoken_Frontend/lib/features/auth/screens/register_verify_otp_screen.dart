@@ -100,7 +100,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       );
       return;
     } catch (e, st) {
-      debugPrint('OTP verification failed: $e\n$st');
+      debugPrint('SMS verification failed: $e\n$st');
       if (mounted) {
         AppMessage.error(context, _displayOtpVerificationError(e));
       }
@@ -119,7 +119,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         final suffix = ref != null && ref.isNotEmpty
             ? '\nRéférence support : $ref'
             : '';
-        return 'Code OTP introuvable, expiré ou déjà utilisé. '
+        return 'Code SMS introuvable, expiré ou déjà utilisé. '
             'Demandez un nouveau code puis réessayez.$suffix';
       }
     }

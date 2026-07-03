@@ -81,7 +81,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length != kOtpSmsCodeLength) {
       if (mounted) {
-        AppMessage.error(context, 'Saisissez le code OTP a 6 chiffres.');
+        AppMessage.error(context, 'Saisissez le code SMS à 6 chiffres.');
       }
       return;
     }
@@ -490,7 +490,7 @@ class _OtpField extends StatelessWidget {
         letterSpacing: 6,
       ),
       decoration: InputDecoration(
-        labelText: 'Code OTP',
+        labelText: 'Code SMS',
         hintText: '------',
         counterText: '',
         filled: true,
