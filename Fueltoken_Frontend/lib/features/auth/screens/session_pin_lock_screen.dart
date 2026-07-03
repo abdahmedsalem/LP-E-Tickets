@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/validation/password_validators.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -18,6 +19,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
   final _pin = TextEditingController();
   final _pinConfirm = TextEditingController();
   bool _obscure = true;
+  bool _openForgotPasswordAfterLogout = false;
 
   @override
   void dispose() {
@@ -40,8 +42,16 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (a, b) => a.errorMessage != b.errorMessage,
+      listenWhen: (a, b) =>
+          a.errorMessage != b.errorMessage || a.status != b.status,
       listener: (ctx, state) {
+        if (_openForgotPasswordAfterLogout &&
+            state.status == AuthStatus.unauthenticated) {
+          _openForgotPasswordAfterLogout = false;
+          ctx.go('/forgot-password');
+          return;
+        }
+
         final msg = state.errorMessage;
         if (msg != null && msg.isNotEmpty) {
           AppMessage.error(ctx, msg);
@@ -88,7 +98,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             const SizedBox(height: 16),
                             Text(
                               setup
-                                  ? 'Créer le PIN de déverrouillage'
+                                  ? 'Définir votre PIN'
                                   : 'Déverrouiller l’application',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
@@ -101,8 +111,8 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             const SizedBox(height: 8),
                             Text(
                               setup
-                                  ? 'Votre connexion OTP est validée. Choisissez maintenant un PIN local à 4 chiffres pour les prochaines ouvertures.'
-                                  : 'Session restaurée${userName == null || userName.isEmpty ? '' : ' pour $userName'}. Saisissez votre PIN local pour continuer.',
+                                  ? 'Votre connexion OTP est validée. Choisissez maintenant un PIN à 4 chiffres pour les prochaines ouvertures.'
+                                  : 'Session restaurée${userName == null || userName.isEmpty ? '' : ' pour $userName'}. Saisissez votre PIN pour continuer.',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 13.5,
@@ -199,14 +209,17 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                               onPressed: busy
                                   ? null
                                   : () {
+                                      if (!setup) {
+                                        _openForgotPasswordAfterLogout = true;
+                                      }
                                       context.read<AuthBloc>().add(
                                         const AuthLogoutRequested(),
                                       );
                                     },
                               child: Text(
                                 setup
-                                    ? 'Annuler et revenir à la connexion OTP'
-                                    : 'Se reconnecter par OTP',
+                                    ? 'Annuler et revenir à la connexion'
+                                    : 'PIN oublié ?',
                               ),
                             ),
                           ],

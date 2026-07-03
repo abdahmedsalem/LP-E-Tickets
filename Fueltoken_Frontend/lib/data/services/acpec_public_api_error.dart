@@ -50,7 +50,8 @@ class AcpecPublicApiError {
     'REQUEST_REFUSED': 'Demande refusée. Réessayez ou contactez le support.',
     'FORBIDDEN': 'Vous n’avez pas l’autorisation d’effectuer cette action.',
     'SIGNUP_NOT_ALLOWED':
-        'Inscription non autorisée. Contactez votre administrateur.',
+        'Inscription impossible avec ce numéro. '
+        'Si vous avez déjà un compte, connectez-vous.',
     'VALIDATION_ERROR': 'Certaines informations sont invalides ou incomplètes.',
     'ACCESS_ERROR': 'Accès refusé.',
     'AUTH_REQUIRED': 'Votre session a expiré. Veuillez vous reconnecter.',

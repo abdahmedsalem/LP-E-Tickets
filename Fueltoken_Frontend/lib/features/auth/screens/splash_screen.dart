@@ -139,11 +139,11 @@ class _SplashScreenState extends State<SplashScreen>
                           children: [
                             // White rounded square holding the brand mark.
                             Container(
-                              width: 88,
-                              height: 88,
+                              width: 104,
+                              height: 104,
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(28),
+                                borderRadius: BorderRadius.circular(32),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.20),
@@ -152,11 +152,11 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ],
                               ),
-                              child: const Center(child: FuelMark(size: 52)),
+                              child: const Center(child: FuelMark(size: 62)),
                             ),
                             const SizedBox(height: 24),
                             const Text(
-                              'FuelToken',
+                              'Tickets Carburant',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,
