@@ -376,7 +376,7 @@ class _BackendUnavailableBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: AppColors.accentOrange.withValues(alpha: 0.10),
+      color: scheme.errorContainer.withValues(alpha: 0.45),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
@@ -384,7 +384,7 @@ class _BackendUnavailableBanner extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppColors.accentOrange.withValues(alpha: 0.28),
+            color: scheme.error.withValues(alpha: 0.28),
           ),
         ),
         child: Row(
@@ -392,7 +392,7 @@ class _BackendUnavailableBanner extends StatelessWidget {
           children: [
             Icon(
               Icons.cloud_off_rounded,
-              color: AppColors.accentOrange,
+              color: scheme.error,
               size: 22,
             ),
             const SizedBox(width: 10),
