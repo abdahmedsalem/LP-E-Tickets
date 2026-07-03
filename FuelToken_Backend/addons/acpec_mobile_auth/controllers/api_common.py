@@ -34,8 +34,21 @@ class MobileSessionExpiredError(AccessError):
         message = public_message or 'Session mobile invalide ou expirée.'
         super().__init__(message)
         self.acpec_public_code = 'SESSION_EXPIRED'
+        self.acpec_public_action = 'REFRESH_REQUIRED'
         self.acpec_public_message = message
         self.acpec_debug_reason = debug_reason or 'session_invalid'
+
+
+class MobileSessionClosedError(AccessError):
+    """Erreur publique stable pour refresh token/session longue non récupérable."""
+
+    def __init__(self, public_message=False, debug_reason=False):
+        message = public_message or 'Session terminée. Veuillez vous reconnecter.'
+        super().__init__(message)
+        self.acpec_public_code = 'SESSION_CLOSED'
+        self.acpec_public_action = 'LOGOUT_REQUIRED'
+        self.acpec_public_message = message
+        self.acpec_debug_reason = debug_reason or 'refresh_session_closed'
 
 
 class MobileSignupNotAllowedError(ValidationError):
@@ -272,7 +285,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'data': data or {},
         }
 
-    def _error_response(self, code, message, details=False, reference=False):
+    def _error_response(self, code, message, details=False, reference=False, action=False):
         payload = {
             'ok': False,
             'success': False,
@@ -281,6 +294,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 'message': message,
             }
         }
+        if action:
+            payload['error']['action'] = action
         if reference:
             payload['error']['reference'] = reference
         if details:
@@ -714,7 +729,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 params=params,
                 started_at=started_at,
             )
-        if isinstance(exc, MobileSessionExpiredError):
+        if isinstance(exc, (MobileSessionExpiredError, MobileSessionClosedError)):
             self._log_api_refusal_marker(
                 exc.acpec_public_code,
                 reason=exc.acpec_debug_reason,
@@ -725,6 +740,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return self._error_response(
                 exc.acpec_public_code,
                 exc.acpec_public_message,
+                action=getattr(exc, 'acpec_public_action', False),
             )
         if isinstance(exc, ValidationError):
             message = str(exc)
