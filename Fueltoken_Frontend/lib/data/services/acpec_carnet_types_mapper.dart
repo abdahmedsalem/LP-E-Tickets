@@ -169,12 +169,17 @@ class AcpecCarnetTypesMapper {
     if (cid.isEmpty) cid = companyId;
 
     if (name.isEmpty) {
-      name = Formatters.carnetTypeLabel(size, faceValue);
+      name = Formatters.carnetTypeLabel(
+        size,
+        faceValue,
+        currency: currencyName,
+      );
     } else {
       name = Formatters.normalizeCarnetTypeLabel(
         name,
         fallbackSize: size,
         fallbackFaceValue: faceValue,
+        fallbackCurrency: currencyName,
       );
     }
 

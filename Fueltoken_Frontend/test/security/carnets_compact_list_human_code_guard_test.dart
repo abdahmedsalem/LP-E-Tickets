@@ -2,105 +2,82 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String _facesDetailScreenSource() {
+  final candidates = Directory('lib')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.dart'))
+      .toList();
+
+  for (final file in candidates) {
+    final source = file.readAsStringSync();
+    if (source.contains('class FacesDetailScreen') &&
+        source.contains('_carnetDisplayCodeFor')) {
+      return source;
+    }
+  }
+
+  fail('FacesDetailScreen source not found.');
+}
+
 void main() {
   group('carnets compact list human code guard', () {
     test(
-      'carnet compact row displays carnet_short_code before carnet_no fallback',
+      'carnet reference uses carnet_short_code before carnet_no fallback',
       () {
-        final source = File(
-          'lib/features/home/screens/faces_detail_screen.dart',
-        ).readAsStringSync();
+        final source = _facesDetailScreenSource();
+
+        expect(source, contains('String _carnetDisplayCodeFor(FaceLine line)'));
+        expect(source, contains('line.carnetShortCode.trim()'));
+        expect(source, contains('line.carnetNo.trim()'));
+        expect(source, contains("return 'Code carnet indisponible';"));
+        expect(source, contains("final carnetTitle = 'Carnet \$carnetCode';"));
 
         final shortCodeIndex = source.indexOf('line.carnetShortCode.trim()');
         final carnetNoIndex = source.indexOf('line.carnetNo.trim()');
 
-        expect(source, contains('class _CarnetLineCard'));
         expect(shortCodeIndex, greaterThanOrEqualTo(0));
         expect(carnetNoIndex, greaterThanOrEqualTo(0));
         expect(shortCodeIndex, lessThan(carnetNoIndex));
-        expect(source, contains("return 'Code carnet indisponible'"));
-        expect(source, contains("'Carnet \$_humanCarnetCode'"));
-        expect(source, contains('carnetTypeLabel'));
       },
     );
 
-    test('available quantity wording is explicit tickets ratio wording', () {
-      final source = File(
-        'lib/features/home/screens/faces_detail_screen.dart',
-      ).readAsStringSync();
+    test('carnet type label uses backend label and K4 fallback format', () {
+      final source = _facesDetailScreenSource();
 
-      expect(source, contains('String _ticketAvailabilityLabel'));
+      expect(source, contains('String _carnetTypeLabelFor(FaceLine line)'));
+      expect(source, contains('final rawName = line.carnetTypeName.trim();'));
+      expect(source, contains('return _normalizedCarnetLabel(rawName);'));
+      expect(source, contains('Formatters.carnetTypeLabel('));
+      expect(source, contains('currency: _currencyFor(line),'));
+      expect(source, isNot(contains('Carnet de 10 tickets')));
+      expect(source, isNot(contains('10 tickets x 100 MRU')));
+    });
+
+    test('carnet detail keeps explicit non-sensitive labels', () {
+      final source = _facesDetailScreenSource();
+
+      expect(source, contains('Code de référence'));
+      expect(source, contains('N° complet du carnet'));
       expect(source, contains('Tickets disponibles'));
-      expect(
-        source,
-        contains(
-          r"'Tickets disponibles : ${_ticketAvailabilityLabel(line.availableQty, carnetSize)}'",
-        ),
-      );
-      expect(source, contains('required this.carnetSize'));
-      expect(source, contains('carnetSize: _carnetSizeFor(line)'));
-      expect(
-        source,
-        isNot(
-          contains(
-            r"'${Formatters.numberFr(line.availableQty)} tickets restants'",
-          ),
-        ),
-      );
-    });
-
-    test('carnet detail keeps same carnet code and type context', () {
-      final source = File(
-        'lib/features/home/screens/faces_detail_screen.dart',
-      ).readAsStringSync();
-
-      expect(source, contains('_carnetDisplayCodeFor'));
-      expect(source, contains("final carnetTitle = 'Carnet \$carnetCode';"));
-      expect(
-        source,
-        contains('final carnetTypeLabel = _carnetTypeLabelFor(line);'),
-      );
+      expect(source, contains('Montant disponible'));
       expect(source, contains('ticketsAvailableLabel'));
-      expect(source, contains('carnetTypeLabel: carnetTypeLabel'));
-      expect(source, contains('title: carnetTitle'));
+      expect(source, contains('availableAmountLabel'));
+      expect(source, contains('fullCarnetNo'));
     });
 
-    test('carnet detail displays full carnet_no reference', () {
-      final source = File(
-        'lib/features/home/screens/faces_detail_screen.dart',
-      ).readAsStringSync();
+    test('carnet screens do not display QR manual secret fields', () {
+      final source = _facesDetailScreenSource();
 
-      expect(source, contains('_carnetFullNoFor'));
-      expect(source, contains('final fullCarnetNo = _carnetFullNoFor(line);'));
-      expect(source, contains('fullCarnetNo: fullCarnetNo'));
-      expect(source, contains("'N° complet : \$fullCarnetNo'"));
-      expect(source, contains('final String fullCarnetNo;'));
-    });
-
-    test('carnet detail displays available amount over total amount', () {
-      final source = File(
-        'lib/features/home/screens/faces_detail_screen.dart',
-      ).readAsStringSync();
-
-      expect(
-        source,
-        contains(
-          'final availableAmountLabel = _amountLabel(line.availableValue, line);',
-        ),
-      );
-      expect(
-        source,
-        contains('final totalAmountLabel = _amountLabel(totalAmount, line);'),
-      );
-      expect(source, contains('availableAmountLabel: availableAmountLabel'));
-      expect(source, contains('totalAmountLabel: totalAmountLabel'));
-      expect(source, contains(r'Montant disponible : $amountLabel'));
+      expect(source, isNot(contains('qr_numeric_code')));
+      expect(source, isNot(contains('qrNumericCode')));
+      expect(source, isNot(contains('manualQrCode')));
+      expect(source, isNot(contains('qrManualCode')));
+      expect(source, isNot(contains('public_code')));
     });
 
     test('carnet list remains compact and tap opens detail', () {
-      final source = File(
-        'lib/features/home/screens/faces_detail_screen.dart',
-      ).readAsStringSync();
+      final source = _facesDetailScreenSource();
 
       expect(source, contains('onTap: onTap'));
       expect(source, contains('Row('));
