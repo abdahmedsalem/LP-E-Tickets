@@ -52,13 +52,45 @@ class AcpecFuelCarnetType(models.Model):
             value = rec._format_carnet_number(rec.face_value)
             rec.code = 'C%sT-%s' % (count, value)
 
+    def _human_carnet_type_label(self):
+        self.ensure_one()
+        count = self._format_carnet_number(self.face_count)
+        value = self._format_carnet_number(self.face_value)
+        currency = (self.currency_id.name or '').strip()
+        ticket_word = 'ticket' if int(self.face_count or 0) == 1 else 'tickets'
+        label = 'Carnet - %s %s x %s' % (count, ticket_word, value)
+        return '%s %s' % (label, currency) if currency else label
+
     @api.depends('face_count', 'face_value', 'currency_id')
     def _compute_name(self):
         for rec in self:
-            count = rec._format_carnet_number(rec.face_count)
-            value = rec._format_carnet_number(rec.face_value)
-            currency = rec.currency_id.name or ''
-            rec.name = 'C%sT-%s%s' % (count, value, currency)
+            rec.name = rec._human_carnet_type_label()
+
+    @api.model
+    def _refresh_human_carnet_type_names(self):
+        records = self.sudo().search([])
+        for rec in records:
+            expected_name = rec._human_carnet_type_label()
+            self.env.cr.execute(
+                """
+                SELECT name
+                  FROM acpec_fuel_carnet_type
+                 WHERE id = %s
+                """,
+                [rec.id],
+            )
+            current_name = self.env.cr.fetchone()[0]
+            if current_name != expected_name:
+                self.env.cr.execute(
+                    """
+                    UPDATE acpec_fuel_carnet_type
+                       SET name = %s
+                     WHERE id = %s
+                    """,
+                    [expected_name, rec.id],
+                )
+        records.invalidate_recordset(['name'])
+        return True
 
     @api.depends('face_count', 'face_value')
     def _compute_carnet_amount(self):
