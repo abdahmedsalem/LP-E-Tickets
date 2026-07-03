@@ -12,6 +12,9 @@ class ErrorPresenter {
       if (error.requiresReLogin) {
         return 'Votre session a expiré. Veuillez vous reconnecter.';
       }
+      if (isBackendUnavailable(error)) {
+        return backendUnavailable();
+      }
       return _withReference(_sanitize(error.message), error.reference);
     }
     final raw = error
@@ -25,8 +28,35 @@ class ErrorPresenter {
   static String network() =>
       'Impossible de joindre le serveur. Vérifiez votre connexion.';
 
+  static String backendUnavailable() =>
+      'Serveur momentanément indisponible. Vérifiez votre connexion ou réessayez plus tard.';
+
   static String sessionExpired() =>
       'Votre session a expiré. Veuillez vous reconnecter.';
+
+  static bool isBackendUnavailable(Object error) {
+    if (error is OdooJsonRpcException) {
+      if (error.requiresReLogin || error.requiresLogout) return false;
+      final publicCode = error.publicCode?.trim().toUpperCase();
+      if (publicCode == 'SERVER_ERROR') return true;
+      return _looksLikeBackendUnavailable(error.message) ||
+          _looksLikeBackendUnavailable(error.toString());
+    }
+    return _looksLikeBackendUnavailable(error.toString());
+  }
+
+  static bool _looksLikeBackendUnavailable(String raw) {
+    final lower = raw.toLowerCase();
+    return lower.contains('socketexception') ||
+        lower.contains('connection refused') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('connection timed out') ||
+        lower.contains('timeout') ||
+        lower.contains('dioexception') ||
+        lower.contains('server_error') ||
+        lower.contains('serveur') && lower.contains('indisponible');
+  }
 
   static String _withReference(String message, String? reference) {
     final ref = reference?.trim();

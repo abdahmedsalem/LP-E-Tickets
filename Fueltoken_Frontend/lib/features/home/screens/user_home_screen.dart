@@ -265,6 +265,17 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                           ),
                         ),
                       ),
+                      if (wallet.loadError != null &&
+                          wallet.loadError!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _BackendUnavailableBanner(
+                            message: wallet.loadError!,
+                            onRetry: () => ctx.read<WalletCubit>().refresh(),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 22),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -348,6 +359,68 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
           ),
         );
       },
+    );
+  }
+}
+
+class _BackendUnavailableBanner extends StatelessWidget {
+  const _BackendUnavailableBanner({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: AppColors.accentOrange.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.accentOrange.withValues(alpha: 0.28),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              color: AppColors.accentOrange,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                  height: 1.25,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.leaderGreenDark,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Réessayer'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

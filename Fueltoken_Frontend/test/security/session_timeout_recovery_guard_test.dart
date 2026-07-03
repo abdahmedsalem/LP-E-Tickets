@@ -99,6 +99,53 @@ void main() {
     );
 
     test(
+      'wallet transient backend failure is surfaced without clearing data',
+      () {
+        final source = File(
+          'lib/features/wallet/bloc/wallet_cubit.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('loadError: ErrorPresenter.backendUnavailable()'));
+        expect(source, contains('emit(state.copyWith(loading: true, clearError: true));'));
+        expect(
+          source,
+          isNot(contains('loading: true, clearError: true, clearBreakdown: true')),
+        );
+        expect(source, contains('error_presenter.dart'));
+      },
+    );
+
+    test(
+      'client home shows backend unavailable banner with retry',
+      () {
+        final source = File(
+          'lib/features/home/screens/user_home_screen.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('wallet.loadError'));
+        expect(source, contains('class _BackendUnavailableBanner'));
+        expect(source, contains('Icons.cloud_off_rounded'));
+        expect(source, contains('Réessayer'));
+        expect(source, contains('ctx.read<WalletCubit>().refresh()'));
+      },
+    );
+
+    test(
+      'error presenter exposes backend unavailable classification',
+      () {
+        final source = File(
+          'lib/core/utils/error_presenter.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('backendUnavailable()'));
+        expect(source, contains('isBackendUnavailable'));
+        expect(source, contains('SERVER_ERROR'));
+        expect(source, contains('connection refused'));
+        expect(source, contains('Serveur momentanément indisponible'));
+      },
+    );
+
+    test(
       'auth bloc moves expired terminal session to unauthenticated login state',
       () {
         final source = File(

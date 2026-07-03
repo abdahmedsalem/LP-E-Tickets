@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/models/wallet_breakdown_extras.dart';
 import '../../../data/services/acpec_wallet_mapper.dart';
@@ -68,7 +69,7 @@ class WalletCubit extends Cubit<WalletState> {
   Future<void> refresh() async {
     if (isClosed) return;
     if (state.loading) return;
-    emit(state.copyWith(loading: true, clearError: true, clearBreakdown: true));
+    emit(state.copyWith(loading: true, clearError: true));
     try {
       if (!AppEnvironment.useAcpecLiveData) {
         if (isClosed) return;
@@ -108,15 +109,17 @@ class WalletCubit extends Cubit<WalletState> {
         emit(
           state.copyWith(
             loading: false,
-            clearError: true,
-            clearBreakdown: true,
+            loadError: ErrorPresenter.backendUnavailable(),
           ),
         );
       }
     } catch (e) {
       if (isClosed) return;
       emit(
-        state.copyWith(loading: false, clearError: true, clearBreakdown: true),
+        state.copyWith(
+          loading: false,
+          loadError: ErrorPresenter.backendUnavailable(),
+        ),
       );
     }
   }
