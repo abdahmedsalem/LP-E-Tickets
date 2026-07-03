@@ -6,6 +6,7 @@ class AppPreferences {
 
   static const _kLocale = 'ft_app_locale';
   static const _kDark = 'ft_app_dark_mode';
+  static const _kHasSeenOnboarding = 'ft_has_seen_onboarding';
 
   /// Langues supportées par l’app (UI + préférences) : français et arabe uniquement.
   static const String defaultLocaleCode = 'fr';
@@ -44,6 +45,16 @@ class AppPreferences {
   static Future<void> setDarkMode(bool v) async {
     final p = await SharedPreferences.getInstance();
     await p.setBool(_kDark, v);
+  }
+
+  static Future<bool> hasSeenOnboarding() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_kHasSeenOnboarding) ?? false;
+  }
+
+  static Future<void> setHasSeenOnboarding(bool value) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kHasSeenOnboarding, value);
   }
 
   static Locale localeFromCode(String code) {

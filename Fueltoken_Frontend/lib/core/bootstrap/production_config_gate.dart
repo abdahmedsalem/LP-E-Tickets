@@ -33,7 +33,7 @@ class ProductionConfigGateApp extends StatelessWidget {
             '  --dart-define=ODOO_USE_ACPEC_AUTH=true \\\n'
             '  --dart-define=ODOO_FUEL_ENABLED=true\n\n'
             'OTP legacy : `API_BASE_URL` / `OTP_API_BASE_URL` ne sont pas '
-            'nécessaires pour le flux OTP actuel, qui utilise les routes '
+            'nécessaires pour le flux SMS actuel, qui utilise les routes '
             'Odoo JSON-RPC configurées dans `ODOO_RPC_REQUEST_OTP_PATH` et '
             '`ODOO_RPC_VERIFY_OTP_PATH`.\n\n'
             'Build interne sans serveur : '

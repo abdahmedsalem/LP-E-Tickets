@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 ///   AppMessage.error(context, 'Numéro de téléphone obligatoire.');
 ///   AppMessage.success(context, 'Transfert confirmé avec succès.');
 ///   AppMessage.warning(context, 'Aucun carnet sélectionné.');
-///   AppMessage.info(context, 'Code OTP envoyé par SMS.');
+///   AppMessage.info(context, 'Code SMS envoyé.');
 class AppMessage {
   AppMessage._();
 

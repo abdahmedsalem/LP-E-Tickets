@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_brand_config.dart';
+import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_role.dart';
 import '../../../shared/widgets/fuel_mark.dart';
@@ -79,7 +80,9 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } else {
       if (!mounted) return;
-      context.go('/login');
+      final seenOnboarding = await AppPreferences.hasSeenOnboarding();
+      if (!mounted) return;
+      context.go(seenOnboarding ? '/login' : '/onboarding');
     }
   }
 
