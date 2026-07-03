@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/services/odoo_auth_service.dart';
+import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';
@@ -128,11 +129,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.toString());
+        AppMessage.error(context, _registrationErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _sendingOtp = false);
     }
+  }
+
+  String _registrationErrorMessage(Object error) {
+    if (error is OdooJsonRpcException) {
+      final ref = error.reference?.trim();
+      final refLine = ref == null || ref.isEmpty
+          ? ''
+          : '\nRéférence support : $ref';
+
+      if (error.publicCode == 'SIGNUP_NOT_ALLOWED') {
+        return 'Inscription impossible avec ce numéro. '
+            'Si vous avez déjà un compte, connectez-vous.'
+            '$refLine';
+      }
+
+      final msg = error.message.trim();
+      if (msg.isNotEmpty && !msg.contains('OdooJsonRpcException')) {
+        return '$msg$refLine';
+      }
+    }
+
+    return error.toString().replaceFirst('Exception: ', '');
   }
 
   int? _extractChallengeId(Map<String, dynamic> response) {
