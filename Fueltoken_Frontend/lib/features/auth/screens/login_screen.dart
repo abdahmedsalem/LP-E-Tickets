@@ -205,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
           },
           builder: (ctx, state) {
             final loading = state.status == AuthStatus.authenticating;
-            final buttonLabel = _otpStep ? 'Continuer' : 'Vérifier mon compte';
+            final buttonLabel = _otpStep ? 'Continuer' : 'Se connecter';
             return GestureDetector(
               onTap: () => FocusScope.of(context).unfocus(),
               child: SafeArea(
@@ -380,7 +380,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   TextButton(
                                     onPressed: () => ctx.go('/register'),
-                                    child: const Text("S'inscrire maintenant"),
+                                    child: const Text("Créer un compte"),
                                   ),
                                 ],
                               ),

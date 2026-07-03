@@ -37,7 +37,8 @@ class AcpecPublicApiError {
   static const _unknownCode = 'REQUEST_REFUSED';
 
   static const Map<String, String> _publicMessages = <String, String>{
-    'AUTH_REFUSED': 'Connexion refusée. Vérifiez le code puis réessayez.',
+    'AUTH_REFUSED':
+        'Connexion impossible. Vérifiez le numéro ou le code SMS, puis réessayez. Vous pouvez aussi créer un compte.',
     'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
     'DEVICE_NOT_ALLOWED':
         'Cet appareil n’est pas autorisé à utiliser Tickets Carburant.',

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/models/app_user.dart';
@@ -17,7 +18,7 @@ class RegisterOtpRouteArgs {
   const RegisterOtpRouteArgs({
     required this.name,
     required this.phoneFull,
-    required this.pin,
+    this.pin = '',
     required this.companyId,
     this.challengeId,
   });
@@ -30,9 +31,9 @@ class RegisterOtpRouteArgs {
 }
 
 class RegisterVerifyOtpScreen extends StatefulWidget {
-  const RegisterVerifyOtpScreen({super.key, required this.args});
+  const RegisterVerifyOtpScreen({super.key, this.args});
 
-  final RegisterOtpRouteArgs args;
+  final RegisterOtpRouteArgs? args;
 
   @override
   State<RegisterVerifyOtpScreen> createState() =>
@@ -41,20 +42,54 @@ class RegisterVerifyOtpScreen extends StatefulWidget {
 
 class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
   final _otp = TextEditingController();
+  final _pin = TextEditingController();
   bool _busy = false;
   bool _resendBusy = false;
+  bool _loadingPending = false;
   int? _challengeId;
+  RegisterOtpRouteArgs? _args;
 
   @override
   void initState() {
     super.initState();
-    _challengeId = widget.args.challengeId;
+    _args = widget.args;
+    _challengeId = _args?.challengeId;
+    if (_args == null) {
+      _loadingPending = true;
+      _loadPendingSignup();
+    }
   }
 
   @override
   void dispose() {
     _otp.dispose();
+    _pin.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPendingSignup() async {
+    final pending = await PendingSignupStore.loadUsable();
+    if (!mounted) return;
+    setState(() {
+      _loadingPending = false;
+      if (pending != null) {
+        _args = RegisterOtpRouteArgs(
+          name: pending.name,
+          phoneFull: pending.phoneFull,
+          companyId: pending.companyId,
+          challengeId: pending.challengeId,
+        );
+        _challengeId = pending.challengeId;
+      }
+    });
+  }
+
+  bool get _needsPinEntry => (_args?.pin.trim().isEmpty ?? true);
+
+  String get _pinForSubmit {
+    final fromArgs = _args?.pin.trim() ?? '';
+    if (fromArgs.isNotEmpty) return fromArgs;
+    return _pin.text.trim();
   }
 
   Future<void> _submit() async {
@@ -66,14 +101,28 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       );
       return;
     }
+    final args = _args;
+    if (args == null) {
+      AppMessage.error(
+        context,
+        'Code SMS introuvable, expiré ou déjà utilisé. Recommencez l’inscription.',
+      );
+      return;
+    }
+    final pin = _pinForSubmit;
+    if (validateFourDigitNumericPassword(pin) != null) {
+      AppMessage.error(context, 'Saisissez votre PIN à 4 chiffres.');
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final body = await OdooAuthService.instance.verifySignupOtp(
-        identifier: widget.args.phoneFull,
+        identifier: args.phoneFull,
         code: clean,
-        name: widget.args.name,
-        pin: widget.args.pin,
-        companyId: widget.args.companyId,
+        name: args.name,
+        pin: pin,
+        companyId: args.companyId,
         challengeId: _challengeId,
       );
       final payload = body['data'] is Map
@@ -90,13 +139,10 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         );
       }
 
+      await PendingSignupStore.clear();
       if (!mounted) return;
       context.read<AuthBloc>().add(
-        AuthRemoteRegistrationCompleted(
-          user: user,
-          pin: widget.args.pin,
-          tokens: tokens,
-        ),
+        AuthRemoteRegistrationCompleted(user: user, pin: pin, tokens: tokens),
       );
       return;
     } catch (e, st) {
@@ -168,11 +214,29 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     return null;
   }
 
+  Future<void> _leaveVerification() async {
+    await PendingSignupStore.clear();
+    if (!mounted) return;
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/register');
+  }
+
   Future<void> _resend() async {
+    final args = _args;
+    if (args == null) {
+      AppMessage.error(
+        context,
+        'Recommencez l’inscription pour demander un nouveau code.',
+      );
+      return;
+    }
     setState(() => _resendBusy = true);
     try {
       final response = await OdooAuthService.instance.requestSignupOtpResend(
-        identifier: widget.args.phoneFull,
+        identifier: args.phoneFull,
       );
       final data = response['data'];
       if (data is Map) {
@@ -184,6 +248,12 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         final parsed = int.tryParse(raw?.toString() ?? '');
         if (parsed != null && parsed > 0) {
           _challengeId = parsed;
+          await PendingSignupStore.save(
+            name: args.name,
+            phoneFull: args.phoneFull,
+            challengeId: parsed,
+            companyId: args.companyId,
+          );
         }
       }
       if (mounted) {
@@ -201,7 +271,19 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dest = localMrDigitsFromFull(widget.args.phoneFull);
+    if (_loadingPending) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(child: Center(child: CircularProgressIndicator())),
+      );
+    }
+
+    final args = _args;
+    if (args == null) {
+      return const _MissingRegisterOtpScreen();
+    }
+
+    final dest = localMrDigitsFromFull(args.phoneFull);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -241,7 +323,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                           children: [
                             InkWell(
                               borderRadius: BorderRadius.circular(999),
-                              onTap: () => context.pop(),
+                              onTap: _leaveVerification,
                               child: const Padding(
                                 padding: EdgeInsets.all(8),
                                 child: Icon(
@@ -321,6 +403,27 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                             ),
                           ),
                         ),
+                        if (_needsPinEntry) ...[
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: _pin,
+                            keyboardType: TextInputType.number,
+                            maxLength: kSecretCodeLength,
+                            obscureText: true,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            decoration: InputDecoration(
+                              counterText: '',
+                              hintText: 'PIN de confirmation',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         SizedBox(
                           height: 56,
@@ -385,6 +488,57 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _MissingRegisterOtpScreen extends StatelessWidget {
+  const _MissingRegisterOtpScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Code SMS introuvable',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Recommencez l’inscription pour recevoir un nouveau code.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF64748B), height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: () => context.go('/register'),
+                    child: const Text('Recommencer l’inscription'),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/login'),
+                    child: const Text('Retour connexion'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

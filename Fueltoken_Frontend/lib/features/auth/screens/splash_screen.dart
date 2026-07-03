@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/app_brand_config.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
@@ -80,6 +81,12 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } else {
       if (!mounted) return;
+      final pendingSignup = await PendingSignupStore.loadUsable();
+      if (!mounted) return;
+      if (pendingSignup != null) {
+        context.go('/register/verify-otp');
+        return;
+      }
       final seenOnboarding = await AppPreferences.hasSeenOnboarding();
       if (!mounted) return;
       context.go(seenOnboarding ? '/login' : '/onboarding');

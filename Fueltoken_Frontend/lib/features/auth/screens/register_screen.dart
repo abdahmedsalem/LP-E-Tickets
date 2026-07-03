@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/odoo_auth_rpc_config.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
@@ -106,6 +107,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         return;
       }
+      final companyId = OdooAuthRpcConfig.signupDefaultCompanyId;
+      await PendingSignupStore.save(
+        name: _name.text.trim(),
+        phoneFull: _phoneLocalDigits,
+        challengeId: challengeId,
+        companyId: companyId,
+      );
+      if (!mounted) return;
       AppMessage.info(context, 'Code SMS envoyé.');
       context.push(
         '/register/verify-otp',
@@ -113,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           name: _name.text.trim(),
           phoneFull: _phoneLocalDigits,
           pin: _pin.text,
-          companyId: OdooAuthRpcConfig.signupDefaultCompanyId,
+          companyId: companyId,
           challengeId: challengeId,
         ),
       );
@@ -178,36 +187,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            children: [
-                              InkWell(
-                                borderRadius: BorderRadius.circular(999),
-                                onTap: () => context.go('/login'),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.arrow_back_rounded,
-                                    size: 22,
-                                    color: AppColors.brandBlueDeep,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                            ],
-                          ),
-                          const SizedBox(height: 18),
-                          const Center(
-                            child: FuelLogo(
-                              size: 38,
-                              showOrgWordmark: true,
-                              subtitleFuelToken: 'Tickets Carburant',
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                          const _RegisterWelcomeCopy(),
-                          const SizedBox(height: 28),
-                          const _RegisterSectionTitle(title: 'Inscription'),
-                          const SizedBox(height: 14),
+                          const _RegisterCompactHeader(),
+                          const SizedBox(height: 16),
                           _RegisterField(
                             controller: _name,
                             hint: 'Nom complet',
@@ -216,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 : null,
                             textInputAction: TextInputAction.next,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _RegisterField(
                             controller: _phoneLocal,
                             hint: 'Numéro de téléphone',
@@ -229,7 +210,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             counterLabel: '${_phoneLocalDigits.length}/8',
                             textInputAction: TextInputAction.next,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _RegisterField(
                             controller: _pin,
                             hint: 'Définir le PIN',
@@ -256,7 +237,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             textInputAction: TextInputAction.next,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _RegisterField(
                             controller: _pinConfirm,
                             hint: 'Confirmer le PIN',
@@ -371,6 +352,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+class _RegisterCompactHeader extends StatelessWidget {
+  const _RegisterCompactHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => context.go('/login'),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 22,
+                  color: AppColors.brandBlueDeep,
+                ),
+              ),
+            ),
+            const Spacer(),
+            const FuelLogo(size: 52, showOrgWordmark: false),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Créer un compte',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 26,
+            height: 1.05,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Leader Petroleum — Tickets Carburant',
+          style: TextStyle(
+            color: AppColors.brandBlueDeep,
+            fontSize: 13.5,
+            height: 1.25,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Recevez un code SMS pour vérifier votre compte.',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13.5,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
