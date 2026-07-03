@@ -15,6 +15,7 @@ import '../../core/validation/password_validators.dart';
 import '../models/app_user.dart';
 import '../models/user_role.dart';
 import '../services/odoo_auth_service.dart';
+import '../services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
 
 /// Doctrine: every new account is created as `user`. Admin can change role.
 class AuthRepository {
@@ -213,9 +214,14 @@ class AuthRepository {
           );
           _current = refreshed;
           return refreshed;
+        } on OdooJsonRpcException catch (e) {
+          if (e.requiresLogout || e.isAuthRequired || e.isOdooSessionExpired) {
+            await OdooSessionStore.clear();
+            await AuthTokenStore.clear();
+          }
+          // Erreur réseau / timeout / SERVER_ERROR : conserver la session.
         } catch (_) {
-          await OdooSessionStore.clear();
-          await AuthTokenStore.clear();
+          // Erreur transitoire ou inconnue au démarrage : conserver la session.
         }
       }
     }
