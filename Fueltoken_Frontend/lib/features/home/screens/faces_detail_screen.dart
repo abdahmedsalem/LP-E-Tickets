@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/config/app_environment.dart';
@@ -248,7 +248,11 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 
     final carnetSize = _carnetSizeFor(line);
     if (carnetSize > 0) {
-      return Formatters.carnetTypeLabel(carnetSize, line.faceValue);
+      return Formatters.carnetTypeLabel(
+        carnetSize,
+        line.faceValue,
+        currency: _currencyFor(line),
+      );
     }
 
     return 'Carnet';
@@ -922,7 +926,7 @@ class _CarnetDetailScreen extends StatelessWidget {
                     stateLabel: stateLabel,
                     stateColor: stateColor,
                   ),
-                 
+
                   const SizedBox(height: 16),
                   Text(
                     'Détail des tickets',
@@ -1009,13 +1013,12 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           _DetailInfoRow(
             label: 'N° complet du carnet',
-            value: fullCarnetNo.trim().isNotEmpty ? fullCarnetNo : 'Non disponible',
+            value: fullCarnetNo.trim().isNotEmpty
+                ? fullCarnetNo
+                : 'Non disponible',
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
-          _DetailInfoRow(
-            label: 'Tickets disponibles',
-            value: ticketsLabel,
-          ),
+          _DetailInfoRow(label: 'Tickets disponibles', value: ticketsLabel),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           _DetailInfoRow(
             label: 'Montant disponible',
@@ -1181,15 +1184,13 @@ class _CarnetLineCard extends StatelessWidget {
   final int carnetSize;
   final VoidCallback onTap;
 
-  String get _titleLabel => carnetTypeLabel.trim().isEmpty
-      ? 'Carnet'
-      : carnetTypeLabel.trim();
+  String get _titleLabel =>
+      carnetTypeLabel.trim().isEmpty ? 'Carnet' : carnetTypeLabel.trim();
 
   String get _availabilityLabel {
     final value = _ticketAvailabilityLabel(line.availableQty, carnetSize);
     return value;
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -1255,4 +1256,3 @@ class _CarnetLineCard extends StatelessWidget {
     );
   }
 }
-

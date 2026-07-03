@@ -31,8 +31,13 @@ class Formatters {
 
   static String number(num value) => _money.format(value);
   static String numberFr(num value) => _money.format(value);
-  static String carnetTypeLabel(int size, int faceValue) =>
-      'Carnet ${numberFr(size)} × ${numberFr(faceValue)}';
+
+  static String carnetTypeLabel(int size, int faceValue, {String? currency}) {
+    final ticketWord = size == 1 ? 'ticket' : 'tickets';
+    final unit = currencyOrDefault(currency);
+    return 'Carnet - $size $ticketWord x $faceValue $unit';
+  }
+
   static String date(DateTime d) => _date.format(_local(d));
   static String dateTime(DateTime d) => _dateTime.format(_local(d));
   static String dateTimeDash(DateTime d) => _dateTimeDash.format(_local(d));
@@ -41,28 +46,71 @@ class Formatters {
     String raw, {
     int? fallbackSize,
     int? fallbackFaceValue,
+    String? fallbackCurrency,
   }) {
     final text = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (text.isNotEmpty) {
-      final match = RegExp(
-        r'^carnet\s+([\d\s]+)\s*(?:x|×|×|\*)\s*([\d\s]+)$',
+      final canonical = RegExp(
+        r'^carnet\s*-\s*[\d\s]+\s+tickets?\s+x\s+[\d\s]+(?:\s+\S+)?$',
         caseSensitive: false,
       ).firstMatch(text);
-      if (match != null) {
+      if (canonical != null) return text;
+
+      final legacyLong = RegExp(
+        r'^carnet\s+de\s+([\d\s]+)\s+tickets?\s+(?:de|-)\s*([\d\s]+)\s*([A-Za-z]{2,5})?$',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (legacyLong != null) {
         final size = int.tryParse(
-          match.group(1)!.replaceAll(RegExp(r'\D'), ''),
+          legacyLong.group(1)!.replaceAll(RegExp(r'\D'), ''),
         );
         final faceValue = int.tryParse(
-          match.group(2)!.replaceAll(RegExp(r'\D'), ''),
+          legacyLong.group(2)!.replaceAll(RegExp(r'\D'), ''),
         );
+        final currency = legacyLong.group(3)?.trim();
         if (size != null && size > 0 && faceValue != null && faceValue > 0) {
-          return carnetTypeLabel(size, faceValue);
+          return carnetTypeLabel(
+            size,
+            faceValue,
+            currency: currency?.isNotEmpty == true
+                ? currency
+                : fallbackCurrency,
+          );
         }
       }
+
+      final legacyCompact = RegExp(
+        r'^carnet\s+([\d\s]+)\s*(?:x|×|\*)\s*([\d\s]+)\s*([A-Za-z]{2,5})?$',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (legacyCompact != null) {
+        final size = int.tryParse(
+          legacyCompact.group(1)!.replaceAll(RegExp(r'\D'), ''),
+        );
+        final faceValue = int.tryParse(
+          legacyCompact.group(2)!.replaceAll(RegExp(r'\D'), ''),
+        );
+        final currency = legacyCompact.group(3)?.trim();
+        if (size != null && size > 0 && faceValue != null && faceValue > 0) {
+          return carnetTypeLabel(
+            size,
+            faceValue,
+            currency: currency?.isNotEmpty == true
+                ? currency
+                : fallbackCurrency,
+          );
+        }
+      }
+
       return text;
     }
+
     if ((fallbackSize ?? 0) > 0 && (fallbackFaceValue ?? 0) > 0) {
-      return carnetTypeLabel(fallbackSize!, fallbackFaceValue!);
+      return carnetTypeLabel(
+        fallbackSize!,
+        fallbackFaceValue!,
+        currency: fallbackCurrency,
+      );
     }
     return text;
   }
@@ -72,6 +120,7 @@ class Formatters {
     int? fallbackSize,
     int? fallbackFaceValue,
     String? fallbackCode,
+    String? fallbackCurrency,
   }) {
     final label = serverLabel.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (label.isNotEmpty) {
@@ -79,16 +128,21 @@ class Formatters {
         label,
         fallbackSize: fallbackSize,
         fallbackFaceValue: fallbackFaceValue,
+        fallbackCurrency: fallbackCurrency,
+      );
+    }
+
+    if ((fallbackSize ?? 0) > 0 && (fallbackFaceValue ?? 0) > 0) {
+      return carnetTypeLabel(
+        fallbackSize!,
+        fallbackFaceValue!,
+        currency: fallbackCurrency,
       );
     }
 
     final code = fallbackCode?.trim();
     if (code != null && code.isNotEmpty && code != '—') {
       return code;
-    }
-
-    if ((fallbackSize ?? 0) > 0 && (fallbackFaceValue ?? 0) > 0) {
-      return carnetTypeLabel(fallbackSize!, fallbackFaceValue!);
     }
 
     return 'Carnet';
