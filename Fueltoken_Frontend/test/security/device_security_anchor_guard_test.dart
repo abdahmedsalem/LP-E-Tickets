@@ -39,9 +39,9 @@ void main() {
       ).readAsStringSync();
 
       expect(source, contains("code == 'AUTH_REQUIRED'"));
+      expect(source, contains("code == 'SESSION_EXPIRED'"));
       expect(source, contains("code == 'REFRESH_TOKEN_REQUIRED'"));
       expect(source, isNot(contains("code == 'UNAUTHORIZED'")));
-      expect(source, isNot(contains("code == 'SESSION_EXPIRED'")));
       expect(source, isNot(contains("code == 'TOKEN_EXPIRED'")));
     });
   });

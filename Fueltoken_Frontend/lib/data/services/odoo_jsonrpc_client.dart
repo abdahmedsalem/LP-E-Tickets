@@ -103,7 +103,8 @@ class _BusinessAuthFailure {
 /// Detects ACPEC auth/session failures carried inside a JSON-RPC `result`.
 ///
 /// Some backend routes can return HTTP 200 + JSON-RPC success while the
-/// business envelope is refused (`ok: false`, `error.code: AUTH_REQUIRED`).
+/// business envelope is refused (`ok: false`, `error.code: AUTH_REQUIRED`
+/// or `SESSION_EXPIRED`).
 /// These errors must be handled in the central JSON-RPC client, before mapper
 /// or screen code can swallow them as ordinary business errors.
 @visibleForTesting
@@ -196,7 +197,9 @@ String _normalizeBusinessCode(dynamic value) {
 }
 
 bool _isAuthBusinessCode(String code) {
-  return code == 'AUTH_REQUIRED' || code == 'REFRESH_TOKEN_REQUIRED';
+  return code == 'AUTH_REQUIRED' ||
+      code == 'SESSION_EXPIRED' ||
+      code == 'REFRESH_TOKEN_REQUIRED';
 }
 
 String? _normalizeReference(dynamic value) {
