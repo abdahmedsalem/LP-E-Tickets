@@ -3,6 +3,7 @@ from odoo.http import request
 from odoo.exceptions import AccessError, ValidationError
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon, MobileSignupNotAllowedError
+from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
 
 
 class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
@@ -206,7 +207,15 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     )
 
             try:
-                user = challenge.verify(code)
+                user = challenge.verify(code, request_ip=self._request_ip())
+            except MobileAuthRateLimitError as exc:
+                return self._handle_exception_response(
+                    exc,
+                    params=kwargs,
+                    operation='otp_verify',
+                    started_at=started_at,
+                    endpoint='/api/acpec/mobile_auth/v1/verify-otp',
+                )
             except (AccessError, ValidationError) as exc:
                 return self._public_otp_invalid_response(
                     debug_reason=self._public_auth_debug_reason(exc),

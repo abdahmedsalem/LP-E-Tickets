@@ -1483,6 +1483,177 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                 request_ip='10.0.0.10',
             )
 
+
+    def test_verify_otp_bucket_blocks_distributed_challenges_by_identifier(self):
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+        self._set_security_setting('acpec_mobile_auth.otp_max_attempts', '1')
+        self._set_security_setting('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_ip_per_hour', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
+
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+        identifier = _acpec_test_mobile_phone('k5-distributed')
+
+        challenge1, _code1 = otp_model.request_otp(
+            identifier,
+            purpose='register',
+            request_ip='10.55.0.1',
+        )
+
+        with self.assertRaisesRegex(AccessError, 'Code OTP invalide'):
+            challenge1.verify('111111', request_ip='10.55.0.1')
+
+        challenge2, _code2 = otp_model.request_otp(
+            identifier,
+            purpose='register',
+            request_ip='10.55.0.2',
+        )
+
+        with self.assertRaisesRegex(Exception, 'Trop de demandes OTP'):
+            challenge2.verify('222222', request_ip='10.55.0.2')
+
+        self.assertEqual(challenge2.state, 'pending')
+
+
+    def test_verify_otp_does_not_hard_lock_shared_ip_bucket(self):
+        """K5 hard-locks canonical identifiers, not shared IP addresses.
+
+        A hard verify-OTP IP lock can create production auto-DoS behind nginx
+        or mobile CGNAT. IP-based request-OTP antiflood still protects SMS
+        cost/provider abuse; verify-OTP hard lock is intentionally identifier
+        based.
+        """
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+        self._set_security_setting('acpec_mobile_auth.otp_max_attempts', '1')
+        self._set_security_setting('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_ip_per_hour', '1')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
+
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+        request_ip = '10.56.0.9'
+
+        challenge1, _code1 = otp_model.request_otp(
+            _acpec_test_mobile_phone('k5-ip-a'),
+            purpose='register',
+            request_ip='10.56.0.1',
+        )
+
+        with self.assertRaisesRegex(AccessError, 'Code OTP invalide'):
+            challenge1.verify('111111', request_ip=request_ip)
+
+        challenge2, _code2 = otp_model.request_otp(
+            _acpec_test_mobile_phone('k5-ip-b'),
+            purpose='register',
+            request_ip='10.56.0.2',
+        )
+
+        with self.assertRaisesRegex(AccessError, 'Code OTP invalide'):
+            challenge2.verify('222222', request_ip=request_ip)
+
+        ip_bucket = self.env['acpec.mobile.auth.otp.verify.bucket'].sudo().search([
+            ('scope', '=', 'ip'),
+            ('purpose', '=', 'register'),
+            ('key', '=', request_ip),
+        ], limit=1)
+        self.assertFalse(ip_bucket)
+
+    def test_verify_otp_route_returns_rate_limited_code_for_bucket_lock(self):
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+        self._set_security_setting('acpec_mobile_auth.otp_max_attempts', '1')
+        self._set_security_setting('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_ip_per_hour', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
+
+        phone = _acpec_test_mobile_phone('k5-route-rate')
+        self._create_mobile_user(
+            login='k5-route-rate@example.com',
+            mobile_phone=phone,
+        )
+
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+        controller = AcpecMobileAuthOtpApi()
+        controller._test_public_auth_min_latency_seconds = 0.250
+        controller._require_keys = lambda params, keys: None
+        controller._get_clean_str = lambda params, key: str(params.get(key) or '').strip()
+        controller._get_optional_int = lambda params, key, default=False: int(params.get(key) or default)
+
+        dummy_httprequest = SimpleNamespace(
+            remote_addr='10.57.0.9',
+            headers={'User-Agent': 'pytest'},
+        )
+        dummy_request = SimpleNamespace(env=self.env, cr=self.env.cr, httprequest=dummy_httprequest)
+
+        challenge1, _code1 = otp_model.request_otp(
+            phone,
+            purpose='login',
+            request_ip='10.57.0.1',
+        )
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request):
+            first_result = controller.verify_otp(
+                challenge_id=challenge1.id,
+                code='111111',
+            )
+
+        self.assertFalse(first_result['ok'])
+        self.assertEqual(first_result['error']['code'], 'AUTH_REFUSED')
+
+        challenge2, _code2 = otp_model.request_otp(
+            phone,
+            purpose='login',
+            request_ip='10.57.0.2',
+        )
+
+        with patch('odoo.addons.acpec_mobile_auth.controllers.api_common.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth_otp.controllers.api_otp.request', dummy_request), \
+                patch('odoo.addons.acpec_mobile_auth.controllers.api_common.time.sleep') as mocked_sleep:
+            second_result = controller.verify_otp(
+                challenge_id=challenge2.id,
+                code='222222',
+            )
+
+        self.assertFalse(second_result['ok'])
+        self.assertEqual(second_result['error']['code'], 'RATE_LIMITED')
+        self.assertEqual(second_result['error']['message'], 'Trop de tentatives. Réessayez plus tard.')
+        self.assertTrue(str(second_result['error'].get('reference') or '').startswith('SEC-'))
+        mocked_sleep.assert_called()
+
+    def test_verify_otp_replay_is_refused_after_success(self):
+        self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'True')
+        self._set_security_setting('acpec_mobile_auth.otp_max_attempts', '5')
+        self._set_security_setting('acpec_mobile_auth.otp_request_cooldown_seconds', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_minute', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_day', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_ip_per_hour', '0')
+        self._set_security_setting('acpec_mobile_auth.otp_limit_register_ip_per_day', '0')
+
+        phone = _acpec_test_mobile_phone('k5-replay')
+        user = self._create_mobile_user(
+            login='k5-replay@example.com',
+            mobile_phone=phone,
+        )
+
+        challenge, code = self.env['acpec.mobile.auth.otp'].sudo().request_otp(
+            phone,
+            purpose='login',
+            request_ip='10.58.0.1',
+        )
+
+        verified_user = challenge.verify(code, request_ip='10.58.0.1')
+        self.assertEqual(verified_user.id, user.id)
+        self.assertEqual(challenge.state, 'verified')
+
+        with self.assertRaisesRegex(ValidationError, "n'est plus actif"):
+            challenge.verify(code, request_ip='10.58.0.1')
+
+
     def test_request_otp_route_returns_rate_limited_code(self):
         self._set_security_setting('acpec_mobile_auth.otp_dev_mode', 'False')
         self._set_security_setting('acpec_mobile_auth.otp_limit_identifier_per_minute', '1')

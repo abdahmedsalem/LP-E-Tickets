@@ -712,7 +712,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 reference=getattr(exc, 'acpec_reference', False),
             )
         if isinstance(exc, MobileAuthRateLimitError):
-            self._log_api_refusal_marker('RATE_LIMITED', reason=str(exc), params=params, operation=operation, endpoint=endpoint)
+            self._log_api_refusal_marker('RATE_LIMITED', reason=getattr(exc, 'acpec_debug_reason', str(exc)), params=params, operation=operation, endpoint=endpoint)
             response = self._sensitive_refusal_response(
                 public_code='RATE_LIMITED',
                 debug_reason='auth_rate_limited',
