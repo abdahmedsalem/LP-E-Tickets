@@ -461,6 +461,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         pin: e.pin,
         tokens: e.tokens,
       );
+      final pin = e.pin.trim();
+      if (pin.isNotEmpty) {
+        await _repo.saveLocalUnlockPinForCurrentUser(pin);
+      }
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
       emit(

@@ -184,12 +184,9 @@ class AppRouter {
           path: '/register/verify-otp',
           builder: (_, st) {
             final x = st.extra;
-            if (x is! RegisterOtpRouteArgs) {
-              return const Scaffold(
-                body: Center(child: Text("Reprendre depuis l'inscription.")),
-              );
-            }
-            return RegisterVerifyOtpScreen(args: x);
+            return RegisterVerifyOtpScreen(
+              args: x is RegisterOtpRouteArgs ? x : null,
+            );
           },
         ),
 

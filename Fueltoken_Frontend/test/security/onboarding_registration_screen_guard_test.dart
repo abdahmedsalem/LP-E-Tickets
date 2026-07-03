@@ -14,6 +14,8 @@ void main() {
       expect(prefs, contains('_kHasSeenOnboarding'));
       expect(prefs, contains('Future<bool> hasSeenOnboarding()'));
       expect(prefs, contains('Future<void> setHasSeenOnboarding(bool value)'));
+      expect(splash, contains('PendingSignupStore.loadUsable()'));
+      expect(splash, contains("context.go('/register/verify-otp')"));
       expect(splash, contains('AppPreferences.hasSeenOnboarding()'));
       expect(splash, contains("seenOnboarding ? '/login' : '/onboarding'"));
       expect(router, contains("path: '/onboarding'"));
@@ -71,6 +73,13 @@ void main() {
           source,
           contains('onPressed: canSubmit ? _onCreateAccount : null'),
         );
+        expect(source, contains('const _RegisterCompactHeader()'));
+        expect(source, contains('Leader Petroleum — Tickets Carburant'));
+        expect(
+          source,
+          contains('Recevez un code SMS pour vérifier votre compte.'),
+        );
+        expect(source, isNot(contains('const _RegisterWelcomeCopy(),')));
         expect(
           source,
           contains('if (_sendingOtp || !_formLooksValid) return;'),
@@ -84,6 +93,7 @@ void main() {
         final source = _read('lib/features/auth/screens/register_screen.dart');
 
         expect(source, contains('OdooAuthService.instance.requestSignupOtp'));
+        expect(source, contains('PendingSignupStore.save'));
         expect(source, contains('RegisterOtpRouteArgs('));
         expect(source, contains('challengeId: challengeId'));
         expect(source, contains('pin: _pin.text'));
