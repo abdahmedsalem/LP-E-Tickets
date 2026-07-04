@@ -12,7 +12,10 @@ void main() {
       expect(source, contains('tryRestoreRemoteSession();'));
       expect(source, contains('AuthStatus.locked'));
       expect(source, contains('confirmation PIN serveur'));
-      expect(source, isNot(contains('final hasLocalPin = await _repo.hasLocalUnlockPin')));
+      expect(
+        source,
+        isNot(contains('final hasLocalPin = await _repo.hasLocalUnlockPin')),
+      );
       expect(source, isNot(contains('_localPinResetRequiredMessage')));
       expect(
         source,
@@ -41,6 +44,62 @@ void main() {
       expect(config, contains('hasConfirmPin'));
     });
 
+    test('release build fails closed if server confirm-pin is unavailable', () {
+      final repo = _read('lib/data/repositories/auth_repository.dart');
+
+      expect(
+        repo,
+        contains("package:flutter/foundation.dart' show kReleaseMode"),
+      );
+      expect(repo, contains('AppEnvironment.allowOfflineDemoInRelease'));
+      expect(repo, contains('Vérification PIN serveur indisponible'));
+      expect(
+        repo,
+        contains(
+          'if (kReleaseMode && !AppEnvironment.allowOfflineDemoInRelease)',
+        ),
+      );
+
+      final serverConfirm = repo.indexOf(
+        'OdooAuthService.instance.confirmSessionPin',
+      );
+      final releaseGuard = repo.indexOf(
+        'if (kReleaseMode && !AppEnvironment.allowOfflineDemoInRelease)',
+      );
+      final localFallback = repo.indexOf('return unlockWithLocalPin(pin);');
+
+      expect(serverConfirm, isNonNegative);
+      expect(releaseGuard, isNonNegative);
+      expect(localFallback, isNonNegative);
+      expect(serverConfirm, lessThan(releaseGuard));
+      expect(releaseGuard, lessThan(localFallback));
+    });
+
+    test('server mode does not keep a local PIN copy in memory', () {
+      final repo = _read('lib/data/repositories/auth_repository.dart');
+
+      expect(repo, contains('bool get _useLocalPinCache =>'));
+      expect(repo, contains('if (_useLocalPinCache)'));
+      expect(
+        repo,
+        isNot(
+          contains(
+            '_pinByUserId[user.id] = pin;\n'
+            '    if (!OdooApiConfig.isConfigured || !OdooAuthRpcConfig.hasConfirmPin)',
+          ),
+        ),
+      );
+      expect(
+        repo,
+        isNot(
+          contains(
+            '_pinByUserId[resolved.id] = pin;\n'
+            '    if (!OdooApiConfig.isConfigured || !OdooAuthRpcConfig.hasConfirmPin)',
+          ),
+        ),
+      );
+    });
+
     test('OTP login no longer requires or creates local unlock PIN', () {
       final source = _read('lib/features/auth/bloc/auth_bloc.dart');
       final start = source.indexOf('Future<void> _onLoginOtpVerified(');
@@ -65,7 +124,10 @@ void main() {
       expect(source, contains('AuthUnlockRequested(pin: pin)'));
       expect(source, contains('PIN serveur'));
       expect(source, isNot(contains('AuthLocalPinSetupRequested(pin: pin)')));
-      expect(source, isNot(contains('state.status == AuthStatus.pinSetupRequired')));
+      expect(
+        source,
+        isNot(contains('state.status == AuthStatus.pinSetupRequired')),
+      );
       expect(source, isNot(contains('Confirmer le PIN')));
     });
 
