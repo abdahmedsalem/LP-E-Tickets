@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/carnet_type.dart';
@@ -44,6 +45,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   String? _liveError;
   List<CarnetType> _offerTypes = [];
   List<FaceLine> _liveFaceLines = [];
+
+  static const String _unconfirmedQrIssueMessage =
+      'Action non confirmée. Vérifiez la liste des QR avant de réessayer.';
 
   @override
   void initState() {
@@ -91,6 +95,34 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         _liveError = e.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  String _qrIssueErrorMessage(Object error) {
+    if (ErrorPresenter.isBackendUnavailable(error)) {
+      return _unconfirmedQrIssueMessage;
+    }
+
+    final message = ErrorPresenter.message(error).trim();
+    final lower = message.toLowerCase();
+
+    final looksLikeInvalidPin =
+        (lower.contains('pin') ||
+            lower.contains('action_code') ||
+            lower.contains('action code') ||
+            lower.contains('code action')) &&
+        (lower.contains('incorrect') ||
+            lower.contains('invalide') ||
+            lower.contains('invalid') ||
+            lower.contains('refus'));
+
+    if (looksLikeInvalidPin) {
+      return 'PIN incorrect. L’opération n’a pas été effectuée.';
+    }
+
+    if (message.isEmpty) {
+      return 'Le QR n’a pas été créé. Réessayez.';
+    }
+    return message;
   }
 
   int _lineCarnetSize(FaceLine line) {
@@ -552,9 +584,15 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       } else {
         throw Exception('Connexion serveur ACPEC requise pour générer un QR.');
       }
-    } on OdooJsonRpcException {
+    } on OdooJsonRpcException catch (err) {
+      if (mounted) {
+        AppMessage.error(context, _qrIssueErrorMessage(err));
+      }
       return;
     } catch (err) {
+      if (mounted) {
+        AppMessage.error(context, _qrIssueErrorMessage(err));
+      }
       return;
     } finally {
       if (mounted) setState(() => _emitting = false);
