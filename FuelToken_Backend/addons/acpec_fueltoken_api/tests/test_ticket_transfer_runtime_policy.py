@@ -169,8 +169,8 @@ class TestTicketTransferRuntimePolicy(TransactionCase):
         code = error.get("code")
         public_message = error.get("message") or ""
         sensitive_expected_codes = {
-            "action_code": ("ACTION_REFUSED",),
-            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED",),
+            "action_code": ("ACTION_REFUSED", "MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
+            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED", "DEVICE_PENDING_TRUST"),
             "idempotency_conflict": ("REQUEST_REFUSED",),
         }
         if expected in sensitive_expected_codes:

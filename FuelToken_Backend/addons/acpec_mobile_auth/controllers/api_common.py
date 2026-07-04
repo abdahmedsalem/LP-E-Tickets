@@ -131,14 +131,32 @@ class AcpecMobileAuthApiCommon(http.Controller):
         'MOBILE_USER_BLOCKED': 'Ce compte mobile est bloqu\u00e9. Contactez l\u2019administrateur.',
         'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
         'DEVICE_NOT_ALLOWED': 'Cet appareil n’est pas autorisé pour cette opération.',
+        'DEVICE_PENDING_TRUST': 'Cet appareil est en attente de validation.',
+        'DEVICE_BLOCKED': 'Cet appareil est bloqué. Contactez l’administrateur.',
         'ACTION_REFUSED': 'Action impossible ou non autorisée.',
         'ACTION_IN_PROGRESS': 'Une autre opération sensible est déjà en cours. Réessayez dans quelques secondes.',
+        'INVALID_ACTION_CODE': 'PIN incorrect.',
+        'ACTION_CODE_LOCKED': 'Trop de tentatives. Réessayez plus tard.',
+        'PIN_RESET_REQUIRED': 'PIN à réinitialiser. Utilisez PIN oublié.',
+        'MISSING_ACTION_CODE': 'PIN requis pour confirmer cette opération.',
+        'INVALID_ACTION_CODE_KEY': 'Demande invalide. Veuillez réessayer.',
         'QR_NOT_USABLE': 'QR introuvable ou non utilisable.',
         'TRANSFER_REFUSED': 'Transfert impossible ou non autorisé.',
         'FORBIDDEN': 'Vous n’êtes pas autorisé à effectuer cette opération.',
         'REQUEST_REFUSED': 'Cette demande ne peut pas être traitée.',
         'SIGNUP_NOT_ALLOWED': 'Impossible de finaliser l’inscription avec ces informations.',
     }
+
+    SENSITIVE_PUBLIC_CODE_ALLOWLIST = frozenset({
+        'INVALID_ACTION_CODE',
+        'ACTION_CODE_LOCKED',
+        'PIN_RESET_REQUIRED',
+        'MISSING_ACTION_CODE',
+        'INVALID_ACTION_CODE_KEY',
+        'ACTION_IN_PROGRESS',
+        'DEVICE_PENDING_TRUST',
+        'DEVICE_BLOCKED',
+    })
 
     SENSITIVE_DEBUG_REASONS = frozenset({
         'auth_account_not_allowed',
@@ -394,8 +412,8 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return public_code
         code = code or ''
         event_type = event_type or ''
-        if code == 'ACTION_IN_PROGRESS':
-            return 'ACTION_IN_PROGRESS'
+        if code in self.SENSITIVE_PUBLIC_CODE_ALLOWLIST:
+            return code
         if code.startswith('DEVICE_') or event_type.startswith('device_'):
             return 'DEVICE_NOT_ALLOWED'
         if purpose == 'carnet_transfer' and code.startswith('RECIPIENT_'):

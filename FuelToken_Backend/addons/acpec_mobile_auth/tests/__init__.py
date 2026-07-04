@@ -28,3 +28,4 @@ from . import test_mobile_device_last_seen_concurrency
 from . import test_mobile_logout_no_device_trust_write
 from . import test_mobile_session_expired_code
 from . import test_mobile_session_action_contract
+from . import test_confirm_pin_endpoint
