@@ -308,9 +308,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
                   );
                 }
-                debugPrint(
-                  '[purchase-submit] action_code reçu, préparation de la requête...',
-                );
                 final rpcLines = <Map<String, dynamic>>[];
                 for (final line in confirmLines) {
                   final t = line.carnetType;
@@ -336,9 +333,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 }
                 final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
                 final idem = const Uuid().v4();
-                debugPrint(
-                  '[purchase-submit] appel purchasesCreate vers le backend...',
-                );
                 final raw = await OdooFueltokenFacade().purchasesCreate({
                   'lines': rpcLines,
                   'proof_filename': fileName,
@@ -347,8 +341,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   'action_code': actionCode,
                   'idempotency_key': idem,
                 });
-                debugPrint('[purchase-submit] backend répondu: $raw');
-                debugPrint('[purchase-submit] parsing du résultat...');
                 return AcpecPurchasesMapper.parseCreateResult(raw);
               },
             ),

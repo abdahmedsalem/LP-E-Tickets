@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -146,7 +147,9 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       );
       return;
     } catch (e, st) {
-      debugPrint('SMS verification failed: $e\n$st');
+      if (kDebugMode) {
+        debugPrint('SMS verification failed: ${e.runtimeType}\n$st');
+      }
       if (mounted) {
         AppMessage.error(context, _displayOtpVerificationError(e));
       }
@@ -260,7 +263,9 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         AppMessage.info(context, 'Un nouveau code a été demandé.');
       }
     } catch (e, st) {
-      debugPrint('OTP resend failed: $e\n$st');
+      if (kDebugMode) {
+        debugPrint('OTP resend failed: ${e.runtimeType}\n$st');
+      }
       if (mounted) {
         AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
       }

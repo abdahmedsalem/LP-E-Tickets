@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -162,10 +162,12 @@ class PurchaseValidationNotificationService {
         notifiedIds.add(key);
         unawaited(_emitStatusNotification(lot));
       }
-    } catch (e, st) {
-      debugPrint(
-        '[purchase-validation] sync des notifications d achats ignorée: $e\n$st',
-      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[purchase-validation] sync des notifications d achats ignorée: ${e.runtimeType}',
+        );
+      }
     }
   }
 
@@ -205,10 +207,12 @@ class PurchaseValidationNotificationService {
         }
         await _emitStationConsumptionNotification(user, tx);
       }
-    } catch (e, st) {
-      debugPrint(
-        '[purchase-validation] sync des notifications de consommation station ignorée: $e\n$st',
-      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[purchase-validation] sync des notifications de consommation station ignorée: ${e.runtimeType}',
+        );
+      }
     }
   }
 

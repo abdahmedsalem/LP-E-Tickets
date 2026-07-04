@@ -306,8 +306,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (AcpecRpcDebug.enabled) {
       final id = e.identifier.trim();
       developer.log(
-        'AuthLogin identifier="$id" isEmail=${id.contains('@')} '
-        'secretCodeLen=${e.pin.length}',
+        'AuthLogin identifierKind=${id.contains('@') ? 'email' : 'phone'} '
+        'identifierLen=${id.length} secretCodeLen=${e.pin.length}',
         name: 'ACPEC_AUTH',
       );
     }
@@ -339,7 +339,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (AcpecRpcDebug.enabled) {
       final id = e.identifier.trim();
       developer.log(
-        'AuthLoginOtp request identifier="$id" isEmail=${id.contains('@')}',
+        'AuthLoginOtp request identifierKind=${id.contains('@') ? 'email' : 'phone'} '
+        'identifierLen=${id.length}',
         name: 'ACPEC_AUTH',
       );
     }
@@ -382,7 +383,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (AcpecRpcDebug.enabled) {
       final id = e.identifier.trim();
       developer.log(
-        'AuthLoginOtp verify identifier="$id" codeLen=${e.code.length}',
+        'AuthLoginOtp verify identifierKind=${id.contains('@') ? 'email' : 'phone'} '
+        'identifierLen=${id.length} codeLen=${e.code.length}',
         name: 'ACPEC_AUTH',
       );
     }
