@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/models/carnet_type.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -18,12 +18,15 @@ class PurchaseConfirmationArgs {
     required this.lines,
     required this.proofPath,
     this.proofBytes,
+    this.unconfirmedActionMessage =
+        'Action non confirmée. Vérifiez l’état de la demande avant de réessayer.',
     required this.onConfirm,
   });
 
   final List<PurchaseConfirmationLine> lines;
   final String? proofPath;
   final Uint8List? proofBytes;
+  final String unconfirmedActionMessage;
   final Future<AcpecPurchaseCreateResult> Function(String actionCode) onConfirm;
 }
 
@@ -64,6 +67,7 @@ class _PurchaseConfirmationScreenState
 
   Future<void> _onConfirm() async {
     if (_confirming) return;
+    setState(() => _confirming = true);
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
@@ -71,7 +75,6 @@ class _PurchaseConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      setState(() => _confirming = true);
       debugPrint(
         '[purchase-confirmation] PIN validé, lancement de onConfirm...',
       );
@@ -82,20 +85,13 @@ class _PurchaseConfirmationScreenState
         '[purchase-confirmation] onConfirm terminé, fermeture avec résultat.',
       );
       _close(result);
-    } on OdooJsonRpcException catch (e) {
-      if (mounted) {
-        AppMessage.error(
-          context,
-          e.isOdooSessionExpired || e.isAuthRequired
-              ? 'Session expirée. Reconnectez-vous.'
-              : e.message,
-        );
-      }
     } catch (e) {
       if (mounted) {
         AppMessage.error(
           context,
-          e.toString().replaceFirst('Exception: ', '').trim(),
+          ErrorPresenter.isBackendUnavailable(e)
+              ? widget.args.unconfirmedActionMessage
+              : ErrorPresenter.message(e),
         );
       }
     } finally {
