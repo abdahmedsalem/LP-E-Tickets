@@ -441,60 +441,6 @@ class _RegisterCompactHeader extends StatelessWidget {
   }
 }
 
-class _RegisterWelcomeCopy extends StatelessWidget {
-  const _RegisterWelcomeCopy();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          'Bienvenue sur Tickets Carburant',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            height: 1.12,
-            color: AppColors.ink,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.9,
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'Créez votre compte sécurisé avec votre téléphone et votre PIN.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14.5,
-            height: 1.38,
-            color: AppColors.muted,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RegisterSectionTitle extends StatelessWidget {
-  const _RegisterSectionTitle({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        color: AppColors.brandBlueDeep,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.4,
-      ),
-    );
-  }
-}
-
 class _RegisterNoticeCard extends StatelessWidget {
   const _RegisterNoticeCard({required this.message});
 

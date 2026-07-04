@@ -111,10 +111,12 @@ void main() {
       () {
         final source = _read('lib/features/auth/screens/register_screen.dart');
         final start = source.indexOf('class _RegisterCompactHeader');
-        final end = source.indexOf('class _RegisterWelcomeCopy', start);
+        final end = source.indexOf('\nclass _Register', start + 1);
 
         expect(start, isNonNegative);
         expect(end, isNonNegative);
+        expect(source, isNot(contains('class _RegisterWelcomeCopy')));
+        expect(source, isNot(contains('class _RegisterSectionTitle')));
 
         final header = source.substring(start, end);
         expect(header, contains('FuelLogo'));
