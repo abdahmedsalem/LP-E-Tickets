@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:uuid/uuid.dart';
 
 import '../../core/auth/auth_token_store.dart';
@@ -7,6 +8,7 @@ import '../../core/auth/login_session_cache.dart';
 import '../../core/auth/odoo_session_store.dart';
 import '../../core/config/app_brand_config.dart';
 import '../../core/config/acpec_role_overrides.dart';
+import '../../core/config/app_environment.dart';
 import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/utils/error_presenter.dart';
@@ -29,7 +31,22 @@ class AuthRepository {
   AppUser? _current;
 
   /// PIN mock par utilisateur (inscription / reset après OTP).
+  /// Dev/demo local uniquement : jamais utilisé comme autorité en mode serveur.
   final Map<String, String> _pinByUserId = {};
+
+  bool get _usesServerConfirmPin =>
+      OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin;
+
+  bool get _allowLocalPinFallback =>
+      !kReleaseMode || AppEnvironment.allowOfflineDemoInRelease;
+
+  bool get _useLocalPinCache =>
+      !_usesServerConfirmPin && _allowLocalPinFallback;
+
+  Exception _serverConfirmPinUnavailable() => Exception(
+    'Vérification PIN serveur indisponible. '
+    'Reconnectez-vous ou contactez l’administrateur.',
+  );
 
   AppUser? get currentUser => _current;
 
@@ -84,7 +101,7 @@ class AuthRepository {
     // Patch33B: le PIN local n'est plus une source d'autorité pour ouvrir
     // l'application. Cette méthode reste seulement pour compatibilité legacy
     // en mode local non-Odoo.
-    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+    if (_usesServerConfirmPin || !_allowLocalPinFallback) {
       return false;
     }
     final pin = await LoginSessionCache.lastPin();
@@ -106,8 +123,11 @@ class AuthRepository {
   Future<void> saveLocalUnlockPinForCurrentUser(String pin) async {
     // Patch33B: ne jamais persister un PIN d'ouverture local quand le backend
     // ACPEC est configuré. Le serveur est seul juge du PIN.
-    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+    if (_usesServerConfirmPin) {
       return;
+    }
+    if (!_allowLocalPinFallback) {
+      throw _serverConfirmPinUnavailable();
     }
     final user = _current;
     if (user == null) {
@@ -118,7 +138,9 @@ class AuthRepository {
     }
     final identifier = _cacheIdentifierForUser(user);
     await LoginSessionCache.saveLastPin(identifier: identifier, pin: pin);
-    _pinByUserId[user.id] = pin;
+    if (_useLocalPinCache) {
+      _pinByUserId[user.id] = pin;
+    }
   }
 
   Future<AppUser> confirmOpenPin(String pin) async {
@@ -129,14 +151,22 @@ class AuthRepository {
     if (pin.length != kSecretCodeLength) {
       throw Exception('PIN incorrect.');
     }
-    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+    if (_usesServerConfirmPin) {
       await OdooAuthService.instance.confirmSessionPin(actionCode: pin);
       return user;
+    }
+    // Patch34A: fail-closed en release normale. Le fallback PIN local est
+    // toléré uniquement en debug ou démo offline explicitement autorisée.
+    if (kReleaseMode && !AppEnvironment.allowOfflineDemoInRelease) {
+      throw _serverConfirmPinUnavailable();
     }
     return unlockWithLocalPin(pin);
   }
 
   Future<AppUser> unlockWithLocalPin(String pin) async {
+    if (!_allowLocalPinFallback) {
+      throw _serverConfirmPinUnavailable();
+    }
     final user = _current;
     if (user == null) {
       throw Exception('Session absente. Reconnectez-vous.');
@@ -324,8 +354,8 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
     _users.add(user);
-    _pinByUserId[user.id] = pin;
-    if (!OdooApiConfig.isConfigured || !OdooAuthRpcConfig.hasConfirmPin) {
+    if (_useLocalPinCache) {
+      _pinByUserId[user.id] = pin;
       await LoginSessionCache.saveLastPin(
         identifier: _cacheIdentifier(phone),
         pin: pin,
@@ -376,8 +406,8 @@ class AuthRepository {
         _users.add(resolved);
       }
     }
-    _pinByUserId[resolved.id] = pin;
-    if (!OdooApiConfig.isConfigured || !OdooAuthRpcConfig.hasConfirmPin) {
+    if (_useLocalPinCache) {
+      _pinByUserId[resolved.id] = pin;
       await LoginSessionCache.saveLastPin(
         identifier: _cacheIdentifierForUser(resolved),
         pin: pin,
@@ -392,7 +422,7 @@ class AuthRepository {
     required String identifier,
     required String newPin,
   }) async {
-    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+    if (_usesServerConfirmPin || !_allowLocalPinFallback) {
       return;
     }
     if (newPin.length != kSecretCodeLength) return;
@@ -443,7 +473,9 @@ class AuthRepository {
     if (user == null) {
       throw Exception('Compte introuvable.');
     }
-    _pinByUserId[user.id] = newPin;
+    if (_useLocalPinCache) {
+      _pinByUserId[user.id] = newPin;
+    }
   }
 
   Future<void> logout() async {
