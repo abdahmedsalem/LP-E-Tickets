@@ -5,11 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart'
-    show OdooJsonRpcException;
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -31,6 +30,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   bool _consuming = false;
   Map<String, dynamic>? _checkData;
   String? _checkedNumericCode;
+  static const String _unconfirmedConsumptionMessage =
+      'Action non confirmée. Vérifiez l’historique avant de réessayer.';
 
   @override
   void dispose() {
@@ -80,13 +81,19 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   }
 
   String _errorMessage(Object error) {
-    if (error is OdooJsonRpcException) return error.message;
-    final text = error.toString().replaceFirst('Exception: ', '').trim();
-    if (text.isEmpty) return 'Le code QR ne peut pas être vérifié.';
-    if (text.contains('debug_reason') || text.contains('Traceback')) {
+    final message = ErrorPresenter.message(error);
+    if (message.isEmpty) return 'Le code QR ne peut pas être vérifié.';
+    if (message.contains('debug_reason') || message.contains('Traceback')) {
       return 'Le code QR ne peut pas être vérifié.';
     }
-    return text;
+    return message;
+  }
+
+  String _sensitiveActionErrorMessage(Object error) {
+    if (ErrorPresenter.isBackendUnavailable(error)) {
+      return _unconfirmedConsumptionMessage;
+    }
+    return _errorMessage(error);
   }
 
   void _showSnack(String message, {bool error = false}) {
@@ -143,17 +150,17 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       return;
     }
     if (_checking || _consuming) return;
-
-    final actionCode = await showSensitiveActionCodeDialog(
-      context,
-      title: 'Vérification du PIN',
-      description: 'Saisissez votre PIN station pour consommer ce code QR.',
-    );
-    if (actionCode == null || actionCode.isEmpty || !mounted) return;
+    if (!mounted) return;
 
     setState(() => _consuming = true);
 
     try {
+      final actionCode = await showSensitiveActionCodeDialog(
+        context,
+        title: 'Vérification du PIN',
+        description: 'Saisissez votre PIN station pour consommer ce code QR.',
+      );
+      if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final payload = <String, dynamic>{
         ..._payloadFor(code),
         'action_code': actionCode,
@@ -173,7 +180,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       context.go('/station/journal');
     } catch (e) {
       if (!mounted) return;
-      _showSnack(_errorMessage(e), error: true);
+      _showSnack(_sensitiveActionErrorMessage(e), error: true);
     } finally {
       if (mounted) setState(() => _consuming = false);
     }
