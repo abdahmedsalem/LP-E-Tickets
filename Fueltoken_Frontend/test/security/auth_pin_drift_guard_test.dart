@@ -142,5 +142,45 @@ void main() {
       expect(source, contains('DEVICE_PENDING_TRUST'));
       expect(source, contains('DEVICE_BLOCKED'));
     });
+
+    test('token and Odoo session stores use secure storage migration', () {
+      final pubspec = _read('pubspec.yaml');
+      final secureKv = _read('lib/core/auth/secure_kv.dart');
+      final tokenStore = _read('lib/core/auth/auth_token_store.dart');
+      final sessionStore = _read('lib/core/auth/odoo_session_store.dart');
+
+      expect(pubspec, contains('flutter_secure_storage:'));
+      expect(secureKv, contains('FlutterSecureStorage'));
+      expect(
+        secureKv,
+        contains('AndroidOptions(encryptedSharedPreferences: true)'),
+      );
+      expect(secureKv, contains('readMigratingSharedPreference'));
+      expect(secureKv, contains('SharedPreferences.getInstance'));
+
+      expect(tokenStore, contains("import 'secure_kv.dart';"));
+      expect(tokenStore, contains('SecureKv.write(_kAccess'));
+      expect(tokenStore, contains('SecureKv.readMigratingSharedPreference'));
+      expect(tokenStore, contains('SecureKv.delete(_kAccess'));
+      expect(tokenStore, isNot(contains('SharedPreferences.getInstance')));
+      expect(tokenStore, isNot(contains("package:shared_preferences")));
+
+      expect(sessionStore, contains("import 'secure_kv.dart';"));
+      expect(sessionStore, contains('SecureKv.write(_kSessionId'));
+      expect(sessionStore, contains('SecureKv.readMigratingSharedPreference'));
+      expect(sessionStore, contains('SecureKv.delete(_kSessionId'));
+      expect(sessionStore, isNot(contains('SharedPreferences.getInstance')));
+      expect(sessionStore, isNot(contains("package:shared_preferences")));
+    });
+
+    test(
+      'Android backup remains disabled while secrets move to secure storage',
+      () {
+        final manifest = _read('android/app/src/main/AndroidManifest.xml');
+
+        expect(manifest, contains('android:allowBackup="false"'));
+        expect(manifest, contains('android:fullBackupContent="false"'));
+      },
+    );
   });
 }

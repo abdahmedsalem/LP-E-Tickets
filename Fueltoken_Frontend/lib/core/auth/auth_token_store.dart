@@ -1,8 +1,9 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'secure_kv.dart';
 
-/// Stockage simple des JWT (access / refresh) après login ou inscription API.
+/// JWT access/refresh en stockage chiffré OS.
 ///
-/// **Production :** migrer vers `flutter_secure_storage` ou le trousseau plateforme.
+/// Les anciennes valeurs SharedPreferences sont migrées une seule fois au
+/// premier read, puis supprimées.
 class AuthTokenStore {
   AuthTokenStore._();
 
@@ -13,24 +14,18 @@ class AuthTokenStore {
     required String access,
     required String refresh,
   }) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString(_kAccess, access);
-    await p.setString(_kRefresh, refresh);
+    await SecureKv.write(_kAccess, access);
+    await SecureKv.write(_kRefresh, refresh);
   }
 
-  static Future<String?> accessToken() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kAccess);
-  }
+  static Future<String?> accessToken() =>
+      SecureKv.readMigratingSharedPreference(_kAccess);
 
-  static Future<String?> refreshToken() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kRefresh);
-  }
+  static Future<String?> refreshToken() =>
+      SecureKv.readMigratingSharedPreference(_kRefresh);
 
   static Future<void> clear() async {
-    final p = await SharedPreferences.getInstance();
-    await p.remove(_kAccess);
-    await p.remove(_kRefresh);
+    await SecureKv.delete(_kAccess);
+    await SecureKv.delete(_kRefresh);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'secure_kv.dart';
 
 /// Persistance du cookie de session Odoo (`session_id=…`) pour les appels JSON-RPC suivants.
 ///
@@ -14,39 +15,23 @@ class OdooSessionStore {
   static const _kAccessToken = 'ft_odoo_access_token';
   static const _kRefreshToken = 'ft_acpec_refresh_token';
 
-  static Future<void> saveSessionId(String sessionId) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString(_kSessionId, sessionId);
-  }
+  static Future<void> saveSessionId(String sessionId) =>
+      SecureKv.write(_kSessionId, sessionId);
 
-  static Future<String?> readSessionId() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getString(_kSessionId);
-  }
+  static Future<String?> readSessionId() =>
+      SecureKv.readMigratingSharedPreference(_kSessionId);
 
-  static Future<void> saveAccessToken(String token) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString(_kAccessToken, token.trim());
-  }
+  static Future<void> saveAccessToken(String token) =>
+      SecureKv.write(_kAccessToken, token);
 
-  static Future<void> saveRefreshToken(String token) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString(_kRefreshToken, token.trim());
-  }
+  static Future<void> saveRefreshToken(String token) =>
+      SecureKv.write(_kRefreshToken, token);
 
-  static Future<String?> readRefreshToken() async {
-    final p = await SharedPreferences.getInstance();
-    final s = p.getString(_kRefreshToken);
-    if (s == null || s.trim().isEmpty) return null;
-    return s.trim();
-  }
+  static Future<String?> readRefreshToken() =>
+      SecureKv.readMigratingSharedPreference(_kRefreshToken);
 
-  static Future<String?> readAccessToken() async {
-    final p = await SharedPreferences.getInstance();
-    final s = p.getString(_kAccessToken);
-    if (s == null || s.trim().isEmpty) return null;
-    return s.trim();
-  }
+  static Future<String?> readAccessToken() =>
+      SecureKv.readMigratingSharedPreference(_kAccessToken);
 
   /// Valeur pour l’en-tête HTTP `Cookie`, ou `null` si pas de session stockée.
   static Future<String?> cookieHeader() async {
@@ -114,10 +99,9 @@ class OdooSessionStore {
   }
 
   static Future<void> clear() async {
-    final p = await SharedPreferences.getInstance();
-    await p.remove(_kSessionId);
-    await p.remove(_kAccessToken);
-    await p.remove(_kRefreshToken);
+    await SecureKv.delete(_kSessionId);
+    await SecureKv.delete(_kAccessToken);
+    await SecureKv.delete(_kRefreshToken);
   }
 
   /// Extrait `REFRESH_TOKEN` / `refresh_token` après login ou `/refresh`.
