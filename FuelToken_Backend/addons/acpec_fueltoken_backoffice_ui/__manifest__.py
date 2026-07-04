@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Back-office UI',
-    'version': '19.0.1.3.7',
+    'version': '19.0.1.3.8',
     'category': 'ACPEC/FuelToken',
     'summary': 'Menus et libellés métier pour le back-office Tickets Carburant',
     'author': 'ACPEC SARL',

@@ -1,1 +1,2 @@
 from . import test_mobile_device_menu_backoffice
+from . import test_mobile_device_operations_menu_architecture

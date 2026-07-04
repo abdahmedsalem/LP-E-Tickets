@@ -53,11 +53,43 @@
     <!-- Opérations du jour                                       -->
     <!-- ========================================================= -->
 
+    <record id="action_today_mobile_devices_to_approve" model="ir.actions.act_window">
+        <field name="name">Devices à approuver</field>
+        <field name="res_model">acpec.mobile.device</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('trust_state', '=', 'pending_trust'), ('active', '=', True)]</field>
+        <field name="context">{'search_default_pending_trust': 1, 'search_default_active': 1, 'search_default_group_by_user': 1, 'create': False, 'delete': False}</field>
+        <field name="search_view_id" ref="acpec_mobile_auth.view_acpec_mobile_device_search"/>
+    </record>
+
+    <record id="action_today_mobile_sessions_device_attention" model="ir.actions.act_window">
+        <field name="name">Sessions devices à traiter</field>
+        <field name="res_model">acpec.mobile.session</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('user_id.mobile_only', '=', True), ('device_uid', '!=', False), ('device_uid', '!=', ''), '|', '&amp;', '&amp;', ('is_device_approval_candidate', '=', True), ('device_trust_state', '=', 'pending_trust'), ('state', '=', 'active'), '&amp;', ('device_trust_state', '=', 'blocked'), ('state', 'in', ['active', 'revoked'])]</field>
+        <field name="context">{'search_default_approval_candidate': 1, 'search_default_pending_trust': 1, 'search_default_group_by_mobile_user_label': 1, 'create': False, 'delete': False}</field>
+        <field name="search_view_id" ref="acpec_mobile_auth.view_acpec_mobile_session_search"/>
+    </record>
+
     <menuitem id="menu_today_mobile_account_requests"
               name="Demandes d’inscription mobile"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_mobile_account_requests"
               sequence="5"
+              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
+    <menuitem id="menu_today_mobile_devices_to_approve"
+              name="Devices à approuver"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_mobile_devices_to_approve"
+              sequence="6"
+              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+
+    <menuitem id="menu_today_mobile_sessions_device_attention"
+              name="Sessions devices à traiter"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_mobile_sessions_device_attention"
+              sequence="7"
               groups="acpec_mobile_auth.group_mobile_auth_admin"/>
 
     <!--
@@ -70,7 +102,7 @@
               name="Utilisateurs mobiles en attente — désactivé"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_mobile_users_to_approve"
-              sequence="6"
+              sequence="8"
               groups="base.group_no_one"/>
 
     <menuitem id="menu_today_purchases_to_validate"
@@ -292,21 +324,27 @@
         <field name="sequence">60</field>
     </record>
 
+    <!--
+        Ancien raccourci mal nommé : il disait "Devices à approuver" mais ouvrait
+        des sessions. Les traitements quotidiens sont maintenant sous
+        Opérations du jour avec deux actions explicites :
+        - Devices à approuver : acpec.mobile.device
+        - Sessions devices à traiter : acpec.mobile.session
+        On conserve l'action et l'XML ID du menu pour mise à jour des bases
+        existantes, mais le menu est désactivé.
+    -->
     <record id="action_backoffice_mobile_devices_to_approve" model="ir.actions.act_window">
-        <field name="name">Devices à approuver</field>
+        <field name="name">Sessions devices à traiter — ancien raccourci désactivé</field>
         <field name="res_model">acpec.mobile.session</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('is_device_approval_candidate', '=', True), ('device_trust_state', '=', 'pending_trust'), ('state', '=', 'active'), ('device_uid', '!=', False), ('device_uid', '!=', ''), ('user_id.mobile_only', '=', True), ('user_id.mobile_state', 'in', ['approved', 'self_registered'])]</field>
-        <field name="context">{'search_default_approval_candidate': 1, 'search_default_group_by_mobile_user_label': 1}</field>
+        <field name="context">{'search_default_approval_candidate': 1, 'search_default_group_by_mobile_user_label': 1, 'create': False, 'delete': False}</field>
         <field name="search_view_id" ref="acpec_mobile_auth.view_acpec_mobile_session_search"/>
     </record>
 
-    <menuitem id="menu_backoffice_mobile_devices_to_approve"
-              name="Devices à approuver"
-              parent="acpec_fueltoken_base.menu_acpec_fueltoken_config"
-              action="action_backoffice_mobile_devices_to_approve"
-              sequence="69"
-              groups="acpec_mobile_auth.group_mobile_auth_admin"/>
+    <record id="menu_backoffice_mobile_devices_to_approve" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
 
     <menuitem id="menu_backoffice_mobile_devices_all"
               name="Devices mobiles — audit"
