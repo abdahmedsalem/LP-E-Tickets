@@ -43,6 +43,14 @@ class AcpecPublicApiError {
     'DEVICE_NOT_ALLOWED':
         'Cet appareil n’est pas autorisé à utiliser Tickets Carburant.',
     'ACTION_REFUSED': 'Action refusée. Vérifiez votre code puis réessayez.',
+    'INVALID_ACTION_CODE': 'PIN incorrect.',
+    'ACTION_CODE_LOCKED': 'Trop de tentatives. Réessayez plus tard.',
+    'PIN_RESET_REQUIRED': 'PIN à réinitialiser. Utilisez PIN oublié.',
+    'MISSING_ACTION_CODE': 'PIN requis pour confirmer cette opération.',
+    'INVALID_ACTION_CODE_KEY': 'Demande invalide. Veuillez réessayer.',
+    'ACTION_IN_PROGRESS': 'Une confirmation est déjà en cours.',
+    'DEVICE_PENDING_TRUST': 'Cet appareil est en attente de validation.',
+    'DEVICE_BLOCKED': 'Cet appareil est bloqué. Contactez l’administrateur.',
     'PAYMENT_PROOF_INVALID':
         'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.',
     'QR_NOT_USABLE': 'Ce QR ne peut pas être utilisé.',

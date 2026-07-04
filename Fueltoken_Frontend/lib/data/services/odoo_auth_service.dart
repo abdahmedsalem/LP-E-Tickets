@@ -94,6 +94,21 @@ class OdooAuthService {
       rethrow;
     }
   }
+  Future<void> confirmSessionPin({required String actionCode}) async {
+    final route = OdooAuthRpcConfig.confirmPinRoute;
+    if (route.isEmpty) {
+      throw StateError(
+        'Confirmation PIN ACPEC indisponible. Configurez ODOO_USE_ACPEC_AUTH=true.',
+      );
+    }
+    final code = actionCode.trim();
+    final result = await _api.callRoute(
+      route,
+      params: <String, dynamic>{'action_code': code},
+    );
+    _ensureAcpecEnvelopeSuccess(result);
+  }
+
 
   String _normalizeIdentifierForMobileAuthLogin(String raw) {
     final t = raw.trim();

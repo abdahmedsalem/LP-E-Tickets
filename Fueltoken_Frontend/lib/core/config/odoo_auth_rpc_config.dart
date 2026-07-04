@@ -52,6 +52,11 @@ class OdooAuthRpcConfig {
     defaultValue: '/api/acpec/mobile_auth/v1/verify-otp',
   );
 
+  static const String _confirmPinPath = String.fromEnvironment(
+    'ODOO_RPC_CONFIRM_PIN_PATH',
+    defaultValue: '/api/acpec/mobile_auth/v1/confirm-pin',
+  );
+
   /// Si l’ancienne variable vaut un chemin (`/…`), elle est utilisée telle quelle.
   static const String _legacyLogin = String.fromEnvironment(
     'ODOO_RPC_LOGIN_METHOD',
@@ -155,4 +160,11 @@ class OdooAuthRpcConfig {
     if (!useAcpecAuth) return '';
     return _verifyOtpPath.trim();
   }
+
+  static String get confirmPinRoute {
+    if (!useAcpecAuth) return '';
+    return _confirmPinPath.trim();
+  }
+
+  static bool get hasConfirmPin => confirmPinRoute.isNotEmpty;
 }
