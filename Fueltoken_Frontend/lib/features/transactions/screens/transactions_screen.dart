@@ -9,6 +9,7 @@ import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/business_transaction.dart';
 import '../../../data/models/user_role.dart';
 import '../../../shared/widgets/api_required_view.dart';
@@ -17,6 +18,7 @@ import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -226,7 +228,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       setState(() {
         _acpecLoading = true;
         _acpecError = null;
-        _acpecItems = [];
         _acpecHasMore = true;
         _acpecTotal = null;
       });
@@ -280,16 +281,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecLoadingMore = false;
         _acpecError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
-        if (reset) _acpecItems = [];
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _acpecLoading = false;
         _acpecLoadingMore = false;
-        _acpecError = e.toString().replaceFirst('Exception: ', '');
-        if (reset) _acpecItems = [];
+        _acpecError = ErrorPresenter.isBackendUnavailable(e)
+            ? ErrorPresenter.backendUnavailable()
+            : ErrorPresenter.message(e);
       });
     }
   }
@@ -361,14 +362,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
             : e.message;
-        _acpecItems = [];
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _acpecLoading = false;
-        _acpecError = e.toString().replaceFirst('Exception: ', '');
-        _acpecItems = [];
+        _acpecError = ErrorPresenter.isBackendUnavailable(e)
+            ? ErrorPresenter.backendUnavailable()
+            : ErrorPresenter.message(e);
       });
     }
   }
@@ -617,9 +618,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             controller: acpec ? _scroll : null,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
-                            itemCount: groups.length + (acpec ? 1 : 0),
+                            itemCount: groups.length +
+                                (acpec && _acpecError != null ? 1 : 0) +
+                                (acpec ? 1 : 0),
                             itemBuilder: (ctx, i) {
-                              if (acpec && i == groups.length) {
+                              if (acpec && _acpecError != null && i == 0) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: BackendUnavailableBanner(
+                                    message: _acpecError!,
+                                    onRetry: () {
+                                      unawaited(_reloadAcpecForCurrentFilter());
+                                    },
+                                  ),
+                                );
+                              }
+                              final groupIndex =
+                                  i - (acpec && _acpecError != null ? 1 : 0);
+                              if (acpec && groupIndex == groups.length) {
                                 return Padding(
                                   padding: const EdgeInsets.only(
                                     top: 16,
@@ -680,13 +696,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ),
                                 );
                               }
-                              final g = groups[i];
+                              final g = groups[groupIndex];
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Padding(
                                     padding: EdgeInsets.only(
-                                      top: i == 0 ? 0 : 18,
+                                      top: groupIndex == 0 ? 0 : 18,
                                     ),
                                     child: Text(
                                       g.label.toUpperCase(),
