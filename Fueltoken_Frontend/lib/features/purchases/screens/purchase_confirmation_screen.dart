@@ -75,15 +75,9 @@ class _PurchaseConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      debugPrint(
-        '[purchase-confirmation] PIN validé, lancement de onConfirm...',
-      );
       AppMessage.info(context, 'Envoi de la demande en cours...');
       final result = await widget.args.onConfirm(actionCode);
       if (!mounted) return;
-      debugPrint(
-        '[purchase-confirmation] onConfirm terminé, fermeture avec résultat.',
-      );
       _close(result);
     } catch (e) {
       if (mounted) {

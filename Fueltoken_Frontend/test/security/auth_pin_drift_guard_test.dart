@@ -218,5 +218,50 @@ void main() {
       expect(guard, lessThan(wallet));
       expect(sessionLockGuard, lessThan(wallet));
     });
+
+    test(
+      'frontend diagnostic logs are release-safe and redact sensitive keys',
+      () {
+        final debug = _read('lib/core/debug/acpec_rpc_debug.dart');
+        final diag = _read('lib/core/config/diagnostic_config.dart');
+        final network = _read('lib/core/debug/acpec_network_startup_log.dart');
+        final submitPurchase = _read(
+          'lib/features/purchases/screens/submit_purchase_screen.dart',
+        );
+        final purchaseConfirmation = _read(
+          'lib/features/purchases/screens/purchase_confirmation_screen.dart',
+        );
+        final authBloc = _read('lib/features/auth/bloc/auth_bloc.dart');
+
+        expect(diag, contains('ALLOW_VERBOSE_DIAGNOSTIC_IN_RELEASE'));
+        expect(diag, contains('rpcDebugEnabled'));
+        expect(debug, contains('DiagnosticConfig.rpcDebugEnabled'));
+
+        for (final key in <String>[
+          'actioncode',
+          'qrnumericcode',
+          'publiccode',
+          'idempotencykey',
+          'sessionid',
+          'accesstoken',
+          'refreshtoken',
+          'authorization',
+        ]) {
+          expect(debug, contains("'$key'"));
+        }
+
+        expect(debug, contains('body (sanitized):'));
+        expect(debug, isNot(contains('body: \${clip(responseBody)}')));
+        expect(network, contains('DiagnosticConfig.showTechnicalDiagnostics'));
+
+        expect(submitPurchase, isNot(contains(r'backend répondu: $raw')));
+        expect(submitPurchase, isNot(contains('action_code reçu')));
+        expect(purchaseConfirmation, isNot(contains('PIN validé')));
+
+        expect(authBloc, isNot(contains(r'identifier="$id"')));
+        expect(authBloc, contains('identifierLen='));
+        expect(authBloc, contains('identifierKind='));
+      },
+    );
   });
 }
