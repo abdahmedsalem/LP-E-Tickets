@@ -8,12 +8,12 @@ import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/acpec_admin_report_summary.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart'
-    show OdooJsonRpcException;
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -25,6 +25,7 @@ class AdminHomeScreen extends StatefulWidget {
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   AcpecAdminReportSummary? _summary;
+  bool _loading = false;
   String? _error;
   late final VoidCallback _refreshBusListener;
 
@@ -49,15 +50,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   String _briefError(Object e) {
-    if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirée. Reconnectez-vous.';
+    if (ErrorPresenter.isBackendUnavailable(e)) {
+      return ErrorPresenter.backendUnavailable();
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    return ErrorPresenter.message(e);
   }
 
   Future<void> _loadSummary() async {
     if (!AppEnvironment.useAcpecLiveData) return;
     setState(() {
+      _loading = true;
       _error = null;
     });
     try {
@@ -68,11 +70,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       if (!mounted) return;
       setState(() {
         _summary = summary;
+        _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = _briefError(e);
+        _loading = false;
       });
     }
   }
@@ -85,6 +89,28 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     final shadow = Theme.of(context).brightness == Brightness.dark
         ? null
         : AppColors.softShadow;
+
+    if (AppEnvironment.useAcpecLiveData && _loading && _summary == null) {
+      return Scaffold(
+        backgroundColor: pageBg,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (AppEnvironment.useAcpecLiveData && _error != null && _summary == null) {
+      return Scaffold(
+        backgroundColor: pageBg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: BackendUnavailableBanner(
+              message: _error!,
+              onRetry: _loadSummary,
+            ),
+          ),
+        ),
+      );
+    }
 
     final pending = _summary?.purchasesSubmitted ?? 0;
     final approved = _summary?.purchasesApproved ?? 0;
@@ -117,25 +143,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             ),
             const SizedBox(height: 14),
             if (_error != null && AppEnvironment.useAcpecLiveData) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.dangerSurface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.danger.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Text(
-                  _error!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                    height: 1.35,
-                  ),
-                ),
-              ),
+              BackendUnavailableBanner(message: _error!, onRetry: _loadSummary),
               const SizedBox(height: 14),
             ],
             Container(
