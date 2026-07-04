@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/acpec_admin_report_summary.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart'
-    show OdooJsonRpcException;
 import '../../../shared/widgets/app_status_lottie.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import 'admin_shell_scaffold.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -35,10 +35,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
   }
 
   String _briefError(Object e) {
-    if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirée. Reconnectez-vous.';
+    if (ErrorPresenter.isBackendUnavailable(e)) {
+      return ErrorPresenter.backendUnavailable();
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    return ErrorPresenter.message(e);
   }
 
   Future<void> _loadAcpecSummary() async {
@@ -163,6 +163,13 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
+          if (_acpecError != null) ...[
+            BackendUnavailableBanner(
+              message: _acpecError!,
+              onRetry: _loadAcpecSummary,
+            ),
+            const SizedBox(height: 12),
+          ],
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
