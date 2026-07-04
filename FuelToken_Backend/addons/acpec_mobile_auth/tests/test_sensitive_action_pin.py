@@ -98,7 +98,7 @@ class TestSensitiveActionPin(TransactionCase):
         with self.assertRaises(MobileSensitiveActionError) as cm:
             controller._require_sensitive_action_pin({}, purpose='missing_pin')
 
-        self.assertEqual(cm.exception.acpec_sensitive_code, 'ACTION_REFUSED')
+        self.assertEqual(cm.exception.acpec_sensitive_code, 'MISSING_ACTION_CODE')
         self.assertTrue(str(cm.exception.acpec_reference or '').startswith('SEC-'))
         self.assertNotIn('action_code requis', str(cm.exception))
 
@@ -201,3 +201,46 @@ class TestSensitiveActionPin(TransactionCase):
                 'action_code': '1234',
                 'secret_code': '1234',
             })
+
+    def test_sensitive_action_pin_rejects_legacy_pin_aliases_with_public_code(self):
+        user, session = self._trusted_session()
+        controller = self._controller_for_session(session)
+
+        for key in ('action_pin', 'pin', 'secret_code'):
+            with self.assertRaises(MobileSensitiveActionError) as cm:
+                controller._require_sensitive_action_pin({key: '1234'}, purpose='legacy_pin_alias')
+
+            self.assertEqual(cm.exception.acpec_sensitive_code, 'INVALID_ACTION_CODE_KEY')
+            self.assertTrue(str(cm.exception.acpec_reference or '').startswith('SEC-'))
+            self.assertNotIn('action_code', str(cm.exception).lower())
+
+    def test_public_sensitive_code_allowlist_keeps_pin_and_device_codes_distinct(self):
+        controller = AcpecMobileAuthApiCommon()
+
+        for code in (
+            'INVALID_ACTION_CODE',
+            'ACTION_CODE_LOCKED',
+            'PIN_RESET_REQUIRED',
+            'MISSING_ACTION_CODE',
+            'INVALID_ACTION_CODE_KEY',
+            'ACTION_IN_PROGRESS',
+            'DEVICE_PENDING_TRUST',
+            'DEVICE_BLOCKED',
+        ):
+            self.assertEqual(
+                controller._public_sensitive_code_for_refusal(code=code),
+                code,
+            )
+
+        self.assertEqual(
+            controller._public_sensitive_code_for_refusal(code='DEVICE_MISSING_UID'),
+            'DEVICE_NOT_ALLOWED',
+        )
+        self.assertEqual(
+            controller._public_sensitive_code_for_refusal(code='DEVICE_NOT_TRUSTED'),
+            'DEVICE_NOT_ALLOWED',
+        )
+        self.assertEqual(
+            controller._public_sensitive_code_for_refusal(code='ACTION_CODE_DENIED'),
+            'ACTION_REFUSED',
+        )

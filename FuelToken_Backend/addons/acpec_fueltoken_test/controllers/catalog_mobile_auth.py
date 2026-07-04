@@ -117,6 +117,17 @@ API_CATALOG_MOBILE_AUTH = [
     },
     {
         'group': 'Mobile Auth',
+        'label': 'Confirm PIN',
+        'route': '/api/acpec/mobile_auth/v1/confirm-pin',
+        'method': 'POST',
+        'payload': {
+            'action_code': '1234',
+        },
+        'requires_token': True,
+        'note': 'Confirme le PIN serveur pour déverrouiller l’ouverture de l’app. Ne crée pas de session.',
+    },
+    {
+        'group': 'Mobile Auth',
         'label': 'Refresh',
         'route': '/api/acpec/mobile_auth/v1/refresh',
         'method': 'POST',
