@@ -173,7 +173,7 @@ void main() {
       expect(main, contains('AuthLockReason.idleTimeout'));
       expect(main, contains('AuthLockReason.appLifecycle'));
       expect(main, contains('AppLifecycleState.paused'));
-      expect(main, contains('AppLifecycleState.inactive'));
+      expect(main, isNot(contains('state == AppLifecycleState.inactive')));
       expect(main, contains('AppLifecycleState.hidden'));
       expect(main, contains('AppLifecycleState.detached'));
       expect(
