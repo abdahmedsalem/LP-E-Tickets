@@ -219,6 +219,66 @@ void main() {
       expect(sessionLockGuard, lessThan(wallet));
     });
 
+    test('lifecycle background uses a grace period before locking', () {
+      final main = _read('lib/main.dart').replaceAll('\r\n', '\n');
+
+      expect(
+        main,
+        contains('_lifecycleLockGraceDelay = Duration(seconds: 60)'),
+      );
+      expect(main, contains('DateTime? _backgroundedAt'));
+      expect(main, contains('void _recordLifecycleBackgrounded()'));
+      expect(
+        main,
+        contains('bool _hasExceededLifecycleGrace(DateTime resumedAt)'),
+      );
+      expect(main, contains('_recordLifecycleBackgrounded();'));
+      expect(
+        main,
+        contains('_requestSessionLock(AuthLockReason.appLifecycle);'),
+      );
+
+      final lifecycle = main.indexOf('void didChangeAppLifecycleState');
+      final paused = main.indexOf(
+        'state == AppLifecycleState.paused',
+        lifecycle,
+      );
+      final markBackgrounded = main.indexOf(
+        '_recordLifecycleBackgrounded();',
+        paused,
+      );
+      final resumed = main.indexOf(
+        'state == AppLifecycleState.resumed',
+        lifecycle,
+      );
+      final graceCheck = main.indexOf(
+        '_hasExceededLifecycleGrace(DateTime.now())',
+        resumed,
+      );
+      final appLifecycleLock = main.indexOf(
+        '_requestSessionLock(AuthLockReason.appLifecycle);',
+        graceCheck,
+      );
+      final wallet = main.indexOf('WalletRefreshBus.instance.bump();', resumed);
+
+      expect(lifecycle, isNonNegative);
+      expect(paused, isNonNegative);
+      expect(markBackgrounded, isNonNegative);
+      expect(resumed, isNonNegative);
+      expect(graceCheck, isNonNegative);
+      expect(appLifecycleLock, isNonNegative);
+      expect(wallet, isNonNegative);
+      expect(markBackgrounded, lessThan(resumed));
+      expect(graceCheck, lessThan(appLifecycleLock));
+      expect(appLifecycleLock, lessThan(wallet));
+
+      final pauseBlock = main.substring(paused, resumed);
+      expect(
+        pauseBlock,
+        isNot(contains('_requestSessionLock(AuthLockReason.appLifecycle)')),
+      );
+    });
+
     test(
       'QR manual code reveal is temporary and not hydrated into general model',
       () {
