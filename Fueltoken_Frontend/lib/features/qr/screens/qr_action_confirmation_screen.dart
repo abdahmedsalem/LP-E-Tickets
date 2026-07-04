@@ -66,6 +66,7 @@ class _QrActionConfirmationScreenState
 
   Future<void> _confirm() async {
     if (_confirming) return;
+    setState(() => _confirming = true);
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
@@ -73,7 +74,6 @@ class _QrActionConfirmationScreenState
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      setState(() => _confirming = true);
       _close(actionCode);
     } finally {
       if (mounted) setState(() => _confirming = false);
