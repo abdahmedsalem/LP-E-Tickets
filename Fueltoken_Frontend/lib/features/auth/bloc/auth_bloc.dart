@@ -209,6 +209,9 @@ class AuthState extends Equatable {
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repo;
 
+  static const String _localPinResetRequiredMessage =
+      'Session locale à réinitialiser. Reconnectez-vous ou utilisez PIN oublié pour sécuriser votre PIN.';
+
   AuthBloc({AuthRepository? repo})
     : _repo = repo ?? AuthRepository.instance,
       super(const AuthState(status: AuthStatus.unauthenticated)) {
@@ -240,10 +243,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
-    // Migration sûre : une session longue restaurée sans PIN local ne doit pas
-    // ouvrir directement Home, mais elle ne doit pas non plus être révoquée.
-    // On garde la session mobile et on force seulement la création du PIN local.
-    emit(AuthState(status: AuthStatus.pinSetupRequired, user: user));
+    // Une session longue restaurée sans PIN local est dangereuse :
+    // créer un nouveau PIN local ici pourrait le désaligner du PIN serveur.
+    // On force donc une reconnexion / récupération PIN explicite.
+    try {
+      await _repo.logout();
+    } catch (_) {
+      // Best effort : l'état UI redevient déconnecté dans tous les cas.
+    }
+    emit(
+      const AuthState(
+        status: AuthStatus.unauthenticated,
+        loginInfoMessage: _localPinResetRequiredMessage,
+      ),
+    );
   }
 
   Future<void> _onActivationRefresh(
@@ -397,14 +410,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final hasLocalPin = await _repo.hasLocalUnlockPin(
         identifier: e.identifier,
       );
-      emit(
-        AuthState(
-          status: hasLocalPin
-              ? AuthStatus.authenticated
-              : AuthStatus.pinSetupRequired,
-          user: user,
-        ),
-      );
+      if (!hasLocalPin) {
+        // OTP login restaure la session, mais ne synchronise pas un nouveau PIN
+        // serveur. Ne pas créer un PIN local divergent ici.
+        try {
+          await _repo.logout();
+        } catch (_) {
+          // Best effort : l'état UI redevient déconnecté dans tous les cas.
+        }
+        emit(
+          const AuthState(
+            status: AuthStatus.unauthenticated,
+            loginInfoMessage: _localPinResetRequiredMessage,
+          ),
+        );
+        return;
+      }
+      emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
       emit(
         state.copyWith(
@@ -520,6 +542,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLocalPinSetupRequested e,
     Emitter<AuthState> emit,
   ) async {
+    if (state.status != AuthStatus.pinSetupRequired || state.user == null) {
+      try {
+        await _repo.logout();
+      } catch (_) {
+        // Best effort : l'état UI redevient déconnecté dans tous les cas.
+      }
+      emit(
+        const AuthState(
+          status: AuthStatus.unauthenticated,
+          loginInfoMessage: _localPinResetRequiredMessage,
+        ),
+      );
+      return;
+    }
+
     final setupUser = state.user;
     emit(
       state.copyWith(
