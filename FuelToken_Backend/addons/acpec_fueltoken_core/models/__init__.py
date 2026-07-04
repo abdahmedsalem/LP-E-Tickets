@@ -8,3 +8,4 @@ from . import fuel_purchase
 from . import fuel_carnet_transfer
 from . import fuel_ticket_transfer
 from . import fuel_carnet_type_admin_idempotency
+from . import fuel_security_settings

@@ -28,6 +28,56 @@ class TestQrManualCodeSecrecyH11(TransactionCase):
             source,
         )
 
+    def test_qr_manual_secret_uses_dedicated_security_settings_model(self):
+        qr_source = (
+            self._addons_root()
+            / 'acpec_fueltoken_core'
+            / 'models'
+            / 'fuel_qr.py'
+        ).read_text(encoding='utf-8')
+        settings_source = (
+            self._addons_root()
+            / 'acpec_fueltoken_core'
+            / 'models'
+            / 'fuel_security_settings.py'
+        ).read_text(encoding='utf-8')
+        init_source = (
+            self._addons_root()
+            / 'acpec_fueltoken_core'
+            / 'models'
+            / '__init__.py'
+        ).read_text(encoding='utf-8')
+        access_source = (
+            self._addons_root()
+            / 'acpec_fueltoken_core'
+            / 'security'
+            / 'ir.model.access.csv'
+        ).read_text(encoding='utf-8')
+
+        self.assertIn(
+            "QR_NUMERIC_SECRET_MODEL = 'acpec.fueltoken.security.settings'",
+            qr_source,
+        )
+        self.assertIn('def _qr_numeric_code_settings', qr_source)
+        self.assertIn('def _qr_numeric_code_secret', qr_source)
+        self.assertNotIn("config.get('database.secret')", qr_source)
+        self.assertNotIn("config.get('admin_passwd')", qr_source)
+        self.assertNotIn('or self.env.cr.dbname', qr_source)
+        self.assertNotIn("or 'acpec-fueltoken'", qr_source)
+        self.assertNotIn('acpec.fueltoken.qr_numeric_secret', qr_source)
+
+        self.assertIn("_name = 'acpec.fueltoken.security.settings'", settings_source)
+        self.assertIn("company_id = fields.Many2one", settings_source)
+        self.assertIn("qr_numeric_secret = fields.Char", settings_source)
+        self.assertIn('QR_NUMERIC_SECRET_MIN_LENGTH = 32', settings_source)
+        self.assertIn('def _ensure_qr_numeric_secret', settings_source)
+        self.assertIn('def _qr_numeric_secret_status', settings_source)
+        self.assertIn('def write', settings_source)
+        self.assertIn('def unlink', settings_source)
+        self.assertIn('allow_qr_numeric_secret_recovery', settings_source)
+        self.assertIn('from . import fuel_security_settings', init_source)
+        self.assertIn('model_acpec_fueltoken_security_settings', access_source)
+
     def test_mobile_standard_qr_payload_excludes_manual_code(self):
         source = inspect.getsource(AcpecFuelTokenMobileApi._qr_payload)
 
