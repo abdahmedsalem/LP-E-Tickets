@@ -59,7 +59,9 @@ void main() {
       final repo = _read('lib/data/repositories/auth_repository.dart');
       final cache = _read('lib/core/auth/login_session_cache.dart');
       final bloc = _read('lib/features/auth/bloc/auth_bloc.dart');
-      final forgot = _read('lib/features/auth/screens/forgot_otp_flow_screens.dart');
+      final forgot = _read(
+        'lib/features/auth/screens/forgot_otp_flow_screens.dart',
+      );
 
       for (final source in [repo, cache, bloc, forgot]) {
         expect(source, isNot(contains('unlockWithLocalPin')));
@@ -161,5 +163,60 @@ void main() {
         expect(manifest, contains('android:fullBackupContent="false"'));
       },
     );
+
+    test('foreground idle and app lifecycle request lock, not logout', () {
+      final main = _read('lib/main.dart');
+      final bloc = _read('lib/features/auth/bloc/auth_bloc.dart');
+
+      expect(main, contains('_idleLockDelay = Duration(minutes: 3)'));
+      expect(main, contains('_scheduleIdleLock'));
+      expect(main, contains('AuthLockReason.idleTimeout'));
+      expect(main, contains('AuthLockReason.appLifecycle'));
+      expect(main, contains('AppLifecycleState.paused'));
+      expect(main, contains('AppLifecycleState.inactive'));
+      expect(main, contains('AppLifecycleState.hidden'));
+      expect(main, contains('AppLifecycleState.detached'));
+      expect(
+        main,
+        contains('_authBloc.add(AuthLockRequested(reason: reason))'),
+      );
+      expect(
+        main,
+        isNot(contains('_authBloc.add(const AuthLogoutRequested())')),
+      );
+
+      expect(bloc, contains('enum AuthLockReason'));
+      expect(bloc, contains('class AuthLockRequested extends AuthEvent'));
+      expect(bloc, contains('on<AuthLockRequested>(_onLockRequested)'));
+      expect(bloc, contains('Future<void> _onLockRequested'));
+      expect(bloc, contains('state.status != AuthStatus.authenticated'));
+      expect(bloc, contains('status: AuthStatus.locked'));
+    });
+
+    test('resume does not refresh sensitive data when a lock is pending', () {
+      final main = _read('lib/main.dart').replaceAll('\\r\\n', '\\n');
+
+      expect(main, contains('didChangeAppLifecycleState'));
+      expect(main, contains('_sessionLockRequested'));
+      expect(main, contains('WalletRefreshBus.instance.bump();'));
+
+      final lifecycle = main.indexOf('didChangeAppLifecycleState');
+      final guard = main.indexOf(
+        'if (_authBloc.state.status != AuthStatus.authenticated',
+        lifecycle,
+      );
+      final sessionLockGuard = main.indexOf('_sessionLockRequested', guard);
+      final wallet = main.indexOf(
+        'WalletRefreshBus.instance.bump();',
+        lifecycle,
+      );
+
+      expect(lifecycle, isNonNegative);
+      expect(guard, isNonNegative);
+      expect(sessionLockGuard, isNonNegative);
+      expect(wallet, isNonNegative);
+      expect(guard, lessThan(wallet));
+      expect(sessionLockGuard, lessThan(wallet));
+    });
   });
 }
