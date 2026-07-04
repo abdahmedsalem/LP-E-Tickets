@@ -81,7 +81,7 @@ void main() {
       expect(source, contains("context.go('/register/verify-otp')"));
     });
 
-    test('remote registration initializes local unlock with the same PIN', () {
+    test('remote registration does not initialize a local unlock PIN', () {
       final source = _read('lib/features/auth/bloc/auth_bloc.dart');
       final start = source.indexOf(
         'Future<void> _onRemoteRegistrationCompleted(',
@@ -93,16 +93,13 @@ void main() {
 
       final method = source.substring(start, end);
       final adoptIndex = method.indexOf('_repo.adoptRemoteUser');
-      final savePinIndex = method.indexOf(
-        '_repo.saveLocalUnlockPinForCurrentUser(pin)',
-      );
       final emitIndex = method.indexOf('AuthStatus.authenticated');
 
       expect(adoptIndex, isNonNegative);
-      expect(savePinIndex, isNonNegative);
       expect(emitIndex, isNonNegative);
-      expect(adoptIndex, lessThan(savePinIndex));
-      expect(savePinIndex, lessThan(emitIndex));
+      expect(adoptIndex, lessThan(emitIndex));
+      expect(method, contains('Ne pas'));
+      expect(method, isNot(contains('saveLocalUnlockPinForCurrentUser')));
       expect(method, isNot(contains('AuthStatus.pinSetupRequired')));
     });
 

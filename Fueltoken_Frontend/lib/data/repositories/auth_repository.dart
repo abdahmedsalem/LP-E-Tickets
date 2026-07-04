@@ -81,6 +81,12 @@ class AuthRepository {
   }
 
   Future<bool> hasLocalUnlockPin({String? identifier}) async {
+    // Patch33B: le PIN local n'est plus une source d'autorité pour ouvrir
+    // l'application. Cette méthode reste seulement pour compatibilité legacy
+    // en mode local non-Odoo.
+    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+      return false;
+    }
     final pin = await LoginSessionCache.lastPin();
     if (pin == null || pin.isEmpty) return false;
     final storedIdentifier = await LoginSessionCache.lastIdentifier();
@@ -98,6 +104,11 @@ class AuthRepository {
   }
 
   Future<void> saveLocalUnlockPinForCurrentUser(String pin) async {
+    // Patch33B: ne jamais persister un PIN d'ouverture local quand le backend
+    // ACPEC est configuré. Le serveur est seul juge du PIN.
+    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+      return;
+    }
     final user = _current;
     if (user == null) {
       throw Exception('Session absente. Reconnectez-vous.');
@@ -108,6 +119,21 @@ class AuthRepository {
     final identifier = _cacheIdentifierForUser(user);
     await LoginSessionCache.saveLastPin(identifier: identifier, pin: pin);
     _pinByUserId[user.id] = pin;
+  }
+
+  Future<AppUser> confirmOpenPin(String pin) async {
+    final user = _current;
+    if (user == null) {
+      throw Exception('Session absente. Reconnectez-vous.');
+    }
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('PIN incorrect.');
+    }
+    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+      await OdooAuthService.instance.confirmSessionPin(actionCode: pin);
+      return user;
+    }
+    return unlockWithLocalPin(pin);
   }
 
   Future<AppUser> unlockWithLocalPin(String pin) async {
@@ -299,10 +325,12 @@ class AuthRepository {
     );
     _users.add(user);
     _pinByUserId[user.id] = pin;
-    await LoginSessionCache.saveLastPin(
-      identifier: _cacheIdentifier(phone),
-      pin: pin,
-    );
+    if (!OdooApiConfig.isConfigured || !OdooAuthRpcConfig.hasConfirmPin) {
+      await LoginSessionCache.saveLastPin(
+        identifier: _cacheIdentifier(phone),
+        pin: pin,
+      );
+    }
     _current = user;
     return user;
   }
@@ -349,10 +377,12 @@ class AuthRepository {
       }
     }
     _pinByUserId[resolved.id] = pin;
-    await LoginSessionCache.saveLastPin(
-      identifier: _cacheIdentifierForUser(resolved),
-      pin: pin,
-    );
+    if (!OdooApiConfig.isConfigured || !OdooAuthRpcConfig.hasConfirmPin) {
+      await LoginSessionCache.saveLastPin(
+        identifier: _cacheIdentifierForUser(resolved),
+        pin: pin,
+      );
+    }
     _current = resolved;
     return resolved;
   }
@@ -362,6 +392,9 @@ class AuthRepository {
     required String identifier,
     required String newPin,
   }) async {
+    if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin) {
+      return;
+    }
     if (newPin.length != kSecretCodeLength) return;
     await LoginSessionCache.saveLastPin(
       identifier: _cacheIdentifier(identifier),

@@ -17,14 +17,12 @@ class SessionPinLockScreen extends StatefulWidget {
 class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pin = TextEditingController();
-  final _pinConfirm = TextEditingController();
   bool _obscure = true;
   bool _openForgotPasswordAfterLogout = false;
 
   @override
   void dispose() {
     _pin.dispose();
-    _pinConfirm.dispose();
     super.dispose();
   }
 
@@ -32,10 +30,6 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final bloc = context.read<AuthBloc>();
     final pin = _pin.text.trim();
-    if (state.status == AuthStatus.pinSetupRequired) {
-      bloc.add(AuthLocalPinSetupRequested(pin: pin));
-      return;
-    }
     bloc.add(AuthUnlockRequested(pin: pin));
   }
 
@@ -58,7 +52,6 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
         }
       },
       builder: (ctx, state) {
-        final setup = state.status == AuthStatus.pinSetupRequired;
         final busy = state.status == AuthStatus.authenticating;
         final userName = state.user?.name.trim();
         return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -89,17 +82,13 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             ),
                             const SizedBox(height: 22),
                             Icon(
-                              setup
-                                  ? Icons.enhanced_encryption_outlined
-                                  : Icons.lock_outline_rounded,
+                              Icons.lock_outline_rounded,
                               size: 42,
                               color: const Color(0xFF203A73),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              setup
-                                  ? 'Définir votre PIN'
-                                  : 'Déverrouiller l’application',
+                              'Déverrouiller l’application',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 20,
@@ -110,9 +99,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              setup
-                                  ? 'Votre connexion OTP est validée. Choisissez maintenant un PIN à 4 chiffres pour les prochaines ouvertures.'
-                                  : 'Session restaurée${userName == null || userName.isEmpty ? '' : ' pour $userName'}. Saisissez votre PIN pour continuer.',
+                              'Session restaurée${userName == null || userName.isEmpty ? '' : ' pour $userName'}. Saisissez votre PIN serveur pour continuer.',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 13.5,
@@ -140,24 +127,6 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                               ),
                               validator: validateFourDigitNumericPassword,
                             ),
-                            if (setup) ...[
-                              const SizedBox(height: 14),
-                              _PinField(
-                                controller: _pinConfirm,
-                                obscure: _obscure,
-                                hint: 'Confirmer le PIN',
-                                validator: (value) {
-                                  final err = validateFourDigitNumericPassword(
-                                    value,
-                                  );
-                                  if (err != null) return err;
-                                  if (value != _pin.text) {
-                                    return 'Les PIN ne correspondent pas.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
                             const SizedBox(height: 22),
                             SizedBox(
                               height: 54,
@@ -190,9 +159,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                                               ),
                                             )
                                           : Text(
-                                              setup
-                                                  ? 'Enregistrer le PIN'
-                                                  : 'Déverrouiller',
+                                              'Déverrouiller',
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 16,
@@ -209,17 +176,13 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                               onPressed: busy
                                   ? null
                                   : () {
-                                      if (!setup) {
-                                        _openForgotPasswordAfterLogout = true;
-                                      }
+                                      _openForgotPasswordAfterLogout = true;
                                       context.read<AuthBloc>().add(
                                         const AuthLogoutRequested(),
                                       );
                                     },
                               child: Text(
-                                setup
-                                    ? 'Annuler et revenir à la connexion'
-                                    : 'PIN oublié ?',
+                                'PIN oublié ?',
                               ),
                             ),
                           ],

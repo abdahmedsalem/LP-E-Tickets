@@ -7,6 +7,7 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/services/odoo_jsonrpc_client.dart';
 
 // ─────────── Events
 abstract class AuthEvent extends Equatable {
@@ -209,8 +210,8 @@ class AuthState extends Equatable {
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repo;
 
-  static const String _localPinResetRequiredMessage =
-      'Session locale à réinitialiser. Reconnectez-vous ou utilisez PIN oublié pour sécuriser votre PIN.';
+  static const String _pinResetRequiredMessage =
+      'PIN à réinitialiser. Utilisez PIN oublié pour sécuriser votre accès.';
 
   AuthBloc({AuthRepository? repo})
     : _repo = repo ?? AuthRepository.instance,
@@ -237,26 +238,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final user = await _repo.tryRestoreRemoteSession();
     if (user == null) return;
 
-    final hasLocalPin = await _repo.hasLocalUnlockPin();
-    if (hasLocalPin) {
-      emit(AuthState(status: AuthStatus.locked, user: user));
-      return;
-    }
-
-    // Une session longue restaurée sans PIN local est dangereuse :
-    // créer un nouveau PIN local ici pourrait le désaligner du PIN serveur.
-    // On force donc une reconnexion / récupération PIN explicite.
-    try {
-      await _repo.logout();
-    } catch (_) {
-      // Best effort : l'état UI redevient déconnecté dans tous les cas.
-    }
-    emit(
-      const AuthState(
-        status: AuthStatus.unauthenticated,
-        loginInfoMessage: _localPinResetRequiredMessage,
-      ),
-    );
+    // Patch33B : une session Bearer restaurée prouve l'identité technique,
+    // mais n'ouvre plus l'application sans confirmation PIN serveur.
+    emit(AuthState(status: AuthStatus.locked, user: user));
   }
 
   Future<void> _onActivationRefresh(
@@ -282,7 +266,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
         return;
       }
-      emit(AuthState(status: AuthStatus.authenticated, user: user));
+      emit(AuthState(status: AuthStatus.locked, user: user));
     } catch (err) {
       emit(
         state.copyWith(
@@ -407,25 +391,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         code: e.code,
         challengeId: e.challengeId,
       );
-      final hasLocalPin = await _repo.hasLocalUnlockPin(
-        identifier: e.identifier,
-      );
-      if (!hasLocalPin) {
-        // OTP login restaure la session, mais ne synchronise pas un nouveau PIN
-        // serveur. Ne pas créer un PIN local divergent ici.
-        try {
-          await _repo.logout();
-        } catch (_) {
-          // Best effort : l'état UI redevient déconnecté dans tous les cas.
-        }
-        emit(
-          const AuthState(
-            status: AuthStatus.unauthenticated,
-            loginInfoMessage: _localPinResetRequiredMessage,
-          ),
-        );
-        return;
-      }
+      // OTP login établit la session serveur. Le PIN local n'est plus requis
+      // ni synchronisé : aux prochaines ouvertures, confirm-pin serveur
+      // déverrouillera l'application.
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
       emit(
@@ -483,10 +451,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         pin: e.pin,
         tokens: e.tokens,
       );
-      final pin = e.pin.trim();
-      if (pin.isNotEmpty) {
-        await _repo.saveLocalUnlockPinForCurrentUser(pin);
-      }
+      // Le PIN fourni à l'inscription est créé côté serveur. Ne pas
+      // l'enregistrer comme PIN local d'ouverture.
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
       emit(
@@ -525,14 +491,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ),
     );
     try {
-      final user = await _repo.unlockWithLocalPin(e.pin);
+      final user = await _repo.confirmOpenPin(e.pin);
       emit(AuthState(status: AuthStatus.authenticated, user: user));
     } catch (err) {
+      if (_serverPinRequiresLogin(err)) {
+        emit(
+          const AuthState(
+            status: AuthStatus.unauthenticated,
+            loginInfoMessage:
+                'Votre session a expiré. Reconnectez-vous pour continuer.',
+          ),
+        );
+        return;
+      }
       emit(
         state.copyWith(
           status: AuthStatus.locked,
           user: lockedUser,
-          errorMessage: ErrorPresenter.message(err),
+          errorMessage: _serverPinErrorMessage(err),
         ),
       );
     }
@@ -542,46 +518,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLocalPinSetupRequested e,
     Emitter<AuthState> emit,
   ) async {
-    if (state.status != AuthStatus.pinSetupRequired || state.user == null) {
-      try {
-        await _repo.logout();
-      } catch (_) {
-        // Best effort : l'état UI redevient déconnecté dans tous les cas.
-      }
-      emit(
-        const AuthState(
-          status: AuthStatus.unauthenticated,
-          loginInfoMessage: _localPinResetRequiredMessage,
-        ),
-      );
-      return;
-    }
+    // Patch33B : l'état de création PIN local est conservé uniquement pour
+    // compatibilité de code, mais il ne doit plus ouvrir l'application.
+    await _onUnlock(AuthUnlockRequested(pin: e.pin), emit);
+  }
 
-    final setupUser = state.user;
-    emit(
-      state.copyWith(
-        status: AuthStatus.pinSetupRequired,
-        user: setupUser,
-        clearError: true,
-        clearLoginInfo: true,
-      ),
-    );
-    try {
-      await _repo.saveLocalUnlockPinForCurrentUser(e.pin);
-      final user = _repo.currentUser;
-      if (user == null) {
-        throw Exception('Session absente. Reconnectez-vous.');
-      }
-      emit(AuthState(status: AuthStatus.authenticated, user: user));
-    } catch (err) {
-      emit(
-        state.copyWith(
-          status: AuthStatus.pinSetupRequired,
-          user: setupUser,
-          errorMessage: ErrorPresenter.message(err),
-        ),
-      );
+  bool _serverPinRequiresLogin(Object err) {
+    if (err is OdooJsonRpcException) {
+      return err.requiresReLogin;
     }
+    return false;
+  }
+
+  String _serverPinErrorMessage(Object err) {
+    if (err is OdooJsonRpcException) {
+      switch (err.normalizedPublicCode) {
+        case 'INVALID_ACTION_CODE':
+          return 'PIN incorrect.';
+        case 'ACTION_CODE_LOCKED':
+          return 'Trop de tentatives. Réessayez plus tard.';
+        case 'PIN_RESET_REQUIRED':
+          return _pinResetRequiredMessage;
+        case 'DEVICE_PENDING_TRUST':
+          return 'Cet appareil est en attente de validation.';
+        case 'DEVICE_BLOCKED':
+          return 'Cet appareil est bloqué. Contactez l’administrateur.';
+        case 'MISSING_ACTION_CODE':
+          return 'PIN requis pour continuer.';
+        case 'INVALID_ACTION_CODE_KEY':
+          return 'Demande invalide. Veuillez réessayer.';
+      }
+    }
+    if (ErrorPresenter.isBackendUnavailable(err)) {
+      return 'Impossible de vérifier le PIN. Réessayez.';
+    }
+    return ErrorPresenter.message(err);
   }
 
   Future<void> _onRoleChanged(

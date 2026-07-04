@@ -54,9 +54,7 @@ class AppRouter {
       redirect: (_, state) {
         final auth = authBloc.state;
         final loggedIn = auth.status == AuthStatus.authenticated;
-        final locked =
-            auth.status == AuthStatus.locked ||
-            auth.status == AuthStatus.pinSetupRequired;
+        final locked = auth.status == AuthStatus.locked;
         final loc = state.matchedLocation;
         final atPinLockRoute = loc == '/session-pin-lock';
         final atActivationPendingRoute = loc == '/activation-pending';
