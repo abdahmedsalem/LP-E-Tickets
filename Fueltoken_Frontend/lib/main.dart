@@ -238,7 +238,6 @@ class FuelTokenAppState extends State<FuelTokenApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _requestSessionLock(AuthLockReason.appLifecycle);
