@@ -95,10 +95,6 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
         pin: _pin.text,
         challengeId: _challengeId,
       );
-      await AuthRepository.instance.syncLocalPinIfExists(
-        identifier: widget.args.identifier,
-        newPin: _pin.text,
-      );
       if (!mounted) return;
       AppMessage.info(context, 'PIN mis a jour. Connectez-vous.');
       context.go('/login');
@@ -215,10 +211,6 @@ class _ResetPasswordAfterOtpScreenState
     setState(() => _busy = true);
     try {
       await AuthRepository.instance.resetPinForIdentifier(
-        identifier: widget.args.identifier,
-        newPin: _pass.text,
-      );
-      await AuthRepository.instance.syncLocalPinIfExists(
         identifier: widget.args.identifier,
         newPin: _pass.text,
       );

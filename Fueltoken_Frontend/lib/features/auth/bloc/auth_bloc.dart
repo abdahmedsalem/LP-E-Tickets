@@ -116,12 +116,6 @@ class AuthUnlockRequested extends AuthEvent {
   List<Object?> get props => [pin];
 }
 
-class AuthLocalPinSetupRequested extends AuthEvent {
-  final String pin;
-  const AuthLocalPinSetupRequested({required this.pin});
-  @override
-  List<Object?> get props => [pin];
-}
 
 class AuthRoleChanged extends AuthEvent {
   final UserRole role;
@@ -143,7 +137,6 @@ enum AuthStatus {
   authenticating,
   authenticated,
   locked,
-  pinSetupRequired,
   failure,
 }
 
@@ -227,7 +220,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLogoutRequested>(_onLogout);
     on<AuthSessionExpiredRequested>(_onSessionExpired);
     on<AuthUnlockRequested>(_onUnlock);
-    on<AuthLocalPinSetupRequested>(_onLocalPinSetup);
     on<AuthRoleChanged>(_onRoleChanged);
   }
 
@@ -514,14 +506,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onLocalPinSetup(
-    AuthLocalPinSetupRequested e,
-    Emitter<AuthState> emit,
-  ) async {
-    // Patch33B : l'état de création PIN local est conservé uniquement pour
-    // compatibilité de code, mais il ne doit plus ouvrir l'application.
-    await _onUnlock(AuthUnlockRequested(pin: e.pin), emit);
-  }
 
   bool _serverPinRequiresLogin(Object err) {
     if (err is OdooJsonRpcException) {

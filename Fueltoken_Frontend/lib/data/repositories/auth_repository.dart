@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:uuid/uuid.dart';
 
 import '../../core/auth/auth_token_store.dart';
@@ -8,7 +7,6 @@ import '../../core/auth/login_session_cache.dart';
 import '../../core/auth/odoo_session_store.dart';
 import '../../core/config/app_brand_config.dart';
 import '../../core/config/acpec_role_overrides.dart';
-import '../../core/config/app_environment.dart';
 import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/utils/error_presenter.dart';
@@ -30,18 +28,8 @@ class AuthRepository {
 
   AppUser? _current;
 
-  /// PIN mock par utilisateur (inscription / reset après OTP).
-  /// Dev/demo local uniquement : jamais utilisé comme autorité en mode serveur.
-  final Map<String, String> _pinByUserId = {};
-
   bool get _usesServerConfirmPin =>
       OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin;
-
-  bool get _allowLocalPinFallback =>
-      !kReleaseMode || AppEnvironment.allowOfflineDemoInRelease;
-
-  bool get _useLocalPinCache =>
-      !_usesServerConfirmPin && _allowLocalPinFallback;
 
   Exception _serverConfirmPinUnavailable() => Exception(
     'Vérification PIN serveur indisponible. '
@@ -97,52 +85,6 @@ class AuthRepository {
     return '';
   }
 
-  Future<bool> hasLocalUnlockPin({String? identifier}) async {
-    // Patch33B: le PIN local n'est plus une source d'autorité pour ouvrir
-    // l'application. Cette méthode reste seulement pour compatibilité legacy
-    // en mode local non-Odoo.
-    if (_usesServerConfirmPin || !_allowLocalPinFallback) {
-      return false;
-    }
-    final pin = await LoginSessionCache.lastPin();
-    if (pin == null || pin.isEmpty) return false;
-    final storedIdentifier = await LoginSessionCache.lastIdentifier();
-    if (storedIdentifier == null || storedIdentifier.trim().isEmpty) {
-      return false;
-    }
-    var expected = identifier != null
-        ? _cacheIdentifier(identifier)
-        : (_current == null ? null : _cacheIdentifierForUser(_current!));
-    if (expected == null || expected.isEmpty) {
-      expected = _cacheIdentifier(storedIdentifier);
-    }
-    if (expected.isEmpty) return false;
-    return _cacheIdentifier(storedIdentifier) == expected;
-  }
-
-  Future<void> saveLocalUnlockPinForCurrentUser(String pin) async {
-    // Patch33B: ne jamais persister un PIN d'ouverture local quand le backend
-    // ACPEC est configuré. Le serveur est seul juge du PIN.
-    if (_usesServerConfirmPin) {
-      return;
-    }
-    if (!_allowLocalPinFallback) {
-      throw _serverConfirmPinUnavailable();
-    }
-    final user = _current;
-    if (user == null) {
-      throw Exception('Session absente. Reconnectez-vous.');
-    }
-    if (pin.length != kSecretCodeLength) {
-      throw Exception('Le PIN doit avoir 4 chiffres.');
-    }
-    final identifier = _cacheIdentifierForUser(user);
-    await LoginSessionCache.saveLastPin(identifier: identifier, pin: pin);
-    if (_useLocalPinCache) {
-      _pinByUserId[user.id] = pin;
-    }
-  }
-
   Future<AppUser> confirmOpenPin(String pin) async {
     final user = _current;
     if (user == null) {
@@ -151,34 +93,10 @@ class AuthRepository {
     if (pin.length != kSecretCodeLength) {
       throw Exception('PIN incorrect.');
     }
-    if (_usesServerConfirmPin) {
-      await OdooAuthService.instance.confirmSessionPin(actionCode: pin);
-      return user;
-    }
-    // Patch34A: fail-closed en release normale. Le fallback PIN local est
-    // toléré uniquement en debug ou démo offline explicitement autorisée.
-    if (kReleaseMode && !AppEnvironment.allowOfflineDemoInRelease) {
+    if (!_usesServerConfirmPin) {
       throw _serverConfirmPinUnavailable();
     }
-    return unlockWithLocalPin(pin);
-  }
-
-  Future<AppUser> unlockWithLocalPin(String pin) async {
-    if (!_allowLocalPinFallback) {
-      throw _serverConfirmPinUnavailable();
-    }
-    final user = _current;
-    if (user == null) {
-      throw Exception('Session absente. Reconnectez-vous.');
-    }
-    if (pin.length != kSecretCodeLength) {
-      throw Exception('PIN incorrect.');
-    }
-    final hasPinForUser = await hasLocalUnlockPin();
-    final storedPin = await LoginSessionCache.lastPin();
-    if (!hasPinForUser || storedPin != pin.trim()) {
-      throw Exception('PIN incorrect.');
-    }
+    await OdooAuthService.instance.confirmSessionPin(actionCode: pin);
     return user;
   }
 
@@ -220,10 +138,6 @@ class AuthRepository {
       orElse: () => throw Exception('Compte introuvable.'),
     );
     if (pin.length != kSecretCodeLength) {
-      throw Exception('PIN incorrect.');
-    }
-    final stored = _pinByUserId[user.id];
-    if (stored != null && stored != pin) {
       throw Exception('PIN incorrect.');
     }
     _current = user;
@@ -344,6 +258,9 @@ class AuthRepository {
     if (_users.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
       throw Exception('Un compte existe déjà avec cet email.');
     }
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('Le PIN doit avoir 4 chiffres.');
+    }
     final user = AppUser(
       id: 'u-${_uuid.v4().substring(0, 6)}',
       email: email,
@@ -354,13 +271,6 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
     _users.add(user);
-    if (_useLocalPinCache) {
-      _pinByUserId[user.id] = pin;
-      await LoginSessionCache.saveLastPin(
-        identifier: _cacheIdentifier(phone),
-        pin: pin,
-      );
-    }
     _current = user;
     return user;
   }
@@ -406,44 +316,8 @@ class AuthRepository {
         _users.add(resolved);
       }
     }
-    if (_useLocalPinCache) {
-      _pinByUserId[resolved.id] = pin;
-      await LoginSessionCache.saveLastPin(
-        identifier: _cacheIdentifierForUser(resolved),
-        pin: pin,
-      );
-    }
     _current = resolved;
     return resolved;
-  }
-
-  /// Si l’identifiant correspond à un utilisateur seed local, aligne le PIN (ex. après reset OTP).
-  Future<void> syncLocalPinIfExists({
-    required String identifier,
-    required String newPin,
-  }) async {
-    if (_usesServerConfirmPin || !_allowLocalPinFallback) {
-      return;
-    }
-    if (newPin.length != kSecretCodeLength) return;
-    await LoginSessionCache.saveLastPin(
-      identifier: _cacheIdentifier(identifier),
-      pin: newPin,
-    );
-    final raw = identifier.trim();
-    final normalized = raw.contains('@')
-        ? raw.toLowerCase()
-        : normalizePhoneIdentifierForLookup(raw);
-    for (final u in _users) {
-      final idMatch = u.email.toLowerCase() == normalized;
-      final phoneMatch =
-          u.phone.replaceAll(' ', '').toLowerCase() ==
-          normalized.replaceAll(' ', '').toLowerCase();
-      if (idMatch || phoneMatch) {
-        _pinByUserId[u.id] = newPin;
-        return;
-      }
-    }
   }
 
   /// Après vérification OTP (PIN oublié).
@@ -472,9 +346,6 @@ class AuthRepository {
     }
     if (user == null) {
       throw Exception('Compte introuvable.');
-    }
-    if (_useLocalPinCache) {
-      _pinByUserId[user.id] = newPin;
     }
   }
 
