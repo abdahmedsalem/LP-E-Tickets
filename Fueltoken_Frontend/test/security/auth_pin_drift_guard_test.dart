@@ -220,6 +220,42 @@ void main() {
     });
 
     test(
+      'QR manual code reveal is temporary and not hydrated into general model',
+      () {
+        final detail = _read('lib/features/qr/screens/qr_detail_screen.dart');
+        final model = _read('lib/data/models/qr_token.dart');
+        final mapper = _read('lib/data/services/acpec_qr_mapper.dart');
+        final station = _read(
+          'lib/features/station/screens/station_manual_qr_screen.dart',
+        );
+
+        expect(detail, contains('Timer? _manualCodeClearTimer'));
+        expect(
+          detail,
+          contains('_manualCodeRevealDuration = Duration(seconds: 60)'),
+        );
+        expect(detail, contains('WidgetsBindingObserver'));
+        expect(detail, contains('didChangeAppLifecycleState'));
+        expect(detail, contains('_scheduleManualCodeAutoClear'));
+        expect(detail, contains('_clearRevealedQrManualCode'));
+        expect(detail, contains('AppLifecycleState.inactive'));
+        expect(detail, contains('AppLifecycleState.paused'));
+        expect(detail, contains('AppLifecycleState.hidden'));
+        expect(detail, contains('AppLifecycleState.detached'));
+
+        expect(model, isNot(contains('qrNumericCode')));
+        expect(mapper, isNot(contains("row['qr_numeric_code']")));
+        expect(mapper, isNot(contains("row['qrNumericCode']")));
+        expect(mapper, isNot(contains('qrNumericCode:')));
+
+        // La saisie station reste le flux normal : le code manuel 12 chiffres
+        // peut être saisi comme équivalent du scan, mais il ne doit pas venir
+        // des payloads standards qr/list ou qr/detail.
+        expect(station, contains("'qr_numeric_code': code"));
+      },
+    );
+
+    test(
       'frontend diagnostic logs are release-safe and redact sensitive keys',
       () {
         final debug = _read('lib/core/debug/acpec_rpc_debug.dart');

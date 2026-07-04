@@ -86,7 +86,6 @@ class QrLine extends Equatable {
 class QrToken extends Equatable {
   final String id;
   final String publicCode; // not predictable, used by mobile/station
-  final String? qrNumericCode; // user-facing 12-digit manual entry code
   final String? internalRef;
   final String ownerId;
   final String ownerName;
@@ -107,7 +106,6 @@ class QrToken extends Equatable {
   const QrToken({
     required this.id,
     required this.publicCode,
-    this.qrNumericCode,
     this.internalRef,
     required this.ownerId,
     required this.ownerName,
@@ -165,7 +163,6 @@ class QrToken extends Equatable {
     return QrToken(
       id: id,
       publicCode: publicCode,
-      qrNumericCode: qrNumericCode,
       internalRef: internalRef,
       ownerId: ownerId,
       ownerName: ownerName,
@@ -189,7 +186,6 @@ class QrToken extends Equatable {
   List<Object?> get props => [
     id,
     publicCode,
-    qrNumericCode,
     state,
     lines,
     stationConsumeTransactionId,
