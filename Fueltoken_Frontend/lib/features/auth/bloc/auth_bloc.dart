@@ -116,6 +116,14 @@ class AuthUnlockRequested extends AuthEvent {
   List<Object?> get props => [pin];
 }
 
+enum AuthLockReason { appLifecycle, idleTimeout, manual }
+
+class AuthLockRequested extends AuthEvent {
+  final AuthLockReason reason;
+  const AuthLockRequested({required this.reason});
+  @override
+  List<Object?> get props => [reason];
+}
 
 class AuthRoleChanged extends AuthEvent {
   final UserRole role;
@@ -220,6 +228,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLogoutRequested>(_onLogout);
     on<AuthSessionExpiredRequested>(_onSessionExpired);
     on<AuthUnlockRequested>(_onUnlock);
+    on<AuthLockRequested>(_onLockRequested);
     on<AuthRoleChanged>(_onRoleChanged);
   }
 
@@ -472,6 +481,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onLockRequested(
+    AuthLockRequested e,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state.status != AuthStatus.authenticated || state.user == null) {
+      return;
+    }
+    emit(
+      state.copyWith(
+        status: AuthStatus.locked,
+        clearError: true,
+        clearLoginInfo: true,
+      ),
+    );
+  }
+
   Future<void> _onUnlock(AuthUnlockRequested e, Emitter<AuthState> emit) async {
     final lockedUser = state.user;
     emit(
@@ -505,7 +530,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     }
   }
-
 
   bool _serverPinRequiresLogin(Object err) {
     if (err is OdooJsonRpcException) {
