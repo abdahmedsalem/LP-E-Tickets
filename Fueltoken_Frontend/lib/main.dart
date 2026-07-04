@@ -101,6 +101,7 @@ class FuelTokenApp extends StatefulWidget {
 class FuelTokenAppState extends State<FuelTokenApp>
     with WidgetsBindingObserver {
   static const Duration _idleLockDelay = Duration(minutes: 3);
+  static const Duration _lifecycleLockGraceDelay = Duration(seconds: 60);
   static const Duration _purchaseNotificationPollDelay = Duration(seconds: 2);
 
   late final AuthBloc _authBloc;
@@ -110,6 +111,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
   Timer? _idleLockTimer;
   Timer? _notificationPollTimer;
   StreamSubscription<AuthState>? _authSubscription;
+  DateTime? _backgroundedAt;
   bool _sessionLockRequested = false;
 
   @override
@@ -123,6 +125,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
     _authSubscription = _authBloc.stream.listen((state) {
       if (state.status == AuthStatus.authenticated && state.user != null) {
         _sessionLockRequested = false;
+        _backgroundedAt = null;
         _scheduleIdleLock();
         // Charger le store pour CET utilisateur.
         unawaited(NotificationsStore.instance.loadForUser(state.user!.id));
@@ -133,10 +136,12 @@ class FuelTokenAppState extends State<FuelTokenApp>
         );
         _scheduleNotificationPolling();
       } else if (state.status == AuthStatus.locked) {
+        _backgroundedAt = null;
         _cancelIdleLock();
         _cancelNotificationPolling();
       } else if (state.status == AuthStatus.unauthenticated) {
         _sessionLockRequested = false;
+        _backgroundedAt = null;
         _cancelIdleLock();
         _cancelNotificationPolling();
         // Déconnexion : purger la mémoire pour ne pas exposer les données
@@ -212,6 +217,20 @@ class FuelTokenAppState extends State<FuelTokenApp>
     _authBloc.add(AuthLockRequested(reason: reason));
   }
 
+  void _recordLifecycleBackgrounded() {
+    if (!_shouldIdleLock()) return;
+    _backgroundedAt ??= DateTime.now();
+    _cancelIdleLock();
+    _cancelNotificationPolling();
+  }
+
+  bool _hasExceededLifecycleGrace(DateTime resumedAt) {
+    final backgroundedAt = _backgroundedAt;
+    _backgroundedAt = null;
+    if (backgroundedAt == null) return false;
+    return resumedAt.difference(backgroundedAt) >= _lifecycleLockGraceDelay;
+  }
+
   Future<void> reloadPreferences() async {
     final locale = await AppPreferences.localeCode();
     final dark = await AppPreferences.darkMode();
@@ -240,18 +259,25 @@ class FuelTokenAppState extends State<FuelTokenApp>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      _requestSessionLock(AuthLockReason.appLifecycle);
+      _recordLifecycleBackgrounded();
       return;
     }
 
     if (state == AppLifecycleState.resumed) {
+      if (_shouldIdleLock() && _hasExceededLifecycleGrace(DateTime.now())) {
+        _requestSessionLock(AuthLockReason.appLifecycle);
+        return;
+      }
+
       _recordUserActivity();
       if (_authBloc.state.status != AuthStatus.authenticated ||
           _sessionLockRequested) {
         return;
       }
+
       // Bumper tous les buses au retour en premier plan pour forcer
       // le rechargement de toutes les données potentiellement périmées.
+      _scheduleNotificationPolling();
       WalletRefreshBus.instance.bump();
       QrRefreshBus.instance.bump();
       FacesRefreshBus.instance.bump();
