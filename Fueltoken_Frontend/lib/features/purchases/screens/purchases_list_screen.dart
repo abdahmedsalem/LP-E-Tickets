@@ -7,11 +7,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/notifications/purchase_validation_notification_service.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../data/models/purchase_lot.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -90,15 +92,15 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
           _loading = false;
           _error = e.isOdooSessionExpired
               ? 'Session expirée. Reconnectez-vous pour actualiser la liste.'
-              : e.message;
-          _lots = [];
+              : ErrorPresenter.message(e);
         });
       } catch (e) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = e.toString().replaceFirst('Exception: ', '');
-          _lots = [];
+          _error = ErrorPresenter.isBackendUnavailable(e)
+              ? ErrorPresenter.backendUnavailable()
+              : ErrorPresenter.message(e);
         });
       }
       return;
@@ -223,7 +225,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                           ),
                         ],
                       )
-                    : _error != null
+                    : _error != null && _lots.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(20),
@@ -277,11 +279,20 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                                   16,
                                   96,
                                 ),
-                                itemCount: _lots.length,
+                                itemCount:
+                                    _lots.length + (_error != null ? 1 : 0),
                                 separatorBuilder: (_, _) =>
                                     const SizedBox(height: 14),
                                 itemBuilder: (ctx, i) {
-                                  final lot = _lots[i];
+                                  if (_error != null && i == 0) {
+                                    return BackendUnavailableBanner(
+                                      message: _error!,
+                                      onRetry: () {
+                                        _refresh();
+                                      },
+                                    );
+                                  }
+                                  final lot = _lots[_error != null ? i - 1 : i];
                                   return _PurchaseTile(
                                     lot: lot,
                                     onTap: () => context

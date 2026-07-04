@@ -7,12 +7,14 @@ import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/api_required_view.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/history_aligned_page_header.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -122,15 +124,15 @@ class _QrListScreenState extends State<QrListScreen> {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
-        _liveQrs = [];
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _liveLoading = false;
-        _liveError = e.toString().replaceFirst('Exception: ', '');
-        _liveQrs = [];
+        _liveError = ErrorPresenter.isBackendUnavailable(e)
+            ? ErrorPresenter.backendUnavailable()
+            : ErrorPresenter.message(e);
       });
     }
   }
@@ -202,6 +204,10 @@ class _QrListScreenState extends State<QrListScreen> {
                 ? const _QrLoadingSkeleton()
                 : qrs.isEmpty
                 ? _QrEmptyState(
+                    icon: _liveError != null
+                        ? Icons.cloud_off_outlined
+                        : Icons.qr_code_2,
+                    title: _liveError != null ? 'Erreur de chargement' : 'Aucun QR',
                     message: _liveError != null
                         ? _liveError!
                         : 'Aucun QR ne correspond a ce filtre.',
@@ -210,9 +216,20 @@ class _QrListScreenState extends State<QrListScreen> {
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                    itemCount: qrs.length,
+                    itemCount: qrs.length + (_liveError != null ? 1 : 0),
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, i) => _QrCompactListTile(qr: qrs[i]),
+                    itemBuilder: (ctx, i) {
+                      if (_liveError != null && i == 0) {
+                        return BackendUnavailableBanner(
+                          message: _liveError!,
+                          onRetry: () {
+                            _refreshLive(force: true);
+                          },
+                        );
+                      }
+                      final qr = qrs[_liveError != null ? i - 1 : i];
+                      return _QrCompactListTile(qr: qr);
+                    },
                   ),
           ),
         ),
@@ -267,8 +284,15 @@ class _QrLoadingSkeleton extends StatelessWidget {
 }
 
 class _QrEmptyState extends StatelessWidget {
-  const _QrEmptyState({required this.message, required this.onRefresh});
+  const _QrEmptyState({
+    required this.message,
+    required this.onRefresh,
+    this.icon = Icons.qr_code_2,
+    this.title = 'Aucun QR',
+  });
 
+  final IconData icon;
+  final String title;
   final String message;
   final Future<void> Function() onRefresh;
 
@@ -281,8 +305,8 @@ class _QrEmptyState extends StatelessWidget {
         SizedBox(
           height: MediaQuery.sizeOf(context).height * 0.26,
           child: EmptyState(
-            icon: Icons.qr_code_2,
-            title: 'Aucun QR',
+            icon: icon,
+            title: title,
             message: message,
             action: FilledButton.tonalIcon(
               onPressed: onRefresh,

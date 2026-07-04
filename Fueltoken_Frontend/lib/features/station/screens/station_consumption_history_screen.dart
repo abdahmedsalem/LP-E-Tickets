@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/business_transaction.dart';
 import '../../../data/services/acpec_transactions_mapper.dart';
@@ -13,6 +14,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -77,7 +79,10 @@ class _StationConsumptionHistoryScreenState
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
       return 'Session expirée. Reconnectez-vous.';
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    if (ErrorPresenter.isBackendUnavailable(e)) {
+      return ErrorPresenter.backendUnavailable();
+    }
+    return ErrorPresenter.message(e);
   }
 
   Future<void> _load() async {
@@ -120,7 +125,6 @@ class _StationConsumptionHistoryScreenState
       if (!mounted) return;
       setState(() {
         _error = _briefError(e);
-        _items = [];
         _loading = false;
       });
     }
@@ -252,6 +256,18 @@ class _StationConsumptionHistoryScreenState
                 ),
               ),
               const SizedBox(height: 20),
+              if (_error != null && _items.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: BackendUnavailableBanner(
+                    message: _error!,
+                    onRetry: () {
+                      _load();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               if (_loading && _items.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
