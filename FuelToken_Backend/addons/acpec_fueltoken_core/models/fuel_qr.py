@@ -5,7 +5,6 @@ import re
 import secrets
 
 from odoo import api, fields, models, _
-from odoo.tools import config
 from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
@@ -66,6 +65,7 @@ class AcpecFuelQr(models.Model):
     )
     QR_NUMERIC_CODE_DIGITS = 12
     QR_NUMERIC_CODE_GROUP_SIZE = 4
+    QR_NUMERIC_SECRET_MODEL = 'acpec.fueltoken.security.settings'
 
     def _is_qr_manual_code_label(self, value):
         value = str(value or '').strip()
@@ -83,14 +83,13 @@ class AcpecFuelQr(models.Model):
                     _('La référence QR ne peut pas être le code manuel.')
                 )
 
+    @api.model
+    def _qr_numeric_code_settings(self):
+        return self.env[self.QR_NUMERIC_SECRET_MODEL].sudo()._get_or_create_for_fueltoken_company()
+
+    @api.model
     def _qr_numeric_code_secret(self):
-        secret = (
-            config.get('database.secret')
-            or config.get('admin_passwd')
-            or self.env.cr.dbname
-            or 'acpec-fueltoken'
-        )
-        return str(secret)
+        return self._qr_numeric_code_settings()._ensure_qr_numeric_secret()
 
     @api.model
     def _normalize_qr_numeric_code(self, code):
