@@ -416,8 +416,21 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
         cr = odoo.sql_db.db_connect(db_name).cursor()
         try:
             env = api.Environment(cr, SUPERUSER_ID, {})
+            # Les fixtures de concurrence sont committees hors transaction
+            # de test. Il faut donc supprimer toutes les transactions liees a la
+            # fixture AVANT de supprimer les objets porteurs. Les transactions
+            # d'achat ``purchase_submitted`` / ``purchase_approved`` n'ont pas
+            # de qr_id : elles portent purchase_id et wallet_id. Un cleanup
+            # limite au QR laisse ces transactions en base puis les rend
+            # orphelines quand purchase/wallet sont supprimes.
+            transaction_domain = [
+                '|', '|',
+                ('qr_id', '=', ids['qr_id']),
+                ('purchase_id', '=', ids['purchase_id']),
+                ('wallet_id', '=', ids['wallet_id']),
+            ]
             order = [
-                ('acpec.fuel.transaction', [('qr_id', '=', ids['qr_id'])]),
+                ('acpec.fuel.transaction', transaction_domain),
                 ('acpec.fuel.qr', [('id', '=', ids['qr_id'])]),
                 ('acpec.fuel.face.line', [('id', '=', ids['face_line_id'])]),
                 ('acpec.fuel.station', [('id', '=', ids['station_id'])]),
@@ -435,8 +448,15 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
                         if model == 'acpec.fuel.transaction':
                             recs = recs.with_context(allow_fuel_transaction_unlink=True)
                         recs.unlink()
-                        cr.commit()
+                    cr.commit()
                 except Exception:
                     cr.rollback()
+                    if model == 'acpec.fuel.transaction':
+                        # La suppression des transactions de fixture est
+                        # obligatoire : si elle echoue, continuer a supprimer
+                        # purchase/wallet recreerait les orphelines que ce test
+                        # cherche justement a eviter. On garde alors une fixture
+                        # complete plutot qu'un historique transactionnel casse.
+                        return
         finally:
             cr.close()
