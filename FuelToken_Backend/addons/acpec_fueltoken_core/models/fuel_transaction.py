@@ -306,13 +306,38 @@ class AcpecFuelTransaction(models.Model):
             'regularized_by_id',
         }
         vals_keys = set(vals)
+
+        # G2 legacy doctrine: post-audit note remains editable without opening
+        # economic fields. Tests and BO usability rely on this narrow exception.
+        if vals_keys <= {'note'}:
+            return super().write(vals)
+
+        if self.env.context.get('allow_fuel_transaction_purchase_lifecycle_update'):
+            # M13 doctrine: achat uniquement.
+            # Une transaction publique purchase_submitted peut être finalisée en
+            # purchase_approved sans créer une deuxième référence TX. Cette
+            # exception reste volontairement étroite et ne permet pas les writes
+            # directs généraux sur les transactions.
+            allowed_fields = {'transaction_type', 'note', 'idempotency_key', 'request_hash'}
+            forbidden_fields = vals_keys - allowed_fields
+            if forbidden_fields:
+                raise UserError(_('Mise à jour cycle achat transaction non autorisée.'))
+            if vals.get('transaction_type') != 'purchase_approved':
+                raise UserError(_('La conversion achat doit cibler purchase_approved.'))
+            for tx in self:
+                if tx.transaction_type != 'purchase_submitted' or not tx.purchase_id:
+                    raise UserError(_('Seule une transaction achat soumise peut être convertie en achat approuvé.'))
+            return super().write(vals)
+
+        # Régularisation station : uniquement via l'action dédiée.
         if vals_keys & regularization_fields and not self.env.context.get('allow_fuel_transaction_regularization_update'):
             raise UserError(_('La régularisation station doit passer par l’action dédiée.'))
+
         protected_keys = vals_keys - regularization_fields - {'note'}
         if protected_keys and not self.env.context.get('allow_fuel_transaction_update'):
             raise UserError(_('Les transactions Tickets Carburant ne doivent pas être modifiées directement.'))
-        return super().write(vals)
 
+        return super().write(vals)
     def init(self):
         # Backfill existing station consumption transactions created before Patch43H3B.
         self.env.cr.execute(
@@ -425,18 +450,26 @@ class AcpecFuelTransactionLine(models.Model):
             raise UserError(_('Les lignes de transaction Tickets Carburant ne doivent pas être modifiées directement.'))
         return super().write(vals)
 
-    def init(self):
-        # Backfill existing station consumption transactions created before Patch43H3B.
-        self.env.cr.execute(
-            """
-            UPDATE acpec_fuel_transaction
-               SET regularization_state = 'pending'
-             WHERE transaction_type = 'consommation_station'
-               AND regularization_state IS NULL
-            """
-        )
-
     def unlink(self):
-        if not self.env.context.get('allow_fuel_transaction_unlink'):
+        if self.env.context.get('allow_fuel_transaction_purchase_lifecycle_line_replace'):
+            # M13 doctrine: remplacement contrôlé des lignes provisoires d'une
+            # TX achat par les lignes matérialisées des carnets à l'approbation.
+            # La demande originale reste portée par purchase.line_ids ; on ne
+            # permet pas l'unlink général des lignes de transaction.
+            for line in self:
+                tx = line.transaction_id
+                if (
+                    not tx
+                    or tx.transaction_type not in ('purchase_submitted', 'purchase_approved')
+                    or not tx.purchase_id
+                    or line.face_line_id
+                ):
+                    raise UserError(_('Seules les lignes provisoires achat peuvent être remplacées.'))
+            return super().unlink()
+
+        if not (
+            self.env.context.get('allow_fuel_transaction_line_unlink')
+            or self.env.context.get('allow_fuel_transaction_unlink')
+        ):
             raise UserError(_('Les lignes de transaction Tickets Carburant sont append-only et ne doivent pas être supprimées.'))
         return super().unlink()

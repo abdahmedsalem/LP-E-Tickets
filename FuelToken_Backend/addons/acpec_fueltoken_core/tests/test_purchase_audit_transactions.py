@@ -67,7 +67,12 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
             ('transaction_type', '=', transaction_type),
         ])
 
-    def test_purchase_submit_logs_submitted_without_fuel_value(self):
+    def _all_transactions(self, purchase):
+        return self.Transaction.search([
+            ('purchase_id', '=', purchase.id),
+        ])
+
+    def test_purchase_submit_logs_single_pending_public_transaction_without_fuel_value(self):
         purchase = self._create_purchase(carnet_qty=2)
 
         purchase.action_submit()
@@ -78,16 +83,28 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
 
         self.assertEqual(purchase.state, 'submitted')
         self.assertFalse(purchase.fuel_value_created)
+        self.assertEqual(len(self._all_transactions(purchase)), 1)
         self.assertEqual(len(submitted_txs), 1)
         self.assertFalse(approved_txs)
         self.assertFalse(face_lines)
+        self.assertTrue(submitted_txs.name)
         self.assertTrue(submitted_txs.line_ids)
         self.assertFalse(submitted_txs.line_ids.mapped('face_line_id'))
 
-    def test_purchase_approval_logs_approved_once_and_is_idempotent(self):
+    def test_purchase_approval_converts_same_public_transaction_once_and_is_idempotent(self):
+        """M13 doctrine: one purchase keeps one public TX reference.
+
+        Approval creates the real carnets/tickets and funds the wallet, but it
+        must convert the submitted TX instead of creating a second public TX.
+        """
         purchase = self._create_purchase(carnet_qty=2)
 
         purchase.action_submit()
+        submitted_tx = self._transactions(purchase, 'purchase_submitted')
+        self.assertEqual(len(submitted_tx), 1)
+        submitted_tx_id = submitted_tx.id
+        submitted_tx_name = submitted_tx.name
+
         purchase.action_approve()
         purchase._create_face_lines_after_approval()
 
@@ -97,8 +114,12 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
 
         self.assertEqual(purchase.state, 'approved')
         self.assertTrue(purchase.fuel_value_created)
-        self.assertEqual(len(submitted_txs), 1)
+        self.assertFalse(submitted_txs)
         self.assertEqual(len(approved_txs), 1)
+        self.assertEqual(len(self._all_transactions(purchase)), 1)
+        self.assertEqual(approved_txs.id, submitted_tx_id)
+        self.assertEqual(approved_txs.name, submitted_tx_name)
+
         expected_carnet_qty = purchase.line_ids.carnet_qty
         expected_faces_per_carnet = purchase.line_ids.face_count
         expected_qty = purchase.line_ids.generated_face_qty
@@ -117,3 +138,36 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
         self.assertEqual(approved_txs.amount_total, expected_amount)
         self.assertEqual(len(approved_txs.line_ids), expected_carnet_qty)
         self.assertEqual(set(approved_txs.line_ids.mapped('face_line_id').ids), set(face_lines.ids))
+
+        purchase._create_face_lines_after_approval()
+        self.assertEqual(len(self._all_transactions(purchase)), 1)
+        self.assertEqual(len(self.FaceLine.search([('purchase_id', '=', purchase.id)])), expected_carnet_qty)
+
+    def test_purchase_reject_keeps_submitted_transaction_and_creates_no_rejected_tx(self):
+        """Rejected purchases do not get a second TX or a purchase_rejected type."""
+        purchase = self._create_purchase(carnet_qty=2)
+
+        purchase.action_submit()
+        submitted_tx = self._transactions(purchase, 'purchase_submitted')
+        self.assertEqual(len(submitted_tx), 1)
+        submitted_tx_id = submitted_tx.id
+        submitted_tx_name = submitted_tx.name
+
+        purchase.write({'rejection_reason': 'Preuve non conforme M13'})
+        purchase.action_reject()
+        purchase.invalidate_recordset(['state', 'rejected_at', 'rejected_by', 'rejection_reason'])
+        submitted_tx.invalidate_recordset(['transaction_type', 'purchase_state', 'purchase_rejected_at', 'purchase_rejection_reason'])
+
+        all_txs = self._all_transactions(purchase)
+        submitted_txs = self._transactions(purchase, 'purchase_submitted')
+        approved_txs = self._transactions(purchase, 'purchase_approved')
+
+        self.assertEqual(purchase.state, 'rejected')
+        self.assertEqual(len(all_txs), 1)
+        self.assertEqual(len(submitted_txs), 1)
+        self.assertFalse(approved_txs)
+        self.assertEqual(submitted_txs.id, submitted_tx_id)
+        self.assertEqual(submitted_txs.name, submitted_tx_name)
+        self.assertEqual(submitted_txs.purchase_state, 'rejected')
+        self.assertTrue(submitted_txs.purchase_rejected_at)
+        self.assertEqual(submitted_txs.purchase_rejection_reason, 'Preuve non conforme M13')

@@ -305,6 +305,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         purchase_event_state = self._purchase_event_state(tx)
         is_purchase_submitted = tx.transaction_type == 'purchase_submitted'
         is_purchase_approved = tx.transaction_type == 'purchase_approved'
+        # M13: rejected purchases do not create a new TX and do not introduce a
+        # purchase_rejected type. A rejected purchase keeps the submitted TX and
+        # exposes rejection through purchase_state / related purchase fields.
+        is_purchase_rejected = bool(purchase and purchase.state == 'rejected')
 
         # Direction du transfert : sortant (source) ou entrant (dest).
         transfer_direction = False
@@ -359,9 +363,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'submitted_at': fields.Datetime.to_string(tx.purchase_submitted_at) if tx.purchase_submitted_at else False,
             'approved_at': fields.Datetime.to_string(tx.purchase_approved_at) if is_purchase_approved and tx.purchase_approved_at else False,
             'approved_by': purchase.approved_by.name if is_purchase_approved and purchase and purchase.approved_by else False,
-            'rejected_at': fields.Datetime.to_string(tx.purchase_rejected_at) if not is_purchase_submitted and tx.purchase_rejected_at else False,
-            'rejected_by': purchase.rejected_by.name if not is_purchase_submitted and purchase and purchase.rejected_by else False,
-            'rejection_reason': False if is_purchase_submitted else (tx.purchase_rejection_reason or False),
+            'rejected_at': fields.Datetime.to_string(tx.purchase_rejected_at) if is_purchase_rejected and tx.purchase_rejected_at else False,
+            'rejected_by': purchase.rejected_by.name if is_purchase_rejected and purchase and purchase.rejected_by else False,
+            'rejection_reason': tx.purchase_rejection_reason if is_purchase_rejected and tx.purchase_rejection_reason else False,
             'qr_id': tx.qr_id.id if tx.qr_id else False,
             'qr_name': tx.qr_id.name if tx.qr_id else False,
             'qr_public_code': tx.qr_id.public_code if tx.qr_id else False,
