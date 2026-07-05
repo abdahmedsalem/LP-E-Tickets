@@ -1,3 +1,5 @@
+import secrets
+
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError, UserError
 
@@ -7,7 +9,22 @@ class AcpecFuelTransaction(models.Model):
     _description = 'Transaction Tickets Carburant'
     _order = 'id desc'
 
-    name = fields.Char(string='Référence', default='New', readonly=True, copy=False)
+    TX_REFERENCE_PREFIX = 'TX'
+    TX_REFERENCE_RANDOM_DIGITS = 12
+    TX_REFERENCE_MAX_RETRIES = 20
+
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'La référence de transaction doit être unique.'),
+    ]
+
+    name = fields.Char(
+        string='Référence',
+        default='New',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Référence publique non énumérable au format TX-YYYYMMDD-HHMMSS-NNNNNNNNNNNN. L'id base de données reste interne.",
+    )
     transaction_type = fields.Selection([
         ('purchase_submitted', 'Demande d’achat soumise'),
         ('purchase_approved', 'Achat approuvé'),
@@ -103,11 +120,42 @@ class AcpecFuelTransaction(models.Model):
     regularized_by_id = fields.Many2one('res.users', string='Régularisé par', copy=False, readonly=True)
 
 
+    @api.model
+    def _generate_transaction_reference_candidate(self):
+        now = fields.Datetime.now()
+        if not hasattr(now, 'strftime'):
+            now = fields.Datetime.to_datetime(now)
+        suffix = str(secrets.randbelow(10 ** self.TX_REFERENCE_RANDOM_DIGITS)).zfill(self.TX_REFERENCE_RANDOM_DIGITS)
+        return '%s-%s-%s' % (
+            self.TX_REFERENCE_PREFIX,
+            now.strftime('%Y%m%d-%H%M%S'),
+            suffix,
+        )
+
+    @api.model
+    def _generate_unique_transaction_reference(self, reserved_names=False):
+        reserved_names = reserved_names or set()
+        for _attempt in range(self.TX_REFERENCE_MAX_RETRIES):
+            name = self._generate_transaction_reference_candidate()
+            if name in reserved_names:
+                continue
+            if not self.sudo().search_count([('name', '=', name)]):
+                return name
+        raise UserError('Impossible de générer une référence transaction unique.')
+
     @api.model_create_multi
     def create(self, vals_list):
+        reserved_names = set()
         for vals in vals_list:
-            if vals.get('name', 'New') == 'New':
-                vals['name'] = self.env['ir.sequence'].next_by_code('acpec.fuel.transaction') or 'New'
+            # Transaction references are public wallet identifiers. Do not expose
+            # Odoo sequences or database ids. Also ignore manually supplied names
+            # unless an explicit internal rescue context is used.
+            if (
+                vals.get('name') in (False, None, '', 'New')
+                or not self.env.context.get('allow_fuel_transaction_name_override')
+            ):
+                vals['name'] = self._generate_unique_transaction_reference(reserved_names)
+            reserved_names.add(vals.get('name'))
             if vals.get('transaction_type') == 'consommation_station' and not vals.get('regularization_state'):
                 vals['regularization_state'] = 'pending'
         return super().create(vals_list)
