@@ -245,7 +245,7 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         self.assertEqual(before, after)
 
     def test_issue_qr_replays_same_payload_for_same_idempotency_key(self):
-        controller, user, _session, carnet_type, _purchase, face_line, wallet = self._controller_with_stock(
+        controller, user, session, carnet_type, _purchase, face_line, wallet = self._controller_with_stock(
             "qr-replay-24b@example.com",
             carnet_qty=1,
         )
@@ -270,6 +270,19 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         self.assertNotIn(qrs._qr_numeric_code_display(), repr(first_response))
         self.assertNotIn('qr_numeric_code', repr(first_response))
         self.assertNotIn(qrs.qr_numeric_code_hash, repr(first_response))
+
+        txs = self.env["acpec.fuel.transaction"].sudo().search([
+            ("qr_id", "=", qrs.id),
+            ("transaction_type", "=", "emission_qr"),
+            ("wallet_id", "=", wallet.id),
+        ])
+        self.assertEqual(len(txs), 1)
+        self.assertEqual(txs.partner_id.id, wallet.partner_id.id)
+        self.assertEqual(txs.actor_partner_id.id, user.partner_id.id)
+        self.assertEqual(txs.actor_user_id.id, user.id)
+        self.assertEqual(txs.mobile_session_id.id, session.id)
+        self.assertEqual(txs.device_uid, session.device_uid)
+        self.assertFalse(txs.counterparty_partner_id)
 
         face_line.invalidate_recordset(["qty_available"])
         self.assertEqual(face_line.qty_available, face_line.qty_initial - 2)
