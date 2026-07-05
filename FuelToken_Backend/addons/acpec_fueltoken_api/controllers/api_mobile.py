@@ -111,6 +111,46 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         company = self._require_fueltoken_user_company(user)
         return request.env['acpec.fuel.wallet'].sudo().get_or_create(user.partner_id, company)
 
+    def _stamp_mobile_actor_on_transactions(self, transactions, actor_user, mobile_session=False):
+        """Append mobile actor/session audit to transactions created by mobile endpoints.
+
+        Doctrine:
+        - transaction.partner_id stays wallet_id.partner_id and remains the row
+          perspective / wallet owner.
+        - actor_user_id / actor_partner_id are audit snapshots of the mobile user
+          who executed the action.
+        - counterparty is intentionally untouched for mono-wallet purchase/QR
+          operations.
+        """
+        transactions = transactions.sudo().exists()
+        if not transactions:
+            return transactions
+
+        actor_user = request.env['res.users'].sudo().browse(
+            actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
+        ).exists()
+        if not actor_user:
+            return transactions
+
+        vals = {}
+        fields_map = transactions._fields
+        if 'actor_user_id' in fields_map:
+            vals['actor_user_id'] = actor_user.id
+        if 'actor_partner_id' in fields_map and actor_user.partner_id:
+            vals['actor_partner_id'] = actor_user.partner_id.id
+
+        if mobile_session:
+            mobile_session = mobile_session.sudo().exists()
+            if mobile_session:
+                if 'mobile_session_id' in fields_map:
+                    vals['mobile_session_id'] = mobile_session.id
+                if 'device_uid' in fields_map and mobile_session.device_uid:
+                    vals['device_uid'] = mobile_session.device_uid
+
+        if vals:
+            transactions.with_context(allow_fuel_transaction_update=True).write(vals)
+        return transactions
+
     def _qr_payload(self, qr):
         grouped = {}
         for line in qr.line_ids:
@@ -556,10 +596,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             kwargs['proof_filename'] = proof_filename
             kwargs['proof_data'] = proof_data
 
-            with self._sensitive_action_transaction(kwargs, purpose='purchase_create') as _authorized_user:
+            with self._sensitive_action_transaction(kwargs, purpose='purchase_create') as authorized_user:
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='purchase_create')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_create')
                 wallet = self._mobile_wallet()
+                mobile_session = self._get_mobile_session(required=True)
                 purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
                     wallet.partner_id,
                     wallet.company_id,
@@ -570,6 +611,12 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
                 )
+                purchase_txs = request.env['acpec.fuel.transaction'].sudo().search([
+                    ('purchase_id', '=', purchase.id),
+                    ('transaction_type', '=', 'purchase_submitted'),
+                    ('wallet_id', '=', wallet.id),
+                ])
+                self._stamp_mobile_actor_on_transactions(purchase_txs, authorized_user, mobile_session)
                 return self._json_response({
                     'purchase_id': purchase.id,
                     'public_code': purchase.public_code,
@@ -840,10 +887,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def issue_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['lines'])
-            with self._sensitive_action_transaction(kwargs, purpose='qr_issue') as _authorized_user:
+            with self._sensitive_action_transaction(kwargs, purpose='qr_issue') as authorized_user:
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_issue')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_issue')
                 wallet = self._mobile_wallet()
+                mobile_session = self._get_mobile_session(required=True)
                 requests = []
                 has_explicit_lines = False
                 has_legacy_lines = False
@@ -870,6 +918,12 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         idempotency_key=idempotency_key,
                         request_hash=request_hash,
                     )
+                    qr_txs = request.env['acpec.fuel.transaction'].sudo().search([
+                        ('qr_id', '=', qr.id),
+                        ('transaction_type', '=', 'emission_qr'),
+                        ('wallet_id', '=', wallet.id),
+                    ])
+                    self._stamp_mobile_actor_on_transactions(qr_txs, authorized_user, mobile_session)
                     payload = self._qr_payload(qr)
                 return self._json_response(payload)
         except Exception as exc:
@@ -945,10 +999,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def retirer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code', 'lines'])
-            with self._sensitive_action_transaction(kwargs, purpose='qr_retirer') as _authorized_user:
+            with self._sensitive_action_transaction(kwargs, purpose='qr_retirer') as authorized_user:
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_retirer')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_retirer')
                 wallet = self._mobile_wallet()
+                mobile_session = self._get_mobile_session(required=True)
                 qr = request.env['acpec.fuel.qr'].sudo().search([
                     ('public_code', '=', kwargs.get('public_code')),
                     ('wallet_id', '=', wallet.id),
@@ -961,6 +1016,13 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
                 )
+                retirer_txs = request.env['acpec.fuel.transaction'].sudo().search([
+                    ('transaction_type', '=', 'retirer_qr'),
+                    ('parent_qr_id', '=', qr.id),
+                    ('qr_id', '=', child.id),
+                    ('wallet_id', '=', wallet.id),
+                ])
+                self._stamp_mobile_actor_on_transactions(retirer_txs, authorized_user, mobile_session)
                 source_payload = self._qr_payload(qr)
                 child_payload = self._qr_payload(child)
                 source_payload['technical_lines'] = self._qr_technical_lines_payload(qr)
@@ -975,10 +1037,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def separer_qr(self, **kwargs):
         try:
             self._require_keys(kwargs, ['public_code'])
-            with self._sensitive_action_transaction(kwargs, purpose='qr_separer') as _authorized_user:
+            with self._sensitive_action_transaction(kwargs, purpose='qr_separer') as authorized_user:
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_separer')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_separer')
                 wallet = self._mobile_wallet()
+                mobile_session = self._get_mobile_session(required=True)
                 qr = request.env['acpec.fuel.qr'].sudo().search([
                     ('public_code', '=', kwargs.get('public_code')),
                     ('wallet_id', '=', wallet.id),
@@ -990,6 +1053,13 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
                 )
+                separer_txs = request.env['acpec.fuel.transaction'].sudo().search([
+                    ('transaction_type', '=', 'separer_qr'),
+                    ('parent_qr_id', '=', qr.id),
+                    ('qr_id', '=', child.id),
+                    ('wallet_id', '=', wallet.id),
+                ])
+                self._stamp_mobile_actor_on_transactions(separer_txs, authorized_user, mobile_session)
                 source_payload = self._qr_payload(qr)
                 child_payload = self._qr_payload(child)
                 source_payload['technical_lines'] = self._qr_technical_lines_payload(qr)
