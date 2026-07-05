@@ -217,6 +217,10 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 request_hash_params.pop('qr_numeric_code', None)
                 request_hash = self._compute_idempotency_request_hash(request_hash_params, purpose='station_qr_use')
                 tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
+                if tx and 'actor_user_id' in tx._fields and not tx.actor_user_id:
+                    tx.with_context(allow_fuel_transaction_update=True).write({
+                        'actor_user_id': user.id,
+                    })
                 return self._json_response({
                     'transaction_id': tx.id,
                     'transaction_name': tx.name,

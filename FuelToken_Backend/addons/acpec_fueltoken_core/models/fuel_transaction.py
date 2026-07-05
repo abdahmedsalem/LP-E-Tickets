@@ -23,6 +23,30 @@ class AcpecFuelTransaction(models.Model):
     ], string='Type', required=True, index=True)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
+    actor_partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire acteur',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Partenaire métier de celui qui exécute/initie l'opération.",
+    )
+    counterparty_partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire contrepartie',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Autre partie métier concernée par l'opération.",
+    )
+    counterparty_user_id = fields.Many2one(
+        'res.users',
+        string='Utilisateur contrepartie',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Utilisateur technique de la contrepartie lorsque la résolution est unique.",
+    )
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d’achat', index=True)
@@ -87,7 +111,38 @@ class AcpecFuelTransaction(models.Model):
             rec.qty_total = sum(rec.line_ids.mapped('qty'))
 
     @api.model
-    def log(self, transaction_type, company, wallet=False, purchase=False, qr=False, parent_qr=False, station=False, transfer=False, ticket_transfer=False, lines=False, note=False, idempotency_key=False, request_hash=False):
+    def _single_user_for_partner(self, partner):
+        """Return a unique user for a partner when resolution is unambiguous."""
+        if not partner:
+            return self.env['res.users']
+        partner = partner.sudo().exists()
+        if not partner:
+            return self.env['res.users']
+        users = self.env['res.users'].sudo().with_context(active_test=False).search([
+            ('partner_id', '=', partner.id),
+        ], limit=2)
+        return users if len(users) == 1 else self.env['res.users']
+
+    @api.model
+    def log(
+        self,
+        transaction_type,
+        company,
+        wallet=False,
+        purchase=False,
+        qr=False,
+        parent_qr=False,
+        station=False,
+        transfer=False,
+        ticket_transfer=False,
+        lines=False,
+        note=False,
+        idempotency_key=False,
+        request_hash=False,
+        actor_partner=False,
+        counterparty_partner=False,
+        counterparty_user=False,
+    ):
         vals = {
             'transaction_type': transaction_type,
             'company_id': company.id,
@@ -101,6 +156,9 @@ class AcpecFuelTransaction(models.Model):
             'note': note or False,
             'idempotency_key': idempotency_key or False,
             'request_hash': request_hash or False,
+            'actor_partner_id': actor_partner.id if actor_partner else False,
+            'counterparty_partner_id': counterparty_partner.id if counterparty_partner else False,
+            'counterparty_user_id': counterparty_user.id if counterparty_user else False,
         }
         if transaction_type == 'consommation_station':
             vals['regularization_state'] = 'pending'
@@ -207,6 +265,72 @@ class AcpecFuelTransaction(models.Model):
                SET regularization_state = 'pending'
              WHERE transaction_type = 'consommation_station'
                AND regularization_state IS NULL
+            """
+        )
+
+        # Backfill actor/counterparty snapshots introduced by Patch43M5.
+        # Kept additive: old partner_id, source/dest transfer rules and reports remain unchanged.
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_qr q
+               SET consumed_partner_id = u.partner_id
+              FROM res_users u
+             WHERE q.consumed_partner_id IS NULL
+               AND q.consumed_user_id = u.id
+               AND u.partner_id IS NOT NULL
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_partner_id = COALESCE(t.actor_partner_id, q.consumed_partner_id, u.partner_id),
+                   counterparty_partner_id = COALESCE(t.counterparty_partner_id, w.partner_id)
+              FROM acpec_fuel_qr q
+              LEFT JOIN res_users u ON u.id = q.consumed_user_id
+              LEFT JOIN acpec_fuel_wallet w ON w.id = q.wallet_id
+             WHERE t.transaction_type = 'consommation_station'
+               AND t.qr_id = q.id
+               AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
+                   counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
+              FROM acpec_fuel_carnet_transfer tr
+              LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
+              LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
+             WHERE t.transfer_id = tr.id
+               AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
+                   counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
+              FROM acpec_fuel_ticket_transfer tr
+              LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
+              LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
+             WHERE t.ticket_transfer_id = tr.id
+               AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+            """
+        )
+        self.env.cr.execute(
+            """
+            WITH partner_users AS (
+                SELECT partner_id, MIN(id) AS user_id
+                  FROM res_users
+                 WHERE partner_id IS NOT NULL
+                 GROUP BY partner_id
+                HAVING COUNT(*) = 1
+            )
+            UPDATE acpec_fuel_transaction t
+               SET counterparty_user_id = pu.user_id
+              FROM partner_users pu
+             WHERE t.counterparty_partner_id = pu.partner_id
+               AND t.counterparty_user_id IS NULL
             """
         )
 

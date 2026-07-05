@@ -292,6 +292,9 @@ class TestTicketTransferRuntimePolicy(TransactionCase):
         self.assertEqual(len(txs), 2)
         self.assertEqual(set(txs.mapped("wallet_id").ids), {source_wallet.id, dest_wallet.id})
         self.assertEqual(set(txs.mapped("actor_user_id").ids), {source_user.id})
+        self.assertEqual(set(txs.mapped("actor_partner_id").ids), {source_user.partner_id.id})
+        self.assertEqual(set(txs.mapped("counterparty_partner_id").ids), {_recipient_user.partner_id.id})
+        self.assertEqual(set(txs.mapped("counterparty_user_id").ids), {_recipient_user.id})
         self.assertEqual(set(txs.mapped("mobile_session_id").ids), {session.id})
         self.assertEqual(set(txs.mapped("device_uid")), {session.device_uid})
         self.assertEqual(self.env["acpec.fuel.face.line"].sudo().search_count([

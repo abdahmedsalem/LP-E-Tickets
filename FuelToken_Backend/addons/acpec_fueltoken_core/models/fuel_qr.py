@@ -33,6 +33,7 @@ class AcpecFuelQr(models.Model):
     child_ids = fields.One2many('acpec.fuel.qr', 'parent_id', string='QR enfants')
     consumed_station_id = fields.Many2one('acpec.fuel.station', string='Station de consommation', readonly=True)
     consumed_user_id = fields.Many2one('res.users', string='Utilisateur station', readonly=True)
+    consumed_partner_id = fields.Many2one('res.partner', string='Partenaire agent station', readonly=True, copy=False, index=True)
     consumed_at = fields.Datetime(string='Date consommation', readonly=True)
     expires_at = fields.Datetime(string='Expiration', compute='_compute_totals', store=True)
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
@@ -363,6 +364,15 @@ class AcpecFuelQr(models.Model):
             if self.state == 'expired':
                 raise UserError(_('Le QR est expiré.'))
             # Process consumption
+            actor_user = user or self.env.user
+            actor_user = self.env['res.users'].sudo().browse(
+                actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
+            ).exists()
+            if not actor_user:
+                raise UserError(_('Acteur station requis pour consommer le QR.'))
+            actor_partner = actor_user.partner_id
+            counterparty_partner = self.wallet_id.partner_id
+            counterparty_user = Tx._single_user_for_partner(counterparty_partner)
             tx_lines = []
             for line in self.line_ids.filtered(lambda l: l.state == 'active'):
                 line.face_line_id.with_context(allow_fuel_face_line_state_update=True).write({
@@ -374,13 +384,17 @@ class AcpecFuelQr(models.Model):
             self.write({
                 'state': 'consumed',
                 'consumed_station_id': station.id,
-                'consumed_user_id': user.id if user else self.env.user.id,
+                'consumed_user_id': actor_user.id,
+                'consumed_partner_id': actor_partner.id if actor_partner else False,
                 'consumed_at': fields.Datetime.now(),
             })
             return Tx.log(
                 'consommation_station', self.company_id,
                 wallet=self.wallet_id, qr=self, station=station,
-                lines=tx_lines, idempotency_key=idempotency_key, request_hash=request_hash
+                lines=tx_lines, idempotency_key=idempotency_key, request_hash=request_hash,
+                actor_partner=actor_partner,
+                counterparty_partner=counterparty_partner,
+                counterparty_user=counterparty_user,
             )
 
     def action_retirer_to_child(self, lines, idempotency_key=False, request_hash=False):
