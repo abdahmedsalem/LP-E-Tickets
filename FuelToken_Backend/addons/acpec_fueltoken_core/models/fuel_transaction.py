@@ -22,14 +22,22 @@ class AcpecFuelTransaction(models.Model):
         ('transfert_ticket', 'Transfert de tickets'),
     ], string='Type', required=True, index=True)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', index=True)
-    partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
+    partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire wallet',
+        related='wallet_id.partner_id',
+        store=True,
+        readonly=True,
+        index=True,
+        help="Partenaire du wallet de cette ligne transactionnelle. Ce champ porte la perspective/propriété du portefeuille et ne doit pas être confondu avec l'acteur global de l'opération.",
+    )
     actor_partner_id = fields.Many2one(
         'res.partner',
         string='Partenaire acteur',
         readonly=True,
         copy=False,
         index=True,
-        help="Partenaire métier de celui qui exécute/initie l'opération.",
+        help="Snapshot audit du partenaire de celui qui exécute/initie l'opération. Ce champ ne remplace pas partner_id, qui reste le partenaire du wallet de la ligne transactionnelle.",
     )
     counterparty_partner_id = fields.Many2one(
         'res.partner',
@@ -37,7 +45,7 @@ class AcpecFuelTransaction(models.Model):
         readonly=True,
         copy=False,
         index=True,
-        help="Autre partie métier concernée par l'opération.",
+        help="Snapshot audit de l'autre partie métier de l'opération : destinataire pour un transfert, propriétaire du QR/ticket pour une consommation station.",
     )
     counterparty_user_id = fields.Many2one(
         'res.users',
@@ -45,7 +53,7 @@ class AcpecFuelTransaction(models.Model):
         readonly=True,
         copy=False,
         index=True,
-        help="Utilisateur technique de la contrepartie lorsque la résolution est unique.",
+        help="Utilisateur technique de la contrepartie lorsque la résolution depuis le partenaire est unique. Le partenaire reste l'identité métier canonique.",
     )
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)

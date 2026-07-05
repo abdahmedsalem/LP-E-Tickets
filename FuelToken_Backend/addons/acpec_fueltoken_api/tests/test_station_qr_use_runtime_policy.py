@@ -587,6 +587,16 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertEqual(tx1.actor_partner_id.id, responsible_user.partner_id.id)
         self.assertEqual(tx2.actor_partner_id.id, ordinary_user.partner_id.id)
 
+        # Patch43M7: actor is audit/context, not the station-agent visibility key.
+        # If a future manager/backend actor differs from the QR consumer, ordinary
+        # station visibility must still be driven by qr.consumed_partner_id/user.
+        tx1.with_context(allow_fuel_transaction_update=True).write({
+            "actor_partner_id": ordinary_user.partner_id.id,
+        })
+        tx1.invalidate_recordset(["actor_partner_id"])
+        self.assertEqual(tx1.actor_partner_id.id, ordinary_user.partner_id.id)
+        self.assertEqual(tx1.qr_id.consumed_partner_id.id, responsible_user.partner_id.id)
+
         responsible_data = self._response_data(self._call_station_transactions(
             responsible_controller,
             {"regularization_state": "all", "limit": 100},

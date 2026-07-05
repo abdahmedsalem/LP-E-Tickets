@@ -33,7 +33,14 @@ class AcpecFuelQr(models.Model):
     child_ids = fields.One2many('acpec.fuel.qr', 'parent_id', string='QR enfants')
     consumed_station_id = fields.Many2one('acpec.fuel.station', string='Station de consommation', readonly=True)
     consumed_user_id = fields.Many2one('res.users', string='Utilisateur station', readonly=True)
-    consumed_partner_id = fields.Many2one('res.partner', string='Partenaire agent station', readonly=True, copy=False, index=True)
+    consumed_partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire agent station',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Partenaire métier de l'agent station qui a consommé le QR. Sert au périmètre station agent ; le propriétaire du QR reste le partenaire du wallet du QR.",
+    )
     consumed_at = fields.Datetime(string='Date consommation', readonly=True)
     expires_at = fields.Datetime(string='Expiration', compute='_compute_totals', store=True)
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)

@@ -287,13 +287,22 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 ('transaction_type', '=', 'consommation_station'),
             ]
 
-            # Patch43M6: station scope first, then agent scope.
+            # Station scope first, then station-agent scope.
             # Responsible/supervisor station sees all station consumptions.
-            # Ordinary station agent sees only consumptions where they are the M5 actor.
+            # Ordinary station agent sees only QR consumptions they actually performed.
+            #
+            # Do not use actor_partner_id as the security filter here: actor is an
+            # audit snapshot and may later be a manager/backend actor forcing an
+            # operation on a wallet they do not own. For station consumption scope,
+            # the canonical station-agent marker is the consumed QR actor snapshot.
             if not station.user_id or station.user_id.id != user.id:
                 if not user.partner_id:
                     raise ValidationError(_('Partenaire mobile station introuvable.'))
-                domain.append(('actor_partner_id', '=', user.partner_id.id))
+                domain.extend([
+                    '|',
+                    ('qr_id.consumed_partner_id', '=', user.partner_id.id),
+                    ('qr_id.consumed_user_id', '=', user.id),
+                ])
 
             if regularization_state != 'all':
                 domain.append(('regularization_state', '=', regularization_state))

@@ -140,6 +140,12 @@ class TestTicketTransfer(TransactionCase):
         self.assertEqual(sum(txs.mapped('qty_total')), qty * 2)
         src_tx = txs.filtered(lambda tx: tx.wallet_id == source_wallet)
         dst_tx = txs.filtered(lambda tx: tx.wallet_id == dest_wallet)
+        self.assertEqual(src_tx.partner_id.id, source_wallet.partner_id.id)
+        self.assertEqual(dst_tx.partner_id.id, dest_wallet.partner_id.id)
+        self.assertEqual(src_tx.actor_partner_id.id, source_wallet.partner_id.id)
+        self.assertEqual(dst_tx.actor_partner_id.id, source_wallet.partner_id.id)
+        self.assertEqual(src_tx.counterparty_partner_id.id, dest_wallet.partner_id.id)
+        self.assertEqual(dst_tx.counterparty_partner_id.id, dest_wallet.partner_id.id)
         self.assertEqual(src_tx.line_ids.face_line_id.id, face_line.id)
         self.assertEqual(dst_tx.line_ids.face_line_id.id, dest_line.id)
         for tx in txs:
