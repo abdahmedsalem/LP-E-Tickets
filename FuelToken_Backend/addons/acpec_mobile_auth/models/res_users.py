@@ -233,6 +233,114 @@ class ResUsers(models.Model):
         return bool(value and value == self._acpec_normalize_mobile_phone(value) and self._acpec_is_valid_mobile_phone(value))
 
     @api.model
+    def _acpec_normalize_action_name_for_match(self, name):
+        """Normalize an action name for security cleanup matching.
+
+        This intentionally stays local to back-office action cleanup. It is not
+        a phone normalizer and does not alter the mobile identity contract.
+        """
+        import unicodedata
+
+        value = (str(name) if name not in (False, None) else '').strip().lower()
+        value = ''.join(
+            char
+            for char in unicodedata.normalize('NFKD', value)
+            if not unicodedata.combining(char)
+        )
+        return ' '.join(value.split())
+
+    @api.model
+    def _acpec_is_dangerous_mobile_phone_change_action_name(self, name):
+        """Return True for the V1-disabled FuelToken mobile phone change action."""
+        normalized = self._acpec_normalize_action_name_for_match(name)
+        exact_names = {
+            self._acpec_normalize_action_name_for_match('Changer le téléphone mobile FuelToken'),
+            self._acpec_normalize_action_name_for_match('Changer le telephone mobile FuelToken'),
+            self._acpec_normalize_action_name_for_match('Change FuelToken mobile phone'),
+            self._acpec_normalize_action_name_for_match('Change mobile phone FuelToken'),
+        }
+        if normalized in exact_names:
+            return True
+
+        return (
+            'fueltoken' in normalized
+            and ('telephone' in normalized or 'phone' in normalized)
+            and ('changer' in normalized or 'change' in normalized)
+        )
+
+    @api.model
+    def _acpec_action_is_bound_to_res_users(self, action):
+        """Return True when an action is bound to, or directly targets, res.users."""
+        binding_model = getattr(action, 'binding_model_id', False)
+        if binding_model and binding_model.model == 'res.users':
+            return True
+
+        action_model = getattr(action, 'model_id', False)
+        if action_model and action_model.model == 'res.users':
+            return True
+
+        res_model = getattr(action, 'res_model', False)
+        if res_model == 'res.users':
+            return True
+
+        return False
+
+    @api.model
+    def _acpec_disable_dangerous_mobile_phone_change_actions(self):
+        """Remove dangerous FuelToken mobile phone change actions from Odoo menus.
+
+        V1 policy: changing the FuelToken mobile identity from the generic Odoo
+        user action menu is disabled completely. A safe future flow must be a
+        dedicated audited workflow that revokes sessions/devices and validates
+        the old/new identity. Until then, delete matching bound actions instead
+        of merely protecting them with group_ids.
+        """
+        removed = {}
+        action_model_names = (
+            'ir.actions.server',
+            'ir.actions.act_window',
+        )
+
+        for model_name in action_model_names:
+            if model_name not in self.env:
+                continue
+
+            Action = self.env[model_name].sudo()
+            candidates = Action.browse()
+
+            # Find exact/fuzzy FuelToken phone-change actions even if they are
+            # not correctly bound, then filter in Python before unlink.
+            if 'name' in Action._fields:
+                candidates |= Action.search([('name', 'ilike', 'FuelToken')])
+                candidates |= Action.search([('name', 'ilike', 'téléphone')])
+                candidates |= Action.search([('name', 'ilike', 'telephone')])
+                candidates |= Action.search([('name', 'ilike', 'phone')])
+
+            # Also inspect every action bound to res.users, because translations
+            # may make the visible label differ from the stored source name.
+            if 'binding_model_id' in Action._fields:
+                candidates |= Action.search([('binding_model_id.model', '=', 'res.users')])
+            if 'model_id' in Action._fields:
+                candidates |= Action.search([('model_id.model', '=', 'res.users')])
+            if 'res_model' in Action._fields:
+                candidates |= Action.search([('res_model', '=', 'res.users')])
+
+            dangerous = candidates.filtered(
+                lambda action: (
+                    self._acpec_is_dangerous_mobile_phone_change_action_name(action.name)
+                    and (
+                        self._acpec_action_is_bound_to_res_users(action)
+                        or 'fueltoken' in self._acpec_normalize_action_name_for_match(action.name)
+                    )
+                )
+            )
+            if dangerous:
+                removed[model_name] = len(dangerous)
+                dangerous.unlink()
+
+        return removed
+
+    @api.model
     def _acpec_mobile_identity_duplicate_phone_rows(self, limit=5):
         self.env.cr.execute(
             """
