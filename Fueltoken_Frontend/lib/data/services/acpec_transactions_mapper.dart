@@ -266,7 +266,10 @@ class AcpecTransactionsMapper {
   }) {
     final out = <BusinessTransaction>[];
     for (final lot in lots) {
-      if (lot.state == PurchaseLotState.draft) continue;
+      // Patch2I: purchasesList() is only a fallback for still-pending
+      // submitted purchases. Final purchase states are represented by
+      // /mobile/transactions and must not be recreated as purchaseSubmitted.
+      if (lot.state != PurchaseLotState.submitted) continue;
       final submittedDate = lot.submittedAt ?? lot.createdAt;
       out.add(
         BusinessTransaction(
@@ -292,11 +295,7 @@ class AcpecTransactionsMapper {
           ],
           lotId: lot.id,
           lotInternalRef: lot.internalRef,
-          note: lot.state == PurchaseLotState.approved
-              ? 'Validé après soumission'
-              : lot.state == PurchaseLotState.rejected
-              ? 'Rejeté après soumission'
-              : lot.state.label,
+          note: lot.state.label,
         ),
       );
     }
