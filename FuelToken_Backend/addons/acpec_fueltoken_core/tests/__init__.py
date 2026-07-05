@@ -9,3 +9,4 @@ from . import test_station_agent_assignment_doctrine
 from . import test_public_qr_carnet_short_code_format
 from . import test_purchase_face_line_smart_button_h13
 from . import test_core_fuel_views_o19
+from . import test_transaction_secure_reference
