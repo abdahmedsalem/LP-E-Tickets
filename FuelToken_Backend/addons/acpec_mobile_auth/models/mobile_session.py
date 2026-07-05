@@ -136,6 +136,9 @@ class AcpecMobileSession(models.Model):
             user_name = (user_name or '').strip()
             mobile_phone = (mobile_phone or '').strip()
 
+            if mobile_phone and user_name.startswith('%s - ' % mobile_phone):
+                user_name = user_name[len(mobile_phone) + 3:].strip()
+
             session.mobile_phone = mobile_phone or False
 
             if user_name and mobile_phone:

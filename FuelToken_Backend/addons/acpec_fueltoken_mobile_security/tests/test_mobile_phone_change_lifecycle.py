@@ -52,7 +52,9 @@ class TestFuelTokenMobilePhoneChangeLifecycle(TransactionCase):
             'password': self.User._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self.mobile_group_ids)],
         })
-        user.partner_id.sudo().write({
+        user.partner_id.sudo().with_context(
+            acpec_fueltoken_allow_mobile_partner_identity_sync=True,
+        ).write({
             'acpec_is_mobile_partner': True,
             'ref': 'MOB:%s' % phone,
         })
@@ -92,19 +94,22 @@ class TestFuelTokenMobilePhoneChangeLifecycle(TransactionCase):
         self.assertTrue(log.revoke_active_sessions)
         self.assertEqual(log.active_sessions_revoked_count, 1)
 
-    def test_f2g_change_phone_does_not_overwrite_manual_partner_ref(self):
+    def test_f2g_direct_partner_ref_write_is_refused_and_phone_change_resyncs_ref(self):
         user = self._mobile_user('33003003')
-        user.partner_id.sudo().write({'ref': 'CLIENT-MANUAL-REF'})
+
+        with self.assertRaises(ValidationError):
+            user.partner_id.sudo().write({'ref': 'CLIENT-MANUAL-REF'})
 
         log = user.action_fueltoken_change_mobile_phone(
             '33003004',
-            'Client keeps manual customer reference.',
+            'Client phone change keeps technical mobile ref canonical.',
         )
-        user.partner_id.invalidate_recordset(['ref'])
+        user.partner_id.invalidate_recordset(['name', 'ref'])
 
-        self.assertEqual(user.partner_id.ref, 'CLIENT-MANUAL-REF')
-        self.assertEqual(log.old_partner_ref, 'CLIENT-MANUAL-REF')
-        self.assertEqual(log.new_partner_ref, 'CLIENT-MANUAL-REF')
+        self.assertEqual(user.partner_id.name, '33003004 - F2G Mobile User 33003003')
+        self.assertEqual(user.partner_id.ref, 'MOB:33003004')
+        self.assertEqual(log.old_partner_ref, 'MOB:33003003')
+        self.assertEqual(log.new_partner_ref, 'MOB:33003004')
 
     def test_f2g_change_phone_revokes_all_active_sessions_without_blocking_device(self):
         user = self._mobile_user('33003005')

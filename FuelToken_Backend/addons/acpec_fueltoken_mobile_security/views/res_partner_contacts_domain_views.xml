@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Patch43M1: masquage UI doux.
+         Le partner d'un user mobile_only est un support technique d'identité.
+         On évite de polluer Contacts sans ir.rule sur res.partner/res.users.
+
+         Important:
+         - base.view_partner_tree est une vue ir.ui.view, pas une action.
+         - Le filtre de la liste doit être posé sur les actions ir.actions.act_window.
+         - La méthode ci-dessous applique le domain aux actions Contacts réellement présentes
+           (base.action_partner_form et/ou contacts.action_contacts). -->
+    <function model="res.partner" name="_acpec_fueltoken_apply_mobile_partner_contacts_action_domain"/>
+</odoo>
