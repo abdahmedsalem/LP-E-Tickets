@@ -12,10 +12,13 @@ class AcpecFuelStation(models.Model):
     code = fields.Char(string='Code', index=True)
     user_id = fields.Many2one(
         'res.users',
-        string='Utilisateur station principal',
-        required=True,
+        string='Responsable station',
         index=True,
         tracking=True,
+        help=(
+            "Responsable / superviseur station optionnel. "
+            "Le responsable est aussi synchronisé comme agent opérationnel primaire."
+        ),
     )
     agent_ids = fields.One2many(
         'acpec.fuel.station.agent',
@@ -119,8 +122,10 @@ class AcpecFuelStation(models.Model):
     @api.constrains('user_id', 'company_id')
     def _check_station_user_company(self):
         for rec in self:
+            if not rec.user_id:
+                continue
             if rec.company_id not in rec.user_id.company_ids:
-                raise ValidationError(_('L’utilisateur station doit appartenir à la société de la station.'))
+                raise ValidationError(_('Le responsable station doit appartenir à la société de la station.'))
             rec._validate_station_mobile_user(rec.user_id)
 
     @api.model_create_multi
