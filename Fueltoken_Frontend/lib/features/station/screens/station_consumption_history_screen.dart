@@ -401,6 +401,14 @@ class _StationHistoryRow extends StatelessWidget {
         : qrCode;
 
     return AppCard(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => _StationConsumptionDetailScreen(
+            tx: tx,
+            amount: amount,
+          ),
+        ),
+      ),
       padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -657,7 +665,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   _DetailInfoGrid(
                     items: [
-                      ('Transaction', tx.id),
+                      ('N° TX', tx.txNumber),
                       ('Client ID', tx.userId),
                       ('Station ID', tx.stationId ?? '—'),
                       ('QR', tx.qrId ?? tx.qrPublicCode ?? '—'),

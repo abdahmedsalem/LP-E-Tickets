@@ -126,6 +126,7 @@ class TransactionLine extends Equatable {
 /// acpec.fuel.transaction
 class BusinessTransaction extends Equatable {
   final String id;
+  final String? txReference;
   final TxType type;
   final DateTime date;
   final String? lotId;
@@ -147,6 +148,7 @@ class BusinessTransaction extends Equatable {
 
   const BusinessTransaction({
     required this.id,
+    this.txReference,
     required this.type,
     required this.date,
     required this.userId,
@@ -165,6 +167,13 @@ class BusinessTransaction extends Equatable {
 
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
 
+  bool get hasTxReference => (txReference ?? '').trim().isNotEmpty;
+
+  String get txNumber {
+    final ref = (txReference ?? '').trim();
+    return ref.isNotEmpty ? ref : id;
+  }
+
   /// Libellé contextuel enrichi (avec partie pour les transferts).
   String get displayTitle {
     if (type == TxType.carnetTransfer && transferParty != null) {
@@ -177,5 +186,5 @@ class BusinessTransaction extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, type, date];
+  List<Object?> get props => [id, txReference, type, date];
 }

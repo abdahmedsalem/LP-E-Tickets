@@ -621,6 +621,7 @@ class AcpecTransactionsMapper {
 
     return BusinessTransaction(
       id: id,
+      txReference: _txReference(row, id),
       type: type,
       date: date,
       userId: uid,
@@ -650,6 +651,25 @@ class AcpecTransactionsMapper {
       transferParty: transferParty,
       transferPartyPhone: transferPartyPhone,
     );
+  }
+
+  static String? _txReference(Map<String, dynamic> row, String fallbackId) {
+    for (final key in [
+      'name',
+      'transaction_name',
+      'tx_name',
+      'transaction_ref',
+      'reference',
+    ]) {
+      final v = row[key];
+      if (v == null || v is bool) continue;
+      final s = v.toString().trim();
+      if (s.isEmpty || s == 'false' || s == 'true') continue;
+      if (RegExp(r'^TX[-/\s]', caseSensitive: false).hasMatch(s)) {
+        return s;
+      }
+    }
+    return null;
   }
 
   static String? _lotRefFromName(dynamic v) {
