@@ -15,6 +15,27 @@
                 <field name="regularization_reference"/>
                 <field name="qty_total"/>
                 <field name="amount_total"/>
+                <field name="partner_id" optional="hide"/>
+                <field name="actor_partner_id" optional="hide"/>
+                <field name="counterparty_partner_id" optional="hide"/>
+                <field name="counterparty_user_id" optional="hide"/>
+                <field name="parent_qr_id" optional="hide"/>
+                <field name="transfer_id" optional="hide"/>
+                <field name="ticket_transfer_id" optional="hide"/>
+                <field name="purchase_state" optional="hide"/>
+                <field name="purchase_submitted_at" optional="hide"/>
+                <field name="purchase_approved_at" optional="hide"/>
+                <field name="purchase_rejected_at" optional="hide"/>
+                <field name="purchase_rejection_reason" optional="hide"/>
+                <field name="regularization_date" optional="hide"/>
+                <field name="regularized_by_id" optional="hide"/>
+                <field name="idempotency_key" optional="hide"/>
+                <field name="request_hash" optional="hide"/>
+                <field name="note" optional="hide"/>
+                <field name="create_date" optional="hide"/>
+                <field name="create_uid" optional="hide"/>
+                <field name="write_date" optional="hide"/>
+                <field name="write_uid" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </list>
         </field>

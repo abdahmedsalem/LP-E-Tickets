@@ -143,3 +143,40 @@ class AcpecFuelTransaction(models.Model):
         copy=False,
         index=True,
     )
+
+    def init(self):
+        super().init()
+
+        # Backfill API-owned actor_user_id snapshots introduced by Patch43M5.
+        # Core partner snapshots are handled by acpec_fueltoken_core.
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_user_id = q.consumed_user_id
+              FROM acpec_fuel_qr q
+             WHERE t.transaction_type = 'consommation_station'
+               AND t.qr_id = q.id
+               AND t.actor_user_id IS NULL
+               AND q.consumed_user_id IS NOT NULL
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_user_id = tr.confirmed_by
+              FROM acpec_fuel_carnet_transfer tr
+             WHERE t.transfer_id = tr.id
+               AND t.actor_user_id IS NULL
+               AND tr.confirmed_by IS NOT NULL
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_user_id = tr.confirmed_by
+              FROM acpec_fuel_ticket_transfer tr
+             WHERE t.ticket_transfer_id = tr.id
+               AND t.actor_user_id IS NULL
+               AND tr.confirmed_by IS NOT NULL
+            """
+        )

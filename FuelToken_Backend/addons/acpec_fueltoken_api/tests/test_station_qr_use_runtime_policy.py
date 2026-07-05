@@ -371,7 +371,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertNotIn(str(foreign_tx.id), repr(tx_response))
 
     def test_station_qr_use_accepts_qr_numeric_code(self):
-        controller, _station_user, station, _session, _client_user, qr = self._controller_with_consumable_qr(
+        controller, station_user, station, _session, client_user, qr = self._controller_with_consumable_qr(
             "numeric-use-37a",
         )
         key = "station-qr-numeric-use-37a"
@@ -387,9 +387,26 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertIn(str(tx.id), repr(response))
         self.assertEqual(tx.station_id.id, station.id)
 
-        qr.invalidate_recordset(["state", "consumed_station_id"])
+        qr.invalidate_recordset([
+            "state",
+            "consumed_station_id",
+            "consumed_user_id",
+            "consumed_partner_id",
+        ])
+        tx.invalidate_recordset([
+            "actor_user_id",
+            "actor_partner_id",
+            "counterparty_partner_id",
+            "counterparty_user_id",
+        ])
         self.assertEqual(qr.state, "consumed")
         self.assertEqual(qr.consumed_station_id.id, station.id)
+        self.assertEqual(qr.consumed_user_id.id, station_user.id)
+        self.assertEqual(qr.consumed_partner_id.id, station_user.partner_id.id)
+        self.assertEqual(tx.actor_user_id.id, station_user.id)
+        self.assertEqual(tx.actor_partner_id.id, station_user.partner_id.id)
+        self.assertEqual(tx.counterparty_partner_id.id, client_user.partner_id.id)
+        self.assertEqual(tx.counterparty_user_id.id, client_user.id)
 
     def test_station_qr_rejects_mixed_public_and_numeric_code(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(

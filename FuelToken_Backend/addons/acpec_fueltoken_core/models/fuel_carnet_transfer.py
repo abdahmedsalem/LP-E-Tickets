@@ -244,6 +244,8 @@ class AcpecFuelCarnetTransfer(models.Model):
                     'qty': qty_to_transfer,
                 })
 
+            counterparty_user = Tx._single_user_for_partner(self.dest_partner_id)
+
             # 7. Journaliser deux transactions (une par wallet)
             Tx.log(
                 'transfert_carnet', self.company_id,
@@ -252,6 +254,9 @@ class AcpecFuelCarnetTransfer(models.Model):
                 lines=src_tx_lines,
                 note=_('Transfert sortant vers %s.') % self.dest_partner_id.display_name,
                 idempotency_key='SRC-%s' % (self.idempotency_key or str(self.id)),
+                actor_partner=self.source_partner_id,
+                counterparty_partner=self.dest_partner_id,
+                counterparty_user=counterparty_user,
             )
             Tx.log(
                 'transfert_carnet', self.company_id,
@@ -260,6 +265,9 @@ class AcpecFuelCarnetTransfer(models.Model):
                 lines=dst_tx_lines,
                 note=_('Transfert entrant de %s.') % self.source_partner_id.display_name,
                 idempotency_key='DST-%s' % (self.idempotency_key or str(self.id)),
+                actor_partner=self.source_partner_id,
+                counterparty_partner=self.dest_partner_id,
+                counterparty_user=counterparty_user,
             )
 
             self.write({
