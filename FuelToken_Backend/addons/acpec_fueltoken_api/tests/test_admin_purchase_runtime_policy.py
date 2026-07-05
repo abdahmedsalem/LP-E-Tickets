@@ -110,7 +110,6 @@ class TestAdminPurchaseRuntimePolicy(TransactionCase):
         })
         if user.partner_id:
             user.partner_id.sudo().write({
-                "name": "Client admin purchase %s" % suffix,
                 "company_id": self.company.id,
             })
 

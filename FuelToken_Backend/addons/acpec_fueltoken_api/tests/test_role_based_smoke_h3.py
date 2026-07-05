@@ -87,7 +87,6 @@ class TestRoleBasedSmokeH3(TransactionCase):
         user.set_mobile_pin("1234")
         if user.partner_id:
             user.partner_id.sudo().write({
-                "name": "Partner %s" % label,
                 "company_id": self.company.id,
             })
         return user

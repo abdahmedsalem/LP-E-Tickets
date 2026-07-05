@@ -74,7 +74,6 @@ class TestClientWalletOperationalRoleSegregation(TransactionCase):
         })
         if user.partner_id:
             user.partner_id.sudo().write({
-                "name": "Partner %s" % label,
                 "company_id": self.company.id,
             })
         return user
