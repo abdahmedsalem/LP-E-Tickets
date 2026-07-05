@@ -538,6 +538,140 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         with patch.object(api_station_module, "request", fake_request):
             return controller.station_transactions(**(payload or {}))
 
+    def _response_data(self, response):
+        self.assertIsInstance(response, dict)
+        data = response.get("data")
+        return data if isinstance(data, dict) else response
+
+    def _station_controller_for_existing_station_user(self, station_user, station, suffix, trusted=True):
+        token_data = self.env["acpec.mobile.session"].sudo().create_for_user(station_user, {
+            "device_uid": "dev-station-existing-%s" % suffix,
+            "platform": "android",
+        })
+        session = token_data["session"]
+        if trusted:
+            session.action_trust_device()
+
+        controller = AcpecFuelTokenStationApi()
+        controller._test_env = self.env
+        controller._get_mobile_session = lambda required=True: session
+        self.env["acpec.fuel.station.agent"].sudo().create({
+            "station_id": station.id,
+            "user_id": station_user.id,
+            "active": True,
+            "is_primary": False,
+        })
+        return controller, session
+
+    def test_patch43m6_station_agent_sees_only_own_consumptions(self):
+        responsible_controller, responsible_user, station, _session, _client_user, qr1 = self._controller_with_consumable_qr(
+            "m6-agent-scope-responsible",
+        )
+        ordinary_user = self._create_station_user("station-qr-use-m6-agent@example.com")
+        ordinary_controller, _ordinary_session = self._station_controller_for_existing_station_user(
+            ordinary_user,
+            station,
+            "m6-agent",
+        )
+
+        client_user2 = self._create_client_user("client-station-qr-m6-agent@example.com")
+        _carnet_type2, _purchase2, _wallet2, qr2 = self._issue_client_qr(client_user2, "m6-agent-scope-ordinary")
+
+        key1 = "station-qr-m6-agent-scope-responsible"
+        key2 = "station-qr-m6-agent-scope-ordinary"
+        self._call_use_qr(responsible_controller, self._payload(qr1, key=key1))
+        self._call_use_qr(ordinary_controller, self._payload(qr2, key=key2))
+
+        tx1 = self._tx_by_key(qr1, key1)
+        tx2 = self._tx_by_key(qr2, key2)
+        self.assertEqual(tx1.actor_partner_id.id, responsible_user.partner_id.id)
+        self.assertEqual(tx2.actor_partner_id.id, ordinary_user.partner_id.id)
+
+        responsible_data = self._response_data(self._call_station_transactions(
+            responsible_controller,
+            {"regularization_state": "all", "limit": 100},
+        ))
+        responsible_ids = {item["id"] for item in responsible_data.get("items", [])}
+        self.assertIn(tx1.id, responsible_ids)
+        self.assertIn(tx2.id, responsible_ids)
+
+        ordinary_data = self._response_data(self._call_station_transactions(
+            ordinary_controller,
+            {"regularization_state": "all", "limit": 100},
+        ))
+        ordinary_ids = {item["id"] for item in ordinary_data.get("items", [])}
+        self.assertNotIn(tx1.id, ordinary_ids)
+        self.assertIn(tx2.id, ordinary_ids)
+
+    def test_patch43m6_station_transactions_limit_is_capped_to_100(self):
+        controller, station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "m6-limit-cap",
+        )
+        Tx = self.env["acpec.fuel.transaction"].sudo()
+        for index in range(105):
+            Tx.create({
+                "transaction_type": "consommation_station",
+                "company_id": self.company.id,
+                "station_id": station.id,
+                "actor_partner_id": station_user.partner_id.id,
+                "regularization_state": "pending",
+                "amount_total": index + 1,
+                "qty_total": 1,
+            })
+
+        data = self._response_data(self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "limit": 999,
+        }))
+        self.assertEqual(data.get("limit"), 100)
+        self.assertEqual(len(data.get("items", [])), 100)
+
+    def test_patch43m6_station_transactions_rejects_date_range_over_365_days(self):
+        controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "m6-date-range",
+        )
+
+        response = self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "date_from": "2024-01-01 00:00:00",
+            "date_to": "2026-01-02 00:00:00",
+            "limit": 20,
+        })
+
+        self.assertFalse(response.get("success"))
+        self.assertIn("365", repr(response))
+
+    def test_patch43m6_station_transactions_rejects_date_to_without_date_from(self):
+        controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "m6-date-to-alone",
+        )
+
+        response = self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "date_to": "2026-01-02 00:00:00",
+            "limit": 20,
+        })
+
+        self.assertFalse(response.get("success"))
+        self.assertIn("date_from", repr(response))
+
+    def test_patch43m6_station_transactions_payload_has_no_manual_qr_secret(self):
+        controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "m6-no-secret",
+        )
+        key = "station-qr-m6-no-secret"
+        self._call_use_qr(controller, self._payload_numeric(qr, key=key))
+
+        response = self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "limit": 20,
+        })
+
+        self.assertNotIn("qr_numeric_code", repr(response))
+        self.assertNotIn("qr_numeric_code_hash", repr(response))
+        self.assertNotIn("qr_numeric_code_nonce", repr(response))
+        self.assertNotIn(qr._qr_numeric_code_display(), repr(response))
+
     def test_station_consumption_transaction_starts_pending_regularization(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
             "regularization-pending-h3b",
