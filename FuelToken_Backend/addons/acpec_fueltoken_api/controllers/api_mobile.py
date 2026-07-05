@@ -292,6 +292,12 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         }
 
     def _purchase_event_state(self, tx):
+        # Patch43M14: rejection is carried by acpec.fuel.purchase, not by a
+        # dedicated purchase_rejected transaction_type. A rejected purchase keeps
+        # its purchase_submitted TX, but the mobile payload must expose the
+        # effective business state as rejected.
+        if tx.purchase_id and tx.purchase_id.state == 'rejected':
+            return 'rejected'
         if tx.transaction_type == 'purchase_submitted':
             return 'submitted'
         if tx.transaction_type == 'purchase_approved':

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import base64
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -101,6 +102,44 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
             wallet=wallet,
             **extra
         )
+
+    # patch43M14_rejected_purchase_payload_only
+    def _create_unique_carnet_type_for_purchase_report(self):
+        carnet_model = self.env["acpec.fuel.carnet.type"].sudo()
+        face_count = 10
+        for face_value in range(910001, 910101):
+            code = "C%sT-%s" % (face_count, face_value)
+            if not carnet_model.search([("company_id", "=", self.company.id), ("code", "=", code)], limit=1):
+                return carnet_model.create({
+                    "face_count": face_count,
+                    "face_value": face_value,
+                    "validity_days": 365,
+                    "company_id": self.company.id,
+                })
+        self.fail("Impossible de créer un type de carnet isolé pour le test M14.")
+
+    def _create_purchase_for_mobile_report(self, user, carnet_qty=1):
+        purchase = self.env["acpec.fuel.purchase"].sudo().create({
+            "partner_id": user.partner_id.id,
+            "company_id": self.company.id,
+            "payment_reference": "PAY-M14-REJECTED",
+        })
+        carnet_type = self._create_unique_carnet_type_for_purchase_report()
+        self.env["acpec.fuel.purchase.line"].sudo().create({
+            "purchase_id": purchase.id,
+            "carnet_type_id": carnet_type.id,
+            "carnet_qty": carnet_qty,
+        })
+        attachment = self.env["ir.attachment"].sudo().create({
+            "name": "preuve-m14.pdf",
+            "datas": base64.b64encode(b"%PDF-1.4\npreuve m14\n").decode("ascii"),
+            "mimetype": "application/pdf",
+            "res_model": purchase._name,
+            "res_id": purchase.id,
+            "type": "binary",
+        })
+        purchase.write({"proof_attachment_ids": [(4, attachment.id)]})
+        return purchase
 
     def test_patch43m10_mobile_transactions_use_wallet_partner_not_actor_or_counterparty(self):
         controller, user, _session = self._controller_for_user("m10-report-owner@example.com")
@@ -233,3 +272,39 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
         refused = self._call_transaction_detail(controller, foreign_tx.id)
         self.assertFalse(refused.get("ok"))
         self.assertEqual(refused.get("error", {}).get("code"), "VALIDATION_ERROR")
+
+    def test_patch43m14_rejected_purchase_payload_is_rejected_in_list_and_detail(self):
+        controller, user, _session = self._controller_for_user("m14-rejected-payload@example.com")
+        purchase = self._create_purchase_for_mobile_report(user, carnet_qty=1)
+
+        purchase.action_submit()
+        tx = self.env["acpec.fuel.transaction"].sudo().search([
+            ("purchase_id", "=", purchase.id),
+            ("transaction_type", "=", "purchase_submitted"),
+        ], limit=1)
+        self.assertTrue(tx)
+        purchase.write({"rejection_reason": "Preuve non conforme M14"})
+        purchase.action_reject()
+        purchase.invalidate_recordset(["state", "rejected_at", "rejected_by", "rejection_reason"])
+        tx.invalidate_recordset(["transaction_type", "purchase_state", "purchase_rejected_at", "purchase_rejection_reason"])
+
+        data = self._response_data(self._call_transactions(controller, {"limit": 20}))
+        items = [item for item in data.get("items", []) if item.get("id") == tx.id]
+        self.assertEqual(len(items), 1)
+        item = items[0]
+
+        self.assertEqual(item["transaction_type"], "purchase_submitted")
+        self.assertEqual(item["state"], "rejected")
+        self.assertEqual(item["purchase_state"], "rejected")
+        self.assertEqual(item["purchase_current_state"], "rejected")
+        self.assertTrue(item["rejected_at"])
+        self.assertEqual(item["rejection_reason"], "Preuve non conforme M14")
+
+        detail = self._response_data(self._call_transaction_detail(controller, tx.id))
+        self.assertEqual(detail["id"], tx.id)
+        self.assertEqual(detail["transaction_type"], "purchase_submitted")
+        self.assertEqual(detail["state"], "rejected")
+        self.assertEqual(detail["purchase_state"], "rejected")
+        self.assertEqual(detail["purchase_current_state"], "rejected")
+        self.assertTrue(detail["rejected_at"])
+        self.assertEqual(detail["rejection_reason"], "Preuve non conforme M14")
