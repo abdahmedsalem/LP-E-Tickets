@@ -168,7 +168,7 @@ class _ConsumeFixtureMixin:
         station_user = env['res.users'].sudo().with_context(
             no_reset_password=True
         ).create(self._station_mobile_user_vals(env, {
-            'name': 'Station conso %s' % suffix,
+            'name': '[TEST_ODOO_AUTO] Station conso %s' % suffix,
             'login': 'station-conc-%s' % suffix,
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
