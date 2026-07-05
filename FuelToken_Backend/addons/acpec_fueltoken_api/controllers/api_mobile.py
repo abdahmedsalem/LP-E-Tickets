@@ -17,6 +17,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE = bytes.fromhex('ffd8ff')
     PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE = bytes.fromhex('89504e470d0a1a0a')
     PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE = b'%PDF-'
+    MOBILE_TRANSACTIONS_DEFAULT_LIMIT = 20
+    MOBILE_TRANSACTIONS_MAX_LIMIT = 100
+    MOBILE_TRANSACTIONS_MAX_HISTORY_DAYS = 365
 
     def _purchase_payment_proof_invalid_message(self):
         # Do not wrap this message in _().
@@ -187,6 +190,23 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
     def _tx_type_label(self, tx):
         return dict(tx._fields['transaction_type'].selection).get(tx.transaction_type, tx.transaction_type)
 
+    def _mobile_transactions_date_range_params(self, params):
+        date_from, date_to = self._date_range_params(params)
+        if date_to and not date_from:
+            raise ValidationError('date_from est obligatoire lorsque date_to est fourni.')
+
+        if date_from:
+            effective_date_to = date_to or fields.Datetime.now()
+            if effective_date_to < date_from:
+                raise ValidationError('date_to doit être postérieure ou égale à date_from.')
+            if (effective_date_to - date_from).days > self.MOBILE_TRANSACTIONS_MAX_HISTORY_DAYS:
+                raise ValidationError(
+                    'La période demandée ne peut pas dépasser %s jours.'
+                    % self.MOBILE_TRANSACTIONS_MAX_HISTORY_DAYS
+                )
+
+        return date_from, date_to
+
     def _history_carnet_type(self, line):
         face_line = line.face_line_id
         if face_line and face_line.carnet_type_id:
@@ -307,6 +327,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 ticket_transfer_direction = 'incoming'
                 ticket_transfer_other_party = ticket_transfer.source_partner_id.display_name or False
 
+        actor_user = tx.actor_user_id if 'actor_user_id' in tx._fields else False
+        counterparty_user = tx.counterparty_user_id if 'counterparty_user_id' in tx._fields else False
+
         return {
             'id': tx.id,
             'name': tx.name,
@@ -314,8 +337,19 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'transaction_type_label': self._tx_type_label(tx),
             'amount_total': tx.amount_total,
             'qty_total': tx.qty_total,
+            'date': fields.Datetime.to_string(tx.create_date) if tx.create_date else False,
             'created_at': fields.Datetime.to_string(tx.create_date) if tx.create_date else False,
             'wallet_id': tx.wallet_id.id if tx.wallet_id else False,
+            'partner_id': tx.partner_id.id if tx.partner_id else False,
+            'partner_name': tx.partner_id.display_name if tx.partner_id else False,
+            'actor_partner_id': tx.actor_partner_id.id if tx.actor_partner_id else False,
+            'actor_partner_name': tx.actor_partner_id.display_name if tx.actor_partner_id else False,
+            'actor_user_id': actor_user.id if actor_user else False,
+            'actor_user_name': actor_user.name if actor_user else False,
+            'counterparty_partner_id': tx.counterparty_partner_id.id if tx.counterparty_partner_id else False,
+            'counterparty_partner_name': tx.counterparty_partner_id.display_name if tx.counterparty_partner_id else False,
+            'counterparty_user_id': counterparty_user.id if counterparty_user else False,
+            'counterparty_user_name': counterparty_user.name if counterparty_user else False,
             'purchase_id': purchase.id if purchase else False,
             'purchase_name': purchase.name if purchase else False,
             'purchase_public_code': purchase.public_code if purchase else False,
@@ -329,11 +363,17 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'rejected_by': purchase.rejected_by.name if not is_purchase_submitted and purchase and purchase.rejected_by else False,
             'rejection_reason': False if is_purchase_submitted else (tx.purchase_rejection_reason or False),
             'qr_id': tx.qr_id.id if tx.qr_id else False,
+            'qr_name': tx.qr_id.name if tx.qr_id else False,
             'qr_public_code': tx.qr_id.public_code if tx.qr_id else False,
             'parent_qr_id': tx.parent_qr_id.id if tx.parent_qr_id else False,
+            'parent_qr_name': tx.parent_qr_id.name if tx.parent_qr_id else False,
             'parent_qr_public_code': tx.parent_qr_id.public_code if tx.parent_qr_id else False,
             'station_id': tx.station_id.id if tx.station_id else False,
             'station_name': tx.station_id.name if tx.station_id else False,
+            'regularization_state': tx.regularization_state or False,
+            'regularization_reference': tx.regularization_reference or False,
+            'regularization_date': fields.Datetime.to_string(tx.regularization_date) if tx.regularization_date else False,
+            'regularized_by': tx.regularized_by_id.name if tx.regularized_by_id else False,
             'note': tx.note or False,
             # Transfert de carnets : direction et autre partie
             'transfer_id': transfer.id if transfer else False,
@@ -355,8 +395,19 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'transaction_type_label': 'Demande d’achat soumise',
             'amount_total': purchase.amount_total,
             'qty_total': purchase.face_qty_total,
+            'date': fields.Datetime.to_string(created_at) if created_at else False,
             'created_at': fields.Datetime.to_string(created_at) if created_at else False,
             'wallet_id': wallet.id if wallet else False,
+            'partner_id': wallet.partner_id.id if wallet and wallet.partner_id else False,
+            'partner_name': wallet.partner_id.display_name if wallet and wallet.partner_id else False,
+            'actor_partner_id': False,
+            'actor_partner_name': False,
+            'actor_user_id': False,
+            'actor_user_name': False,
+            'counterparty_partner_id': False,
+            'counterparty_partner_name': False,
+            'counterparty_user_id': False,
+            'counterparty_user_name': False,
             'purchase_id': purchase.id,
             'purchase_name': purchase.name,
             'purchase_public_code': purchase.public_code,
@@ -370,11 +421,17 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'rejected_by': False,
             'rejection_reason': False,
             'qr_id': False,
+            'qr_name': False,
             'qr_public_code': False,
             'parent_qr_id': False,
+            'parent_qr_name': False,
             'parent_qr_public_code': False,
             'station_id': False,
             'station_name': False,
+            'regularization_state': False,
+            'regularization_reference': False,
+            'regularization_date': False,
+            'regularized_by': False,
             'note': _('Demande d’achat en attente de validation') if purchase.state == 'submitted' else False,
             'lines': [
                 dict(self._purchase_history_line_payload(purchase, line), expiration_date=False)
@@ -733,11 +790,23 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             wallet = self._mobile_wallet()
             tx_model = request.env['acpec.fuel.transaction'].sudo()
             purchase_model = request.env['acpec.fuel.purchase'].sudo()
-            date_from, date_to = self._date_range_params(kwargs)
-            limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=200)
+            date_from, date_to = self._mobile_transactions_date_range_params(kwargs)
+            limit, offset = self._pagination_params(
+                kwargs,
+                default_limit=self.MOBILE_TRANSACTIONS_DEFAULT_LIMIT,
+                max_limit=self.MOBILE_TRANSACTIONS_MAX_LIMIT,
+            )
             include_meta = self._include_pagination_meta(kwargs)
             transaction_type_filter = self._get_clean_str(kwargs, 'transaction_type')
-            domain = [('wallet_id', '=', wallet.id)]
+            # Mobile-user history is scoped by the transaction row perspective:
+            # partner_id is wallet_id.partner_id. Do not filter on actor or
+            # counterparty: transfer rows deliberately share the same global
+            # actor/counterparty snapshots while each row belongs to a different
+            # wallet partner.
+            domain = [
+                ('partner_id', '=', wallet.partner_id.id),
+                ('company_id', '=', wallet.company_id.id),
+            ]
             tx_filter_state, tx_filter_value, tx_filter_error = self._apply_transaction_type_filter(
                 domain,
                 transaction_type_filter,
@@ -772,7 +841,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             purchase_ids_with_submitted_tx = set()
             if submitted_purchase_ids:
                 purchase_ids_with_submitted_tx = set(tx_model.search([
-                    ('wallet_id', '=', wallet.id),
+                    ('partner_id', '=', wallet.partner_id.id),
+                    ('company_id', '=', wallet.company_id.id),
                     ('purchase_id', 'in', submitted_purchase_ids),
                     ('transaction_type', '=', 'purchase_submitted'),
                 ]).mapped('purchase_id').ids)
@@ -826,10 +896,11 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 raise ValidationError(_('transaction_id invalide.'))
             tx = request.env['acpec.fuel.transaction'].sudo().search([
                 ('id', '=', tx_id),
-                ('wallet_id', '=', wallet.id),
+                ('partner_id', '=', wallet.partner_id.id),
+                ('company_id', '=', wallet.company_id.id),
             ], limit=1)
             if not tx:
-                raise ValidationError(_('Transaction introuvable.'))
+                raise ValidationError('Transaction introuvable.')
             data = self._tx_payload(tx)
             data['lines'] = [self._history_line_payload(line) for line in tx.line_ids]
             return self._json_response(data)
