@@ -638,6 +638,14 @@ class AcpecTransactionsMapper {
           ) ??
           _lotRefFromName(row['name']),
       qrId: _stringField(row, 'qr_id'),
+      qrName: _stringField(
+        row,
+        'qr_name',
+        'qr_display_name',
+        'qr_reference',
+        'qr_ref',
+        'qr_number',
+      ),
       qrPublicCode: _stringField(
         row,
         'qr_public_code',
