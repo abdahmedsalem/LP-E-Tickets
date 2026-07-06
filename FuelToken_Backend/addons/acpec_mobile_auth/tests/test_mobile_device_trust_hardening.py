@@ -126,3 +126,54 @@ class TestMobileDeviceTrustHardening(TransactionCase):
         self.assertIn('action_open_block_device_wizard', session_view.arch_db)
         self.assertIn('action_open_reset_device_trust_wizard', session_view.arch_db)
         self.assertIn("device_trust_state != 'pending_trust'", session_view.arch_db)
+
+    def test_m20_legacy_trusted_session_does_not_auto_trust_new_durable_device(self):
+        # Unknown durable device must stay pending even with trusted legacy session history.
+        user = self._create_mobile_user('43002020')
+        device_uid = 'ft-m20-legacy-trusted-no-device'
+        Session = self.env['acpec.mobile.session'].sudo()
+        Device = self.env['acpec.mobile.device'].with_context(active_test=False).sudo()
+
+        first_session = self._create_session(user, device_uid)
+        first_device = first_session.device_id
+        first_session.action_trust_device()
+        first_session.invalidate_recordset(['device_id', 'device_trust_state', 'device_trusted_at'])
+        first_device.invalidate_recordset(['trust_state', 'trusted_at'])
+
+        self.assertEqual(first_session.device_trust_state, 'trusted')
+        self.assertEqual(first_device.trust_state, 'trusted')
+
+        # Simulate pre-durable-device legacy history: keep the trusted session
+        # but remove the durable device row for this exact (user, device_uid).
+        self.env.cr.execute(
+            "UPDATE acpec_mobile_session SET device_id = NULL WHERE id = %s",
+            [first_session.id],
+        )
+        self.env.cr.execute(
+            "DELETE FROM acpec_mobile_device WHERE id = %s",
+            [first_device.id],
+        )
+        self.env.invalidate_all()
+
+        self.assertFalse(Device.search([
+            ('user_id', '=', user.id),
+            ('stable_device_uid', '=', device_uid),
+        ], limit=1))
+        self.assertEqual(Session.browse(first_session.id).device_trust_state, 'trusted')
+
+        second = Session.create_for_user(user, {
+            'device_uid': device_uid,
+            'device_name': 'Android M20',
+            'platform': 'android',
+            'app_version': '1.0.0',
+        })
+        second_session = second['session']
+        second_device = second_session.device_id
+
+        self.assertTrue(second_device)
+        self.assertEqual(second_device.stable_device_uid, device_uid)
+        self.assertEqual(second_device.trust_state, 'pending_trust')
+        self.assertFalse(second_device.trusted_at)
+        self.assertEqual(second_session.device_trust_state, 'pending_trust')
+        self.assertFalse(second_session.device_trusted_at)
+        self.assertTrue(second_session.is_device_approval_candidate)
