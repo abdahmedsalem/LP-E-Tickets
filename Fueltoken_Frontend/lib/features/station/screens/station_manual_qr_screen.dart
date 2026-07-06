@@ -9,6 +9,7 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -43,7 +44,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       _codeController.text.replaceAll(RegExp(r'\D'), '').trim();
 
   Map<String, dynamic> _payloadFor(String code) {
-    return <String, dynamic>{'qr_numeric_code': code.trim()};
+    final normalized = code.replaceAll(RegExp(r'\D'), '').trim();
+    return <String, dynamic>{'qr_numeric_code': normalized};
   }
 
   Map<String, dynamic> _dataMap(dynamic raw) {
@@ -166,7 +168,13 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
         'action_code': actionCode,
         'idempotency_key': const Uuid().v4(),
       };
-      await OdooFueltokenFacade().stationQrUse(payload);
+      final raw = await OdooFueltokenFacade().stationQrUse(payload);
+      acpecRpcMapOrThrow(
+        raw,
+        fallbackMessage: 'Consommation QR refusée par le serveur.',
+        publicErrorMessage:
+            'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
+      );
       ClientHistoryRefreshBus.instance.bump();
       WalletRefreshBus.instance.bump();
 
@@ -308,10 +316,11 @@ class _ManualCodeCard extends StatelessWidget {
             controller: controller,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [_ManualQrCodeInputFormatter()],
             onSubmitted: (_) => checking ? null : onCheck(),
             decoration: InputDecoration(
-              hintText: 'Ex. 123456789012',
+              hintText: 'Ex. 1234-5678-9012',
+              helperText: 'Format attendu : 1234-5678-9012',
               prefixIcon: const Icon(Icons.pin_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -343,6 +352,34 @@ class _ManualCodeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ManualQrCodeInputFormatter extends TextInputFormatter {
+  const _ManualQrCodeInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final limited = digits.length > 12 ? digits.substring(0, 12) : digits;
+    final buffer = StringBuffer();
+
+    for (var index = 0; index < limited.length; index += 1) {
+      if (index > 0 && index % 4 == 0) {
+        buffer.write('-');
+      }
+      buffer.write(limited[index]);
+    }
+
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+      composing: TextRange.empty,
     );
   }
 }
