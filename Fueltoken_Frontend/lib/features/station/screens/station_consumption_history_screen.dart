@@ -21,6 +21,41 @@ import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
+enum _StationRegularizationFilter {
+  pending,
+  regularized,
+}
+
+extension _StationRegularizationFilterX on _StationRegularizationFilter {
+  String get apiValue {
+    switch (this) {
+      case _StationRegularizationFilter.pending:
+        return 'pending';
+      case _StationRegularizationFilter.regularized:
+        return 'regularized';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case _StationRegularizationFilter.pending:
+        return 'Non régularisé';
+      case _StationRegularizationFilter.regularized:
+        return 'Régularisé';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case _StationRegularizationFilter.pending:
+        return Icons.pending_actions_rounded;
+      case _StationRegularizationFilter.regularized:
+        return Icons.task_alt_rounded;
+    }
+  }
+}
+
+
 class StationConsumptionHistoryScreen extends StatefulWidget {
   const StationConsumptionHistoryScreen({super.key});
 
@@ -44,6 +79,8 @@ class _StationConsumptionHistoryScreenState
   late DateTime _draftTo;
   late DateTime _activeFrom;
   late DateTime _activeTo;
+  _StationRegularizationFilter _regularizationFilter =
+      _StationRegularizationFilter.pending;
   late final AnimationController _skeletonCtrl;
 
   @override
@@ -109,6 +146,7 @@ class _StationConsumptionHistoryScreenState
         'offset': 0,
         'date_from': _apiDateTime(_activeFrom),
         'date_to': _apiDateTime(_activeTo),
+        'regularization_state': _regularizationFilter.apiValue,
       });
       final page = AcpecTransactionsMapper.parsePage(
         raw,
@@ -134,8 +172,28 @@ class _StationConsumptionHistoryScreenState
     }
   }
 
+  bool _matchesRegularizationFilter(BusinessTransaction tx) {
+    switch (_regularizationFilter) {
+      case _StationRegularizationFilter.pending:
+        return !tx.isRegularized;
+      case _StationRegularizationFilter.regularized:
+        return tx.isRegularized;
+    }
+  }
+
+  void _setRegularizationFilter(_StationRegularizationFilter filter) {
+    if (_regularizationFilter == filter) return;
+    setState(() {
+      _regularizationFilter = filter;
+    });
+    if (AppEnvironment.useAcpecLiveData) {
+      unawaited(_load());
+    }
+  }
+
   List<BusinessTransaction> get _filteredItems {
     return _items.where((tx) {
+      if (!_matchesRegularizationFilter(tx)) return false;
       final d = tx.date;
       final start = DateTime(
         _activeFrom.year,
@@ -266,6 +324,14 @@ class _StationConsumptionHistoryScreenState
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _StationRegularizationFilterSelector(
+                  selected: _regularizationFilter,
+                  onSelected: _setRegularizationFilter,
                 ),
               ),
               const SizedBox(height: 14),
@@ -406,6 +472,100 @@ class _DateFilterChip extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class _StationRegularizationFilterSelector extends StatelessWidget {
+  const _StationRegularizationFilterSelector({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final _StationRegularizationFilter selected;
+  final ValueChanged<_StationRegularizationFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final filter in _StationRegularizationFilter.values) ...[
+          Expanded(
+            child: _StationRegularizationFilterChip(
+              filter: filter,
+              selected: selected == filter,
+              onTap: () => onSelected(filter),
+            ),
+          ),
+          if (filter != _StationRegularizationFilter.values.last)
+            const SizedBox(width: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _StationRegularizationFilterChip extends StatelessWidget {
+  const _StationRegularizationFilterChip({
+    required this.filter,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _StationRegularizationFilter filter;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final selectedColor = filter == _StationRegularizationFilter.regularized
+        ? const Color(0xFF16A34A)
+        : const Color(0xFFEA580C);
+    final fg = selected ? selectedColor : const Color(0xFF374151);
+    return Material(
+      color: selected
+          ? selectedColor.withValues(alpha: 0.11)
+          : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? selectedColor.withValues(alpha: 0.85)
+                  : scheme.outline.withValues(alpha: 0.22),
+              width: selected ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(filter.icon, size: 17, color: fg),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  filter.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.2,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -857,6 +1017,18 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                       ('Client ID', tx.userId),
                       ('Station ID', tx.stationId ?? '—'),
                       ('QR', tx.qrId ?? tx.qrPublicCode ?? '—'),
+                      ('État régularisation', tx.regularizationLabel),
+                      (
+                        'Réf régularisation',
+                        tx.regularizationReference ?? '—',
+                      ),
+                      if (tx.regularizationDate != null)
+                        (
+                          'Date régularisation',
+                          DateFormat(
+                            'dd-MM-yyyy HH:mm',
+                          ).format(tx.regularizationDate!),
+                        ),
                       ('Lot ID', tx.lotId ?? '—'),
                       ('Réf lot', tx.lotInternalRef ?? '—'),
                     ],
