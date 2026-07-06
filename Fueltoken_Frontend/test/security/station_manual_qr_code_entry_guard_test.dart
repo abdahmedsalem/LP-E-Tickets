@@ -19,6 +19,22 @@ void main() {
       expect(source.toLowerCase(), isNot(contains('fallback')));
     });
 
+    test(
+      'manual station screen displays QR numeric code with human 12 digit format',
+      () {
+        final source = File(
+          'lib/features/station/screens/station_manual_qr_screen.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('_ManualQrCodeInputFormatter'));
+        expect(source, contains('1234-5678-9012'));
+        expect(source, contains("replaceAll(RegExp(r'\\D'), '')"));
+        expect(source, contains("substring(0, 12)"));
+        expect(source, contains("'qr_numeric_code': normalized"));
+        expect(source, isNot(contains("hintText: 'Ex. 123456789012'")));
+      },
+    );
+
     test('station home exposes manual entry as equivalent mode', () {
       final source = File(
         'lib/features/station/screens/station_home_screen.dart',

@@ -43,7 +43,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       _codeController.text.replaceAll(RegExp(r'\D'), '').trim();
 
   Map<String, dynamic> _payloadFor(String code) {
-    return <String, dynamic>{'qr_numeric_code': code.trim()};
+    final normalized = code.replaceAll(RegExp(r'\\D'), '').trim();
+    return <String, dynamic>{'qr_numeric_code': normalized};
   }
 
   Map<String, dynamic> _dataMap(dynamic raw) {
@@ -308,10 +309,11 @@ class _ManualCodeCard extends StatelessWidget {
             controller: controller,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [_ManualQrCodeInputFormatter()],
             onSubmitted: (_) => checking ? null : onCheck(),
             decoration: InputDecoration(
-              hintText: 'Ex. 123456789012',
+              hintText: 'Ex. 1234-5678-9012',
+              helperText: 'Format attendu : 1234-5678-9012',
               prefixIcon: const Icon(Icons.pin_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -343,6 +345,34 @@ class _ManualCodeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ManualQrCodeInputFormatter extends TextInputFormatter {
+  const _ManualQrCodeInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final limited = digits.length > 12 ? digits.substring(0, 12) : digits;
+    final buffer = StringBuffer();
+
+    for (var index = 0; index < limited.length; index += 1) {
+      if (index > 0 && index % 4 == 0) {
+        buffer.write('-');
+      }
+      buffer.write(limited[index]);
+    }
+
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+      composing: TextRange.empty,
     );
   }
 }
