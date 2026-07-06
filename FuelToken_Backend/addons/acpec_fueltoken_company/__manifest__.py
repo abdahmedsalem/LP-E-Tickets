@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Company Accounts',
-    'version': '19.0.1.4.4',
+    'version': '19.0.1.4.5',
     'category': 'ACPEC/FuelToken',
     'summary': 'Comptes Sociétés Tickets Carburant pour le back-office ACPEC',
     'author': 'ACPEC SARL',
