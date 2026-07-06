@@ -132,6 +132,7 @@ class BusinessTransaction extends Equatable {
   final String? lotId;
   final String? lotInternalRef;
   final String? qrId;
+  final String? qrName;
   final String? qrPublicCode;
   final String? stationId;
   final String? stationName;
@@ -160,6 +161,7 @@ class BusinessTransaction extends Equatable {
     this.lotId,
     this.lotInternalRef,
     this.qrId,
+    this.qrName,
     this.qrPublicCode,
     this.stationId,
     this.stationName,
@@ -198,6 +200,16 @@ class BusinessTransaction extends Equatable {
     return ref.isNotEmpty ? ref : id;
   }
 
+  String get qrDisplayName {
+    for (final value in [qrName, qrId, qrPublicCode]) {
+      final s = (value ?? '').trim();
+      if (s.isNotEmpty && s != 'false' && s != 'true') {
+        return s;
+      }
+    }
+    return '—';
+  }
+
   /// Libellé contextuel enrichi (avec partie pour les transferts).
   String get displayTitle {
     if (type == TxType.carnetTransfer && transferParty != null) {
@@ -213,6 +225,7 @@ class BusinessTransaction extends Equatable {
   List<Object?> get props => [
     id,
     txReference,
+    qrName,
     type,
     date,
     regularizationState,

@@ -303,8 +303,8 @@ class _StationConsumptionHistoryScreenState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Historique des consommations',
-                subtitle: 'Vos dernières consommations apparaîtront ici',
+                title: 'Relevé QR',
+                subtitle: 'QR consommés par période',
                 onBack: () => context.go('/station/home'),
                 trailing: ScreenHeaderIconButton(
                   icon: Icons.filter_list_rounded,
@@ -769,12 +769,10 @@ class _StationHistoryRow extends StatelessWidget {
     final amount = tx.totalAmount.abs();
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
-    final qrCode = (tx.qrPublicCode ?? tx.qrId ?? '-').trim();
-    final qrTitleCode = qrCode.isEmpty
-        ? '-'
-        : qrCode.length > 8
-        ? qrCode.substring(0, 8)
-        : qrCode;
+    final qrTitle = tx.qrDisplayName;
+    final clientLabel = tx.userName.trim().isEmpty
+        ? 'Client inconnu'
+        : tx.userName.trim();
 
     return AppCard(
       onTap: () => Navigator.of(context).push(
@@ -793,7 +791,7 @@ class _StationHistoryRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Consommation QR - $qrTitleCode',
+                  qrTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -824,11 +822,11 @@ class _StationHistoryRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '$dateLabel $hourLabel',
+                  clientLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 11.2,
                     color: AppColors.muted,
                     fontWeight: FontWeight.w600,
                     height: 1.15,
@@ -837,12 +835,12 @@ class _StationHistoryRow extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                tx.userName,
+                '$dateLabel $hourLabel',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   color: AppColors.muted,
                   fontWeight: FontWeight.w500,
                   height: 1.15,
@@ -1003,7 +1001,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Consommation station',
+                          'Détail QR',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1035,16 +1033,24 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                   _ConsumptionDetailSummary(
                     amount: amount,
                     clientName: tx.userName,
-                    stationName: tx.stationName ?? 'Station inconnue',
-                    txType: tx.type.label,
+                    stationName: tx.qrDisplayName,
+                    txType: DateFormat('dd-MM-yyyy HH:mm').format(tx.date),
                   ),
                   const SizedBox(height: 14),
+                  _DetailFullWidthInfoCard(
+                    label: 'N° TX',
+                    value: tx.txNumber,
+                  ),
+                  const SizedBox(height: 10),
                   _DetailInfoGrid(
                     items: [
-                      ('N° TX', tx.txNumber),
-                      ('Client ID', tx.userId),
-                      ('Station ID', tx.stationId ?? '—'),
-                      ('QR', tx.qrId ?? tx.qrPublicCode ?? '—'),
+                      ('Montant', Formatters.money(amount)),
+                      ('Client', tx.userName),
+                      ('QR', tx.qrDisplayName),
+                      (
+                        'Date consommation',
+                        DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
+                      ),
                       ('État régularisation', tx.regularizationLabel),
                       (
                         'Réf régularisation',
@@ -1057,8 +1063,6 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                             'dd-MM-yyyy HH:mm',
                           ).format(tx.regularizationDate!),
                         ),
-                      ('Lot ID', tx.lotId ?? '—'),
-                      ('Réf lot', tx.lotInternalRef ?? '—'),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -1125,6 +1129,55 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
   }
 }
 
+
+class _DetailFullWidthInfoCard extends StatelessWidget {
+  const _DetailFullWidthInfoCard({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 6),
+          SelectableText(
+            value,
+            style: TextStyle(
+              fontSize: 12.2,
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 class _DetailInfoGrid extends StatelessWidget {
   const _DetailInfoGrid({required this.items});
 
@@ -1167,7 +1220,7 @@ class _DetailInfoGrid extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11.2,
                       fontWeight: FontWeight.w700,
                       color: scheme.onSurface,
                       height: 1.25,
