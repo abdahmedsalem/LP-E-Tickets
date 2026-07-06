@@ -311,7 +311,7 @@ void main() {
         // La saisie station reste le flux normal : le code manuel 12 chiffres
         // peut être saisi comme équivalent du scan, mais il ne doit pas venir
         // des payloads standards qr/list ou qr/detail.
-        expect(station, contains("'qr_numeric_code': code"));
+        expect(station, contains("'qr_numeric_code': normalized"));
       },
     );
 

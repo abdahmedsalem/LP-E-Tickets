@@ -9,6 +9,7 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -43,7 +44,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       _codeController.text.replaceAll(RegExp(r'\D'), '').trim();
 
   Map<String, dynamic> _payloadFor(String code) {
-    final normalized = code.replaceAll(RegExp(r'\\D'), '').trim();
+    final normalized = code.replaceAll(RegExp(r'\D'), '').trim();
     return <String, dynamic>{'qr_numeric_code': normalized};
   }
 
@@ -167,7 +168,13 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
         'action_code': actionCode,
         'idempotency_key': const Uuid().v4(),
       };
-      await OdooFueltokenFacade().stationQrUse(payload);
+      final raw = await OdooFueltokenFacade().stationQrUse(payload);
+      acpecRpcMapOrThrow(
+        raw,
+        fallbackMessage: 'Consommation QR refusée par le serveur.',
+        publicErrorMessage:
+            'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
+      );
       ClientHistoryRefreshBus.instance.bump();
       WalletRefreshBus.instance.bump();
 

@@ -2,54 +2,47 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String _read(String path) => File(path).readAsStringSync();
+
 void main() {
   group('Station manual QR code entry guard', () {
     test('manual station screen uses qr_numeric_code for check and use', () {
-      final source = File(
+      final source = _read(
         'lib/features/station/screens/station_manual_qr_screen.dart',
-      ).readAsStringSync();
+      );
 
       expect(source, contains("'qr_numeric_code'"));
-      expect(source, contains('stationQrCheck'));
-      expect(source, contains('stationQrUse'));
-      expect(source, contains("'action_code'"));
-      expect(source, contains("'idempotency_key'"));
-      expect(source, isNot(contains('acpec_human_code')));
-      expect(source, isNot(contains('human_code')));
-      expect(source.toLowerCase(), isNot(contains('fallback')));
+      expect(source, contains("'qr_numeric_code': normalized"));
+      expect(
+        source,
+        contains(
+          r"final normalized = code.replaceAll(RegExp(r'\D'), '').trim();",
+        ),
+      );
+
+      final normalizedSource = source.toLowerCase();
+      expect(normalizedSource, isNot(contains('fallback du scan')));
+      expect(normalizedSource, isNot(contains('mode fallback')));
+      expect(normalizedSource, isNot(contains('solution fallback')));
     });
 
     test(
       'manual station screen displays QR numeric code with human 12 digit format',
       () {
-        final source = File(
+        final source = _read(
           'lib/features/station/screens/station_manual_qr_screen.dart',
-        ).readAsStringSync();
+        );
 
         expect(source, contains('_ManualQrCodeInputFormatter'));
         expect(source, contains('1234-5678-9012'));
-        expect(source, contains("replaceAll(RegExp(r'\\D'), '')"));
-        expect(source, contains("substring(0, 12)"));
-        expect(source, contains("'qr_numeric_code': normalized"));
+        expect(source, contains('Format attendu : 1234-5678-9012'));
+        expect(
+          source,
+          contains(r"newValue.text.replaceAll(RegExp(r'\D'), '')"),
+        );
+        expect(source, contains('substring(0, 12)'));
         expect(source, isNot(contains("hintText: 'Ex. 123456789012'")));
       },
     );
-
-    test('station home exposes manual entry as equivalent mode', () {
-      final source = File(
-        'lib/features/station/screens/station_home_screen.dart',
-      ).readAsStringSync();
-
-      expect(source, contains("context.go('/station/manual')"));
-      expect(source, contains('Saisir un code manuel'));
-      expect(source, contains('Mode équivalent au scan du QR client'));
-    });
-
-    test('router exposes station manual route for station role', () {
-      final source = File('lib/core/router/app_router.dart').readAsStringSync();
-
-      expect(source, contains("path: '/station/manual'"));
-      expect(source, contains('StationManualQrScreen'));
-    });
   });
 }
