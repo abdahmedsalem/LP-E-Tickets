@@ -36,10 +36,4 @@
         <field name="target">new</field>
     </record>
 
-    <menuitem id="menu_station_agent_assign_wizard"
-              name="Ajouter agent station"
-              parent="menu_fueltoken_stations"
-              action="action_station_agent_assign_wizard"
-              sequence="5"
-              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
 </odoo>

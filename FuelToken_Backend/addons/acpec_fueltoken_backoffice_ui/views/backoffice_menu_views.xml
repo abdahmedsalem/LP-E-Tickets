@@ -40,7 +40,14 @@
               sequence="40"
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
-    <record id="acpec_fueltoken_base.menu_acpec_fueltoken_audit" model="ir.ui.menu">
+
+    <menuitem id="menu_station_agent_assign_wizard"
+              name="Ajouter agent station"
+              parent="menu_fueltoken_stations"
+              action="action_station_agent_assign_wizard"
+              sequence="5"
+              groups="acpec_fueltoken_base.group_fuel_manager,acpec_fueltoken_base.group_fuel_admin"/>
+<record id="acpec_fueltoken_base.menu_acpec_fueltoken_audit" model="ir.ui.menu">
         <field name="name">Pilotage</field>
         <field name="sequence">70</field>
     </record>
@@ -141,11 +148,13 @@
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <!-- Masquer les anciens menus opérationnels techniques remplacés par les menus métier ci-dessus. -->
-    <record id="acpec_fueltoken_purchase.menu_fuel_purchase" model="ir.ui.menu">
+    <record id="acpec_fueltoken_purchase.menu_fuel_purchase" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_fueltoken_purchase.menu_fuel_purchase</field>
         <field name="active" eval="False"/>
     </record>
 
-    <record id="acpec_fueltoken_core.menu_fuel_carnet_transfer" model="ir.ui.menu">
+    <record id="acpec_fueltoken_core.menu_fuel_carnet_transfer" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_fueltoken_core.menu_fuel_carnet_transfer</field>
         <field name="active" eval="False"/>
     </record>
 
@@ -266,19 +275,23 @@
         <field name="sequence">70</field>
     </record>
 
-    <record id="acpec_fueltoken_reports.menu_report_qr_active" model="ir.ui.menu">
+    <record id="acpec_fueltoken_reports.menu_report_qr_active" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_fueltoken_reports.menu_report_qr_active</field>
         <field name="active" eval="False"/>
     </record>
 
-    <record id="acpec_fueltoken_reports.menu_report_qr_blocked" model="ir.ui.menu">
+    <record id="acpec_fueltoken_reports.menu_report_qr_blocked" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_fueltoken_reports.menu_report_qr_blocked</field>
         <field name="active" eval="False"/>
     </record>
 
-    <record id="acpec_fueltoken_reports.menu_report_qr_consumed" model="ir.ui.menu">
+    <record id="acpec_fueltoken_reports.menu_report_qr_consumed" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_fueltoken_reports.menu_report_qr_consumed</field>
         <field name="active" eval="False"/>
     </record>
 
-    <record id="acpec_fueltoken_reports.menu_report_qr_expired" model="ir.ui.menu">
+    <record id="acpec_fueltoken_reports.menu_report_qr_expired" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_fueltoken_reports.menu_report_qr_expired</field>
         <field name="active" eval="False"/>
     </record>
 
@@ -292,15 +305,18 @@
     </record>
 
     <!-- Intégrer Mobile Auth sous FuelToken au lieu d'une application séparée en anglais. -->
-    <record id="acpec_mobile_auth.menu_mobile_auth_root" model="ir.ui.menu">
+    <record id="acpec_mobile_auth.menu_mobile_auth_root" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_mobile_auth.menu_mobile_auth_root</field>
         <field name="active" eval="False"/>
     </record>
 
-    <record id="acpec_mobile_auth.menu_mobile_auth_operations" model="ir.ui.menu">
+    <record id="acpec_mobile_auth.menu_mobile_auth_operations" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_mobile_auth.menu_mobile_auth_operations</field>
         <field name="active" eval="False"/>
     </record>
 
-    <record id="acpec_mobile_auth.menu_mobile_auth_configuration" model="ir.ui.menu">
+    <record id="acpec_mobile_auth.menu_mobile_auth_configuration" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: acpec_mobile_auth.menu_mobile_auth_configuration</field>
         <field name="active" eval="False"/>
     </record>
 
@@ -342,7 +358,8 @@
         <field name="search_view_id" ref="acpec_mobile_auth.view_acpec_mobile_session_search"/>
     </record>
 
-    <record id="menu_backoffice_mobile_devices_to_approve" model="ir.ui.menu">
+    <record id="menu_backoffice_mobile_devices_to_approve" model="ir.ui.menu" forcecreate="False">
+        <field name="name">Deprecated disabled menu: menu_backoffice_mobile_devices_to_approve</field>
         <field name="active" eval="False"/>
     </record>
 
