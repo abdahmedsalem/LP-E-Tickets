@@ -1223,7 +1223,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         started_at = time.monotonic()
         self._log_api_diagnostic_in(endpoint, kwargs, operation=operation)
         try:
-            self._require_keys(kwargs, ['recipient_phone', 'lines', 'note'])
+            self._require_keys(kwargs, ['recipient_phone', 'lines'])
             with self._sensitive_action_transaction(kwargs, purpose='ticket_transfer') as source_user:
                 self._require_fuel_group(source_user, 'client')
                 company = self._require_fueltoken_user_company(source_user)
@@ -1270,9 +1270,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         params=kwargs,
                     )
 
-                note = self._get_clean_str(kwargs, 'note')
-                if not note:
-                    raise ValidationError('Le motif du transfert de tickets est obligatoire.')
+                note = self._get_clean_str(kwargs, 'note') or False
 
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='ticket_transfer')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='ticket_transfer')
@@ -1327,7 +1325,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         'source_wallet_id': source_wallet.id,
                         'dest_wallet_id': dest_wallet.id,
                         'company_id': source_wallet.company_id.id,
-                        'note': note,
+                        'note': note or False,
                         'idempotency_key': idempotency_key,
                         'request_hash': request_hash,
                         'line_ids': [(0, 0, vals) for vals in transfer_line_vals],

@@ -136,8 +136,6 @@ class AcpecFuelTicketTransfer(models.Model):
             raise UserError(_('Seul un transfert ticket en brouillon peut être confirmé.'))
         if self.source_wallet_id == self.dest_wallet_id:
             raise ValidationError(_('Le compte source et le compte destinataire doivent être différents.'))
-        if not self.note or not self.note.strip():
-            raise ValidationError(_('Le motif du transfert ticket est obligatoire.'))
         if not self.line_ids:
             raise UserError(_('Le transfert ticket doit contenir au moins une ligne.'))
 
@@ -228,6 +226,12 @@ class AcpecFuelTicketTransfer(models.Model):
                 })
 
             counterparty_user = Tx._single_user_for_partner(self.dest_partner_id)
+            note_text = (self.note or '').strip()
+            outgoing_note = _('Transfert ticket sortant vers %s') % (self.dest_partner_id.display_name)
+            incoming_note = _('Transfert ticket entrant de %s') % (self.source_partner_id.display_name)
+            if note_text:
+                outgoing_note = '%s. %s' % (outgoing_note, _('Motif : %s') % note_text)
+                incoming_note = '%s. %s' % (incoming_note, _('Motif : %s') % note_text)
 
             if src_tx_lines:
                 Tx.log(
@@ -235,7 +239,7 @@ class AcpecFuelTicketTransfer(models.Model):
                     wallet=self.source_wallet_id,
                     ticket_transfer=self,
                     lines=src_tx_lines,
-                    note=_('Transfert ticket sortant vers %s. Motif : %s') % (self.dest_partner_id.display_name, self.note),
+                    note=outgoing_note,
                     idempotency_key='SRC-TKT-%s' % (self.idempotency_key or str(self.id)),
                     request_hash=self.request_hash,
                     actor_partner=self.source_partner_id,
@@ -247,7 +251,7 @@ class AcpecFuelTicketTransfer(models.Model):
                     wallet=self.dest_wallet_id,
                     ticket_transfer=self,
                     lines=dst_tx_lines,
-                    note=_('Transfert ticket entrant de %s. Motif : %s') % (self.source_partner_id.display_name, self.note),
+                    note=incoming_note,
                     idempotency_key='DST-TKT-%s' % (self.idempotency_key or str(self.id)),
                     request_hash=self.request_hash,
                     actor_partner=self.source_partner_id,
