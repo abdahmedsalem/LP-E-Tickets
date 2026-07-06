@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../core/utils/formatters.dart';
@@ -25,6 +26,8 @@ class TransferConfirmationArgs {
     this.confirmIcon = Icons.send_rounded,
     this.sectionLabel = 'Carnets envoyés',
     this.intentOperation = 'carnets-transfer',
+    this.unconfirmedActionMessage =
+        'Action non confirmée. Vérifiez l’état de l’opération avant de réessayer.',
     this.onConfirm,
     this.onConfirmWithNote,
   }) : assert(onConfirm != null || onConfirmWithNote != null);
@@ -52,6 +55,7 @@ class TransferConfirmationArgs {
   final IconData confirmIcon;
   final String sectionLabel;
   final String intentOperation;
+  final String unconfirmedActionMessage;
 
   /// Callback appelé quand l'utilisateur confirme sans motif éditable.
   final Future<void> Function(String actionCode, SensitiveActionIntent intent)?
@@ -124,6 +128,7 @@ class _TransferConfirmationScreenState
   Future<void> _onConfirm() async {
     if (_confirming) return;
     var completed = false;
+    setState(() => _confirming = true);
     try {
       var note = _noteController.text.trim();
       if (widget.args.noteRequired && note.isEmpty) {
@@ -136,7 +141,6 @@ class _TransferConfirmationScreenState
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final intent = SensitiveActionIntent.create(widget.args.intentOperation);
-      setState(() => _confirming = true);
       if (widget.args.onConfirmWithNote != null) {
         await widget.args.onConfirmWithNote!(actionCode, intent, note);
       } else {
@@ -149,9 +153,9 @@ class _TransferConfirmationScreenState
       if (mounted) {
         AppMessage.error(
           context,
-          e.isOdooSessionExpired || e.isAuthRequired
-              ? 'Session expirée. Reconnectez-vous.'
-              : e.message,
+          ErrorPresenter.isBackendUnavailable(e)
+              ? widget.args.unconfirmedActionMessage
+              : ErrorPresenter.message(e),
         );
       }
       return;
@@ -159,7 +163,9 @@ class _TransferConfirmationScreenState
       if (mounted) {
         AppMessage.error(
           context,
-          e.toString().replaceFirst('Exception: ', '').trim(),
+          ErrorPresenter.isBackendUnavailable(e)
+              ? widget.args.unconfirmedActionMessage
+              : ErrorPresenter.message(e),
         );
       }
       return;

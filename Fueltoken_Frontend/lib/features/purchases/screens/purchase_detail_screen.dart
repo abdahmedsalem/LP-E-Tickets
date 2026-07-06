@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_api_config.dart';
@@ -15,6 +16,7 @@ import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/auth/payment_proof_http_headers.dart';
 import '../../../core/utils/payment_proof.dart';
 import '../../../data/services/payment_proof_loader.dart';
@@ -73,6 +75,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   bool _loading = false;
   bool _approving = false;
   String? _loadError;
+
+  static const String _unconfirmedPurchaseActionMessage =
+      'Action non confirmée. Vérifiez l’état de la demande avant de réessayer.';
 
   @override
   void initState() {
@@ -253,22 +258,20 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   String _briefPurchaseActionError(Object e) {
-    if (e is OdooJsonRpcException) {
-      if (e.isOdooSessionExpired || e.isAuthRequired) {
-        return 'Session expirée. Reconnectez-vous.';
-      }
-      final m = e.message.trim();
-      if (m.length > 160 ||
-          m.contains('Traceback') ||
-          m.contains('Exception(')) {
-        return 'L’opération n’a pas abouti. Réessayez ou reconnectez-vous.';
-      }
-      return m;
+    if (ErrorPresenter.isBackendUnavailable(e)) {
+      return _unconfirmedPurchaseActionMessage;
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    final message = ErrorPresenter.message(e).trim();
+    if (message.length > 160 ||
+        message.contains('Traceback') ||
+        message.contains('Exception(')) {
+      return 'L’opération n’a pas abouti. Réessayez ou reconnectez-vous.';
+    }
+    return message;
   }
 
   Future<void> _confirmApprove() async {
+    if (_approving) return;
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
 
@@ -285,21 +288,23 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         return;
       }
 
-      final actionCode = await showSensitiveActionCodeDialog(
-        context,
-        title: 'Confirmer la validation',
-        description: 'Saisissez votre code PIN pour valider cet achat.',
-      );
-      if (actionCode == null) return;
       if (!mounted) return;
-
-      final intent = SensitiveActionIntent.create('purchase-approve');
-
       setState(() => _approving = true);
       try {
+        final actionCode = await showSensitiveActionCodeDialog(
+          context,
+          title: 'Confirmer la validation',
+          description: 'Saisissez votre code PIN pour valider cet achat.',
+        );
+        if (actionCode == null || actionCode.isEmpty) return;
+        if (!mounted) return;
+
+        final intent = SensitiveActionIntent.create('purchase-approve');
+
         final raw = await OdooFueltokenFacade().adminPurchasesApprove(
           intent.withAuthParams({
             'purchase_id': purchaseId,
+            'idempotency_key': const Uuid().v4(),
           }, actionCode: actionCode),
         );
         AcpecPurchasesMapper.assertAdminActionOk(

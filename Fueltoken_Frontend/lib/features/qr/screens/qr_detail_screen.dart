@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -40,18 +41,22 @@ class QrDetailScreen extends StatefulWidget {
   State<QrDetailScreen> createState() => _QrDetailScreenState();
 }
 
-class _QrDetailScreenState extends State<QrDetailScreen> {
+class _QrDetailScreenState extends State<QrDetailScreen>
+    with WidgetsBindingObserver {
   QrToken? _qr;
   bool _loading = false;
   bool _separating = false;
   bool _revealingManualCode = false;
   String? _revealedQrManualCode;
+  static const Duration _manualCodeRevealDuration = Duration(seconds: 60);
+  Timer? _manualCodeClearTimer;
   String? _error;
   late final VoidCallback _qrBusListener;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loading = AppEnvironment.useAcpecLiveData;
     _qrBusListener = () {
       if (!mounted || !AppEnvironment.useAcpecLiveData) return;
@@ -64,8 +69,41 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _manualCodeClearTimer?.cancel();
+    _manualCodeClearTimer = null;
+    _revealedQrManualCode = null;
     QrRefreshBus.instance.revision.removeListener(_qrBusListener);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _clearRevealedQrManualCode();
+    }
+  }
+
+  void _clearRevealedQrManualCode() {
+    _manualCodeClearTimer?.cancel();
+    _manualCodeClearTimer = null;
+    if (_revealedQrManualCode == null) return;
+    if (!mounted) {
+      _revealedQrManualCode = null;
+      return;
+    }
+    setState(() => _revealedQrManualCode = null);
+  }
+
+  void _scheduleManualCodeAutoClear() {
+    _manualCodeClearTimer?.cancel();
+    _manualCodeClearTimer = Timer(_manualCodeRevealDuration, () {
+      if (!mounted || _revealedQrManualCode == null) return;
+      setState(() => _revealedQrManualCode = null);
+    });
   }
 
   Future<void> _refresh() async {
@@ -79,7 +117,10 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
     }
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
+    _manualCodeClearTimer?.cancel();
+    _manualCodeClearTimer = null;
     setState(() {
+      _revealedQrManualCode = null;
       _loading = true;
       _error = null;
     });
@@ -173,7 +214,9 @@ class _QrDetailScreenState extends State<QrDetailScreen> {
         throw Exception('Code manuel non retourné par le serveur.');
       }
       if (!mounted) return;
+      _manualCodeClearTimer?.cancel();
       setState(() => _revealedQrManualCode = code);
+      _scheduleManualCodeAutoClear();
       AppMessage.success(context, 'Code manuel révélé temporairement.');
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;

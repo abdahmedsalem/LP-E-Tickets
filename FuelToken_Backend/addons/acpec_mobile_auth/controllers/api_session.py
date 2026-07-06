@@ -30,6 +30,23 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
+    @http.route('/api/acpec/mobile_auth/v1/confirm-pin', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    def confirm_pin(self, **kwargs):
+        try:
+            self._require_sensitive_action_pin(
+                kwargs,
+                purpose='session_unlock',
+                log_allowed=True,
+            )
+            return self._json_response({'unlocked': True})
+        except Exception as exc:
+            return self._handle_exception_response(
+                exc,
+                params=kwargs,
+                operation='confirm_pin',
+                endpoint='/api/acpec/mobile_auth/v1/confirm-pin',
+            )
+
     @http.route('/api/acpec/mobile_auth/v1/refresh', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
     def refresh(self, **kwargs):
         try:

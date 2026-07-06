@@ -85,7 +85,7 @@ class TestPurchaseCreatePinFailureEndpoint(TransactionCase):
         self.assertFalse(response.get('success'))
         self.assertFalse(response.get('ok'))
         self.assertIn('error', response)
-        self.assertEqual(response['error'].get('code'), 'ACTION_REFUSED')
+        self.assertEqual(response['error'].get('code'), 'INVALID_ACTION_CODE')
         self.assertTrue(response['error'].get('reference'))
 
         # Le code interne précis doit rester dans l'audit sécurité, pas dans le

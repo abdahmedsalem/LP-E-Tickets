@@ -40,6 +40,7 @@ const _allowedFlutterAcpecEndpoints = <String>{
   // Mobile Auth runtime.
   '/api/acpec/mobile_auth/v1/login',
   '/api/acpec/mobile_auth/v1/session-check',
+  '/api/acpec/mobile_auth/v1/confirm-pin',
   '/api/acpec/mobile_auth/v1/logout',
   '/api/acpec/mobile_auth/v1/refresh',
   '/api/acpec/mobile_auth/v1/me',

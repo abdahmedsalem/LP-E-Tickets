@@ -3,65 +3,100 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
-/// Journaux de debug des requêtes JSON-RPC (activables en debug ou `ODOO_DEBUG_RPC=true`).
+import '../config/diagnostic_config.dart';
+
+/// Journaux de debug des requêtes JSON-RPC.
+///
+/// En release normale, `ODOO_DEBUG_RPC=true` seul ne suffit pas :
+/// `ALLOW_VERBOSE_DIAGNOSTIC_IN_RELEASE=true` doit aussi être défini.
 class AcpecRpcDebug {
   AcpecRpcDebug._();
 
-  static const bool fromDefine = bool.fromEnvironment(
-    'ODOO_DEBUG_RPC',
-    defaultValue: false,
-  );
-
-  static bool get enabled => kDebugMode || fromDefine;
+  static bool get enabled => DiagnosticConfig.rpcDebugEnabled;
 
   static Map<String, dynamic> redactParams(Map<String, dynamic>? params) {
     if (params == null || params.isEmpty) {
       return <String, dynamic>{};
     }
-    return _redactMap(Map<String, dynamic>.from(params));
+    final redacted = redactData(params);
+    return redacted is Map<String, dynamic> ? redacted : <String, dynamic>{};
   }
 
-  static Map<String, dynamic> _redactMap(Map<String, dynamic> m) {
-    const sensitive = {
-      'secret_code',
-      'password',
-      'proof_data',
-      'token',
-      'access',
-      'refresh',
-    };
-    final o = <String, dynamic>{};
-    for (final e in m.entries) {
-      final lk = e.key.toLowerCase();
-      if (sensitive.contains(lk)) {
-        final s = e.value?.toString() ?? '';
-        o[e.key] = s.isEmpty ? '(empty)' : '*** len=${s.length}';
-      } else if (e.value is Map) {
-        o[e.key] = _redactMap(Map<String, dynamic>.from(e.value as Map));
-      } else {
-        o[e.key] = e.value;
-      }
+  static Object? redactData(Object? value) => _redactValue(value);
+
+  static Object? _redactValue(Object? value, [String? key]) {
+    if (key != null && _isSensitiveKey(key)) {
+      return _redactedValue(value);
     }
-    return o;
+    if (value is Map) {
+      final out = <String, dynamic>{};
+      for (final entry in value.entries) {
+        final entryKey = entry.key.toString();
+        out[entryKey] = _redactValue(entry.value, entryKey);
+      }
+      return out;
+    }
+    if (value is List) {
+      return value.map(_redactValue).toList(growable: false);
+    }
+    return value;
+  }
+
+  static bool _isSensitiveKey(String key) {
+    final normalized = key
+        .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+        .toLowerCase();
+    const exact = <String>{
+      'actioncode',
+      'secretcode',
+      'password',
+      'pin',
+      'proofdata',
+      'qrnumericcode',
+      'publiccode',
+      'idempotencykey',
+      'sessionid',
+      'access',
+      'accesskey',
+      'accesstoken',
+      'refreshtoken',
+      'refresh',
+      'token',
+      'authorization',
+      'cookie',
+      'setcookie',
+      'xacpecsession',
+    };
+    if (exact.contains(normalized)) return true;
+    return normalized.endsWith('token') ||
+        normalized.endsWith('secret') ||
+        normalized.endsWith('password') ||
+        normalized.endsWith('authorization');
+  }
+
+  static String _redactedValue(Object? value) {
+    final s = value?.toString() ?? '';
+    return s.isEmpty ? '(empty)' : '*** len=${s.length}';
   }
 
   static String clip(dynamic data, [int max = 2600]) {
     String s;
     try {
-      if (data is Map || data is List) {
+      final sanitized = redactData(data);
+      if (sanitized is Map || sanitized is List) {
         const enc = JsonEncoder.withIndent('  ');
-        s = enc.convert(data);
+        s = enc.convert(sanitized);
       } else {
-        s = data?.toString() ?? '';
+        s = sanitized?.toString() ?? '';
       }
     } catch (_) {
-      s = data?.toString() ?? '';
+      s = '[unprintable sanitized payload]';
     }
     if (s.length <= max) return s;
     return '${s.substring(0, max)}\n… [+${s.length - max} chars]';
   }
 
-  /// One block per RPC: URL, envelope (method **call**), redacted params, headers, HTTP + body.
+  /// One block per RPC: URL, envelope (method **call**), redacted params, headers, HTTP + sanitized body.
   static void logRoundTrip({
     required String httpPath,
     required String fullUrl,
@@ -74,7 +109,9 @@ class AcpecRpcDebug {
   }) {
     if (!enabled) return;
     // Une seule ligne montrant l’URL réelle POST (les lignes flutter: ne font pas partie du corps HTTP).
-    debugPrint('POST $fullUrl');
+    if (kDebugMode) {
+      debugPrint('POST $fullUrl');
+    }
     final params = jsonRpcEnvelope['params'];
     final paramsMap = params is Map
         ? Map<String, dynamic>.from(params)
@@ -98,7 +135,7 @@ class AcpecRpcDebug {
       buf.writeln('HTTP: $httpStatus');
     }
     if (responseBody != null) {
-      buf.writeln('body: ${clip(responseBody)}');
+      buf.writeln('body (sanitized): ${clip(responseBody)}');
     }
     buf.writeln('────────────────────────────────────────────');
     developer.log(buf.toString(), name: 'ACPEC_RPC');

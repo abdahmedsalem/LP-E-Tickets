@@ -37,11 +37,20 @@ class AcpecPublicApiError {
   static const _unknownCode = 'REQUEST_REFUSED';
 
   static const Map<String, String> _publicMessages = <String, String>{
-    'AUTH_REFUSED': 'Connexion refusée. Vérifiez le code puis réessayez.',
+    'AUTH_REFUSED':
+        'Connexion impossible. Vérifiez le numéro ou le code SMS, puis réessayez. Vous pouvez aussi créer un compte.',
     'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
     'DEVICE_NOT_ALLOWED':
         'Cet appareil n’est pas autorisé à utiliser Tickets Carburant.',
     'ACTION_REFUSED': 'Action refusée. Vérifiez votre code puis réessayez.',
+    'INVALID_ACTION_CODE': 'PIN incorrect.',
+    'ACTION_CODE_LOCKED': 'Trop de tentatives. Réessayez plus tard.',
+    'PIN_RESET_REQUIRED': 'PIN à réinitialiser. Utilisez PIN oublié.',
+    'MISSING_ACTION_CODE': 'PIN requis pour confirmer cette opération.',
+    'INVALID_ACTION_CODE_KEY': 'Demande invalide. Veuillez réessayer.',
+    'ACTION_IN_PROGRESS': 'Une confirmation est déjà en cours.',
+    'DEVICE_PENDING_TRUST': 'Cet appareil est en attente de validation.',
+    'DEVICE_BLOCKED': 'Cet appareil est bloqué. Contactez l’administrateur.',
     'PAYMENT_PROOF_INVALID':
         'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.',
     'QR_NOT_USABLE': 'Ce QR ne peut pas être utilisé.',
@@ -49,7 +58,8 @@ class AcpecPublicApiError {
     'REQUEST_REFUSED': 'Demande refusée. Réessayez ou contactez le support.',
     'FORBIDDEN': 'Vous n’avez pas l’autorisation d’effectuer cette action.',
     'SIGNUP_NOT_ALLOWED':
-        'Inscription non autorisée. Contactez votre administrateur.',
+        'Inscription impossible avec ce numéro. '
+        'Si vous avez déjà un compte, connectez-vous.',
     'VALIDATION_ERROR': 'Certaines informations sont invalides ou incomplètes.',
     'ACCESS_ERROR': 'Accès refusé.',
     'AUTH_REQUIRED': 'Votre session a expiré. Veuillez vous reconnecter.',
@@ -57,7 +67,7 @@ class AcpecPublicApiError {
         'Votre session a expiré. Veuillez vous reconnecter.',
     'SERVER_ERROR': 'Erreur serveur. Réessayez plus tard.',
     'PASSWORD_LOGIN_DISABLED':
-        'La connexion par PIN legacy est désactivée. Utilisez le flux OTP.',
+        'La connexion par PIN legacy est désactivée. Utilisez le flux SMS.',
     'NAME_REQUIRED': 'Le nom est obligatoire.',
     'SECRET_CODE_REQUIRED': 'Le PIN est obligatoire.',
     'SECRET_CODE_INVALID': 'PIN invalide.',

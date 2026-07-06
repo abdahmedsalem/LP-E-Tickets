@@ -15,6 +15,7 @@ import '../../core/validation/password_validators.dart';
 import '../models/app_user.dart';
 import '../models/user_role.dart';
 import '../services/odoo_auth_service.dart';
+import '../services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
 
 /// Doctrine: every new account is created as `user`. Admin can change role.
 class AuthRepository {
@@ -27,8 +28,13 @@ class AuthRepository {
 
   AppUser? _current;
 
-  /// PIN mock par utilisateur (inscription / reset après OTP).
-  final Map<String, String> _pinByUserId = {};
+  bool get _usesServerConfirmPin =>
+      OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin;
+
+  Exception _serverConfirmPinUnavailable() => Exception(
+    'Vérification PIN serveur indisponible. '
+    'Reconnectez-vous ou contactez l’administrateur.',
+  );
 
   AppUser? get currentUser => _current;
 
@@ -79,37 +85,7 @@ class AuthRepository {
     return '';
   }
 
-  Future<bool> hasLocalUnlockPin({String? identifier}) async {
-    final pin = await LoginSessionCache.lastPin();
-    if (pin == null || pin.isEmpty) return false;
-    final storedIdentifier = await LoginSessionCache.lastIdentifier();
-    if (storedIdentifier == null || storedIdentifier.trim().isEmpty) {
-      return false;
-    }
-    var expected = identifier != null
-        ? _cacheIdentifier(identifier)
-        : (_current == null ? null : _cacheIdentifierForUser(_current!));
-    if (expected == null || expected.isEmpty) {
-      expected = _cacheIdentifier(storedIdentifier);
-    }
-    if (expected.isEmpty) return false;
-    return _cacheIdentifier(storedIdentifier) == expected;
-  }
-
-  Future<void> saveLocalUnlockPinForCurrentUser(String pin) async {
-    final user = _current;
-    if (user == null) {
-      throw Exception('Session absente. Reconnectez-vous.');
-    }
-    if (pin.length != kSecretCodeLength) {
-      throw Exception('Le PIN doit avoir 4 chiffres.');
-    }
-    final identifier = _cacheIdentifierForUser(user);
-    await LoginSessionCache.saveLastPin(identifier: identifier, pin: pin);
-    _pinByUserId[user.id] = pin;
-  }
-
-  Future<AppUser> unlockWithLocalPin(String pin) async {
+  Future<AppUser> confirmOpenPin(String pin) async {
     final user = _current;
     if (user == null) {
       throw Exception('Session absente. Reconnectez-vous.');
@@ -117,11 +93,10 @@ class AuthRepository {
     if (pin.length != kSecretCodeLength) {
       throw Exception('PIN incorrect.');
     }
-    final hasPinForUser = await hasLocalUnlockPin();
-    final storedPin = await LoginSessionCache.lastPin();
-    if (!hasPinForUser || storedPin != pin.trim()) {
-      throw Exception('PIN incorrect.');
+    if (!_usesServerConfirmPin) {
+      throw _serverConfirmPinUnavailable();
     }
+    await OdooAuthService.instance.confirmSessionPin(actionCode: pin);
     return user;
   }
 
@@ -163,10 +138,6 @@ class AuthRepository {
       orElse: () => throw Exception('Compte introuvable.'),
     );
     if (pin.length != kSecretCodeLength) {
-      throw Exception('PIN incorrect.');
-    }
-    final stored = _pinByUserId[user.id];
-    if (stored != null && stored != pin) {
       throw Exception('PIN incorrect.');
     }
     _current = user;
@@ -213,9 +184,14 @@ class AuthRepository {
           );
           _current = refreshed;
           return refreshed;
+        } on OdooJsonRpcException catch (e) {
+          if (e.requiresLogout || e.isAuthRequired || e.isOdooSessionExpired) {
+            await OdooSessionStore.clear();
+            await AuthTokenStore.clear();
+          }
+          // Erreur réseau / timeout / SERVER_ERROR : conserver la session.
         } catch (_) {
-          await OdooSessionStore.clear();
-          await AuthTokenStore.clear();
+          // Erreur transitoire ou inconnue au démarrage : conserver la session.
         }
       }
     }
@@ -227,7 +203,7 @@ class AuthRepository {
   }) async {
     if (!OdooApiConfig.isConfigured ||
         OdooAuthRpcConfig.requestOtpRoute.isEmpty) {
-      throw Exception('Connexion OTP ACPEC indisponible.');
+      throw Exception('Connexion par SMS indisponible.');
     }
     try {
       return await OdooAuthService.instance.requestLoginOtp(
@@ -245,7 +221,7 @@ class AuthRepository {
   }) async {
     if (!OdooApiConfig.isConfigured ||
         OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
-      throw Exception('Vérification OTP ACPEC indisponible.');
+      throw Exception('Vérification par SMS indisponible.');
     }
     try {
       final user = AcpecRoleOverrides.apply(
@@ -282,6 +258,9 @@ class AuthRepository {
     if (_users.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
       throw Exception('Un compte existe déjà avec cet email.');
     }
+    if (pin.length != kSecretCodeLength) {
+      throw Exception('Le PIN doit avoir 4 chiffres.');
+    }
     final user = AppUser(
       id: 'u-${_uuid.v4().substring(0, 6)}',
       email: email,
@@ -292,11 +271,6 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
     _users.add(user);
-    _pinByUserId[user.id] = pin;
-    await LoginSessionCache.saveLastPin(
-      identifier: _cacheIdentifier(phone),
-      pin: pin,
-    );
     _current = user;
     return user;
   }
@@ -342,39 +316,8 @@ class AuthRepository {
         _users.add(resolved);
       }
     }
-    _pinByUserId[resolved.id] = pin;
-    await LoginSessionCache.saveLastPin(
-      identifier: _cacheIdentifierForUser(resolved),
-      pin: pin,
-    );
     _current = resolved;
     return resolved;
-  }
-
-  /// Si l’identifiant correspond à un utilisateur seed local, aligne le PIN (ex. après reset OTP).
-  Future<void> syncLocalPinIfExists({
-    required String identifier,
-    required String newPin,
-  }) async {
-    if (newPin.length != kSecretCodeLength) return;
-    await LoginSessionCache.saveLastPin(
-      identifier: _cacheIdentifier(identifier),
-      pin: newPin,
-    );
-    final raw = identifier.trim();
-    final normalized = raw.contains('@')
-        ? raw.toLowerCase()
-        : normalizePhoneIdentifierForLookup(raw);
-    for (final u in _users) {
-      final idMatch = u.email.toLowerCase() == normalized;
-      final phoneMatch =
-          u.phone.replaceAll(' ', '').toLowerCase() ==
-          normalized.replaceAll(' ', '').toLowerCase();
-      if (idMatch || phoneMatch) {
-        _pinByUserId[u.id] = newPin;
-        return;
-      }
-    }
   }
 
   /// Après vérification OTP (PIN oublié).
@@ -404,7 +347,6 @@ class AuthRepository {
     if (user == null) {
       throw Exception('Compte introuvable.');
     }
-    _pinByUserId[user.id] = newPin;
   }
 
   Future<void> logout() async {

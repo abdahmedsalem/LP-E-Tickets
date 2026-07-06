@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
 import base64
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -12,6 +13,7 @@ def _acpec_test_mobile_phone(label):
         value = (value * 16777619) % 10000000
     return "3%07d" % value
 
+from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
@@ -242,10 +244,10 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         public_message = error.get("message") or ""
 
         sensitive_expected_codes = {
-            "action_code": ("ACTION_REFUSED",),
-            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED",),
-            "PIN mobile invalide": ("ACTION_REFUSED",),
-            "Clé PIN action invalide": ("ACTION_REFUSED",),
+            "action_code": ("ACTION_REFUSED", "MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
+            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED", "DEVICE_PENDING_TRUST"),
+            "PIN mobile invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE"),
+            "Clé PIN action invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE_KEY"),
             "idempotency_conflict": ("REQUEST_REFUSED",),
             "QR introuvable": ("QR_NOT_USABLE",),
         }
@@ -371,7 +373,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertNotIn(str(foreign_tx.id), repr(tx_response))
 
     def test_station_qr_use_accepts_qr_numeric_code(self):
-        controller, _station_user, station, _session, _client_user, qr = self._controller_with_consumable_qr(
+        controller, station_user, station, _session, client_user, qr = self._controller_with_consumable_qr(
             "numeric-use-37a",
         )
         key = "station-qr-numeric-use-37a"
@@ -387,9 +389,26 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertIn(str(tx.id), repr(response))
         self.assertEqual(tx.station_id.id, station.id)
 
-        qr.invalidate_recordset(["state", "consumed_station_id"])
+        qr.invalidate_recordset([
+            "state",
+            "consumed_station_id",
+            "consumed_user_id",
+            "consumed_partner_id",
+        ])
+        tx.invalidate_recordset([
+            "actor_user_id",
+            "actor_partner_id",
+            "counterparty_partner_id",
+            "counterparty_user_id",
+        ])
         self.assertEqual(qr.state, "consumed")
         self.assertEqual(qr.consumed_station_id.id, station.id)
+        self.assertEqual(qr.consumed_user_id.id, station_user.id)
+        self.assertEqual(qr.consumed_partner_id.id, station_user.partner_id.id)
+        self.assertEqual(tx.actor_user_id.id, station_user.id)
+        self.assertEqual(tx.actor_partner_id.id, station_user.partner_id.id)
+        self.assertEqual(tx.counterparty_partner_id.id, client_user.partner_id.id)
+        self.assertEqual(tx.counterparty_user_id.id, client_user.id)
 
     def test_station_qr_rejects_mixed_public_and_numeric_code(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
@@ -521,6 +540,150 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         with patch.object(api_station_module, "request", fake_request):
             return controller.station_transactions(**(payload or {}))
 
+    def _response_data(self, response):
+        self.assertIsInstance(response, dict)
+        data = response.get("data")
+        return data if isinstance(data, dict) else response
+
+    def _station_controller_for_existing_station_user(self, station_user, station, suffix, trusted=True):
+        token_data = self.env["acpec.mobile.session"].sudo().create_for_user(station_user, {
+            "device_uid": "dev-station-existing-%s" % suffix,
+            "platform": "android",
+        })
+        session = token_data["session"]
+        if trusted:
+            session.action_trust_device()
+
+        controller = AcpecFuelTokenStationApi()
+        controller._test_env = self.env
+        controller._get_mobile_session = lambda required=True: session
+        self.env["acpec.fuel.station.agent"].sudo().create({
+            "station_id": station.id,
+            "user_id": station_user.id,
+            "active": True,
+            "is_primary": False,
+        })
+        return controller, session
+
+    def test_patch43m6_station_agent_sees_only_own_consumptions(self):
+        responsible_controller, responsible_user, station, _session, _client_user, qr1 = self._controller_with_consumable_qr(
+            "m6-agent-scope-responsible",
+        )
+        ordinary_user = self._create_station_user("station-qr-use-m6-agent@example.com")
+        ordinary_controller, _ordinary_session = self._station_controller_for_existing_station_user(
+            ordinary_user,
+            station,
+            "m6-agent",
+        )
+
+        client_user2 = self._create_client_user("client-station-qr-m6-agent@example.com")
+        _carnet_type2, _purchase2, _wallet2, qr2 = self._issue_client_qr(client_user2, "m6-agent-scope-ordinary")
+
+        key1 = "station-qr-m6-agent-scope-responsible"
+        key2 = "station-qr-m6-agent-scope-ordinary"
+        self._call_use_qr(responsible_controller, self._payload(qr1, key=key1))
+        self._call_use_qr(ordinary_controller, self._payload(qr2, key=key2))
+
+        tx1 = self._tx_by_key(qr1, key1)
+        tx2 = self._tx_by_key(qr2, key2)
+        self.assertEqual(tx1.actor_partner_id.id, responsible_user.partner_id.id)
+        self.assertEqual(tx2.actor_partner_id.id, ordinary_user.partner_id.id)
+
+        # Patch43M7: actor is audit/context, not the station-agent visibility key.
+        # If a future manager/backend actor differs from the QR consumer, ordinary
+        # station visibility must still be driven by qr.consumed_partner_id/user.
+        tx1.with_context(allow_fuel_transaction_update=True).write({
+            "actor_partner_id": ordinary_user.partner_id.id,
+        })
+        tx1.invalidate_recordset(["actor_partner_id"])
+        self.assertEqual(tx1.actor_partner_id.id, ordinary_user.partner_id.id)
+        self.assertEqual(tx1.qr_id.consumed_partner_id.id, responsible_user.partner_id.id)
+
+        responsible_data = self._response_data(self._call_station_transactions(
+            responsible_controller,
+            {"regularization_state": "all", "limit": 100},
+        ))
+        responsible_ids = {item["id"] for item in responsible_data.get("items", [])}
+        self.assertIn(tx1.id, responsible_ids)
+        self.assertIn(tx2.id, responsible_ids)
+
+        ordinary_data = self._response_data(self._call_station_transactions(
+            ordinary_controller,
+            {"regularization_state": "all", "limit": 100},
+        ))
+        ordinary_ids = {item["id"] for item in ordinary_data.get("items", [])}
+        self.assertNotIn(tx1.id, ordinary_ids)
+        self.assertIn(tx2.id, ordinary_ids)
+
+    def test_patch43m6_station_transactions_limit_is_capped_to_100(self):
+        controller, station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "m6-limit-cap",
+        )
+        Tx = self.env["acpec.fuel.transaction"].sudo()
+        for index in range(105):
+            Tx.create({
+                "transaction_type": "consommation_station",
+                "company_id": self.company.id,
+                "station_id": station.id,
+                "actor_partner_id": station_user.partner_id.id,
+                "regularization_state": "pending",
+                "amount_total": index + 1,
+                "qty_total": 1,
+            })
+
+        data = self._response_data(self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "limit": 999,
+        }))
+        self.assertEqual(data.get("limit"), 100)
+        self.assertEqual(len(data.get("items", [])), 100)
+
+    def test_patch43m6_station_transactions_rejects_date_range_over_365_days(self):
+        controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "m6-date-range",
+        )
+
+        response = self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "date_from": "2024-01-01 00:00:00",
+            "date_to": "2026-01-02 00:00:00",
+            "limit": 20,
+        })
+
+        self.assertFalse(response.get("success"))
+        self.assertIn("365", repr(response))
+
+    def test_patch43m6_station_transactions_rejects_date_to_without_date_from(self):
+        controller, _station_user, _station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "m6-date-to-alone",
+        )
+
+        response = self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "date_to": "2026-01-02 00:00:00",
+            "limit": 20,
+        })
+
+        self.assertFalse(response.get("success"))
+        self.assertIn("date_from", repr(response))
+
+    def test_patch43m6_station_transactions_payload_has_no_manual_qr_secret(self):
+        controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
+            "m6-no-secret",
+        )
+        key = "station-qr-m6-no-secret"
+        self._call_use_qr(controller, self._payload_numeric(qr, key=key))
+
+        response = self._call_station_transactions(controller, {
+            "regularization_state": "all",
+            "limit": 20,
+        })
+
+        self.assertNotIn("qr_numeric_code", repr(response))
+        self.assertNotIn("qr_numeric_code_hash", repr(response))
+        self.assertNotIn("qr_numeric_code_nonce", repr(response))
+        self.assertNotIn(qr._qr_numeric_code_display(), repr(response))
+
     def test_station_consumption_transaction_starts_pending_regularization(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
             "regularization-pending-h3b",
@@ -603,3 +766,210 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertEqual(tx2.regularization_state, "regularized")
         self.assertEqual(tx1.regularization_reference, "REG-H3B-SAME")
         self.assertEqual(tx2.regularization_reference, "REG-H3B-SAME")
+
+    def _station_transactions_payload_m15(self, response):
+        if not isinstance(response, dict):
+            return {}
+        for key in ('data', 'result', 'payload'):
+            value = response.get(key)
+            if isinstance(value, dict) and (
+                'items' in value or 'totals' in value or 'count' in value
+            ):
+                return value
+        return response
+
+    def _create_station_total_tx_m15(
+        self,
+        station,
+        amount,
+        suffix,
+        regularization_state='pending',
+    ):
+        company = (
+            station.company_id
+            if 'company_id' in station._fields and station.company_id
+            else self.env.company
+        )
+        tx = self.env['acpec.fuel.transaction'].sudo().create({
+            'name': 'TX-M15-%s' % suffix,
+            'transaction_type': 'consommation_station',
+            'company_id': company.id,
+            'station_id': station.id,
+        })
+        self.env['acpec.fuel.transaction.line'].sudo().create({
+            'transaction_id': tx.id,
+            'face_value': amount,
+            'qty': 1,
+        })
+        if regularization_state == 'regularized':
+            tx.with_context(allow_fuel_transaction_regularization_update=True).write({
+                'regularization_state': 'regularized',
+                'regularization_reference': 'REG-M15-%s' % suffix,
+                'regularization_date': fields.Datetime.now(),
+                'regularized_by_id': self.env.user.id,
+            })
+        self.env.flush_all()
+        tx.invalidate_recordset([
+            'amount_total',
+            'qty_total',
+            'regularization_state',
+            'regularization_reference',
+        ])
+        return tx
+
+    def test_station_transactions_default_all_and_filtered_totals_m15(self):
+        controller, _station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "totals-filtered-m15",
+        )
+        pending_tx = self._create_station_total_tx_m15(
+            station,
+            120.0,
+            "PENDING",
+            regularization_state='pending',
+        )
+        regularized_tx = self._create_station_total_tx_m15(
+            station,
+            80.0,
+            "REGULARIZED",
+            regularization_state='regularized',
+        )
+
+        default_response = self._call_station_transactions(controller, {
+            'limit': 1,
+            'offset': 0,
+        })
+        default_payload = self._station_transactions_payload_m15(default_response)
+        default_totals = default_payload.get('totals') or {}
+
+        self.assertEqual(default_payload.get('count'), 2)
+        self.assertEqual(len(default_payload.get('items') or []), 1)
+        self.assertEqual(default_totals.get('scope'), 'filtered')
+        self.assertEqual(default_totals.get('regularization_state'), 'all')
+        self.assertEqual(default_totals.get('qr_count'), 2)
+        self.assertEqual(default_totals.get('transaction_count'), 2)
+        self.assertAlmostEqual(
+            default_totals.get('amount_total'),
+            pending_tx.amount_total + regularized_tx.amount_total,
+        )
+        self.assertAlmostEqual(
+            default_totals.get('qty_total'),
+            pending_tx.qty_total + regularized_tx.qty_total,
+        )
+
+        pending_response = self._call_station_transactions(controller, {
+            'regularization_state': 'pending',
+            'limit': 1,
+            'offset': 0,
+        })
+        pending_payload = self._station_transactions_payload_m15(pending_response)
+        pending_totals = pending_payload.get('totals') or {}
+        self.assertEqual(pending_payload.get('count'), 1)
+        self.assertEqual(len(pending_payload.get('items') or []), 1)
+        self.assertEqual(pending_totals.get('scope'), 'filtered')
+        self.assertEqual(pending_totals.get('regularization_state'), 'pending')
+        self.assertEqual(pending_totals.get('qr_count'), 1)
+        self.assertAlmostEqual(pending_totals.get('amount_total'), pending_tx.amount_total)
+        self.assertIn(str(pending_tx.id), repr(pending_response))
+        self.assertNotIn(str(regularized_tx.id), repr(pending_response))
+
+        regularized_response = self._call_station_transactions(controller, {
+            'regularization_state': 'regularized',
+            'limit': 1,
+            'offset': 0,
+        })
+        regularized_payload = self._station_transactions_payload_m15(regularized_response)
+        regularized_totals = regularized_payload.get('totals') or {}
+        self.assertEqual(regularized_payload.get('count'), 1)
+        self.assertEqual(len(regularized_payload.get('items') or []), 1)
+        self.assertEqual(regularized_totals.get('scope'), 'filtered')
+        self.assertEqual(regularized_totals.get('regularization_state'), 'regularized')
+        self.assertEqual(regularized_totals.get('qr_count'), 1)
+        self.assertAlmostEqual(
+            regularized_totals.get('amount_total'),
+            regularized_tx.amount_total,
+        )
+        self.assertNotIn(str(pending_tx.id), repr(regularized_response))
+        self.assertIn(str(regularized_tx.id), repr(regularized_response))
+
+    def test_station_transactions_totals_follow_date_and_regularization_m15(self):
+        controller, _station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
+            "totals-date-reg-m15",
+        )
+        old_tx = self._create_station_total_tx_m15(
+            station,
+            50.0,
+            "OLD-DATE",
+            regularization_state='pending',
+        )
+        current_pending_tx = self._create_station_total_tx_m15(
+            station,
+            70.0,
+            "CURRENT-PENDING",
+            regularization_state='pending',
+        )
+        current_regularized_tx = self._create_station_total_tx_m15(
+            station,
+            90.0,
+            "CURRENT-REGULARIZED",
+            regularization_state='regularized',
+        )
+
+        now = fields.Datetime.now()
+        old_date = now - timedelta(days=10)
+        current_date = now
+
+        self.env.cr.execute(
+            "UPDATE acpec_fuel_transaction SET create_date = %s WHERE id = %s",
+            [fields.Datetime.to_string(old_date), old_tx.id],
+        )
+        self.env.cr.execute(
+            "UPDATE acpec_fuel_transaction SET create_date = %s WHERE id = %s",
+            [fields.Datetime.to_string(current_date), current_pending_tx.id],
+        )
+        self.env.cr.execute(
+            "UPDATE acpec_fuel_transaction SET create_date = %s WHERE id = %s",
+            [fields.Datetime.to_string(current_date), current_regularized_tx.id],
+        )
+        self.env['acpec.fuel.transaction'].invalidate_model(['create_date'])
+
+        pending_response = self._call_station_transactions(controller, {
+            'regularization_state': 'pending',
+            'date_from': fields.Datetime.to_string(now - timedelta(days=1)),
+            'date_to': fields.Datetime.to_string(now + timedelta(days=1)),
+            'limit': 1,
+            'offset': 0,
+        })
+        pending_payload = self._station_transactions_payload_m15(pending_response)
+        pending_totals = pending_payload.get('totals') or {}
+
+        self.assertEqual(pending_payload.get('count'), 1)
+        self.assertEqual(len(pending_payload.get('items') or []), 1)
+        self.assertEqual(pending_totals.get('regularization_state'), 'pending')
+        self.assertEqual(pending_totals.get('qr_count'), 1)
+        self.assertAlmostEqual(
+            pending_totals.get('amount_total'),
+            current_pending_tx.amount_total,
+        )
+        self.assertNotIn(str(old_tx.id), repr(pending_response))
+        self.assertNotIn(str(current_regularized_tx.id), repr(pending_response))
+
+        all_response = self._call_station_transactions(controller, {
+            'regularization_state': 'all',
+            'date_from': fields.Datetime.to_string(now - timedelta(days=1)),
+            'date_to': fields.Datetime.to_string(now + timedelta(days=1)),
+            'limit': 1,
+            'offset': 0,
+        })
+        all_payload = self._station_transactions_payload_m15(all_response)
+        all_totals = all_payload.get('totals') or {}
+
+        self.assertEqual(all_payload.get('count'), 2)
+        self.assertEqual(len(all_payload.get('items') or []), 1)
+        self.assertEqual(all_totals.get('regularization_state'), 'all')
+        self.assertEqual(all_totals.get('qr_count'), 2)
+        self.assertAlmostEqual(
+            all_totals.get('amount_total'),
+            current_pending_tx.amount_total + current_regularized_tx.amount_total,
+        )
+        self.assertNotIn(str(old_tx.id), repr(all_response))
+

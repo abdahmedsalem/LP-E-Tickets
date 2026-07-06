@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,10 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 
-import '../../../core/auth/auth_token_store.dart';
-import '../../../core/auth/device_install_store.dart';
 import '../../../core/auth/login_session_cache.dart';
-import '../../../core/auth/odoo_session_store.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/settings/app_preferences.dart';
@@ -218,47 +214,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _resetDeviceInstallUidForDebug() async {
-    final currentUid = await DeviceInstallStore.read();
-
-    if (!mounted) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Réinitialiser le device ?'),
-        content: Text(
-          'Cette action simule un nouveau téléphone/install app.\n\n'
-          'Elle va effacer l’identifiant device local, les tokens de session '
-          'et le PIN local sur cet appareil.\n\n'
-          'Device actuel : ${currentUid ?? "(absent)"}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Réinitialiser'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok != true) return;
-
-    await DeviceInstallStore.resetForDebug();
-    await OdooSessionStore.clear();
-    await AuthTokenStore.clear();
-    await LoginSessionCache.clear();
-
-    if (!mounted) return;
-    context.read<AuthBloc>().add(const AuthLogoutRequested());
-    context.go('/login');
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthBloc>().state.user;
@@ -425,20 +380,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderColor: borderColor,
                       onTap: () => context.push('/register'),
                     ),
-                    if (kDebugMode) ...[
-                      const SizedBox(height: 18),
-                      _sectionTitle('DÉVELOPPEMENT', scheme),
-                      _prefTile(
-                        context,
-                        icon: Icons.phonelink_setup_rounded,
-                        title: 'Réinitialiser l’identifiant device',
-                        subtitle:
-                            'Simuler un nouveau téléphone : efface device UID, tokens et PIN local.',
-                        cardBg: cardBg,
-                        borderColor: borderColor,
-                        onTap: _resetDeviceInstallUidForDebug,
-                      ),
-                    ],
                     const SizedBox(height: 18),
                     _LogoutTile(
                       onLogout: () async {

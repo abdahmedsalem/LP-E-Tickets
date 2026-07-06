@@ -5,7 +5,6 @@ import re
 import secrets
 
 from odoo import api, fields, models, _
-from odoo.tools import config
 from odoo.exceptions import ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
@@ -34,6 +33,14 @@ class AcpecFuelQr(models.Model):
     child_ids = fields.One2many('acpec.fuel.qr', 'parent_id', string='QR enfants')
     consumed_station_id = fields.Many2one('acpec.fuel.station', string='Station de consommation', readonly=True)
     consumed_user_id = fields.Many2one('res.users', string='Utilisateur station', readonly=True)
+    consumed_partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire agent station',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Partenaire métier de l'agent station qui a consommé le QR. Sert au périmètre station agent ; le propriétaire du QR reste le partenaire du wallet du QR.",
+    )
     consumed_at = fields.Datetime(string='Date consommation', readonly=True)
     expires_at = fields.Datetime(string='Expiration', compute='_compute_totals', store=True)
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
@@ -66,6 +73,7 @@ class AcpecFuelQr(models.Model):
     )
     QR_NUMERIC_CODE_DIGITS = 12
     QR_NUMERIC_CODE_GROUP_SIZE = 4
+    QR_NUMERIC_SECRET_MODEL = 'acpec.fueltoken.security.settings'
 
     def _is_qr_manual_code_label(self, value):
         value = str(value or '').strip()
@@ -83,14 +91,13 @@ class AcpecFuelQr(models.Model):
                     _('La référence QR ne peut pas être le code manuel.')
                 )
 
+    @api.model
+    def _qr_numeric_code_settings(self):
+        return self.env[self.QR_NUMERIC_SECRET_MODEL].sudo()._get_or_create_for_fueltoken_company()
+
+    @api.model
     def _qr_numeric_code_secret(self):
-        secret = (
-            config.get('database.secret')
-            or config.get('admin_passwd')
-            or self.env.cr.dbname
-            or 'acpec-fueltoken'
-        )
-        return str(secret)
+        return self._qr_numeric_code_settings()._ensure_qr_numeric_secret()
 
     @api.model
     def _normalize_qr_numeric_code(self, code):
@@ -364,6 +371,15 @@ class AcpecFuelQr(models.Model):
             if self.state == 'expired':
                 raise UserError(_('Le QR est expiré.'))
             # Process consumption
+            actor_user = user or self.env.user
+            actor_user = self.env['res.users'].sudo().browse(
+                actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
+            ).exists()
+            if not actor_user:
+                raise UserError(_('Acteur station requis pour consommer le QR.'))
+            actor_partner = actor_user.partner_id
+            counterparty_partner = self.wallet_id.partner_id
+            counterparty_user = Tx._single_user_for_partner(counterparty_partner)
             tx_lines = []
             for line in self.line_ids.filtered(lambda l: l.state == 'active'):
                 line.face_line_id.with_context(allow_fuel_face_line_state_update=True).write({
@@ -375,13 +391,17 @@ class AcpecFuelQr(models.Model):
             self.write({
                 'state': 'consumed',
                 'consumed_station_id': station.id,
-                'consumed_user_id': user.id if user else self.env.user.id,
+                'consumed_user_id': actor_user.id,
+                'consumed_partner_id': actor_partner.id if actor_partner else False,
                 'consumed_at': fields.Datetime.now(),
             })
             return Tx.log(
                 'consommation_station', self.company_id,
                 wallet=self.wallet_id, qr=self, station=station,
-                lines=tx_lines, idempotency_key=idempotency_key, request_hash=request_hash
+                lines=tx_lines, idempotency_key=idempotency_key, request_hash=request_hash,
+                actor_partner=actor_partner,
+                counterparty_partner=counterparty_partner,
+                counterparty_user=counterparty_user,
             )
 
     def action_retirer_to_child(self, lines, idempotency_key=False, request_hash=False):

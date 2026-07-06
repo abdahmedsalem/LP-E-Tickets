@@ -101,6 +101,8 @@ class AcpecMobileSession(models.Model):
     )
 
     ACCESS_LAST_SEEN_TOUCH_MIN_SECONDS = 60
+    # Patch43K6: throttle du touch presence sur acpec.mobile.device.
+    DEVICE_LAST_SEEN_TOUCH_MIN_SECONDS = 60
 
     @api.depends(
         'user_id',
@@ -133,6 +135,9 @@ class AcpecMobileSession(models.Model):
 
             user_name = (user_name or '').strip()
             mobile_phone = (mobile_phone or '').strip()
+
+            if mobile_phone and user_name.startswith('%s - ' % mobile_phone):
+                user_name = user_name[len(mobile_phone) + 3:].strip()
 
             session.mobile_phone = mobile_phone or False
 
@@ -480,15 +485,60 @@ class AcpecMobileSession(models.Model):
         if device.trust_state == 'blocked':
             raise AccessError(_('Appareil mobile bloqué.'))
 
-        update_vals = {'last_seen_at': now}
-        if device_vals.get('device_name'):
-            update_vals['device_name'] = device_vals.get('device_name')
-        if platform:
-            update_vals['platform'] = platform
-        if device_vals.get('app_version'):
-            update_vals['app_version'] = device_vals.get('app_version')
-        device.write(update_vals)
+        # Patch43K6: le touch presence/metadata d'un device existant est
+        # opportuniste. Il ne doit jamais faire echouer login/refresh.
+        # La creation d'un device (branche ci-dessus) reste stricte.
+        self._touch_device_metadata_best_effort(device, device_vals, now=now)
         return device
+
+    @api.model
+    def _should_touch_device_last_seen_at(self, device, now=False):
+        if not device.last_seen_at:
+            return True
+        try:
+            now_dt = fields.Datetime.to_datetime(now or fields.Datetime.now())
+            last_seen_dt = fields.Datetime.to_datetime(device.last_seen_at)
+            if not now_dt or not last_seen_dt:
+                return True
+            return (now_dt - last_seen_dt).total_seconds() >= self.DEVICE_LAST_SEEN_TOUCH_MIN_SECONDS
+        except Exception:
+            return True
+
+    @api.model
+    def _touch_device_metadata_best_effort(self, device, device_vals=None, now=False):
+        """Patch43K6: touch presence/metadata opportuniste d'un device existant.
+
+        Meme doctrine que Patch43J3 (session), appliquee au device :
+        les ecritures critiques du refresh/login restent strictes ;
+        le touch last_seen_at/metadata est throttle, isole dans un
+        savepoint, et ignore proprement les conflits PostgreSQL attendus.
+        """
+        device_vals = device_vals or {}
+        now = now or fields.Datetime.now()
+        platform = device_vals.get('platform') if device_vals.get('platform') in ('android', 'ios', 'web', 'other') else False
+
+        update_vals = {}
+        if device_vals.get('device_name') and device_vals.get('device_name') != device.device_name:
+            update_vals['device_name'] = device_vals.get('device_name')
+        if platform and platform != device.platform:
+            update_vals['platform'] = platform
+        if device_vals.get('app_version') and device_vals.get('app_version') != device.app_version:
+            update_vals['app_version'] = device_vals.get('app_version')
+        if update_vals or self._should_touch_device_last_seen_at(device, now=now):
+            update_vals['last_seen_at'] = now
+        if not update_vals:
+            return True
+
+        try:
+            with self.env.cr.savepoint():
+                device.write(update_vals)
+        except (pg_errors.SerializationFailure, pg_errors.DeadlockDetected) as exc:
+            _logger.info(
+                'mobile_device_last_seen_touch_skipped device_id=%s reason=%s',
+                device.id,
+                type(exc).__name__,
+            )
+        return True
 
     @api.model
     def _is_session_runtime_usable(self, session, now=None):

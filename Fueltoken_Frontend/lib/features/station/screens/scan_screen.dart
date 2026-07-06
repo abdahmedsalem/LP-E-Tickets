@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -11,6 +12,7 @@ import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
 import '../../../data/models/station_qr_check_result.dart';
@@ -45,6 +47,8 @@ class _ScanScreenState extends State<ScanScreen> {
   bool _processing = false;
   bool _consuming = false;
   final Set<String> _consumedThisSession = <String>{};
+  static const String _unconfirmedConsumptionMessage =
+      'Action non confirmée. Vérifiez l’historique avant de réessayer.';
 
   @override
   void dispose() {
@@ -118,15 +122,11 @@ class _ScanScreenState extends State<ScanScreen> {
       );
     } on OdooJsonRpcException catch (e) {
       if (mounted) {
-        await _showError(
-          e.isOdooSessionExpired
-              ? 'Session expirée. Reconnectez-vous.'
-              : e.message,
-        );
+        await _showError(ErrorPresenter.message(e));
       }
     } catch (e) {
       if (mounted) {
-        await _showError(e.toString().replaceFirst('Exception: ', ''));
+        await _showError(ErrorPresenter.message(e));
       }
     } finally {
       if (mounted) setState(() => _processing = false);
@@ -153,7 +153,10 @@ class _ScanScreenState extends State<ScanScreen> {
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final intent = SensitiveActionIntent.create('station-qr-use');
       final raw = await OdooFueltokenFacade().stationQrUse(
-        intent.withAuthParams({'public_code': trimmed}, actionCode: actionCode),
+        intent.withAuthParams({
+          'public_code': trimmed,
+          'idempotency_key': const Uuid().v4(),
+        }, actionCode: actionCode),
       );
       final guarded = acpecRpcMapOrThrow(
         raw,
@@ -207,7 +210,11 @@ class _ScanScreenState extends State<ScanScreen> {
       }
     } catch (err) {
       if (mounted) {
-        await _showError(err.toString().replaceFirst('Exception: ', ''));
+        await _showError(
+          ErrorPresenter.isBackendUnavailable(err)
+              ? _unconfirmedConsumptionMessage
+              : ErrorPresenter.message(err),
+        );
       }
     } finally {
       if (mounted) setState(() => _consuming = false);

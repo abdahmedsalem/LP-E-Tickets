@@ -1,9 +1,13 @@
+import re
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
 
 class ResUsers(models.Model):
     _inherit = 'res.users'
+
+    _ACPEC_FUELTOKEN_MOBILE_PARTNER_IDENTITY_CONTEXT = 'acpec_fueltoken_allow_mobile_partner_identity_sync'
+    _ACPEC_FUELTOKEN_MOBILE_NAME_PREFIX_RE = re.compile(r'^\s*\d{8}\s*-\s*')
 
     def _acpec_fueltoken_is_mobile_identity_scope(self):
         """Return FuelToken mobile users subject to the phone-only identity rule.
@@ -46,6 +50,110 @@ class ResUsers(models.Model):
         if self.env.su or self.env.user.has_group('acpec_mobile_auth.group_mobile_auth_admin'):
             return True
         raise AccessError(_('Seul un administrateur mobile peut changer le téléphone FuelToken.'))
+
+    @api.model
+    def _acpec_fueltoken_strip_mobile_name_prefix(self, name):
+        label = (name or '').strip()
+        while label:
+            new_label = self._ACPEC_FUELTOKEN_MOBILE_NAME_PREFIX_RE.sub('', label).strip()
+            if new_label == label:
+                break
+            label = new_label
+        return label
+
+    @api.model
+    def _acpec_fueltoken_mobile_canonical_name(self, phone, name):
+        phone = (phone or '').strip()
+        label = self._acpec_fueltoken_strip_mobile_name_prefix(name or '').strip()
+        if not label or label == phone:
+            label = _('Utilisateur mobile')
+        if not phone:
+            return label
+        return '%s - %s' % (phone, label)
+
+    @api.model
+    def _acpec_fueltoken_prepare_mobile_identity_create_vals(self, vals_list):
+        prepared = []
+        for vals in vals_list:
+            vals = dict(vals or {})
+            phone = (vals.get('mobile_phone') or vals.get('login') or '').strip()
+            if (vals.get('mobile_only') or vals.get('mobile_phone')) and self._acpec_is_canonical_mobile_phone(phone):
+                vals['name'] = self._acpec_fueltoken_mobile_canonical_name(phone, vals.get('name') or '')
+            prepared.append(vals)
+        return prepared
+
+    def _acpec_fueltoken_mobile_partner_identity_vals(self):
+        self.ensure_one()
+        phone = (self.mobile_phone or '').strip()
+        if not self._acpec_is_canonical_mobile_phone(phone):
+            return {}
+        return {
+            'name': self._acpec_fueltoken_mobile_canonical_name(phone, self.name or ''),
+            'ref': 'MOB:%s' % phone,
+            'acpec_is_mobile_partner': True,
+        }
+
+    def _sync_acpec_fueltoken_mobile_partner_identity(self):
+        for user in self.sudo()._acpec_fueltoken_is_mobile_identity_scope():
+            partner = user.partner_id.sudo()
+            if not partner:
+                continue
+            vals = user._acpec_fueltoken_mobile_partner_identity_vals()
+            changes = {}
+            for field, value in vals.items():
+                if field not in partner._fields:
+                    continue
+                current = partner[field]
+                if hasattr(current, 'id'):
+                    current = current.id or False
+                if (current or False) != (value or False):
+                    changes[field] = value
+            if changes:
+                partner.with_context(**{
+                    self._ACPEC_FUELTOKEN_MOBILE_PARTNER_IDENTITY_CONTEXT: True,
+                }).write(changes)
+        return True
+
+    def _check_acpec_fueltoken_mobile_user_technical_identity_write_allowed(self, vals):
+        if self.env.context.get(self._ACPEC_FUELTOKEN_MOBILE_PARTNER_IDENTITY_CONTEXT):
+            return True
+
+        locked_fields = {'name', 'mobile_only'} & set(vals or {})
+
+        if not locked_fields:
+            return True
+
+        blocked_users = self.env['res.users']
+        for user in self.sudo()._acpec_fueltoken_is_mobile_identity_scope():
+            if not user._acpec_fueltoken_has_established_mobile_identity():
+                continue
+            for field in locked_fields:
+                if field not in user._fields:
+                    continue
+                current = user[field]
+                if hasattr(current, 'id'):
+                    current = current.id or False
+                new_value = vals.get(field)
+                if isinstance(new_value, (list, tuple)):
+                    blocked_users |= user
+                    break
+                if (current or False) != (new_value or False):
+                    blocked_users |= user
+                    break
+
+        if blocked_users:
+            labels = ', '.join(
+                user._acpec_fueltoken_user_label_for_error()
+                for user in blocked_users[:5]
+            )
+            if len(blocked_users) > 5:
+                labels = '%s, ... (+%s)' % (labels, len(blocked_users) - 5)
+            raise ValidationError(_(
+                "Identité technique utilisateur mobile FuelToken verrouillée : les champs %s "
+                "ne peuvent pas être modifiés directement. Utilisez les actions contrôlées. "
+                "Utilisateurs concernés: %s"
+            ) % (', '.join(sorted(locked_fields)), labels))
+        return True
 
     def _acpec_fueltoken_user_label_for_error(self):
         self.ensure_one()
@@ -139,12 +247,6 @@ class ResUsers(models.Model):
         partner = user.partner_id.sudo()
         old_partner_ref = partner.ref or False
         new_partner_ref = old_partner_ref
-        expected_old_ref = 'MOB:%s' % old_phone
-        expected_new_ref = 'MOB:%s' % new_phone
-
-        if partner and (old_partner_ref == expected_old_ref or (not old_partner_ref and getattr(partner, 'acpec_is_mobile_partner', False))):
-            partner.write({'ref': expected_new_ref})
-            new_partner_ref = expected_new_ref
 
         now = fields.Datetime.now()
         active_sessions = self.env['acpec.mobile.session'].sudo().search([
@@ -166,6 +268,12 @@ class ResUsers(models.Model):
             'login': new_phone,
             'mobile_phone': new_phone,
         })
+        user._sync_acpec_fueltoken_mobile_partner_identity()
+        partner.invalidate_recordset([
+            fname for fname in ('name', 'ref')
+            if fname in partner._fields
+        ])
+        new_partner_ref = partner.ref or False
 
         log = self.env['acpec.fueltoken.mobile.phone.change.log'].sudo().create({
             'user_id': user.id,
@@ -187,12 +295,23 @@ class ResUsers(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        users = super().create(vals_list)
+        vals_list = self._acpec_fueltoken_prepare_mobile_identity_create_vals(vals_list)
+        created_users = super(
+            ResUsers,
+            self.with_context(**{
+                self._ACPEC_FUELTOKEN_MOBILE_PARTNER_IDENTITY_CONTEXT: True,
+            }),
+        ).create(vals_list)
+        users = self.browse(created_users.ids)
         users._check_acpec_fueltoken_mobile_identity()
+        users._sync_acpec_fueltoken_mobile_partner_identity()
         return users
 
     def write(self, vals):
+        self._check_acpec_fueltoken_mobile_user_technical_identity_write_allowed(vals)
         self._check_acpec_fueltoken_mobile_phone_write_allowed(vals)
         result = super().write(vals)
         self._check_acpec_fueltoken_mobile_identity()
+        if {'name', 'login', 'mobile_phone', 'mobile_only'} & set(vals or {}):
+            self._sync_acpec_fueltoken_mobile_partner_identity()
         return result

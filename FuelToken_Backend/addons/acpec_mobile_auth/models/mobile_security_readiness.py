@@ -134,6 +134,57 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
         return issues
 
     @api.model
+    def _qr_numeric_secret_status(self):
+        try:
+            Settings = self.env['acpec.fueltoken.security.settings'].sudo()
+        except KeyError:
+            return {'installed': False, 'ok': True, 'hashed_count': 0}
+
+        helper = getattr(Settings, '_qr_numeric_secret_status', None)
+        if not helper:
+            return {'installed': False, 'ok': True, 'hashed_count': 0}
+        return helper()
+
+    @api.model
+    def _qr_numeric_secret_issues(self):
+        status = self._qr_numeric_secret_status()
+        if not status.get('installed', True):
+            return []
+        if status.get('ok'):
+            return []
+
+        hashed_count = status.get('hashed_count') or 0
+        min_length = status.get('min_length') or 32
+        setting_key = '%s.%s' % (
+            status.get('model') or 'acpec.fueltoken.security.settings',
+            status.get('field') or 'qr_numeric_secret',
+        )
+
+        if hashed_count:
+            code = (
+                'QR_NUMERIC_CODE_SECRET_MISSING_FOR_EXISTING_QR'
+                if status.get('missing')
+                else 'QR_NUMERIC_CODE_SECRET_WEAK_FOR_EXISTING_QR'
+            )
+            return [self._issue(
+                code,
+                'critical',
+                'Le secret dédié du code manuel QR est absent ou faible alors '
+                'que des QR avec empreinte numérique existent déjà. Restaurer '
+                'le secret original ou exécuter une migration contrôlée.',
+                setting_key,
+            )]
+
+        return [self._issue(
+            'QR_NUMERIC_CODE_SECRET_NOT_INITIALIZED',
+            'warning',
+            'Le secret dédié du code manuel QR n’est pas encore initialisé. '
+            'Il sera généré automatiquement avant le premier QR numérique ; '
+            'valeur forte attendue : au moins %s caractères.' % min_length,
+            setting_key,
+        )]
+
+    @api.model
     def _resolved_sms_config(self):
         # Patch36A: readiness does not read ir.config_parameter.
         # SMS secrets are runtime/deployment secrets, therefore read from env.
@@ -232,6 +283,7 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
             ))
 
         issues.extend(self._mobile_identity_issues())
+        issues.extend(self._qr_numeric_secret_issues())
 
         if self._raw_bool(policy.OTP_DEV_MODE_KEY, default=False):
             issues.append(self._issue(

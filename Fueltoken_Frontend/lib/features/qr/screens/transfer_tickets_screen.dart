@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
@@ -51,7 +52,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
   Map<String, int> _carnetSizeByName = <String, int>{};
   List<FaceLine> _faces = [];
   bool _loading = false;
-  final bool _submitting = false;
+  bool _submitting = false;
   String? _error;
 
   @override
@@ -259,18 +260,19 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
         _loading = false;
         _error = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = ErrorPresenter.message(e);
       });
     }
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
     final phone = _normalizeRecipientPhone(_phoneController.text.trim());
     final currentUser = context.read<AuthBloc>().state.user;
     final currentPhone = _normalizeRecipientPhone(currentUser?.phone ?? '');
@@ -327,93 +329,102 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       return;
     }
 
-    var recipientName = phone;
+    if (!mounted) return;
+    setState(() => _submitting = true);
     try {
-      final resolvedName = await _resolveRecipientName(phone);
-      if (resolvedName != null) {
-        recipientName = resolvedName;
-      } else {
+      var recipientName = phone;
+      try {
+        final resolvedName = await _resolveRecipientName(phone);
+        if (resolvedName != null) {
+          recipientName = resolvedName;
+        } else {
+          if (!mounted) return;
+          AppMessage.error(
+            context,
+            "Le client n'existe pas avec cet identifiant.",
+          );
+          return;
+        }
+      } catch (e) {
         if (!mounted) return;
-        AppMessage.error(
-          context,
-          "Le client n'existe pas avec cet identifiant.",
-        );
+        final errorMsg = ErrorPresenter.message(e);
+        AppMessage.error(context, errorMsg);
         return;
       }
-    } catch (e) {
+
+      var confirmedRecipientName = recipientName;
+
       if (!mounted) return;
-      final errorMsg = e is OdooJsonRpcException
-          ? e.message
-          : e.toString().replaceFirst('Exception: ', '');
-      AppMessage.error(context, errorMsg);
-      return;
-    }
-
-    var confirmedRecipientName = recipientName;
-
-    if (!mounted) return;
-    final confirmed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => TransferConfirmationScreen(
-          args: TransferConfirmationArgs(
-            recipientPhone: phone,
-            recipientName: recipientName,
-            lines: confirmLines,
-            noteRequired: true,
-            noteLabel: 'Motif du transfert (facultatif)',
-            noteHint:
-                'Facultatif. Si vide, le transfert sera enregistré sans motif renseigné.',
-            title: 'Confirmer le transfert',
-            introText: 'Vérifiez les tickets avant de confirmer.',
-            confirmLabel: 'Confirmer le transfert',
-            confirmIcon: Icons.confirmation_number_outlined,
-            sectionLabel: 'Tickets transférés',
-            intentOperation: 'ticket-transfer',
-            onConfirmWithNote: (actionCode, intent, note) async {
-              final raw = await OdooFueltokenFacade().ticketsTransfer(
-                intent.withAuthParams({
-                  'recipient_phone': phone,
-                  'note': note,
-                  'lines': apiLines,
-                }, actionCode: actionCode),
-              );
-              final data = acpecRpcMapOrThrow(
-                raw,
-                fallbackMessage: 'Transfert de tickets refusé par le serveur.',
-                publicErrorMessage:
-                    'Le transfert a échoué. Réessayez ou contactez l’administrateur.',
-              );
-              final responseName = data['dest_partner']?.toString().trim();
-              if (responseName != null && responseName.isNotEmpty) {
-                confirmedRecipientName = responseName;
-              }
-            },
+      final confirmed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => TransferConfirmationScreen(
+            args: TransferConfirmationArgs(
+              recipientPhone: phone,
+              recipientName: recipientName,
+              lines: confirmLines,
+              noteRequired: true,
+              noteLabel: 'Motif du transfert (facultatif)',
+              noteHint:
+                  'Facultatif. Si vide, le transfert sera enregistré sans motif renseigné.',
+              title: 'Confirmer le transfert',
+              introText: 'Vérifiez les tickets avant de confirmer.',
+              confirmLabel: 'Confirmer le transfert',
+              confirmIcon: Icons.confirmation_number_outlined,
+              sectionLabel: 'Tickets transférés',
+              intentOperation: 'ticket-transfer',
+              unconfirmedActionMessage:
+                  'Action non confirmée. Vérifiez l’état de vos tickets avant de réessayer.',
+              onConfirmWithNote: (actionCode, intent, note) async {
+                final raw = await OdooFueltokenFacade().ticketsTransfer(
+                  intent.withAuthParams({
+                    'recipient_phone': phone,
+                    'note': note,
+                    'lines': apiLines,
+                  }, actionCode: actionCode),
+                );
+                final data = acpecRpcMapOrThrow(
+                  raw,
+                  fallbackMessage:
+                      'Transfert de tickets refusé par le serveur.',
+                  publicErrorMessage:
+                      'Le transfert a échoué. Réessayez ou contactez l’administrateur.',
+                );
+                final responseName = data['dest_partner']?.toString().trim();
+                if (responseName != null && responseName.isNotEmpty) {
+                  confirmedRecipientName = responseName;
+                }
+              },
+            ),
           ),
         ),
-      ),
-    );
-
-    if (!mounted) return;
-    if (confirmed == true) {
-      final totalAmount = confirmLines.fold(0, (s, l) => s + l.totalAmount);
-      WalletRefreshBus.instance.bump();
-      FacesRefreshBus.instance.bump();
-      ClientHistoryRefreshBus.instance.bump();
-      setState(() => _selectedTicketsByLineId.clear());
-      if (!mounted) return;
-      await showTransferSuccessDialog(
-        context,
-        totalAmount: totalAmount,
-        confirmedAt: DateTime.now(),
-        recipientName: confirmedRecipientName,
-        recipientPhone: phone,
-        lines: confirmLines,
-        linesTitle: 'Tickets transférés',
       );
+
       if (!mounted) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/home');
-      });
+      if (confirmed == true) {
+        final totalAmount = confirmLines.fold(0, (s, l) => s + l.totalAmount);
+        WalletRefreshBus.instance.bump();
+        FacesRefreshBus.instance.bump();
+        ClientHistoryRefreshBus.instance.bump();
+        setState(() => _selectedTicketsByLineId.clear());
+        if (!mounted) return;
+        await showTransferSuccessDialog(
+          context,
+          totalAmount: totalAmount,
+          confirmedAt: DateTime.now(),
+          recipientName: confirmedRecipientName,
+          recipientPhone: phone,
+          lines: confirmLines,
+          linesTitle: 'Tickets transférés',
+        );
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/home');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
   }
 

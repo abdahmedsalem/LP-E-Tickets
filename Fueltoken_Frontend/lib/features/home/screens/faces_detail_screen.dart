@@ -5,6 +5,7 @@ import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
@@ -12,6 +13,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/api_required_view.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -152,13 +154,15 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _liveLoading = false;
-        _liveError = e.toString().replaceFirst('Exception: ', '');
+        _liveError = ErrorPresenter.isBackendUnavailable(e)
+            ? ErrorPresenter.backendUnavailable()
+            : ErrorPresenter.message(e);
       });
     }
   }
@@ -552,6 +556,18 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (_liveError != null && allLines.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: BackendUnavailableBanner(
+                    message: _liveError!,
+                    onRetry: () {
+                      _loadLiveFaces();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               // The list can be loading, empty, errored, or populated.
               ...(_liveLoading && allLines.isEmpty
                   ? [

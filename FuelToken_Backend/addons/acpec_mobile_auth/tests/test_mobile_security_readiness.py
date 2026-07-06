@@ -121,12 +121,12 @@ class TestMobileSecurityReadiness(TransactionCase):
         self.env.invalidate_all()
         return user
 
-    def _check(self, env, include_mobile_identity=False):
+    def _check(self, env, include_mobile_identity=False, include_qr_secret=False):
         # Odoo tests run with --test-enable. Patch36A readiness must still be
         # testable for simulated production/dev runtime values.  Most readiness
         # tests target runtime/SMS settings and must not depend on legacy users
         # already present in the developer database; identity-specific tests opt
-        # in explicitly.
+        # in explicitly. QR-secret-specific tests opt in explicitly too.
         with ExitStack() as stack:
             stack.enter_context(patch.dict(os.environ, env, clear=False))
             stack.enter_context(patch(
@@ -137,6 +137,12 @@ class TestMobileSecurityReadiness(TransactionCase):
                 stack.enter_context(patch.object(
                     type(self.readiness),
                     '_mobile_identity_issues',
+                    lambda _readiness: [],
+                ))
+            if not include_qr_secret:
+                stack.enter_context(patch.object(
+                    type(self.readiness),
+                    '_qr_numeric_secret_issues',
                     lambda _readiness: [],
                 ))
             return self.readiness.check_mobile_security_readiness()
@@ -233,6 +239,90 @@ class TestMobileSecurityReadiness(TransactionCase):
         self.assertTrue(result['runtime_dev_relax'])
         self.assertTrue(result['ready'])
         self.assertFalse(result['issues'])
+
+    def test_qr_numeric_secret_missing_for_existing_qr_is_reported_as_critical(self):
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+
+        status = {
+            'installed': True,
+            'ok': False,
+            'missing': True,
+            'weak': False,
+            'hashed_count': 1,
+            'model': 'acpec.fueltoken.security.settings',
+            'field': 'qr_numeric_secret',
+            'min_length': 32,
+        }
+        with patch.object(
+            type(self.readiness),
+            '_qr_numeric_secret_status',
+            lambda _readiness: status,
+        ):
+            result = self._check(env, include_qr_secret=True)
+
+        self.assertFalse(result['ready'])
+        self.assertIn(
+            'QR_NUMERIC_CODE_SECRET_MISSING_FOR_EXISTING_QR',
+            self._codes(result),
+        )
+
+    def test_qr_numeric_secret_weak_for_existing_qr_is_reported_as_critical(self):
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+
+        status = {
+            'installed': True,
+            'ok': False,
+            'missing': False,
+            'weak': True,
+            'hashed_count': 2,
+            'model': 'acpec.fueltoken.security.settings',
+            'field': 'qr_numeric_secret',
+            'min_length': 32,
+        }
+        with patch.object(
+            type(self.readiness),
+            '_qr_numeric_secret_status',
+            lambda _readiness: status,
+        ):
+            result = self._check(env, include_qr_secret=True)
+
+        self.assertFalse(result['ready'])
+        self.assertIn(
+            'QR_NUMERIC_CODE_SECRET_WEAK_FOR_EXISTING_QR',
+            self._codes(result),
+        )
+
+    def test_qr_numeric_secret_missing_before_first_qr_is_warning_only(self):
+        env = {}
+        env.update(self._runtime_env('production'))
+        env.update(self._sms_env(validation_key='validation-key', token='sms-token'))
+
+        status = {
+            'installed': True,
+            'ok': False,
+            'missing': True,
+            'weak': False,
+            'hashed_count': 0,
+            'model': 'acpec.fueltoken.security.settings',
+            'field': 'qr_numeric_secret',
+            'min_length': 32,
+        }
+        with patch.object(
+            type(self.readiness),
+            '_qr_numeric_secret_status',
+            lambda _readiness: status,
+        ):
+            result = self._check(env, include_qr_secret=True)
+
+        self.assertTrue(result['ready'])
+        self.assertIn(
+            'QR_NUMERIC_CODE_SECRET_NOT_INITIALIZED',
+            self._codes(result),
+        )
 
     def test_legacy_otp_dev_setting_is_reported_as_critical(self):
         self._set_setting('acpec_mobile_auth.otp_dev_mode', 'True')

@@ -227,6 +227,8 @@ class AcpecFuelTicketTransfer(models.Model):
                     'qty': qty_to_transfer,
                 })
 
+            counterparty_user = Tx._single_user_for_partner(self.dest_partner_id)
+
             if src_tx_lines:
                 Tx.log(
                     'transfert_ticket', self.company_id,
@@ -236,6 +238,9 @@ class AcpecFuelTicketTransfer(models.Model):
                     note=_('Transfert ticket sortant vers %s. Motif : %s') % (self.dest_partner_id.display_name, self.note),
                     idempotency_key='SRC-TKT-%s' % (self.idempotency_key or str(self.id)),
                     request_hash=self.request_hash,
+                    actor_partner=self.source_partner_id,
+                    counterparty_partner=self.dest_partner_id,
+                    counterparty_user=counterparty_user,
                 )
                 Tx.log(
                     'transfert_ticket', self.company_id,
@@ -245,6 +250,9 @@ class AcpecFuelTicketTransfer(models.Model):
                     note=_('Transfert ticket entrant de %s. Motif : %s') % (self.source_partner_id.display_name, self.note),
                     idempotency_key='DST-TKT-%s' % (self.idempotency_key or str(self.id)),
                     request_hash=self.request_hash,
+                    actor_partner=self.source_partner_id,
+                    counterparty_partner=self.dest_partner_id,
+                    counterparty_user=counterparty_user,
                 )
 
             self.with_context(allow_fuel_ticket_transfer_update=True).write({

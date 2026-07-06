@@ -1,3 +1,5 @@
+import secrets
+
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError, UserError
 
@@ -7,7 +9,22 @@ class AcpecFuelTransaction(models.Model):
     _description = 'Transaction Tickets Carburant'
     _order = 'id desc'
 
-    name = fields.Char(string='Référence', default='New', readonly=True, copy=False)
+    TX_REFERENCE_PREFIX = 'TX'
+    TX_REFERENCE_RANDOM_DIGITS = 12
+    TX_REFERENCE_MAX_RETRIES = 20
+
+    _sql_constraints = [
+        ('name_uniq', 'unique(name)', 'La référence de transaction doit être unique.'),
+    ]
+
+    name = fields.Char(
+        string='Référence',
+        default='New',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Référence publique non énumérable au format TX-YYYYMMDD-HHMMSS-NNNNNNNNNNNN. L'id base de données reste interne.",
+    )
     transaction_type = fields.Selection([
         ('purchase_submitted', 'Demande d’achat soumise'),
         ('purchase_approved', 'Achat approuvé'),
@@ -22,7 +39,39 @@ class AcpecFuelTransaction(models.Model):
         ('transfert_ticket', 'Transfert de tickets'),
     ], string='Type', required=True, index=True)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', index=True)
-    partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
+    partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire wallet',
+        related='wallet_id.partner_id',
+        store=True,
+        readonly=True,
+        index=True,
+        help="Partenaire du wallet de cette ligne transactionnelle. Ce champ porte la perspective/propriété du portefeuille et ne doit pas être confondu avec l'acteur global de l'opération.",
+    )
+    actor_partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire acteur',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Snapshot audit du partenaire de celui qui exécute/initie l'opération. Ce champ ne remplace pas partner_id, qui reste le partenaire du wallet de la ligne transactionnelle.",
+    )
+    counterparty_partner_id = fields.Many2one(
+        'res.partner',
+        string='Partenaire contrepartie',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Snapshot audit de l'autre partie métier de l'opération : destinataire pour un transfert, propriétaire du QR/ticket pour une consommation station.",
+    )
+    counterparty_user_id = fields.Many2one(
+        'res.users',
+        string='Utilisateur contrepartie',
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Utilisateur technique de la contrepartie lorsque la résolution depuis le partenaire est unique. Le partenaire reste l'identité métier canonique.",
+    )
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d’achat', index=True)
@@ -71,11 +120,42 @@ class AcpecFuelTransaction(models.Model):
     regularized_by_id = fields.Many2one('res.users', string='Régularisé par', copy=False, readonly=True)
 
 
+    @api.model
+    def _generate_transaction_reference_candidate(self):
+        now = fields.Datetime.now()
+        if not hasattr(now, 'strftime'):
+            now = fields.Datetime.to_datetime(now)
+        suffix = str(secrets.randbelow(10 ** self.TX_REFERENCE_RANDOM_DIGITS)).zfill(self.TX_REFERENCE_RANDOM_DIGITS)
+        return '%s-%s-%s' % (
+            self.TX_REFERENCE_PREFIX,
+            now.strftime('%Y%m%d-%H%M%S'),
+            suffix,
+        )
+
+    @api.model
+    def _generate_unique_transaction_reference(self, reserved_names=False):
+        reserved_names = reserved_names or set()
+        for _attempt in range(self.TX_REFERENCE_MAX_RETRIES):
+            name = self._generate_transaction_reference_candidate()
+            if name in reserved_names:
+                continue
+            if not self.sudo().search_count([('name', '=', name)]):
+                return name
+        raise UserError('Impossible de générer une référence transaction unique.')
+
     @api.model_create_multi
     def create(self, vals_list):
+        reserved_names = set()
         for vals in vals_list:
-            if vals.get('name', 'New') == 'New':
-                vals['name'] = self.env['ir.sequence'].next_by_code('acpec.fuel.transaction') or 'New'
+            # Transaction references are public wallet identifiers. Do not expose
+            # Odoo sequences or database ids. Also ignore manually supplied names
+            # unless an explicit internal rescue context is used.
+            if (
+                vals.get('name') in (False, None, '', 'New')
+                or not self.env.context.get('allow_fuel_transaction_name_override')
+            ):
+                vals['name'] = self._generate_unique_transaction_reference(reserved_names)
+            reserved_names.add(vals.get('name'))
             if vals.get('transaction_type') == 'consommation_station' and not vals.get('regularization_state'):
                 vals['regularization_state'] = 'pending'
         return super().create(vals_list)
@@ -87,7 +167,38 @@ class AcpecFuelTransaction(models.Model):
             rec.qty_total = sum(rec.line_ids.mapped('qty'))
 
     @api.model
-    def log(self, transaction_type, company, wallet=False, purchase=False, qr=False, parent_qr=False, station=False, transfer=False, ticket_transfer=False, lines=False, note=False, idempotency_key=False, request_hash=False):
+    def _single_user_for_partner(self, partner):
+        """Return a unique user for a partner when resolution is unambiguous."""
+        if not partner:
+            return self.env['res.users']
+        partner = partner.sudo().exists()
+        if not partner:
+            return self.env['res.users']
+        users = self.env['res.users'].sudo().with_context(active_test=False).search([
+            ('partner_id', '=', partner.id),
+        ], limit=2)
+        return users if len(users) == 1 else self.env['res.users']
+
+    @api.model
+    def log(
+        self,
+        transaction_type,
+        company,
+        wallet=False,
+        purchase=False,
+        qr=False,
+        parent_qr=False,
+        station=False,
+        transfer=False,
+        ticket_transfer=False,
+        lines=False,
+        note=False,
+        idempotency_key=False,
+        request_hash=False,
+        actor_partner=False,
+        counterparty_partner=False,
+        counterparty_user=False,
+    ):
         vals = {
             'transaction_type': transaction_type,
             'company_id': company.id,
@@ -101,6 +212,9 @@ class AcpecFuelTransaction(models.Model):
             'note': note or False,
             'idempotency_key': idempotency_key or False,
             'request_hash': request_hash or False,
+            'actor_partner_id': actor_partner.id if actor_partner else False,
+            'counterparty_partner_id': counterparty_partner.id if counterparty_partner else False,
+            'counterparty_user_id': counterparty_user.id if counterparty_user else False,
         }
         if transaction_type == 'consommation_station':
             vals['regularization_state'] = 'pending'
@@ -192,13 +306,38 @@ class AcpecFuelTransaction(models.Model):
             'regularized_by_id',
         }
         vals_keys = set(vals)
+
+        # G2 legacy doctrine: post-audit note remains editable without opening
+        # economic fields. Tests and BO usability rely on this narrow exception.
+        if vals_keys <= {'note'}:
+            return super().write(vals)
+
+        if self.env.context.get('allow_fuel_transaction_purchase_lifecycle_update'):
+            # M13 doctrine: achat uniquement.
+            # Une transaction publique purchase_submitted peut être finalisée en
+            # purchase_approved sans créer une deuxième référence TX. Cette
+            # exception reste volontairement étroite et ne permet pas les writes
+            # directs généraux sur les transactions.
+            allowed_fields = {'transaction_type', 'note', 'idempotency_key', 'request_hash'}
+            forbidden_fields = vals_keys - allowed_fields
+            if forbidden_fields:
+                raise UserError(_('Mise à jour cycle achat transaction non autorisée.'))
+            if vals.get('transaction_type') != 'purchase_approved':
+                raise UserError(_('La conversion achat doit cibler purchase_approved.'))
+            for tx in self:
+                if tx.transaction_type != 'purchase_submitted' or not tx.purchase_id:
+                    raise UserError(_('Seule une transaction achat soumise peut être convertie en achat approuvé.'))
+            return super().write(vals)
+
+        # Régularisation station : uniquement via l'action dédiée.
         if vals_keys & regularization_fields and not self.env.context.get('allow_fuel_transaction_regularization_update'):
             raise UserError(_('La régularisation station doit passer par l’action dédiée.'))
+
         protected_keys = vals_keys - regularization_fields - {'note'}
         if protected_keys and not self.env.context.get('allow_fuel_transaction_update'):
             raise UserError(_('Les transactions Tickets Carburant ne doivent pas être modifiées directement.'))
-        return super().write(vals)
 
+        return super().write(vals)
     def init(self):
         # Backfill existing station consumption transactions created before Patch43H3B.
         self.env.cr.execute(
@@ -207,6 +346,90 @@ class AcpecFuelTransaction(models.Model):
                SET regularization_state = 'pending'
              WHERE transaction_type = 'consommation_station'
                AND regularization_state IS NULL
+            """
+        )
+
+        # Backfill actor/counterparty snapshots introduced by Patch43M5.
+        # Kept additive: old partner_id, source/dest transfer rules and reports remain unchanged.
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_qr q
+               SET consumed_partner_id = u.partner_id
+              FROM res_users u
+             WHERE q.consumed_partner_id IS NULL
+               AND q.consumed_user_id = u.id
+               AND u.partner_id IS NOT NULL
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE acpec_fuel_transaction t
+               SET actor_partner_id = COALESCE(t.actor_partner_id, q.consumed_partner_id, u.partner_id),
+                   counterparty_partner_id = COALESCE(t.counterparty_partner_id, w.partner_id)
+              FROM acpec_fuel_qr q
+              LEFT JOIN res_users u ON u.id = q.consumed_user_id
+              LEFT JOIN acpec_fuel_wallet w ON w.id = q.wallet_id
+             WHERE t.transaction_type = 'consommation_station'
+               AND t.qr_id = q.id
+               AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+            """
+        )
+        # patch43M16 transfer backfill guard: the legacy transfer table
+        # is not guaranteed to exist during a fresh install of core.
+        self.env.cr.execute(
+            "SELECT to_regclass(%s)",
+            ('public.acpec_fuel_carnet_transfer',),
+        )
+        transfer_table_exists = bool(self.env.cr.fetchone()[0])
+        if transfer_table_exists:
+            self.env.cr.execute(
+                """
+                UPDATE acpec_fuel_transaction t
+                   SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
+                       counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
+                  FROM acpec_fuel_carnet_transfer tr
+                  LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
+                  LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
+                 WHERE t.transfer_id = tr.id
+                   AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+                """
+            )
+
+        # patch43M16 ticket transfer backfill guard: the legacy ticket
+        # transfer table is not guaranteed to exist during a fresh install.
+        self.env.cr.execute(
+            "SELECT to_regclass(%s)",
+            ('public.acpec_fuel_ticket_transfer',),
+        )
+        ticket_transfer_table_exists = bool(self.env.cr.fetchone()[0])
+        if ticket_transfer_table_exists:
+            self.env.cr.execute(
+                """
+                UPDATE acpec_fuel_transaction t
+                   SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
+                       counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
+                  FROM acpec_fuel_ticket_transfer tr
+                  LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
+                  LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
+                 WHERE t.ticket_transfer_id = tr.id
+                   AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+                """
+            )
+
+        self.env.cr.execute(
+            """
+            WITH partner_users AS (
+                SELECT partner_id, MIN(id) AS user_id
+                  FROM res_users
+                 WHERE partner_id IS NOT NULL
+                 GROUP BY partner_id
+                HAVING COUNT(*) = 1
+            )
+            UPDATE acpec_fuel_transaction t
+               SET counterparty_user_id = pu.user_id
+              FROM partner_users pu
+             WHERE t.counterparty_partner_id = pu.partner_id
+               AND t.counterparty_user_id IS NULL
             """
         )
 
@@ -245,18 +468,26 @@ class AcpecFuelTransactionLine(models.Model):
             raise UserError(_('Les lignes de transaction Tickets Carburant ne doivent pas être modifiées directement.'))
         return super().write(vals)
 
-    def init(self):
-        # Backfill existing station consumption transactions created before Patch43H3B.
-        self.env.cr.execute(
-            """
-            UPDATE acpec_fuel_transaction
-               SET regularization_state = 'pending'
-             WHERE transaction_type = 'consommation_station'
-               AND regularization_state IS NULL
-            """
-        )
-
     def unlink(self):
-        if not self.env.context.get('allow_fuel_transaction_unlink'):
+        if self.env.context.get('allow_fuel_transaction_purchase_lifecycle_line_replace'):
+            # M13 doctrine: remplacement contrôlé des lignes provisoires d'une
+            # TX achat par les lignes matérialisées des carnets à l'approbation.
+            # La demande originale reste portée par purchase.line_ids ; on ne
+            # permet pas l'unlink général des lignes de transaction.
+            for line in self:
+                tx = line.transaction_id
+                if (
+                    not tx
+                    or tx.transaction_type not in ('purchase_submitted', 'purchase_approved')
+                    or not tx.purchase_id
+                    or line.face_line_id
+                ):
+                    raise UserError(_('Seules les lignes provisoires achat peuvent être remplacées.'))
+            return super().unlink()
+
+        if not (
+            self.env.context.get('allow_fuel_transaction_line_unlink')
+            or self.env.context.get('allow_fuel_transaction_unlink')
+        ):
             raise UserError(_('Les lignes de transaction Tickets Carburant sont append-only et ne doivent pas être supprimées.'))
         return super().unlink()

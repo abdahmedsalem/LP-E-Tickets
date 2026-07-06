@@ -204,10 +204,10 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         public_message = error.get("message") or ""
 
         sensitive_expected_codes = {
-            "action_code": ("ACTION_REFUSED",),
-            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED",),
-            "PIN mobile invalide": ("ACTION_REFUSED",),
-            "Clé PIN action invalide": ("ACTION_REFUSED",),
+            "action_code": ("ACTION_REFUSED", "MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
+            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED", "DEVICE_PENDING_TRUST"),
+            "PIN mobile invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE"),
+            "Clé PIN action invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE_KEY"),
             "idempotency_conflict": ("REQUEST_REFUSED",),
             "QR introuvable": ("QR_NOT_USABLE",),
         }
@@ -317,6 +317,9 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
         ])
         self.assertEqual(len(txs), 2)
         self.assertEqual(set(txs.mapped('actor_user_id').ids), {source_user.id})
+        self.assertEqual(set(txs.mapped('actor_partner_id').ids), {source_user.partner_id.id})
+        self.assertEqual(set(txs.mapped('counterparty_partner_id').ids), {_recipient_user.partner_id.id})
+        self.assertEqual(set(txs.mapped('counterparty_user_id').ids), {_recipient_user.id})
         self.assertEqual(set(txs.mapped('mobile_session_id').ids), {_session.id})
         self.assertEqual(set(txs.mapped('device_uid')), {_session.device_uid})
 

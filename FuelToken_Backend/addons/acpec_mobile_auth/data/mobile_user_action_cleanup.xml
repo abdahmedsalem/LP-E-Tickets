@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="0">
+    <!--
+        Patch43M9:
+        V1 removes the dangerous generic Odoo user action that can change the
+        FuelToken mobile phone identity. It must not remain available from the
+        user action menu. A future safe workflow must be explicit and audited.
+    -->
+    <function model="res.users" name="_acpec_disable_dangerous_mobile_phone_change_actions"/>
+</odoo>

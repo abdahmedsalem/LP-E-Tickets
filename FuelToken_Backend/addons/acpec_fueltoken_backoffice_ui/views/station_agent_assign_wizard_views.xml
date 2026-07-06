@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_station_agent_assign_wizard_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.station.agent.assign.wizard.form</field>
+        <field name="model">acpec.fuel.station.agent.assign.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Ajouter agent station">
+                <sheet>
+                    <group>
+                        <field name="station_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="mobile_phone" placeholder="Ex. 21395551"/>
+                        <field name="found_user_label" readonly="1"/>
+                        <field name="current_responsible_label" readonly="1"/>
+                        <field name="assign_as_responsible"/>
+                        <field name="confirmation_mobile_phone" placeholder="Répéter le téléphone"/>
+                        <field name="warning_message" readonly="1" invisible="not warning_message"/>
+                        <field name="found_user_id" invisible="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirmer l’affectation"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Annuler" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_station_agent_assign_wizard" model="ir.actions.act_window">
+        <field name="name">Ajouter agent station</field>
+        <field name="res_model">acpec.fuel.station.agent.assign.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_station_agent_assign_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

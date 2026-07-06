@@ -16,6 +16,7 @@ import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/screens/forgot_otp_flow_screens.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
 import '../../features/auth/screens/session_pin_lock_screen.dart';
@@ -43,18 +44,17 @@ import '../../features/station/screens/station_home_screen.dart';
 import '../../features/station/screens/station_profile_screen.dart';
 import '../../features/station/screens/station_shell_scaffold.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
+import '../../features/auth/screens/splash_screen.dart';
 
 class AppRouter {
   static GoRouter build(AuthBloc authBloc) {
     return GoRouter(
-      initialLocation: '/login',
+      initialLocation: '/splash',
       refreshListenable: _AuthListenable(authBloc),
       redirect: (_, state) {
         final auth = authBloc.state;
         final loggedIn = auth.status == AuthStatus.authenticated;
-        final locked =
-            auth.status == AuthStatus.locked ||
-            auth.status == AuthStatus.pinSetupRequired;
+        final locked = auth.status == AuthStatus.locked;
         final loc = state.matchedLocation;
         final atPinLockRoute = loc == '/session-pin-lock';
         final atActivationPendingRoute = loc == '/activation-pending';
@@ -64,7 +64,9 @@ class AppRouter {
             (auth.user!.isDeviceActivationPending ||
                 auth.user!.isDeviceBlocked);
         final atAuthRoute = {
+          '/splash',
           '/login',
+          '/onboarding',
           '/session-pin-lock',
           '/register',
           '/register/verify-otp',
@@ -131,6 +133,11 @@ class AppRouter {
         return null;
       },
       routes: [
+        GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, _) => const OnboardingScreen(),
+        ),
         GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
         GoRoute(
           path: '/activation-pending',
@@ -175,12 +182,9 @@ class AppRouter {
           path: '/register/verify-otp',
           builder: (_, st) {
             final x = st.extra;
-            if (x is! RegisterOtpRouteArgs) {
-              return const Scaffold(
-                body: Center(child: Text("Reprendre depuis l'inscription.")),
-              );
-            }
-            return RegisterVerifyOtpScreen(args: x);
+            return RegisterVerifyOtpScreen(
+              args: x is RegisterOtpRouteArgs ? x : null,
+            );
           },
         ),
 

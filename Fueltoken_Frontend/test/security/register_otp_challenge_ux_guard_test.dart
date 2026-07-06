@@ -13,7 +13,7 @@ String _between(String source, String start, String end) {
 }
 
 void main() {
-  group('Register OTP challenge UX guard', () {
+  group('Register SMS challenge UX guard', () {
     test('signup OTP request uses the public identifier contract', () {
       final source = _read('lib/data/services/odoo_auth_service.dart');
       final method = _between(
@@ -40,7 +40,7 @@ void main() {
         expect(source, contains('challengeId == null || challengeId <= 0'));
         expect(
           source,
-          contains('Le serveur n’a pas confirmé le challenge OTP. Réessayez.'),
+          contains('Le serveur n’a pas confirmé le code SMS. Réessayez.'),
         );
 
         expect(extractor, contains("dataMap['otp_challenge_id']"));
@@ -51,7 +51,7 @@ void main() {
     );
 
     test(
-      'verify OTP keeps support reference but gives a contextual OTP UX',
+      'verify OTP keeps support reference but gives a contextual SMS UX',
       () {
         final source = _read(
           'lib/features/auth/screens/register_verify_otp_screen.dart',
@@ -64,7 +64,7 @@ void main() {
         expect(source, contains('error is OdooJsonRpcException'));
         expect(
           source,
-          contains('Code OTP introuvable, expiré ou déjà utilisé.'),
+          contains('Code SMS introuvable, expiré ou déjà utilisé.'),
         );
         expect(source, contains('Référence support :'));
         expect(source, isNot(contains('debug_reason')));

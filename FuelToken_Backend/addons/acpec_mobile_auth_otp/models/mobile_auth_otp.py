@@ -365,9 +365,34 @@ class AcpecMobileAuthOtp(models.Model):
         self.message_post(body=_('OTP envoye par SMS pour %s.') % (phone or self.identifier,))
         return True
 
-    def verify(self, code):
+    def _verify_bucket_identifier_key(self):
         self.ensure_one()
+        if self.user_id:
+            return 'user:%s' % self.user_id.id
+        return (self.identifier or '').strip()
+
+    def _lock_for_update(self):
+        self.ensure_one()
+        self.env.cr.execute(
+            'SELECT id FROM acpec_mobile_auth_otp WHERE id = %s FOR UPDATE',
+            [self.id],
+        )
+        self.invalidate_recordset([
+            'state',
+            'attempt_count',
+            'verified_at',
+            'blocked_until',
+        ])
+        return self
+
+    def verify(self, code, request_ip=False):
+        self.ensure_one()
+        self._lock_for_update()
         now = fields.Datetime.now()
+        request_ip = (request_ip or '').strip()
+        bucket_model = self.env['acpec.mobile.auth.otp.verify.bucket'].sudo()
+        bucket_identifier = self._verify_bucket_identifier_key()
+
         if self.state != 'pending':
             raise ValidationError(_("Ce challenge OTP n'est plus actif."))
         if self.blocked_until and self.blocked_until > now:
@@ -377,12 +402,20 @@ class AcpecMobileAuthOtp(models.Model):
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})
             raise ValidationError(_('Le code OTP a expiré.'))
+
+        bucket_model.check_verify_allowed(
+            bucket_identifier,
+            purpose=self.purpose,
+            request_ip=request_ip,
+        )
+
         code = (code or '').strip()
         expected_length = self._otp_code_length()
         if not code or not code.isdigit() or len(code) != expected_length:
             raise ValidationError(
                 _('Le code OTP doit contenir exactement %s chiffres.') % expected_length
             )
+
         if code == self.DEV_FIXED_OTP_CODE and not self._otp_dev_mode():
             attempt_count = self.attempt_count + 1
             vals = {'attempt_count': attempt_count}
@@ -392,7 +425,13 @@ class AcpecMobileAuthOtp(models.Model):
                     'blocked_until': now + relativedelta(minutes=15),
                 })
             self.write(vals)
+            bucket_model.record_verify_failure(
+                bucket_identifier,
+                purpose=self.purpose,
+                request_ip=request_ip,
+            )
             raise AccessError(_('Code OTP invalide.'))
+
         expected_hash = self.otp_hash or ''
         given_hash = self._hash_otp(code, self.salt) or ''
         if not hmac.compare_digest(given_hash, expected_hash):
@@ -404,10 +443,21 @@ class AcpecMobileAuthOtp(models.Model):
                     'blocked_until': now + relativedelta(minutes=15),
                 })
             self.write(vals)
+            bucket_model.record_verify_failure(
+                bucket_identifier,
+                purpose=self.purpose,
+                request_ip=request_ip,
+            )
             raise AccessError(_('Code OTP invalide.'))
+
         self.write({
             'state': 'verified',
             'verified_at': now,
         })
+        bucket_model.record_verify_success(
+            bucket_identifier,
+            purpose=self.purpose,
+            request_ip=request_ip,
+        )
         return self.user_id
 

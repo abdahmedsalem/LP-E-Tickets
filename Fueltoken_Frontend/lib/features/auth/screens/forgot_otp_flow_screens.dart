@@ -81,7 +81,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length != kOtpSmsCodeLength) {
       if (mounted) {
-        AppMessage.error(context, 'Saisissez le code OTP a 6 chiffres.');
+        AppMessage.error(context, 'Saisissez le code SMS à 6 chiffres.');
       }
       return;
     }
@@ -94,10 +94,6 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
         code: clean,
         pin: _pin.text,
         challengeId: _challengeId,
-      );
-      await AuthRepository.instance.syncLocalPinIfExists(
-        identifier: widget.args.identifier,
-        newPin: _pin.text,
       );
       if (!mounted) return;
       AppMessage.info(context, 'PIN mis a jour. Connectez-vous.');
@@ -215,10 +211,6 @@ class _ResetPasswordAfterOtpScreenState
     setState(() => _busy = true);
     try {
       await AuthRepository.instance.resetPinForIdentifier(
-        identifier: widget.args.identifier,
-        newPin: _pass.text,
-      );
-      await AuthRepository.instance.syncLocalPinIfExists(
         identifier: widget.args.identifier,
         newPin: _pass.text,
       );
@@ -490,7 +482,7 @@ class _OtpField extends StatelessWidget {
         letterSpacing: 6,
       ),
       decoration: InputDecoration(
-        labelText: 'Code OTP',
+        labelText: 'Code SMS',
         hintText: '------',
         counterText: '',
         filled: true,

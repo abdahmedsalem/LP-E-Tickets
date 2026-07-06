@@ -139,10 +139,10 @@ class TestPurchaseCreateRuntimePolicy(TransactionCase):
         public_message = error.get("message") or ""
 
         sensitive_expected_codes = {
-            "action_code": ("ACTION_REFUSED",),
-            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED",),
-            "PIN mobile invalide": ("ACTION_REFUSED",),
-            "Clé PIN action invalide": ("ACTION_REFUSED",),
+            "action_code": ("ACTION_REFUSED", "MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
+            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED", "DEVICE_PENDING_TRUST"),
+            "PIN mobile invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE"),
+            "Clé PIN action invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE_KEY"),
             "idempotency_conflict": ("REQUEST_REFUSED",),
             "QR introuvable": ("QR_NOT_USABLE",),
         }
@@ -208,7 +208,7 @@ class TestPurchaseCreateRuntimePolicy(TransactionCase):
         self.assertEqual(before, after)
 
     def test_create_purchase_replays_same_payload_for_same_idempotency_key(self):
-        controller, user, _session = self._controller_for_user("purchase-replay-24a@example.com")
+        controller, user, session = self._controller_for_user("purchase-replay-24a@example.com")
         payload = self._payload(key="purchase-replay-key-24a")
 
         first_response = self._call_create_purchase(controller, dict(payload))
@@ -220,6 +220,18 @@ class TestPurchaseCreateRuntimePolicy(TransactionCase):
         self.assertIn(str(purchases.id), repr(second_response))
         self.assertEqual(purchases.state, "submitted")
         self.assertTrue(purchases.request_hash)
+
+        txs = self.env["acpec.fuel.transaction"].sudo().search([
+            ("purchase_id", "=", purchases.id),
+            ("transaction_type", "=", "purchase_submitted"),
+        ])
+        self.assertEqual(len(txs), 1)
+        self.assertEqual(txs.partner_id.id, user.partner_id.id)
+        self.assertEqual(txs.actor_partner_id.id, user.partner_id.id)
+        self.assertEqual(txs.actor_user_id.id, user.id)
+        self.assertEqual(txs.mobile_session_id.id, session.id)
+        self.assertEqual(txs.device_uid, session.device_uid)
+        self.assertFalse(txs.counterparty_partner_id)
 
     def test_create_purchase_rejects_same_key_with_different_payload(self):
         controller, user, _session = self._controller_for_user("purchase-conflict-24a@example.com")

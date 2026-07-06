@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:math' as math;
 
 import '../../core/config/app_environment.dart';
 import '../../core/config/diagnostic_config.dart';
+import '../../core/debug/acpec_rpc_debug.dart';
 import '../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../models/carnet_type.dart';
 import 'acpec_carnet_types_mapper.dart';
@@ -205,8 +205,6 @@ class AcpecCarnetCatalogService {
   /// Toujours faux : le catalogue types/faces provient d’Odoo (pas de JWT catalogue séparé).
   static bool lastCatalogTypesFromAdminList = false;
 
-  static const int _kLogPreviewMaxChars = 12000;
-
   int _int(dynamic v, [int d = 0]) {
     if (v == null) return d;
     if (v is int) return v;
@@ -333,22 +331,11 @@ class AcpecCarnetCatalogService {
     return out;
   }
 
-  String _jsonPreview(dynamic value) {
-    if (value == null) return '';
-    try {
-      final s = const JsonEncoder.withIndent('  ').convert(value);
-      if (s.length <= _kLogPreviewMaxChars) return s;
-      return '${s.substring(0, _kLogPreviewMaxChars)}…\n[tronqué $_kLogPreviewMaxChars car.]';
-    } catch (_) {
-      return value.toString();
-    }
-  }
-
   void _logRpc(String tag, dynamic payload) {
     if (!DiagnosticConfig.showTechnicalDiagnostics) {
       return;
     }
-    developer.log(_jsonPreview(payload), name: 'AcpecCarnetCatalog.$tag');
+    developer.log(AcpecRpcDebug.clip(payload), name: 'AcpecCarnetCatalog.$tag');
   }
 
   /// Types carnets : route admin list en priorité si [preferAdminList], sinon mobile.
@@ -372,7 +359,7 @@ class AcpecCarnetCatalogService {
           const <String, dynamic>{},
         );
         _logRpc('adminCarnetTypesList.response', raw);
-        preview = _jsonPreview(raw);
+        preview = AcpecRpcDebug.clip(raw);
         final list = AcpecCarnetTypesMapper.tryListFromRpc(
           raw,
           companyId: companyId,
@@ -386,17 +373,17 @@ class AcpecCarnetCatalogService {
             usedAdminRoute: true,
           );
         }
-      } on OdooJsonRpcException catch (e, st) {
+      } on OdooJsonRpcException catch (e) {
         if (DiagnosticConfig.showTechnicalDiagnostics) {
           developer.log(
-            '$e\n$st',
+            'RPC failed: ${e.runtimeType}',
             name: 'AcpecCarnetCatalog.adminCarnetTypesList',
           );
         }
-      } catch (e, st) {
+      } catch (e) {
         if (DiagnosticConfig.showTechnicalDiagnostics) {
           developer.log(
-            '$e\n$st',
+            'RPC failed: ${e.runtimeType}',
             name: 'AcpecCarnetCatalog.adminCarnetTypesList',
           );
         }
@@ -408,15 +395,18 @@ class AcpecCarnetCatalogService {
         const <String, dynamic>{},
       );
       _logRpc('carnetTypes.response', raw);
-      preview = _jsonPreview(raw);
+      preview = AcpecRpcDebug.clip(raw);
       final list = AcpecCarnetTypesMapper.tryListFromRpc(
         raw,
         companyId: companyId,
       );
       return (list: list, err: null, preview: preview, usedAdminRoute: false);
-    } on OdooJsonRpcException catch (e, st) {
+    } on OdooJsonRpcException catch (e) {
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.carnetTypes');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.carnetTypes',
+        );
       }
       return (
         list: null,
@@ -424,9 +414,12 @@ class AcpecCarnetCatalogService {
         preview: preview,
         usedAdminRoute: false,
       );
-    } catch (e, st) {
+    } catch (e) {
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.carnetTypes');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.carnetTypes',
+        );
       }
       return (
         list: null,
@@ -466,17 +459,23 @@ class AcpecCarnetCatalogService {
     try {
       final fRaw = await OdooFueltokenFacade().faces(const <String, dynamic>{});
       _logRpc('faces.response', fRaw);
-      fPreview = _jsonPreview(fRaw);
+      fPreview = AcpecRpcDebug.clip(fRaw);
       _walk(_unwrapAcpec(fRaw), agg);
-    } on OdooJsonRpcException catch (e, st) {
+    } on OdooJsonRpcException catch (e) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.faces',
+        );
       }
-    } catch (e, st) {
+    } catch (e) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.faces',
+        );
       }
     }
 
@@ -487,17 +486,23 @@ class AcpecCarnetCatalogService {
         ),
       );
       _logRpc('walletCurrent.response', wRaw);
-      wPreview = _jsonPreview(wRaw);
+      wPreview = AcpecRpcDebug.clip(wRaw);
       _walk(_unwrapAcpec(wRaw), agg);
-    } on OdooJsonRpcException catch (e, st) {
+    } on OdooJsonRpcException catch (e) {
       wErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.walletCurrent');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.walletCurrent',
+        );
       }
-    } catch (e, st) {
+    } catch (e) {
       wErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.walletCurrent');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.walletCurrent',
+        );
       }
     }
 
@@ -506,17 +511,23 @@ class AcpecCarnetCatalogService {
         const <String, dynamic>{},
       );
       _logRpc('purchasesList.response', pRaw);
-      pPreview = _jsonPreview(pRaw);
+      pPreview = AcpecRpcDebug.clip(pRaw);
       _walk(_unwrapAcpec(pRaw), agg);
-    } on OdooJsonRpcException catch (e, st) {
+    } on OdooJsonRpcException catch (e) {
       pErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.purchasesList');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.purchasesList',
+        );
       }
-    } catch (e, st) {
+    } catch (e) {
       pErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.purchasesList');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.purchasesList',
+        );
       }
     }
 
@@ -581,17 +592,23 @@ class AcpecCarnetCatalogService {
     try {
       final fRaw = await OdooFueltokenFacade().faces(const <String, dynamic>{});
       _logRpc('faces.response', fRaw);
-      fPreview = _jsonPreview(fRaw);
+      fPreview = AcpecRpcDebug.clip(fRaw);
       _walk(_unwrapAcpec(fRaw), agg);
-    } on OdooJsonRpcException catch (e, st) {
+    } on OdooJsonRpcException catch (e) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.faces',
+        );
       }
-    } catch (e, st) {
+    } catch (e) {
       fErr = e.toString();
       if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log('$e\n$st', name: 'AcpecCarnetCatalog.faces');
+        developer.log(
+          'RPC failed: ${e.runtimeType}',
+          name: 'AcpecCarnetCatalog.faces',
+        );
       }
     }
 

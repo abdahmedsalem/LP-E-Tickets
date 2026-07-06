@@ -7,12 +7,12 @@ import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/purchase_lot.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart'
-    show OdooJsonRpcException;
 import '../../../shared/widgets/app_status_lottie.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -51,10 +51,10 @@ class _AdminSubmittedPurchasesScreenState
   }
 
   String _briefError(Object e) {
-    if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirée. Reconnectez-vous.';
+    if (ErrorPresenter.isBackendUnavailable(e)) {
+      return ErrorPresenter.backendUnavailable();
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    return ErrorPresenter.message(e);
   }
 
   Future<void> _loadAcpecPending() async {
@@ -193,6 +193,17 @@ class _AdminSubmittedPurchasesScreenState
             ),
           ),
         ),
+        if (_acpecError != null &&
+            _acpecLots != null &&
+            _acpecLots!.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: BackendUnavailableBanner(
+              message: _acpecError!,
+              onRetry: _loadAcpecPending,
+            ),
+          ),
+        ],
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadAcpecPending,

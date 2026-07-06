@@ -1,6 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_fuel_transaction_list" model="ir.ui.view"><field name="name">acpec.fuel.transaction.list</field><field name="model">acpec.fuel.transaction</field><field name="arch" type="xml"><list><field name="name"/><field name="transaction_type"/><field name="wallet_id"/><field name="purchase_id"/><field name="qr_id"/><field name="station_id"/><field name="regularization_state"/><field name="regularization_reference"/><field name="qty_total"/><field name="amount_total"/><field name="company_id" groups="base.group_multi_company"/></list></field></record>
-    <record id="view_fuel_transaction_form" model="ir.ui.view"><field name="name">acpec.fuel.transaction.form</field><field name="model">acpec.fuel.transaction</field><field name="arch" type="xml"><form><sheet><group><group><field name="name"/><field name="transaction_type"/><field name="wallet_id"/><field name="purchase_id"/><field name="qr_id"/><field name="parent_qr_id"/><field name="station_id"/><field name="regularization_state"/><field name="regularization_reference"/><field name="regularization_date"/><field name="regularized_by_id"/></group><group><field name="qty_total"/><field name="amount_total"/><field name="company_id" groups="base.group_multi_company"/><field name="idempotency_key"/></group></group><notebook><page string="Lignes"><field name="line_ids" readonly="1"><list><field name="purchase_id"/><field name="face_line_id"/><field name="qr_id"/><field name="face_value"/><field name="qty"/><field name="amount"/></list></field></page><page string="Note"><field name="note"/></page></notebook></sheet></form></field></record>
-    <record id="action_fuel_transaction" model="ir.actions.act_window"><field name="name">Transactions métier</field><field name="res_model">acpec.fuel.transaction</field><field name="view_mode">list,form</field></record>
-    <menuitem id="menu_fuel_transaction" name="Transactions métier" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_fuel_transaction" sequence="10"/>
+    <record id="view_fuel_transaction_list" model="ir.ui.view">
+        <field name="name">acpec.fuel.transaction.list</field>
+        <field name="model">acpec.fuel.transaction</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="transaction_type"/>
+                <field name="wallet_id"/>
+                <field name="purchase_id"/>
+                <field name="qr_id"/>
+                <field name="station_id"/>
+                <field name="regularization_state"/>
+                <field name="regularization_reference"/>
+                <field name="qty_total"/>
+                <field name="amount_total"/>
+                <field name="partner_id" optional="hide"/>
+                <field name="actor_partner_id" optional="hide"/>
+                <field name="counterparty_partner_id" optional="hide"/>
+                <field name="counterparty_user_id" optional="hide"/>
+                <field name="parent_qr_id" optional="hide"/>
+                <field name="transfer_id" optional="hide"/>
+                <field name="ticket_transfer_id" optional="hide"/>
+                <field name="purchase_state" optional="hide"/>
+                <field name="purchase_submitted_at" optional="hide"/>
+                <field name="purchase_approved_at" optional="hide"/>
+                <field name="purchase_rejected_at" optional="hide"/>
+                <field name="purchase_rejection_reason" optional="hide"/>
+                <field name="regularization_date" optional="hide"/>
+                <field name="regularized_by_id" optional="hide"/>
+                <field name="idempotency_key" optional="hide"/>
+                <field name="request_hash" optional="hide"/>
+                <field name="note" optional="hide"/>
+                <field name="create_date" optional="hide"/>
+                <field name="create_uid" optional="hide"/>
+                <field name="write_date" optional="hide"/>
+                <field name="write_uid" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fuel_transaction_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.transaction.form</field>
+        <field name="model">acpec.fuel.transaction</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="transaction_type"/>
+                            <field name="wallet_id"/>
+                            <field name="purchase_id"/>
+                            <field name="qr_id"/>
+                            <field name="parent_qr_id"/>
+                            <field name="station_id"/>
+                            <field name="regularization_state"/>
+                            <field name="regularization_reference"/>
+                            <field name="regularization_date"/>
+                            <field name="regularized_by_id"/>
+                        </group>
+                        <group>
+                            <field name="qty_total"/>
+                            <field name="amount_total"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="idempotency_key"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Lignes">
+                            <field name="line_ids" readonly="1">
+                                <list>
+                                    <field name="purchase_id"/>
+                                    <field name="face_line_id"/>
+                                    <field name="qr_id"/>
+                                    <field name="face_value"/>
+                                    <field name="qty"/>
+                                    <field name="amount"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Note">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_fuel_transaction" model="ir.actions.act_window">
+        <field name="name">Transactions métier</field>
+        <field name="res_model">acpec.fuel.transaction</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_fuel_transaction"
+              name="Transactions métier"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
+              action="action_fuel_transaction"
+              sequence="10"/>
 </odoo>

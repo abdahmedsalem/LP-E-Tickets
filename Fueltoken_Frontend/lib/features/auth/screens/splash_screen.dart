@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/app_brand_config.dart';
+import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_role.dart';
 import '../../../shared/widgets/fuel_mark.dart';
@@ -79,7 +81,15 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } else {
       if (!mounted) return;
-      context.go('/login');
+      final pendingSignup = await PendingSignupStore.loadUsable();
+      if (!mounted) return;
+      if (pendingSignup != null) {
+        context.go('/register/verify-otp');
+        return;
+      }
+      final seenOnboarding = await AppPreferences.hasSeenOnboarding();
+      if (!mounted) return;
+      context.go(seenOnboarding ? '/login' : '/onboarding');
     }
   }
 
@@ -129,11 +139,11 @@ class _SplashScreenState extends State<SplashScreen>
                           children: [
                             // White rounded square holding the brand mark.
                             Container(
-                              width: 88,
-                              height: 88,
+                              width: 104,
+                              height: 104,
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(28),
+                                borderRadius: BorderRadius.circular(32),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.20),
@@ -142,11 +152,11 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ],
                               ),
-                              child: const Center(child: FuelMark(size: 52)),
+                              child: const Center(child: FuelMark(size: 62)),
                             ),
                             const SizedBox(height: 24),
                             const Text(
-                              'FuelToken',
+                              'Tickets Carburant',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,

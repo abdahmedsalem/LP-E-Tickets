@@ -190,10 +190,10 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         public_message = error.get("message") or ""
 
         sensitive_expected_codes = {
-            "action_code": ("ACTION_REFUSED",),
-            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED",),
-            "PIN mobile invalide": ("ACTION_REFUSED",),
-            "Clé PIN action invalide": ("ACTION_REFUSED",),
+            "action_code": ("ACTION_REFUSED", "MISSING_ACTION_CODE", "INVALID_ACTION_CODE_KEY"),
+            "Device mobile en attente de validation": ("DEVICE_NOT_ALLOWED", "DEVICE_PENDING_TRUST"),
+            "PIN mobile invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE"),
+            "Clé PIN action invalide": ("ACTION_REFUSED", "INVALID_ACTION_CODE_KEY"),
             "idempotency_conflict": ("REQUEST_REFUSED",),
             "QR introuvable": ("QR_NOT_USABLE",),
         }
@@ -258,7 +258,7 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         self.assertFalse(self._separer_tx_by_key(source_qr, "separer-will-be-removed"))
 
     def test_separer_qr_replays_same_payload_for_same_idempotency_key(self):
-        controller, _user, _session, _expired, _valid, _purchase, _wallet, source_qr = self._controller_with_blocked_source_qr(
+        controller, user, session, _expired, _valid, _purchase, wallet, source_qr = self._controller_with_blocked_source_qr(
             "qr-separer-replay-24d@example.com",
         )
         key = "qr-separer-replay-key-24d"
@@ -277,6 +277,12 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         self.assertEqual(child.face_qty_total, self.LINE_QTY)
         self.assertEqual(child.state, "active")
         self.assertTrue(txs.request_hash)
+        self.assertEqual(txs.partner_id.id, wallet.partner_id.id)
+        self.assertEqual(txs.actor_partner_id.id, user.partner_id.id)
+        self.assertEqual(txs.actor_user_id.id, user.id)
+        self.assertEqual(txs.mobile_session_id.id, session.id)
+        self.assertEqual(txs.device_uid, session.device_uid)
+        self.assertFalse(txs.counterparty_partner_id)
 
         source_qr.invalidate_recordset(["state"])
         self.assertEqual(source_qr.state, "expired")

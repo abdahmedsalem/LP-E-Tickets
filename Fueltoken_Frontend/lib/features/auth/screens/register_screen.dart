@@ -3,13 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/odoo_auth_rpc_config.dart';
+import '../../../core/settings/app_preferences.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/services/odoo_auth_service.dart';
+import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../shared/widgets/app_message.dart';
+import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';
 import 'register_verify_otp_screen.dart';
-import '../../../shared/widgets/app_message.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,23 +28,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _name = TextEditingController();
   final _phoneLocal = TextEditingController();
   final _pin = TextEditingController();
+  final _pinConfirm = TextEditingController();
   bool _obscure = true;
+  bool _obscureConfirm = true;
   bool _sendingOtp = false;
 
   @override
   void initState() {
     super.initState();
+    _name.addListener(_onFieldChanged);
     _phoneLocal.addListener(_onFieldChanged);
     _pin.addListener(_onFieldChanged);
+    _pinConfirm.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
+    _name.removeListener(_onFieldChanged);
     _phoneLocal.removeListener(_onFieldChanged);
     _pin.removeListener(_onFieldChanged);
+    _pinConfirm.removeListener(_onFieldChanged);
     _name.dispose();
     _phoneLocal.dispose();
     _pin.dispose();
+    _pinConfirm.dispose();
     super.dispose();
   }
 
@@ -47,9 +59,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (mounted) setState(() {});
   }
 
-  String get _phoneFull => _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
+  String get _phoneLocalDigits =>
+      _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
+
+  bool get _formLooksValid {
+    final nameOk = _name.text.trim().isNotEmpty;
+    final phoneOk = validateMrLocalPhone(_phoneLocal.text) == null;
+    final pin = _pin.text.trim();
+    final pinOk = validateFourDigitNumericPassword(pin) == null;
+    final pinConfirmOk = _pinConfirm.text.trim() == pin;
+    return nameOk && phoneOk && pinOk && pinConfirmOk;
+  }
+
+  String? _validatePinConfirm(String? raw) {
+    final value = raw?.trim() ?? '';
+    if (value.isEmpty) return 'Confirmez votre PIN';
+    if (value != _pin.text.trim()) return 'Les PIN ne correspondent pas.';
+    return null;
+  }
 
   Future<void> _onCreateAccount() async {
+    if (_sendingOtp || !_formLooksValid) return;
     if (!_formKey.currentState!.validate()) return;
     if (OdooAuthRpcConfig.requestOtpRoute.isEmpty ||
         OdooAuthRpcConfig.verifyOtpRoute.isEmpty) {
@@ -67,35 +97,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _sendingOtp = true);
     try {
       final response = await OdooAuthService.instance.requestSignupOtp(
-        phoneFull: _phoneFull,
+        phoneFull: _phoneLocalDigits,
       );
       final challengeId = _extractChallengeId(response);
       if (!mounted) return;
       if (challengeId == null || challengeId <= 0) {
         AppMessage.error(
           context,
-          'Le serveur n’a pas confirmé le challenge OTP. Réessayez.',
+          'Le serveur n’a pas confirmé le code SMS. Réessayez.',
         );
         return;
       }
-      AppMessage.info(context, 'Code OTP envoyé par SMS.');
+      final companyId = OdooAuthRpcConfig.signupDefaultCompanyId;
+      await PendingSignupStore.save(
+        name: _name.text.trim(),
+        phoneFull: _phoneLocalDigits,
+        challengeId: challengeId,
+        companyId: companyId,
+      );
+      if (!mounted) return;
+      AppMessage.info(context, 'Code SMS envoyé.');
       context.push(
         '/register/verify-otp',
         extra: RegisterOtpRouteArgs(
           name: _name.text.trim(),
-          phoneFull: _phoneFull,
+          phoneFull: _phoneLocalDigits,
           pin: _pin.text,
-          companyId: OdooAuthRpcConfig.signupDefaultCompanyId,
+          companyId: companyId,
           challengeId: challengeId,
         ),
       );
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.toString());
+        AppMessage.error(context, _registrationErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _sendingOtp = false);
     }
+  }
+
+  String _registrationErrorMessage(Object error) {
+    if (error is OdooJsonRpcException) {
+      final ref = error.reference?.trim();
+      final refLine = ref == null || ref.isEmpty
+          ? ''
+          : '\nRéférence support : $ref';
+
+      if (error.publicCode == 'SIGNUP_NOT_ALLOWED') {
+        return 'Inscription impossible avec ce numéro. '
+            'Si vous avez déjà un compte, connectez-vous.'
+            '$refLine';
+      }
+
+      final msg = error.message.trim();
+      if (msg.isNotEmpty && !msg.contains('OdooJsonRpcException')) {
+        return '$msg$refLine';
+      }
+    }
+
+    return error.toString().replaceFirst('Exception: ', '');
   }
 
   int? _extractChallengeId(Map<String, dynamic> response) {
@@ -125,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
           listenWhen: (a, b) => a.status != b.status,
@@ -137,46 +197,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
           builder: (ctx, state) {
             final loading = _sendingOtp;
+            final canSubmit = _formLooksValid && !loading;
             return GestureDetector(
               onTap: () => FocusScope.of(context).unfocus(),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
+                    constraints: const BoxConstraints(maxWidth: 430),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            children: [
-                              InkWell(
-                                borderRadius: BorderRadius.circular(999),
-                                onTap: () => context.go('/login'),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.arrow_back_rounded,
-                                    size: 22,
-                                    color: Color(0xFF203A73),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Center(
-                            child: Image.asset(
-                              'designs/lplogo.jfif',
-                              height: 128,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          const _RegisterWelcomeCopy(),
-                          const SizedBox(height: 34),
-                          const _RegisterSectionTitle(title: 'Inscription'),
+                          const _RegisterCompactHeader(),
                           const SizedBox(height: 16),
                           _RegisterField(
                             controller: _name,
@@ -184,24 +218,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: (v) => (v == null || v.trim().isEmpty)
                                 ? 'Nom requis'
                                 : null,
+                            textInputAction: TextInputAction.next,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _RegisterField(
                             controller: _phoneLocal,
-                            hint: 'Téléphone',
-                            keyboardType: TextInputType.number,
+                            hint: 'Numéro de téléphone',
+                            keyboardType: TextInputType.phone,
                             maxLength: 8,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
                             validator: validateMrLocalPhone,
-                            counterLabel:
-                                '${_phoneLocal.text.trim().replaceAll(RegExp(r'\D'), '').length}/8',
+                            counterLabel: '${_phoneLocalDigits.length}/8',
+                            textInputAction: TextInputAction.next,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _RegisterField(
                             controller: _pin,
-                            hint: 'PIN de confirmation',
+                            hint: 'Définir le PIN',
                             obscure: _obscure,
                             keyboardType: TextInputType.number,
                             maxLength: kSecretCodeLength,
@@ -214,7 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             trailing: IconButton(
                               splashRadius: 20,
                               iconSize: 20,
-                              color: const Color(0xFF7A8798),
+                              color: AppColors.muted,
                               icon: Icon(
                                 _obscure
                                     ? Icons.visibility_off_outlined
@@ -223,53 +258,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               onPressed: () =>
                                   setState(() => _obscure = !_obscure),
                             ),
+                            textInputAction: TextInputAction.next,
                           ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            height: 56,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF065F46),
-                                    Color(0xFF2EA043),
-                                    Color(0xFF34D399),
-                                  ],
-                                  stops: [0.0, 0.48, 1.0],
-                                ),
+                          const SizedBox(height: 10),
+                          _RegisterField(
+                            controller: _pinConfirm,
+                            hint: 'Confirmer le PIN',
+                            obscure: _obscureConfirm,
+                            keyboardType: TextInputType.number,
+                            maxLength: kSecretCodeLength,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            validator: _validatePinConfirm,
+                            counterLabel:
+                                '${_pinConfirm.text.trim().length}/$kSecretCodeLength',
+                            trailing: IconButton(
+                              splashRadius: 20,
+                              iconSize: 20,
+                              color: AppColors.muted,
+                              icon: Icon(
+                                _obscureConfirm
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                               ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: loading ? null : _onCreateAccount,
-                                  child: Center(
-                                    child: loading
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.4,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Text(
-                                            'Créer mon compte',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                  ),
-                                ),
+                              onPressed: () => setState(
+                                () => _obscureConfirm = !_obscureConfirm,
                               ),
                             ),
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) {
+                              if (canSubmit) _onCreateAccount();
+                            },
                           ),
-                          const SizedBox(height: 26),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 56,
+                            child: FilledButton(
+                              onPressed: canSubmit ? _onCreateAccount : null,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.leaderGreen,
+                                disabledBackgroundColor: const Color(
+                                  0xFFCBD5E1,
+                                ),
+                                foregroundColor: Colors.white,
+                                disabledForegroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: loading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Créer mon compte',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
                           Center(
                             child: Wrap(
                               alignment: WrapAlignment.center,
@@ -278,27 +334,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               runSpacing: 4,
                               children: [
                                 const Text(
-                                  'Déjà un compte ?',
+                                  'Vous avez déjà un compte ?',
                                   style: TextStyle(
                                     fontSize: 13.5,
-                                    color: Color(0xFF475569),
+                                    color: AppColors.muted,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: () => ctx.go('/login'),
+                                TextButton(
+                                  onPressed: () async {
+                                    await AppPreferences.setHasSeenOnboarding(
+                                      true,
+                                    );
+                                    if (!ctx.mounted) return;
+                                    ctx.go('/login');
+                                  },
                                   child: const Text(
                                     'Se connecter',
                                     style: TextStyle(
                                       fontSize: 13.5,
-                                      color: Color(0xFF203A73),
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                ),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 18,
-                                  color: Color(0xFF203A73),
                                 ),
                               ],
                             ),
@@ -322,57 +379,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class _RegisterWelcomeCopy extends StatelessWidget {
-  const _RegisterWelcomeCopy();
+class _RegisterCompactHeader extends StatelessWidget {
+  const _RegisterCompactHeader();
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Bienvenue dans votre',
-          textAlign: TextAlign.center,
+        Row(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => context.go('/login'),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 22,
+                  color: AppColors.brandBlueDeep,
+                ),
+              ),
+            ),
+            const Spacer(),
+            const FuelLogo(size: 52, showOrgWordmark: false),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Créer un compte',
           style: TextStyle(
-            fontSize: 18,
-            height: 1.18,
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
+            fontSize: 26,
+            height: 1.05,
+            fontWeight: FontWeight.w900,
             letterSpacing: -0.8,
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          'espace de tickets carburant.',
-          textAlign: TextAlign.center,
+        const SizedBox(height: 6),
+        const Text(
+          'Leader Petroleum — Tickets Carburant',
           style: TextStyle(
-            fontSize: 18,
-            height: 1.18,
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w400,
-            letterSpacing: -0.8,
+            color: AppColors.brandBlueDeep,
+            fontSize: 13.5,
+            height: 1.25,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Recevez un code SMS pour vérifier votre compte.',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13.5,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
-    );
-  }
-}
-
-class _RegisterSectionTitle extends StatelessWidget {
-  const _RegisterSectionTitle({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        color: Color(0xFF203A73),
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.4,
-      ),
     );
   }
 }
@@ -388,7 +452,7 @@ class _RegisterNoticeCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF7FAFC),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.line),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -398,7 +462,7 @@ class _RegisterNoticeCard extends StatelessWidget {
             const Icon(
               Icons.info_outline_rounded,
               size: 22,
-              color: Color(0xFF203A73),
+              color: AppColors.brandBlueDeep,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -408,7 +472,7 @@ class _RegisterNoticeCard extends StatelessWidget {
                   fontSize: 14,
                   height: 1.45,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF334155),
+                  color: AppColors.ink,
                 ),
               ),
             ),
@@ -430,6 +494,8 @@ class _RegisterField extends StatelessWidget {
     this.inputFormatters,
     this.trailing,
     this.counterLabel = '',
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   final TextEditingController controller;
@@ -441,6 +507,8 @@ class _RegisterField extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final Widget? trailing;
   final String counterLabel;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -456,9 +524,11 @@ class _RegisterField extends StatelessWidget {
           maxLength: maxLength,
           inputFormatters: inputFormatters,
           validator: validator,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
           style: const TextStyle(
             fontSize: 15.5,
-            color: Color(0xFF1E293B),
+            color: AppColors.ink,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
@@ -477,21 +547,18 @@ class _RegisterField extends StatelessWidget {
             suffixIcon: trailing,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFC7CEDA),
-                width: 1.1,
-              ),
+              borderSide: const BorderSide(color: AppColors.line, width: 1.1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xFFC7CEDA),
-                width: 1.1,
-              ),
+              borderSide: const BorderSide(color: AppColors.line, width: 1.1),
             ),
             focusedBorder: const OutlineInputBorder(
               borderRadius: BorderRadius.all(Radius.circular(14)),
-              borderSide: BorderSide(color: Color(0xFF203A73), width: 1.6),
+              borderSide: BorderSide(
+                color: AppColors.brandBlueDeep,
+                width: 1.6,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -518,7 +585,7 @@ class _RegisterField extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12.5,
               height: 1.1,
-              color: Color(0xFF64748B),
+              color: AppColors.muted,
               fontWeight: FontWeight.w400,
             ),
           ),

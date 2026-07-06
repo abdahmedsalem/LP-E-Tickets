@@ -7,6 +7,9 @@ from .api_common import AcpecFuelTokenApiCommon
 
 class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
 
+    STATION_TRANSACTIONS_DEFAULT_LIMIT = 20
+    STATION_TRANSACTIONS_MAX_LIMIT = 100
+    STATION_TRANSACTIONS_MAX_HISTORY_DAYS = 365
 
     def _station_for_fueltoken_user(self, user):
         self._require_fueltoken_user_company(user)
@@ -34,6 +37,32 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         if qr.company_id != station.company_id:
             raise ValidationError('QR introuvable.')
         return qr
+
+    def _station_transactions_date_range_params(self, params):
+        date_from, date_to = self._date_range_params(params)
+
+        if date_to and not date_from:
+            raise ValidationError('date_from est obligatoire lorsque date_to est fourni.')
+
+        if not date_from:
+            return date_from, date_to
+
+        start_dt = fields.Datetime.to_datetime(date_from)
+        end_dt = fields.Datetime.to_datetime(date_to) if date_to else fields.Datetime.now()
+        if not start_dt or not end_dt:
+            return date_from, date_to
+
+        if end_dt < start_dt:
+            raise ValidationError('date_to doit être postérieure ou égale à date_from.')
+
+        max_seconds = self.STATION_TRANSACTIONS_MAX_HISTORY_DAYS * 24 * 60 * 60
+        if (end_dt - start_dt).total_seconds() > max_seconds:
+            raise ValidationError(
+                'La période demandée ne peut pas dépasser %s jours.'
+                % self.STATION_TRANSACTIONS_MAX_HISTORY_DAYS
+            )
+
+        return date_from, date_to
 
     def _station_agent_payload(self, agent):
         return {
@@ -217,6 +246,10 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 request_hash_params.pop('qr_numeric_code', None)
                 request_hash = self._compute_idempotency_request_hash(request_hash_params, purpose='station_qr_use')
                 tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
+                if tx and 'actor_user_id' in tx._fields and not tx.actor_user_id:
+                    tx.with_context(allow_fuel_transaction_update=True).write({
+                        'actor_user_id': user.id,
+                    })
                 return self._json_response({
                     'transaction_id': tx.id,
                     'transaction_name': tx.name,
@@ -236,11 +269,15 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
     def station_transactions(self, **kwargs):
         try:
             station, user = self._station_user()
-            limit, offset = self._pagination_params(kwargs, default_limit=20, max_limit=200)
+            limit, offset = self._pagination_params(
+                kwargs,
+                default_limit=self.STATION_TRANSACTIONS_DEFAULT_LIMIT,
+                max_limit=self.STATION_TRANSACTIONS_MAX_LIMIT,
+            )
             include_meta = self._include_pagination_meta(kwargs)
-            date_from, date_to = self._date_range_params(kwargs)
+            date_from, date_to = self._station_transactions_date_range_params(kwargs)
             transaction_type = self._get_clean_str(kwargs, 'transaction_type')
-            regularization_state = self._get_clean_str(kwargs, 'regularization_state') or 'pending'
+            regularization_state = self._get_clean_str(kwargs, 'regularization_state') or 'all'
             if regularization_state not in ('pending', 'regularized', 'all'):
                 raise ValidationError(_('Filtre regularization_state invalide.'))
             company = self._fueltoken_company()
@@ -249,6 +286,24 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 ('company_id', '=', company.id),
                 ('transaction_type', '=', 'consommation_station'),
             ]
+
+            # Station scope first, then station-agent scope.
+            # Responsible/supervisor station sees all station consumptions.
+            # Ordinary station agent sees only QR consumptions they actually performed.
+            #
+            # Do not use actor_partner_id as the security filter here: actor is an
+            # audit snapshot and may later be a manager/backend actor forcing an
+            # operation on a wallet they do not own. For station consumption scope,
+            # the canonical station-agent marker is the consumed QR actor snapshot.
+            if not station.user_id or station.user_id.id != user.id:
+                if not user.partner_id:
+                    raise ValidationError(_('Partenaire mobile station introuvable.'))
+                domain.extend([
+                    '|',
+                    ('qr_id.consumed_partner_id', '=', user.partner_id.id),
+                    ('qr_id.consumed_user_id', '=', user.id),
+                ])
+
             if regularization_state != 'all':
                 domain.append(('regularization_state', '=', regularization_state))
             tx_model = request.env['acpec.fuel.transaction'].sudo()
@@ -260,6 +315,22 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 return tx_filter_error
             self._add_date_range_domain(domain, date_from, date_to, field_name='create_date')
             total_count = tx_model.search_count(domain)
+            totals_rows = tx_model._read_group(
+                domain,
+                [],
+                ['amount_total:sum', 'qty_total:sum'],
+            )
+            totals_row = totals_rows[0] if totals_rows else ()
+            totals_amount_total = (
+                totals_row[0]
+                if len(totals_row) > 0 and totals_row[0] is not None
+                else 0.0
+            )
+            totals_qty_total = (
+                totals_row[1]
+                if len(totals_row) > 1 and totals_row[1] is not None
+                else 0.0
+            )
             records = tx_model.search(domain, order='create_date desc, id desc', limit=limit, offset=offset)
             items = []
             for tx in records:
@@ -271,10 +342,18 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'qty_total': tx.qty_total,
                     'created_at': fields.Datetime.to_string(tx.create_date) if tx.create_date else False,
                     'qr_id': tx.qr_id.id if tx.qr_id else False,
+                    'qr_name': tx.qr_id.name if tx.qr_id else False,
                     'qr_public_code': tx.qr_id.public_code if tx.qr_id else False,
+                    'consumed_at': fields.Datetime.to_string(tx.qr_id.consumed_at) if tx.qr_id and tx.qr_id.consumed_at else False,
                     'wallet_id': tx.wallet_id.id if tx.wallet_id else False,
                     'partner_id': tx.wallet_id.partner_id.id if tx.wallet_id else False,
                     'partner_name': tx.wallet_id.partner_id.name if tx.wallet_id else False,
+                    'actor_partner_id': tx.actor_partner_id.id if tx.actor_partner_id else False,
+                    'actor_partner_name': tx.actor_partner_id.name if tx.actor_partner_id else False,
+                    'actor_user_id': tx.actor_user_id.id if 'actor_user_id' in tx._fields and tx.actor_user_id else False,
+                    'actor_user_name': tx.actor_user_id.name if 'actor_user_id' in tx._fields and tx.actor_user_id else False,
+                    'counterparty_partner_id': tx.counterparty_partner_id.id if tx.counterparty_partner_id else False,
+                    'counterparty_partner_name': tx.counterparty_partner_id.name if tx.counterparty_partner_id else False,
                     'regularization_state': tx.regularization_state or False,
                     'regularization_reference': tx.regularization_reference or False,
                     'regularization_date': fields.Datetime.to_string(tx.regularization_date) if tx.regularization_date else False,
@@ -282,6 +361,17 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             return self._json_response({
                 'station': self._station_payload(station),
                 'items': items,
+                'date_from': fields.Datetime.to_string(date_from) if date_from else False,
+                'date_to': fields.Datetime.to_string(date_to) if date_to else False,
+                'max_history_days': self.STATION_TRANSACTIONS_MAX_HISTORY_DAYS,
+                'totals': {
+                    'scope': 'filtered',
+                    'regularization_state': regularization_state,
+                    'qr_count': total_count,
+                    'transaction_count': total_count,
+                    'amount_total': totals_amount_total,
+                    'qty_total': totals_qty_total,
+                },
                 **self._pagination_meta_legacy(total_count, limit, offset, len(records), include_meta),
             })
         except Exception as exc:

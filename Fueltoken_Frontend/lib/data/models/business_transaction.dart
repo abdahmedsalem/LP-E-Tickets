@@ -126,11 +126,13 @@ class TransactionLine extends Equatable {
 /// acpec.fuel.transaction
 class BusinessTransaction extends Equatable {
   final String id;
+  final String? txReference;
   final TxType type;
   final DateTime date;
   final String? lotId;
   final String? lotInternalRef;
   final String? qrId;
+  final String? qrName;
   final String? qrPublicCode;
   final String? stationId;
   final String? stationName;
@@ -138,6 +140,9 @@ class BusinessTransaction extends Equatable {
   final String userName;
   final List<TransactionLine> lines;
   final String? note;
+  final String? regularizationState;
+  final String? regularizationReference;
+  final DateTime? regularizationDate;
 
   /// Pour les transferts : nom de l'autre partie (destinataire si sortant, expéditeur si entrant).
   final String? transferParty;
@@ -147,6 +152,7 @@ class BusinessTransaction extends Equatable {
 
   const BusinessTransaction({
     required this.id,
+    this.txReference,
     required this.type,
     required this.date,
     required this.userId,
@@ -155,15 +161,54 @@ class BusinessTransaction extends Equatable {
     this.lotId,
     this.lotInternalRef,
     this.qrId,
+    this.qrName,
     this.qrPublicCode,
     this.stationId,
     this.stationName,
     this.note,
+    this.regularizationState,
+    this.regularizationReference,
+    this.regularizationDate,
     this.transferParty,
     this.transferPartyPhone,
   });
 
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
+
+  bool get hasTxReference => (txReference ?? '').trim().isNotEmpty;
+
+  String get effectiveRegularizationState {
+    final value = (regularizationState ?? '').trim().toLowerCase();
+    return value.isEmpty || value == 'false' ? 'pending' : value;
+  }
+
+  bool get isRegularized => effectiveRegularizationState == 'regularized';
+
+  String get regularizationLabel {
+    switch (effectiveRegularizationState) {
+      case 'regularized':
+        return 'Régularisé';
+      case 'pending':
+        return 'Non régularisé';
+      default:
+        return effectiveRegularizationState;
+    }
+  }
+
+  String get txNumber {
+    final ref = (txReference ?? '').trim();
+    return ref.isNotEmpty ? ref : id;
+  }
+
+  String get qrDisplayName {
+    for (final value in [qrName, qrId, qrPublicCode]) {
+      final s = (value ?? '').trim();
+      if (s.isNotEmpty && s != 'false' && s != 'true') {
+        return s;
+      }
+    }
+    return '—';
+  }
 
   /// Libellé contextuel enrichi (avec partie pour les transferts).
   String get displayTitle {
@@ -177,5 +222,14 @@ class BusinessTransaction extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, type, date];
+  List<Object?> get props => [
+    id,
+    txReference,
+    qrName,
+    type,
+    date,
+    regularizationState,
+    regularizationReference,
+    regularizationDate,
+  ];
 }

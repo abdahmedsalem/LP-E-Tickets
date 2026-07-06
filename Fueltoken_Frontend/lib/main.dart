@@ -100,16 +100,19 @@ class FuelTokenApp extends StatefulWidget {
 
 class FuelTokenAppState extends State<FuelTokenApp>
     with WidgetsBindingObserver {
-  static const Duration _idleLogoutDelay = Duration(seconds: 30);
+  static const Duration _idleLockDelay = Duration(minutes: 3);
+  static const Duration _lifecycleLockGraceDelay = Duration(seconds: 60);
   static const Duration _purchaseNotificationPollDelay = Duration(seconds: 2);
 
   late final AuthBloc _authBloc;
   late final GoRouter _router;
   String _localeCode = AppPreferences.defaultLocaleCode;
   ThemeMode _themeMode = ThemeMode.light;
-  Timer? _idleLogoutTimer;
+  Timer? _idleLockTimer;
   Timer? _notificationPollTimer;
   StreamSubscription<AuthState>? _authSubscription;
+  DateTime? _backgroundedAt;
+  bool _sessionLockRequested = false;
 
   @override
   void initState() {
@@ -121,11 +124,9 @@ class FuelTokenAppState extends State<FuelTokenApp>
     );
     _authSubscription = _authBloc.stream.listen((state) {
       if (state.status == AuthStatus.authenticated && state.user != null) {
-        if (_shouldAutoLogout(state.user!.role)) {
-          _scheduleIdleLogout();
-        } else {
-          _cancelIdleLogout();
-        }
+        _sessionLockRequested = false;
+        _backgroundedAt = null;
+        _scheduleIdleLock();
         // Charger le store pour CET utilisateur.
         unawaited(NotificationsStore.instance.loadForUser(state.user!.id));
         unawaited(
@@ -134,8 +135,14 @@ class FuelTokenAppState extends State<FuelTokenApp>
           ),
         );
         _scheduleNotificationPolling();
+      } else if (state.status == AuthStatus.locked) {
+        _backgroundedAt = null;
+        _cancelIdleLock();
+        _cancelNotificationPolling();
       } else if (state.status == AuthStatus.unauthenticated) {
-        _cancelIdleLogout();
+        _sessionLockRequested = false;
+        _backgroundedAt = null;
+        _cancelIdleLock();
         _cancelNotificationPolling();
         // Déconnexion : purger la mémoire pour ne pas exposer les données
         // de l'ancien utilisateur au prochain login
@@ -153,15 +160,18 @@ class FuelTokenAppState extends State<FuelTokenApp>
     NotificationsStore.instance.initCounts();
   }
 
-  void _scheduleIdleLogout() {
-    if (!_shouldAutoLogout(_authBloc.state.user?.role)) return;
-    _idleLogoutTimer?.cancel();
-    _idleLogoutTimer = Timer(_idleLogoutDelay, _handleIdleLogout);
+  void _scheduleIdleLock() {
+    if (!_shouldIdleLock()) return;
+    _idleLockTimer?.cancel();
+    _idleLockTimer = Timer(
+      _idleLockDelay,
+      () => _requestSessionLock(AuthLockReason.idleTimeout),
+    );
   }
 
-  void _cancelIdleLogout() {
-    _idleLogoutTimer?.cancel();
-    _idleLogoutTimer = null;
+  void _cancelIdleLock() {
+    _idleLockTimer?.cancel();
+    _idleLockTimer = null;
   }
 
   void _scheduleNotificationPolling() {
@@ -189,20 +199,37 @@ class FuelTokenAppState extends State<FuelTokenApp>
   }
 
   void _recordUserActivity() {
-    if (!_shouldAutoLogout(_authBloc.state.user?.role)) return;
-    _scheduleIdleLogout();
+    if (!_shouldIdleLock()) return;
+    _scheduleIdleLock();
   }
 
-  void _handleIdleLogout() {
-    if (!mounted) return;
-    if (!_shouldAutoLogout(_authBloc.state.user?.role)) return;
-    _authBloc.add(const AuthLogoutRequested());
+  bool _shouldIdleLock() =>
+      mounted &&
+      !_sessionLockRequested &&
+      _authBloc.state.status == AuthStatus.authenticated &&
+      _authBloc.state.user != null;
+
+  void _requestSessionLock(AuthLockReason reason) {
+    if (!_shouldIdleLock()) return;
+    _sessionLockRequested = true;
+    _cancelIdleLock();
+    _cancelNotificationPolling();
+    _authBloc.add(AuthLockRequested(reason: reason));
   }
 
-  // Patch session longue : ne plus détruire la session mobile après 30 secondes
-  // d'inactivité. Le futur comportement attendu est un verrouillage local PIN,
-  // sans effacement du refresh token ni révocation backend.
-  bool _shouldAutoLogout(UserRole? role) => false;
+  void _recordLifecycleBackgrounded() {
+    if (!_shouldIdleLock()) return;
+    _backgroundedAt ??= DateTime.now();
+    _cancelIdleLock();
+    _cancelNotificationPolling();
+  }
+
+  bool _hasExceededLifecycleGrace(DateTime resumedAt) {
+    final backgroundedAt = _backgroundedAt;
+    _backgroundedAt = null;
+    if (backgroundedAt == null) return false;
+    return resumedAt.difference(backgroundedAt) >= _lifecycleLockGraceDelay;
+  }
 
   Future<void> reloadPreferences() async {
     final locale = await AppPreferences.localeCode();
@@ -229,10 +256,28 @@ class FuelTokenAppState extends State<FuelTokenApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _recordLifecycleBackgrounded();
+      return;
+    }
+
     if (state == AppLifecycleState.resumed) {
+      if (_shouldIdleLock() && _hasExceededLifecycleGrace(DateTime.now())) {
+        _requestSessionLock(AuthLockReason.appLifecycle);
+        return;
+      }
+
       _recordUserActivity();
+      if (_authBloc.state.status != AuthStatus.authenticated ||
+          _sessionLockRequested) {
+        return;
+      }
+
       // Bumper tous les buses au retour en premier plan pour forcer
       // le rechargement de toutes les données potentiellement périmées.
+      _scheduleNotificationPolling();
       WalletRefreshBus.instance.bump();
       QrRefreshBus.instance.bump();
       FacesRefreshBus.instance.bump();
@@ -253,7 +298,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cancelIdleLogout();
+    _cancelIdleLock();
     _cancelNotificationPolling();
     _authSubscription?.cancel();
     AuthSessionHost.instance.detach();

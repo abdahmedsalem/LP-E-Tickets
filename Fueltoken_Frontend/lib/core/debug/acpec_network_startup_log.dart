@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../config/diagnostic_config.dart';
 import '../config/odoo_api_config.dart';
 import '../config/odoo_auth_rpc_config.dart';
 
@@ -8,6 +9,7 @@ import '../config/odoo_auth_rpc_config.dart';
 /// L’URL `http://127.0.0.1:xxxxx/...` affichée par Flutter est **DevTools** sur votre Mac,
 /// pas le serveur Odoo — le host API est celui de `ODOO_JSONRPC_BASE_URL`.
 void debugPrintAcpecNetworkSummary() {
+  if (!DiagnosticConfig.showTechnicalDiagnostics) return;
   final raw = OdooApiConfig.baseUrl.trim();
   final bt = OdooApiConfig.baseUrlTrimmed;
   final loginPath = OdooAuthRpcConfig.loginRoute;
@@ -37,7 +39,7 @@ void debugPrintAcpecNetworkSummary() {
     debugPrint('Exemple URL login (comme Postman)     : $bt$loginPath');
   }
   debugPrint(
-    'Logs détail chaque POST JSON-RPC     : kDebug=$kDebugMode ou ODOO_DEBUG_RPC=true',
+    'Logs détail chaque POST JSON-RPC     : kDebug=$kDebugMode ou ODOO_DEBUG_RPC=true + allow release support',
   );
   debugPrint('');
 }

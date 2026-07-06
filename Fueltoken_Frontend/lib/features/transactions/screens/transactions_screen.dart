@@ -9,6 +9,7 @@ import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/business_transaction.dart';
 import '../../../data/models/user_role.dart';
 import '../../../shared/widgets/api_required_view.dart';
@@ -17,6 +18,7 @@ import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -34,6 +36,11 @@ enum _HistoryQuickFilter { all, purchases, transfer, consumption, qr }
 class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
   _HistoryQuickFilter _quickFilter = _HistoryQuickFilter.all;
+
+  late DateTime _draftFrom;
+  late DateTime _draftTo;
+  late DateTime _activeFrom;
+  late DateTime _activeTo;
 
   /// Types retirés de l'UI (ex. portefeuille) se comportent comme tous les filtres.
   TxType? get _effectiveFilter =>
@@ -58,6 +65,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _draftFrom = DateTime(now.year, now.month, now.day);
+    _draftTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    _activeFrom = _draftFrom;
+    _activeTo = _draftTo;
     _scroll.addListener(_onAcpecScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -89,18 +101,82 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     super.dispose();
   }
 
-  /// Route 5.6 : limit, offset (pas de filtre date côté API).
+  String _apiDateTime(DateTime date) {
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
+  }
+
+  /// Route 5.6 : limit, offset, date_from/date_to.
   Map<String, dynamic> _clientTxParams({
     required int limit,
     required int offset,
   }) {
-    return {'limit': limit, 'offset': offset};
+    return {
+      'limit': limit,
+      'offset': offset,
+      'date_from': _apiDateTime(_activeFrom),
+      'date_to': _apiDateTime(_activeTo),
+    };
   }
 
   Map<String, dynamic> _stationTxParams({
     required int limit,
     required int offset,
   }) => {'limit': limit, 'offset': offset};
+
+  static String _compactDate(DateTime date) {
+    return DateFormat('dd-MM-yyyy').format(date);
+  }
+
+  Future<void> _pickFrom() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _draftFrom,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null && mounted) {
+      setState(() => _draftFrom = picked);
+    }
+  }
+
+  Future<void> _pickTo() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _draftTo,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null && mounted) {
+      setState(() => _draftTo = picked);
+    }
+  }
+
+  void _applyDateFilter() {
+    final from = DateTime(_draftFrom.year, _draftFrom.month, _draftFrom.day);
+    final to = DateTime(
+      _draftTo.year,
+      _draftTo.month,
+      _draftTo.day,
+      23,
+      59,
+      59,
+    );
+    setState(() {
+      _activeFrom = from;
+      _activeTo = to;
+      _acpecItems = [];
+      _acpecHasMore = true;
+      _acpecTotal = null;
+    });
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+    unawaited(_loadAcpec(reset: true));
+  }
 
   bool _matchesTypeFilter(BusinessTransaction t) {
     final f = _effectiveFilter;
@@ -196,7 +272,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         clientId: user.id,
         clientName: user.name,
         companyId: AppEnvironment.companyIdForUser(user),
-      );
+      ).where((lot) {
+        final d = lot.submittedAt ?? lot.createdAt;
+        return !d.isBefore(_activeFrom) && !d.isAfter(_activeTo);
+      }).toList();
       return AcpecTransactionsMapper.fromSubmittedPurchases(
         lots,
         userId: user.id,
@@ -226,7 +305,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       setState(() {
         _acpecLoading = true;
         _acpecError = null;
-        _acpecItems = [];
         _acpecHasMore = true;
         _acpecTotal = null;
       });
@@ -280,16 +358,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecLoadingMore = false;
         _acpecError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
-        if (reset) _acpecItems = [];
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _acpecLoading = false;
         _acpecLoadingMore = false;
-        _acpecError = e.toString().replaceFirst('Exception: ', '');
-        if (reset) _acpecItems = [];
+        _acpecError = ErrorPresenter.isBackendUnavailable(e)
+            ? ErrorPresenter.backendUnavailable()
+            : ErrorPresenter.message(e);
       });
     }
   }
@@ -361,14 +439,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
             : e.message;
-        _acpecItems = [];
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _acpecLoading = false;
-        _acpecError = e.toString().replaceFirst('Exception: ', '');
-        _acpecItems = [];
+        _acpecError = ErrorPresenter.isBackendUnavailable(e)
+            ? ErrorPresenter.backendUnavailable()
+            : ErrorPresenter.message(e);
       });
     }
   }
@@ -590,6 +668,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     onSelected: _setQuickFilter,
                   ),
                 ),
+                if (user.role == UserRole.user) ...[
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 26),
+                    child: _ClientHistoryDateFilters(
+                      fromLabel: _compactDate(_draftFrom),
+                      toLabel: _compactDate(_draftTo),
+                      onPickFrom: _pickFrom,
+                      onPickTo: _pickTo,
+                      onApply: _applyDateFilter,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Expanded(
                   child: txs.isEmpty
@@ -617,9 +708,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             controller: acpec ? _scroll : null,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
-                            itemCount: groups.length + (acpec ? 1 : 0),
+                            itemCount: groups.length +
+                                (acpec && _acpecError != null ? 1 : 0) +
+                                (acpec ? 1 : 0),
                             itemBuilder: (ctx, i) {
-                              if (acpec && i == groups.length) {
+                              if (acpec && _acpecError != null && i == 0) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: BackendUnavailableBanner(
+                                    message: _acpecError!,
+                                    onRetry: () {
+                                      unawaited(_reloadAcpecForCurrentFilter());
+                                    },
+                                  ),
+                                );
+                              }
+                              final groupIndex =
+                                  i - (acpec && _acpecError != null ? 1 : 0);
+                              if (acpec && groupIndex == groups.length) {
                                 return Padding(
                                   padding: const EdgeInsets.only(
                                     top: 16,
@@ -680,13 +786,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ),
                                 );
                               }
-                              final g = groups[i];
+                              final g = groups[groupIndex];
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Padding(
                                     padding: EdgeInsets.only(
-                                      top: i == 0 ? 0 : 18,
+                                      top: groupIndex == 0 ? 0 : 18,
                                     ),
                                     child: Text(
                                       g.label.toUpperCase(),
@@ -1159,12 +1265,16 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
   final qrRef = tx.qrPublicCode ?? tx.qrId;
   final station = tx.stationName ?? tx.stationId;
   final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
+  final baseRows = <_TxDetailRow>[
+    if (tx.hasTxReference) _TxDetailRow(label: 'N° TX', value: tx.txNumber),
+  ];
 
   switch (tx.type) {
     case TxType.purchaseSubmitted:
     case TxType.purchaseValidated:
     case TxType.purchaseRejected:
       return [
+        ...baseRows,
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
         _TxDetailRow(label: 'Acheteur', value: tx.userName),
@@ -1177,6 +1287,7 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
       ];
     case TxType.qrEmission:
       return [
+        ...baseRows,
         if (qrRef != null && qrRef.isNotEmpty)
           _TxDetailRow(label: 'Code QR', value: qrRef),
         if (lotRef != null && lotRef.isNotEmpty)
@@ -1184,18 +1295,21 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
       ];
     case TxType.qrSeparer:
       return [
+        ...baseRows,
         if (qrRef != null && qrRef.isNotEmpty)
           _TxDetailRow(label: 'QR', value: qrRef),
         _TxDetailRow(label: 'Tickets', value: '$totalQty'),
       ];
     case TxType.qrRetirer:
       return [
+        ...baseRows,
         if (qrRef != null && qrRef.isNotEmpty)
           _TxDetailRow(label: 'Code QR', value: qrRef),
         _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
       ];
     case TxType.carnetTransfer:
       return [
+        ...baseRows,
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
@@ -1208,6 +1322,7 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
       ];
     case TxType.carnetReceived:
       return [
+        ...baseRows,
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
@@ -1220,6 +1335,7 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
       ];
     case TxType.stationConsumption:
       return [
+        ...baseRows,
         if (station != null && station.isNotEmpty)
           _TxDetailRow(label: 'Station', value: station),
         if (qrRef != null && qrRef.isNotEmpty)
@@ -1227,12 +1343,14 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
       ];
     case TxType.expiration:
       return [
+        ...baseRows,
         if (qrRef != null && qrRef.isNotEmpty)
           _TxDetailRow(label: 'Code QR', value: qrRef),
       ];
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return [
+        ...baseRows,
         if (qrRef != null && qrRef.isNotEmpty)
           _TxDetailRow(label: 'Code QR', value: qrRef),
         if (tx.type == TxType.qrBlocked)
@@ -1296,6 +1414,118 @@ Color _historyAmountColor(TxType type) {
       return AppColors.primary;
   }
 }
+
+
+class _ClientHistoryDateFilters extends StatelessWidget {
+  const _ClientHistoryDateFilters({
+    required this.fromLabel,
+    required this.toLabel,
+    required this.onPickFrom,
+    required this.onPickTo,
+    required this.onApply,
+  });
+
+  final String fromLabel;
+  final String toLabel;
+  final VoidCallback onPickFrom;
+  final VoidCallback onPickTo;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Flexible(
+          flex: 43,
+          child: _HistoryDateFilterChip(
+            label: 'Du',
+            value: fromLabel,
+            onTap: onPickFrom,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          flex: 43,
+          child: _HistoryDateFilterChip(
+            label: 'Au',
+            value: toLabel,
+            onTap: onPickTo,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Material(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: onApply,
+            borderRadius: BorderRadius.circular(14),
+            child: const SizedBox(
+              width: 44,
+              height: 46,
+              child: Icon(
+                Icons.arrow_forward_rounded,
+                size: 24,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistoryDateFilterChip extends StatelessWidget {
+  const _HistoryDateFilterChip({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFF374151), width: 1.3),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 17,
+              color: Color(0xFF374151),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$label $value',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 class _HistoryFilterChips extends StatelessWidget {
   const _HistoryFilterChips({required this.selected, required this.onSelected});
