@@ -277,7 +277,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             include_meta = self._include_pagination_meta(kwargs)
             date_from, date_to = self._station_transactions_date_range_params(kwargs)
             transaction_type = self._get_clean_str(kwargs, 'transaction_type')
-            regularization_state = self._get_clean_str(kwargs, 'regularization_state') or 'pending'
+            regularization_state = self._get_clean_str(kwargs, 'regularization_state') or 'all'
             if regularization_state not in ('pending', 'regularized', 'all'):
                 raise ValidationError(_('Filtre regularization_state invalide.'))
             company = self._fueltoken_company()
@@ -315,6 +315,22 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 return tx_filter_error
             self._add_date_range_domain(domain, date_from, date_to, field_name='create_date')
             total_count = tx_model.search_count(domain)
+            totals_rows = tx_model._read_group(
+                domain,
+                [],
+                ['amount_total:sum', 'qty_total:sum'],
+            )
+            totals_row = totals_rows[0] if totals_rows else ()
+            totals_amount_total = (
+                totals_row[0]
+                if len(totals_row) > 0 and totals_row[0] is not None
+                else 0.0
+            )
+            totals_qty_total = (
+                totals_row[1]
+                if len(totals_row) > 1 and totals_row[1] is not None
+                else 0.0
+            )
             records = tx_model.search(domain, order='create_date desc, id desc', limit=limit, offset=offset)
             items = []
             for tx in records:
@@ -348,6 +364,14 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 'date_from': fields.Datetime.to_string(date_from) if date_from else False,
                 'date_to': fields.Datetime.to_string(date_to) if date_to else False,
                 'max_history_days': self.STATION_TRANSACTIONS_MAX_HISTORY_DAYS,
+                'totals': {
+                    'scope': 'filtered',
+                    'regularization_state': regularization_state,
+                    'qr_count': total_count,
+                    'transaction_count': total_count,
+                    'amount_total': totals_amount_total,
+                    'qty_total': totals_qty_total,
+                },
                 **self._pagination_meta_legacy(total_count, limit, offset, len(records), include_meta),
             })
         except Exception as exc:
