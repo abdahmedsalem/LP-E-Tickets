@@ -68,6 +68,7 @@ class _StationConsumptionHistoryScreenState
     extends State<StationConsumptionHistoryScreen>
     with SingleTickerProviderStateMixin {
   static const int _pageSize = 100;
+  static const int _maxAutoLoadPages = 50;
   static const Color _cOrange = Color(0xFF16A34A);
 
   List<BusinessTransaction> _items = [];
@@ -141,26 +142,53 @@ class _StationConsumptionHistoryScreenState
     });
 
     try {
-      final raw = await OdooFueltokenFacade().stationTransactions({
-        'limit': _pageSize,
-        'offset': 0,
-        'date_from': _apiDateTime(_activeFrom),
-        'date_to': _apiDateTime(_activeTo),
-        'regularization_state': _regularizationFilter.apiValue,
-      });
-      final page = AcpecTransactionsMapper.parsePage(
-        raw,
-        userId: user.id,
-        userName: user.name,
-        requestedLimit: _pageSize,
-        requestedOffset: 0,
-      );
-      final list =
-          page.items.where((t) => t.type == TxType.stationConsumption).toList()
-            ..sort((a, b) => b.date.compareTo(a.date));
+      final list = <BusinessTransaction>[];
+      var offset = 0;
+      var hasMore = true;
+      var pages = 0;
+      int? totalCount;
+
+      while (hasMore && pages < _maxAutoLoadPages) {
+        final raw = await OdooFueltokenFacade().stationTransactions({
+          'limit': _pageSize,
+          'offset': offset,
+          'date_from': _apiDateTime(_activeFrom),
+          'date_to': _apiDateTime(_activeTo),
+          'regularization_state': _regularizationFilter.apiValue,
+        });
+        final page = AcpecTransactionsMapper.parsePage(
+          raw,
+          userId: user.id,
+          userName: user.name,
+          requestedLimit: _pageSize,
+          requestedOffset: offset,
+        );
+
+        totalCount ??= page.totalCount;
+        list.addAll(
+          page.items.where((t) => t.type == TxType.stationConsumption),
+        );
+
+        pages += 1;
+        offset += _pageSize;
+        hasMore = page.hasMore && page.items.isNotEmpty;
+      }
+
+      list.sort((a, b) => b.date.compareTo(a.date));
+
+      final reachedGuard = hasMore;
+      final loadedCount = list.length;
+      final totalKnown = totalCount;
+      final partialMessage = reachedGuard
+          ? totalKnown == null
+                ? 'Résultat partiel : trop de consommations pour cette période. Réduisez la fenêtre de dates.'
+                : 'Résultat partiel : $loadedCount / $totalKnown consommations chargées. Réduisez la fenêtre de dates.'
+          : null;
+
       if (!mounted) return;
       setState(() {
         _items = list;
+        _error = partialMessage;
         _loading = false;
       });
     } catch (e) {
