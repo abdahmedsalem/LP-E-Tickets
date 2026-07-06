@@ -139,6 +139,9 @@ class BusinessTransaction extends Equatable {
   final String userName;
   final List<TransactionLine> lines;
   final String? note;
+  final String? regularizationState;
+  final String? regularizationReference;
+  final DateTime? regularizationDate;
 
   /// Pour les transferts : nom de l'autre partie (destinataire si sortant, expéditeur si entrant).
   final String? transferParty;
@@ -161,6 +164,9 @@ class BusinessTransaction extends Equatable {
     this.stationId,
     this.stationName,
     this.note,
+    this.regularizationState,
+    this.regularizationReference,
+    this.regularizationDate,
     this.transferParty,
     this.transferPartyPhone,
   });
@@ -168,6 +174,24 @@ class BusinessTransaction extends Equatable {
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
 
   bool get hasTxReference => (txReference ?? '').trim().isNotEmpty;
+
+  String get effectiveRegularizationState {
+    final value = (regularizationState ?? '').trim().toLowerCase();
+    return value.isEmpty || value == 'false' ? 'pending' : value;
+  }
+
+  bool get isRegularized => effectiveRegularizationState == 'regularized';
+
+  String get regularizationLabel {
+    switch (effectiveRegularizationState) {
+      case 'regularized':
+        return 'Régularisé';
+      case 'pending':
+        return 'Non régularisé';
+      default:
+        return effectiveRegularizationState;
+    }
+  }
 
   String get txNumber {
     final ref = (txReference ?? '').trim();
@@ -186,5 +210,13 @@ class BusinessTransaction extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, txReference, type, date];
+  List<Object?> get props => [
+    id,
+    txReference,
+    type,
+    date,
+    regularizationState,
+    regularizationReference,
+    regularizationDate,
+  ];
 }

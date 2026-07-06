@@ -647,6 +647,19 @@ class AcpecTransactionsMapper {
       stationId: _stringField(row, 'station_id'),
       stationName: _stringField(row, 'station_name'),
       note: _noteForRow(row),
+      regularizationState: _stringField(
+        row,
+        'regularization_state',
+        'regularisation_state',
+      ),
+      regularizationReference: _stringField(
+        row,
+        'regularization_reference',
+        'regularisation_reference',
+      ),
+      regularizationDate: _parseDate(
+        row['regularization_date'] ?? row['regularisation_date'],
+      ),
       transferParty: transferParty,
       transferPartyPhone: transferPartyPhone,
     );
