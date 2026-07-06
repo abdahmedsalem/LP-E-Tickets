@@ -374,30 +374,48 @@ class AcpecFuelTransaction(models.Model):
                AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
             """
         )
+        # patch43M16 transfer backfill guard: the legacy transfer table
+        # is not guaranteed to exist during a fresh install of core.
         self.env.cr.execute(
-            """
-            UPDATE acpec_fuel_transaction t
-               SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
-                   counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
-              FROM acpec_fuel_carnet_transfer tr
-              LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
-              LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
-             WHERE t.transfer_id = tr.id
-               AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
-            """
+            "SELECT to_regclass(%s)",
+            ('public.acpec_fuel_carnet_transfer',),
         )
+        transfer_table_exists = bool(self.env.cr.fetchone()[0])
+        if transfer_table_exists:
+            self.env.cr.execute(
+                """
+                UPDATE acpec_fuel_transaction t
+                   SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
+                       counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
+                  FROM acpec_fuel_carnet_transfer tr
+                  LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
+                  LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
+                 WHERE t.transfer_id = tr.id
+                   AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+                """
+            )
+
+        # patch43M16 ticket transfer backfill guard: the legacy ticket
+        # transfer table is not guaranteed to exist during a fresh install.
         self.env.cr.execute(
-            """
-            UPDATE acpec_fuel_transaction t
-               SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
-                   counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
-              FROM acpec_fuel_ticket_transfer tr
-              LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
-              LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
-             WHERE t.ticket_transfer_id = tr.id
-               AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
-            """
+            "SELECT to_regclass(%s)",
+            ('public.acpec_fuel_ticket_transfer',),
         )
+        ticket_transfer_table_exists = bool(self.env.cr.fetchone()[0])
+        if ticket_transfer_table_exists:
+            self.env.cr.execute(
+                """
+                UPDATE acpec_fuel_transaction t
+                   SET actor_partner_id = COALESCE(t.actor_partner_id, sw.partner_id),
+                       counterparty_partner_id = COALESCE(t.counterparty_partner_id, dw.partner_id)
+                  FROM acpec_fuel_ticket_transfer tr
+                  LEFT JOIN acpec_fuel_wallet sw ON sw.id = tr.source_wallet_id
+                  LEFT JOIN acpec_fuel_wallet dw ON dw.id = tr.dest_wallet_id
+                 WHERE t.ticket_transfer_id = tr.id
+                   AND (t.actor_partner_id IS NULL OR t.counterparty_partner_id IS NULL)
+                """
+            )
+
         self.env.cr.execute(
             """
             WITH partner_users AS (
