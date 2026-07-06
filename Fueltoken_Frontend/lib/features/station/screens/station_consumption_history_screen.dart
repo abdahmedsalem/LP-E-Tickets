@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -105,6 +107,8 @@ class _StationConsumptionHistoryScreenState
       final raw = await OdooFueltokenFacade().stationTransactions({
         'limit': _pageSize,
         'offset': 0,
+        'date_from': _apiDateTime(_activeFrom),
+        'date_to': _apiDateTime(_activeTo),
       });
       final page = AcpecTransactionsMapper.parsePage(
         raw,
@@ -188,6 +192,9 @@ class _StationConsumptionHistoryScreenState
       _activeFrom = from;
       _activeTo = to;
     });
+    if (AppEnvironment.useAcpecLiveData) {
+      unawaited(_load());
+    }
   }
 
   @override
@@ -195,6 +202,12 @@ class _StationConsumptionHistoryScreenState
     final scheme = Theme.of(context).colorScheme;
     final items = _filteredItems;
     final shown = items;
+    final totalAmount = shown.fold<int>(
+      0,
+      (sum, tx) => sum + tx.totalAmount.abs(),
+    );
+    final totalQrCount = shown.length;
+    final shouldShowTotals = (!_loading && _error == null) || _items.isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -255,7 +268,20 @@ class _StationConsumptionHistoryScreenState
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+              if (shouldShowTotals) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _StationHistoryTotalsCard(
+                    totalAmount: totalAmount,
+                    qrCount: totalQrCount,
+                    periodLabel:
+                        '${_compactDate(_activeFrom)} → ${_compactDate(_activeTo)}',
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ] else
+                const SizedBox(height: 6),
               if (_error != null && _items.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -329,6 +355,10 @@ class _StationConsumptionHistoryScreenState
   static String _compactDate(DateTime date) {
     return DateFormat('dd-MM-yyyy').format(date);
   }
+
+  static String _apiDateTime(DateTime date) {
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
+  }
 }
 
 class _DateFilterChip extends StatelessWidget {
@@ -381,6 +411,164 @@ class _DateFilterChip extends StatelessWidget {
     );
   }
 }
+
+
+class _StationHistoryTotalsCard extends StatelessWidget {
+  const _StationHistoryTotalsCard({
+    required this.totalAmount,
+    required this.qrCount,
+    required this.periodLabel,
+  });
+
+  final int totalAmount;
+  final int qrCount;
+  final String periodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.summarize_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Résumé des QR consommés',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      periodLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _StationHistoryTotalTile(
+                  label: 'QR consommés',
+                  value: Formatters.number(qrCount),
+                  icon: Icons.qr_code_2_rounded,
+                  valueColor: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StationHistoryTotalTile(
+                  label: 'Montant total',
+                  value: Formatters.money(totalAmount),
+                  icon: Icons.payments_rounded,
+                  valueColor: AppColors.danger,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StationHistoryTotalTile extends StatelessWidget {
+  const _StationHistoryTotalTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: valueColor,
+              height: 1,
+              letterSpacing: -0.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class _StationHistoryRow extends StatelessWidget {
   const _StationHistoryRow({required this.transaction});
