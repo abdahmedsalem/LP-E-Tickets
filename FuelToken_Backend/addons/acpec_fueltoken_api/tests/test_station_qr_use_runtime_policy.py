@@ -888,7 +888,8 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             regularized_totals.get('amount_total'),
             regularized_tx.amount_total,
         )
-        self.assertNotIn(str(pending_tx.id), repr(regularized_response))
+        regularized_items = regularized_response.get('data', {}).get('items', [])
+        self.assertNotIn(pending_tx.id, [item.get('id') for item in regularized_items])
         self.assertIn(str(regularized_tx.id), repr(regularized_response))
 
     def test_station_transactions_totals_follow_date_and_regularization_m15(self):
