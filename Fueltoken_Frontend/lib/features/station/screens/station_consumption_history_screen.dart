@@ -22,6 +22,7 @@ import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 enum _StationRegularizationFilter {
+  all,
   pending,
   regularized,
 }
@@ -29,6 +30,8 @@ enum _StationRegularizationFilter {
 extension _StationRegularizationFilterX on _StationRegularizationFilter {
   String get apiValue {
     switch (this) {
+      case _StationRegularizationFilter.all:
+        return 'all';
       case _StationRegularizationFilter.pending:
         return 'pending';
       case _StationRegularizationFilter.regularized:
@@ -38,6 +41,8 @@ extension _StationRegularizationFilterX on _StationRegularizationFilter {
 
   String get label {
     switch (this) {
+      case _StationRegularizationFilter.all:
+        return 'Tous';
       case _StationRegularizationFilter.pending:
         return 'Non régularisé';
       case _StationRegularizationFilter.regularized:
@@ -47,6 +52,8 @@ extension _StationRegularizationFilterX on _StationRegularizationFilter {
 
   IconData get icon {
     switch (this) {
+      case _StationRegularizationFilter.all:
+        return Icons.all_inclusive_rounded;
       case _StationRegularizationFilter.pending:
         return Icons.pending_actions_rounded;
       case _StationRegularizationFilter.regularized:
@@ -74,6 +81,8 @@ class _StationConsumptionHistoryScreenState
   List<BusinessTransaction> _items = [];
   bool _loading = true;
   String? _error;
+  int? _backendTotalAmount;
+  int? _backendTotalQrCount;
   late final VoidCallback _walletBusListener;
 
   late DateTime _draftFrom;
@@ -81,7 +90,7 @@ class _StationConsumptionHistoryScreenState
   late DateTime _activeFrom;
   late DateTime _activeTo;
   _StationRegularizationFilter _regularizationFilter =
-      _StationRegularizationFilter.pending;
+      _StationRegularizationFilter.all;
   late final AnimationController _skeletonCtrl;
 
   @override
@@ -139,6 +148,8 @@ class _StationConsumptionHistoryScreenState
     setState(() {
       _loading = true;
       _error = null;
+      _backendTotalAmount = null;
+      _backendTotalQrCount = null;
     });
 
     try {
@@ -147,6 +158,7 @@ class _StationConsumptionHistoryScreenState
       var hasMore = true;
       var pages = 0;
       int? totalCount;
+      AcpecTransactionsTotals? backendTotals;
 
       while (hasMore && pages < _maxAutoLoadPages) {
         final raw = await OdooFueltokenFacade().stationTransactions({
@@ -165,6 +177,7 @@ class _StationConsumptionHistoryScreenState
         );
 
         totalCount ??= page.totalCount;
+        backendTotals ??= page.totals;
         list.addAll(
           page.items.where((t) => t.type == TxType.stationConsumption),
         );
@@ -188,6 +201,8 @@ class _StationConsumptionHistoryScreenState
       if (!mounted) return;
       setState(() {
         _items = list;
+        _backendTotalAmount = backendTotals?.amountTotal;
+        _backendTotalQrCount = backendTotals?.qrCount;
         _error = partialMessage;
         _loading = false;
       });
@@ -195,6 +210,8 @@ class _StationConsumptionHistoryScreenState
       if (!mounted) return;
       setState(() {
         _error = _briefError(e);
+        _backendTotalAmount = null;
+        _backendTotalQrCount = null;
         _loading = false;
       });
     }
@@ -202,6 +219,8 @@ class _StationConsumptionHistoryScreenState
 
   bool _matchesRegularizationFilter(BusinessTransaction tx) {
     switch (_regularizationFilter) {
+      case _StationRegularizationFilter.all:
+        return true;
       case _StationRegularizationFilter.pending:
         return !tx.isRegularized;
       case _StationRegularizationFilter.regularized:
@@ -288,11 +307,12 @@ class _StationConsumptionHistoryScreenState
     final scheme = Theme.of(context).colorScheme;
     final items = _filteredItems;
     final shown = items;
-    final totalAmount = shown.fold<int>(
+    final localTotalAmount = shown.fold<int>(
       0,
-      (sum, tx) => sum + tx.totalAmount.abs(),
+      (sum, tx) => sum + tx.totalAmount,
     );
-    final totalQrCount = shown.length;
+    final totalAmount = _backendTotalAmount ?? localTotalAmount;
+    final totalQrCount = _backendTotalQrCount ?? shown.length;
     final shouldShowTotals = (!_loading && _error == null) || _items.isNotEmpty;
 
     return Scaffold(
@@ -530,7 +550,7 @@ class _StationRegularizationFilterSelector extends StatelessWidget {
             ),
           ),
           if (filter != _StationRegularizationFilter.values.last)
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
         ],
       ],
     );
@@ -564,8 +584,8 @@ class _StationRegularizationFilterChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 7),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
@@ -578,15 +598,15 @@ class _StationRegularizationFilterChip extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(filter.icon, size: 17, color: fg),
-              const SizedBox(width: 7),
+              Icon(filter.icon, size: 15.5, color: fg),
+              const SizedBox(width: 5),
               Flexible(
                 child: Text(
                   filter.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12.2,
+                    fontSize: 10.8,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
                     color: fg,
                   ),

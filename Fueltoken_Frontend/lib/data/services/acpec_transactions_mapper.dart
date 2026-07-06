@@ -4,16 +4,37 @@ import '../models/purchase_lot.dart';
 import '../models/business_transaction.dart';
 import '../models/qr_token.dart';
 
+/// Totaux agrégés backend pour l'historique station.
+class AcpecTransactionsTotals {
+  const AcpecTransactionsTotals({
+    required this.qrCount,
+    required this.transactionCount,
+    required this.amountTotal,
+    required this.qtyTotal,
+    this.scope,
+    this.regularizationState,
+  });
+
+  final int qrCount;
+  final int transactionCount;
+  final int amountTotal;
+  final int qtyTotal;
+  final String? scope;
+  final String? regularizationState;
+}
+
 /// Page d’historique des transactions (portefeuille ou station).
 class AcpecTransactionsPage {
   const AcpecTransactionsPage({
     required this.items,
     this.totalCount,
+    this.totals,
     required this.hasMore,
   });
 
   final List<BusinessTransaction> items;
   final int? totalCount;
+  final AcpecTransactionsTotals? totals;
   final bool hasMore;
 }
 
@@ -409,6 +430,8 @@ class AcpecTransactionsMapper {
       'total_rows',
     ]);
 
+    final totals = _parseTotals(data['totals'] ?? m['totals']);
+
     bool hasMore;
     final hm = data['has_more'] ?? data['hasMore'] ?? m['has_more'];
     if (hm is bool) {
@@ -422,6 +445,7 @@ class AcpecTransactionsMapper {
     return AcpecTransactionsPage(
       items: items,
       totalCount: totalCount,
+      totals: totals,
       hasMore: hasMore,
     );
   }
@@ -483,6 +507,47 @@ class AcpecTransactionsMapper {
         m['message']?.toString() ?? 'Détail transaction indisponible.',
       );
     }
+  }
+
+  static AcpecTransactionsTotals? _parseTotals(dynamic raw) {
+    if (raw is! Map) return null;
+    final m = Map<String, dynamic>.from(raw);
+    final qrCount = _firstInt(m, const [
+      'qr_count',
+      'transaction_count',
+      'count',
+      'total_count',
+    ]);
+    final transactionCount = _firstInt(m, const [
+      'transaction_count',
+      'qr_count',
+      'count',
+      'total_count',
+    ]);
+    final amountTotal = _firstInt(m, const [
+      'amount_total',
+      'total_amount',
+      'amount',
+    ]);
+    final qtyTotal = _firstInt(m, const [
+      'qty_total',
+      'total_qty',
+      'quantity_total',
+      'qty',
+    ]);
+
+    if (qrCount == null && transactionCount == null && amountTotal == null) {
+      return null;
+    }
+
+    return AcpecTransactionsTotals(
+      qrCount: qrCount ?? transactionCount ?? 0,
+      transactionCount: transactionCount ?? qrCount ?? 0,
+      amountTotal: amountTotal ?? 0,
+      qtyTotal: qtyTotal ?? qrCount ?? transactionCount ?? 0,
+      scope: m['scope']?.toString(),
+      regularizationState: m['regularization_state']?.toString(),
+    );
   }
 
   static List<dynamic> _itemsList(Map<String, dynamic> data) {
