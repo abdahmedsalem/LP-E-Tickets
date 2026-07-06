@@ -8,7 +8,7 @@ from .api_common import AcpecMobileAuthApiCommon, MobileSignupNotAllowedError
 
 class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
-    @http.route('/api/acpec/mobile_auth/v1/version-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/version-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def version_check(self, **kwargs):
         try:
             self._require_keys(kwargs, ['platform', 'app_version'])
@@ -26,7 +26,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/signup-companies', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/signup-companies', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def signup_companies(self, **kwargs):
         try:
             return self._json_response({
@@ -35,7 +35,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/signup', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/signup', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def signup(self, **kwargs):
         started_at = self._public_auth_started_at()
         try:
@@ -138,7 +138,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
     @http.route([
         '/api/acpec/mobile_auth/v1/login',
         '/api/acpec/mobile_auth/v1/password-login',
-    ], type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    ], type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def password_login(self, **kwargs):
         # Password/PIN login is intentionally disabled.  Mobile login is OTP ->
         # Bearer tokens only; secret_code is a confirmation PIN stored separately
