@@ -48,7 +48,10 @@
                             <i class="fa fa-users me-2"/>Bénéficiaires
                         </a>
                         <a t-if="distributor" href="/my/fueltoken/distributions/new" class="btn ft-action-purple">
-                            <i class="fa fa-gift me-2"/>Distribuer des carnets
+                            <i class="fa fa-book me-2"/>Transfert de carnets
+                        </a>
+                        <a t-if="distributor" href="/my/fueltoken/ticket-transfers/new" class="btn ft-action-light">
+                            <i class="fa fa-ticket me-2"/>Transfert de tickets
                         </a>
                         <a t-if="not distributor" href="/my" class="btn ft-action-light">Retour au portail</a>
                     </div>
@@ -114,7 +117,7 @@
                         <div class="ft-card mb-4" t-if="distributor">
                             <div class="ft-card-header">
                                 <h5 class="ft-card-title"><i class="fa fa-book me-2"/>Carnets disponibles</h5>
-                                <a href="/my/fueltoken/distributions/new" class="ft-link-purple">Distribuer <i class="fa fa-angle-right ms-1"/></a>
+                                <a href="/my/fueltoken/distributions/new" class="ft-link-purple">Transfert de carnets <i class="fa fa-angle-right ms-1"/></a>
                             </div>
                             <div class="table-responsive">
                                 <table class="table ft-table table-sm align-middle mb-0">
@@ -175,7 +178,7 @@
                     <div class="col-xl-4">
                         <div class="ft-card mb-4" t-if="distributor">
                             <div class="ft-card-header">
-                                <h5 class="ft-card-title"><i class="fa fa-exchange me-2"/>Dernières distributions</h5>
+                                <h5 class="ft-card-title"><i class="fa fa-exchange me-2"/>Derniers transferts de carnets</h5>
                                 <a href="/my/fueltoken/distributions" class="ft-link-purple">Voir tout <i class="fa fa-angle-right ms-1"/></a>
                             </div>
                             <div class="table-responsive">
@@ -187,7 +190,7 @@
                                             <td><span class="ft-pill ft-pill-green" t-esc="transfer.dest_partner_id.display_name"/></td>
                                             <td class="text-end"><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></td>
                                         </tr>
-                                        <tr t-if="not distributions"><td colspan="3" class="text-muted text-center py-4">Aucune distribution.</td></tr>
+                                        <tr t-if="not distributions"><td colspan="3" class="text-muted text-center py-4">Aucun transfert de carnets.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -528,17 +531,17 @@
         </t>
     </template>
 
-    <template id="portal_fueltoken_company_distribution_new" name="Tickets Carburant Société - Nouvelle distribution">
+    <template id="portal_fueltoken_company_distribution_new" name="Tickets Carburant Société - Nouveau transfert de carnets">
         <t t-call="portal.portal_layout">
             <div class="container-fluid px-lg-5 my-4 o_acpec_ft_portal o_acpec_ft_distribution" t-att-data-currency="selected_distribution_totals['currency_name']">
 
 
                 <div class="mb-3">
-                    <a href="/my/fueltoken/distributions" class="text-decoration-none ft-link-purple"><i class="fa fa-arrow-left me-2"/>Retour aux distributions</a>
+                    <a href="/my/fueltoken/distributions" class="text-decoration-none ft-link-purple"><i class="fa fa-arrow-left me-2"/>Retour aux transferts de carnets</a>
                 </div>
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                     <div>
-                        <h2 class="mb-1 fw-bold">Distribuer des carnets</h2>
+                        <h2 class="mb-1 fw-bold">Transfert de carnets</h2>
                         <div class="ft-muted" t-esc="distributor.display_name"/>
                     </div>
                 </div>
@@ -546,7 +549,7 @@
                 <div class="ft-alert d-flex align-items-center justify-content-between gap-3 mb-4" role="alert">
                     <div>
                         <i class="fa fa-info-circle me-2"/>
-                        Sélectionnez d’abord un bénéficiaire, puis composez les carnets à distribuer ligne par ligne. La distribution sera confirmée et créditée sur le wallet mobile du membre.
+                        Sélectionnez d’abord un bénéficiaire, puis composez les carnets à transférer ligne par ligne. Le transfert sera confirmé et crédité sur le wallet mobile du membre.
                     </div>
                     <span class="text-muted">×</span>
                 </div>
@@ -607,8 +610,8 @@
                                 <div class="d-flex align-items-start gap-3 mb-4">
                                     <span class="ft-step-badge">2</span>
                                     <div>
-                                        <h5 class="mb-1 fw-bold">Carnets à distribuer</h5>
-                                        <div class="ft-muted">Ajoutez les carnets à distribuer au bénéficiaire sélectionné.</div>
+                                        <h5 class="mb-1 fw-bold">Carnets à transférer</h5>
+                                        <div class="ft-muted">Ajoutez les carnets à transférer au bénéficiaire sélectionné.</div>
                                     </div>
                                 </div>
                                 <div t-if="not carnet_rows" class="alert alert-warning rounded-3" role="alert">
@@ -666,7 +669,7 @@
 
                         <div class="col-xl-4">
                             <div class="ft-card p-3 p-lg-4 mb-4 sticky-lg-top" style="top: 1rem;">
-                                <h5 class="fw-bold mb-3">Récapitulatif de la distribution</h5>
+                                <h5 class="fw-bold mb-3">Récapitulatif du transfert de carnets</h5>
                                 <div class="border rounded-3 px-3 mb-4">
                                     <div class="ft-summary-row">
                                         <span><span class="ft-kpi-icon ft-kpi-blue me-2" style="width:34px;height:34px;font-size:.9rem;"><i class="fa fa-ticket"/></span>Total tickets</span>
@@ -682,7 +685,7 @@
                                     </div>
                                 </div>
                                 <label class="form-label fw-semibold" for="note">Note interne <span class="fw-normal ft-muted">(optionnelle)</span></label>
-                                <textarea name="note" id="note" class="form-control" rows="6" maxlength="300" placeholder="Ajouter une note interne sur cette distribution..."><t t-esc="note"/></textarea>
+                                <textarea name="note" id="note" class="form-control" rows="6" maxlength="300" placeholder="Ajouter une note interne sur ce transfert de carnets..."><t t-esc="note"/></textarea>
                                 <div class="text-end small ft-muted mt-1">0 / 300</div>
                             </div>
                         </div>
@@ -691,7 +694,7 @@
                     <div class="d-flex justify-content-end gap-2 mt-2">
                         <a href="/my/fueltoken/distributions" class="btn ft-action-light px-4">Annuler</a>
                         <button type="submit" class="btn ft-action-purple px-4" t-att-disabled="(not member_rows or not carnet_rows) and 'disabled' or None">
-                            <i class="fa fa-gift me-2"/>Distribuer
+                            <i class="fa fa-book me-2"/>Transférer les carnets
                         </button>
                     </div>
                 </form>
@@ -823,9 +826,9 @@
         <t t-call="portal.portal_layout">
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Distributions société</h2>
+                    <h2>Transferts de carnets société</h2>
                     <div class="d-flex gap-2">
-                        <a href="/my/fueltoken/distributions/new" class="btn btn-primary">Nouvelle distribution</a>
+                        <a href="/my/fueltoken/distributions/new" class="btn btn-primary">Nouveau transfert de carnets</a>
                         <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
                     </div>
                 </div>
@@ -854,7 +857,7 @@
                                 <td class="text-end"><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></td>
                             </tr>
                             <tr t-if="not distributions">
-                                <td colspan="6" class="text-muted text-center py-4">Aucune distribution société.</td>
+                                <td colspan="6" class="text-muted text-center py-4">Aucun transfert de carnets société.</td>
                             </tr>
                         </tbody>
                         <tfoot t-if="distributions">
@@ -878,10 +881,10 @@
             <div class="container my-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h2 class="mb-1">Distribution <span t-esc="transfer.name"/></h2>
+                        <h2 class="mb-1">Transfert de carnets <span t-esc="transfer.name"/></h2>
                         <div class="text-muted">Bénéficiaire : <span t-esc="transfer.dest_partner_id.display_name"/></div>
                     </div>
-                    <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Retour distributions</a>
+                    <a href="/my/fueltoken/distributions" class="btn btn-outline-secondary">Retour transferts de carnets</a>
                 </div>
                 <div class="card mb-4">
                     <div class="card-body row g-3">
@@ -921,4 +924,387 @@
             </div>
         </t>
     </template>
+
+
+    <template id="portal_fueltoken_company_ticket_transfer_new" name="Tickets Carburant Société - Nouveau transfert de tickets">
+        <t t-call="portal.portal_layout">
+            <div class="container-fluid px-lg-5 my-4 o_acpec_ft_portal o_acpec_ft_ticket_transfer" t-att-data-currency="selected_ticket_transfer_totals['currency_name']">
+                <div class="mb-3">
+                    <a href="/my/fueltoken" class="text-decoration-none ft-link-purple"><i class="fa fa-arrow-left me-2"/>Retour Tickets Carburant</a>
+                </div>
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="mb-1 fw-bold">Transfert de tickets</h2>
+                        <div class="ft-muted" t-esc="distributor.display_name"/>
+                    </div>
+                    <a href="/my/fueltoken/distributions/new" class="btn ft-action-light"><i class="fa fa-book me-2"/>Transfert de carnets</a>
+                </div>
+
+                <div class="ft-alert d-flex align-items-center justify-content-between gap-3 mb-4" role="alert">
+                    <div>
+                        <i class="fa fa-info-circle me-2"/>
+                        Sélectionnez un bénéficiaire, puis choisissez les carnets sources et les quantités de tickets à transférer. Le motif est optionnel.
+                    </div>
+                    <span class="text-muted">×</span>
+                </div>
+                <div t-if="error" class="alert alert-danger rounded-3" role="alert" t-esc="error"/>
+
+                <form action="/my/fueltoken/ticket-transfers/new" method="post">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="idempotency_key" t-att-value="idempotency_key"/>
+
+                    <div class="row g-4">
+                        <div class="col-xl-8">
+                            <div class="ft-card p-3 p-lg-4 mb-4">
+                                <div class="d-flex align-items-start gap-3 mb-4">
+                                    <span class="ft-step-badge">1</span>
+                                    <div>
+                                        <h5 class="mb-1 fw-bold">Bénéficiaire</h5>
+                                        <div class="ft-muted">Sélectionnez le membre qui recevra les tickets.</div>
+                                    </div>
+                                </div>
+                                <div t-if="not member_rows" class="alert alert-warning rounded-3" role="alert">
+                                    Aucun membre éligible au transfert n’est actuellement rattaché à ce compte société. Ajoutez d’abord un membre mobile depuis la page Membres autorisés.
+                                </div>
+                                <div class="row g-3 align-items-center" t-if="member_rows">
+                                    <div class="col-lg-6">
+                                        <label class="form-label fw-semibold" for="ticket_member_partner_id">Membre bénéficiaire</label>
+                                        <select name="member_partner_id" id="ticket_member_partner_id" class="form-select ft-member-select" required="required">
+                                            <option value="">Rechercher un membre (nom, email ou téléphone)</option>
+                                            <option t-foreach="member_rows" t-as="row"
+                                                    t-att-value="row['partner'].id"
+                                                    t-att-selected="row['partner'].id == member_partner_id and 'selected' or None"
+                                                    t-att-data-name="row['name']"
+                                                    t-att-data-phone="row['phone'] or row['mobile_login'] or ''"
+                                                    t-att-data-email="row['email'] or ''">
+                                                <t t-esc="row['name']"/>
+                                                <t t-if="row['phone']"> - <t t-esc="row['phone']"/></t>
+                                            </option>
+                                        </select>
+                                        <div class="form-text">Seuls les membres autorisés avec compte mobile actif ou self-registered sont proposés.</div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <div class="ft-card p-3 border ft-selected-member d-none">
+                                            <div class="d-flex align-items-center justify-content-between gap-3">
+                                                <div class="d-flex align-items-center gap-3 min-w-0">
+                                                    <span class="ft-avatar ft-selected-member-avatar">?</span>
+                                                    <div class="min-w-0">
+                                                        <div class="fw-bold ft-selected-member-name">—</div>
+                                                        <div class="ft-muted small text-truncate ft-selected-member-contact">—</div>
+                                                    </div>
+                                                </div>
+                                                <span class="ft-pill ft-pill-green">mobile éligible</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="ft-card p-3 p-lg-4 mb-4">
+                                <div class="d-flex align-items-start gap-3 mb-4">
+                                    <span class="ft-step-badge">2</span>
+                                    <div>
+                                        <h5 class="mb-1 fw-bold">Tickets à transférer</h5>
+                                        <div class="ft-muted">Choisissez un carnet source puis indiquez le nombre de tickets à transférer.</div>
+                                    </div>
+                                </div>
+                                <div t-if="not ticket_rows" class="alert alert-warning rounded-3" role="alert">
+                                    Aucun ticket disponible dans le wallet société.
+                                </div>
+                                <div t-if="ticket_rows">
+                                    <div class="row g-2 fw-semibold small ft-muted px-2 mb-2 d-none d-lg-flex">
+                                        <div class="col-lg-5">Carnet source</div>
+                                        <div class="col-lg-2">Disponibles</div>
+                                        <div class="col-lg-2">Quantité</div>
+                                        <div class="col-lg-2 text-end">Montant</div>
+                                        <div class="col-lg-1 text-end">Actions</div>
+                                    </div>
+                                    <div class="ft-ticket-lines">
+                                        <div class="ft-ticket-line-row" t-foreach="ticket_transfer_line_slots" t-as="slot" t-att-data-line-index="slot['index']" t-att-style="not slot['visible'] and 'display: none;' or None">
+                                            <div class="row g-2 align-items-center">
+                                                <div class="col-lg-5">
+                                                    <select class="form-select ft-ticket-source-select" t-att-name="'line_%s_face_line_id' % slot['index']">
+                                                        <option value="">Choisir un carnet...</option>
+                                                        <option t-foreach="ticket_rows" t-as="option"
+                                                                t-att-value="option['face_line_id']"
+                                                                t-att-selected="option['face_line_id'] == slot['face_line_id'] and 'selected' or None"
+                                                                t-att-data-available="option['qty_available']"
+                                                                t-att-data-face-value="option['face_value']"
+                                                                t-att-data-currency="option['currency_name']"
+                                                                t-att-data-expires-at="option['expires_at']">
+                                                            <t t-esc="option['label']"/>
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <div class="small fw-semibold"><span class="ft-ticket-line-available">—</span> tickets</div>
+                                                    <div class="small ft-muted ft-ticket-line-expires">—</div>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <input type="number" min="1" step="1" class="form-control ft-ticket-qty" t-att-name="'line_%s_qty_tickets' % slot['index']" t-att-value="slot['qty_tickets']" placeholder="Qté"/>
+                                                </div>
+                                                <div class="col-lg-2 text-lg-end fw-semibold">
+                                                    <span class="ft-ticket-line-amount">0</span> <span class="ft-ticket-line-currency" t-esc="selected_ticket_transfer_totals['currency_name']"/>
+                                                </div>
+                                                <div class="col-lg-1 text-lg-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger ft-ticket-remove-line" title="Retirer la ligne"><i class="fa fa-trash"/></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn ft-ticket-add-line mt-2 px-3"><i class="fa fa-plus me-2"/>Ajouter une ligne</button>
+                                    <div class="small ft-muted mt-3"><i class="fa fa-info-circle me-1"/>Les quantités disponibles sont revérifiées au moment de la validation.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-xl-4">
+                            <div class="ft-card p-3 p-lg-4 mb-4 sticky-lg-top" style="top: 1rem;">
+                                <h5 class="fw-bold mb-3">Récapitulatif du transfert de tickets</h5>
+                                <div class="border rounded-3 px-3 mb-4">
+                                    <div class="ft-summary-row">
+                                        <span><span class="ft-kpi-icon ft-kpi-blue me-2" style="width:34px;height:34px;font-size:.9rem;"><i class="fa fa-ticket"/></span>Total tickets</span>
+                                        <strong class="ft-ticket-total-qty" t-esc="selected_ticket_transfer_totals['selected_ticket_qty']"/>
+                                    </div>
+                                    <div class="ft-summary-row">
+                                        <span><span class="ft-kpi-icon ft-kpi-green me-2" style="width:34px;height:34px;font-size:.9rem;"><i class="fa fa-credit-card"/></span>Montant total transféré</span>
+                                        <strong class="text-success"><span class="ft-ticket-total-amount" t-esc="selected_ticket_transfer_totals['selected_amount_total']"/> <span class="ft-ticket-total-currency" t-esc="selected_ticket_transfer_totals['currency_name']"/></strong>
+                                    </div>
+                                </div>
+                                <label class="form-label fw-semibold" for="ticket_note">Note interne <span class="fw-normal ft-muted">(optionnelle)</span></label>
+                                <textarea name="note" id="ticket_note" class="form-control" rows="6" maxlength="300" placeholder="Ajouter une note interne sur ce transfert de tickets..."><t t-esc="note"/></textarea>
+                                <div class="text-end small ft-muted mt-1">0 / 300</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-2">
+                        <a href="/my/fueltoken" class="btn ft-action-light px-4">Annuler</a>
+                        <button type="submit" class="btn ft-action-purple px-4" t-att-disabled="(not member_rows or not ticket_rows) and 'disabled' or None">
+                            <i class="fa fa-ticket me-2"/>Transférer les tickets
+                        </button>
+                    </div>
+                </form>
+
+                <script><![CDATA[
+(function () {
+    function ready(fn) {
+        if (document.readyState !== 'loading') { fn(); }
+        else { document.addEventListener('DOMContentLoaded', fn); }
+    }
+    ready(function () {
+        var root = document.querySelector('.o_acpec_ft_ticket_transfer');
+        if (!root) { return; }
+        var currencyFallback = root.getAttribute('data-currency') || '';
+        function numberValue(value) {
+            var parsed = parseFloat(String(value || '0').replace(',', '.'));
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        function intValue(value) {
+            var parsed = parseInt(value || '0', 10);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        function fmtAmount(value) {
+            return numberValue(value).toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1});
+        }
+        function visibleRows() {
+            return Array.prototype.slice.call(root.querySelectorAll('.ft-ticket-line-row')).filter(function (row) {
+                return row.style.display !== 'none';
+            });
+        }
+        function updateMemberCard() {
+            var select = root.querySelector('.ft-member-select');
+            var card = root.querySelector('.ft-selected-member');
+            if (!select || !card) { return; }
+            var option = select.options[select.selectedIndex];
+            if (!option || !option.value) {
+                card.classList.add('d-none');
+                return;
+            }
+            var name = option.getAttribute('data-name') || option.textContent.trim();
+            var phone = option.getAttribute('data-phone') || '';
+            var email = option.getAttribute('data-email') || '';
+            card.querySelector('.ft-selected-member-avatar').textContent = (name || '?').trim().slice(0, 2).toUpperCase();
+            card.querySelector('.ft-selected-member-name').textContent = name || '—';
+            card.querySelector('.ft-selected-member-contact').textContent = [phone, email].filter(Boolean).join(' · ') || '—';
+            card.classList.remove('d-none');
+        }
+        function updateLine(row) {
+            var select = row.querySelector('.ft-ticket-source-select');
+            var qtyInput = row.querySelector('.ft-ticket-qty');
+            var option = select && select.options[select.selectedIndex];
+            if (!option || !option.value) {
+                row.querySelector('.ft-ticket-line-available').textContent = '—';
+                row.querySelector('.ft-ticket-line-amount').textContent = '0';
+                row.querySelector('.ft-ticket-line-currency').textContent = currencyFallback;
+                row.querySelector('.ft-ticket-line-expires').textContent = '—';
+                return {tickets: 0, amount: 0, currency: currencyFallback};
+            }
+            var available = intValue(option.getAttribute('data-available'));
+            var qty = Math.max(0, intValue(qtyInput && qtyInput.value));
+            var faceValue = numberValue(option.getAttribute('data-face-value'));
+            var currency = option.getAttribute('data-currency') || currencyFallback;
+            var expiresAt = option.getAttribute('data-expires-at') || '—';
+            if (qtyInput) { qtyInput.setAttribute('max', String(available)); }
+            row.querySelector('.ft-ticket-line-available').textContent = String(available);
+            row.querySelector('.ft-ticket-line-amount').textContent = fmtAmount(qty * faceValue);
+            row.querySelector('.ft-ticket-line-currency').textContent = currency;
+            row.querySelector('.ft-ticket-line-expires').textContent = expiresAt;
+            return {tickets: qty, amount: qty * faceValue, currency: currency};
+        }
+        function updateTotals() {
+            var totals = {tickets: 0, amount: 0, currency: currencyFallback};
+            visibleRows().forEach(function (row) {
+                var item = updateLine(row);
+                totals.tickets += item.tickets;
+                totals.amount += item.amount;
+                if (item.currency) { totals.currency = item.currency; }
+            });
+            var qty = root.querySelector('.ft-ticket-total-qty');
+            var amount = root.querySelector('.ft-ticket-total-amount');
+            var currency = root.querySelector('.ft-ticket-total-currency');
+            if (qty) { qty.textContent = String(totals.tickets); }
+            if (amount) { amount.textContent = fmtAmount(totals.amount); }
+            if (currency) { currency.textContent = totals.currency; }
+        }
+        root.querySelectorAll('.ft-ticket-source-select, .ft-ticket-qty').forEach(function (el) {
+            el.addEventListener('change', updateTotals);
+            el.addEventListener('input', updateTotals);
+        });
+        var memberSelect = root.querySelector('.ft-member-select');
+        if (memberSelect) { memberSelect.addEventListener('change', updateMemberCard); }
+        var addLine = root.querySelector('.ft-ticket-add-line');
+        if (addLine) {
+            addLine.addEventListener('click', function () {
+                var hidden = Array.prototype.slice.call(root.querySelectorAll('.ft-ticket-line-row')).find(function (row) {
+                    return row.style.display === 'none';
+                });
+                if (hidden) {
+                    hidden.style.display = '';
+                    hidden.querySelector('.ft-ticket-source-select').focus();
+                }
+                updateTotals();
+            });
+        }
+        root.querySelectorAll('.ft-ticket-remove-line').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var row = button.closest('.ft-ticket-line-row');
+                if (!row) { return; }
+                row.querySelectorAll('select, input').forEach(function (el) { el.value = ''; });
+                if (visibleRows().length > 1) { row.style.display = 'none'; }
+                updateTotals();
+            });
+        });
+        updateMemberCard();
+        updateTotals();
+    });
+})();
+                ]]></script>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_ticket_transfers" name="Tickets Carburant Société - Transferts de tickets">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Transferts de tickets société</h2>
+                    <div class="d-flex gap-2">
+                        <a href="/my/fueltoken/ticket-transfers/new" class="btn btn-primary">Nouveau transfert de tickets</a>
+                        <a href="/my/fueltoken" class="btn btn-outline-secondary">Retour Tickets Carburant</a>
+                    </div>
+                </div>
+                <div class="table-responsive card">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>État</th>
+                                <th>Bénéficiaire</th>
+                                <th>Date</th>
+                                <th class="text-end">Tickets</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="ticket_transfers" t-as="transfer">
+                                <td><a t-att-href="'/my/fueltoken/ticket-transfers/%s' % transfer.id" t-esc="transfer.name"/></td>
+                                <td><span t-field="transfer.state"/></td>
+                                <td><span t-esc="transfer.dest_partner_id.display_name"/></td>
+                                <td>
+                                    <span t-if="transfer.confirmed_at" t-field="transfer.confirmed_at"/>
+                                    <span t-else="" t-field="transfer.create_date"/>
+                                </td>
+                                <td class="text-end"><span t-esc="transfer.face_qty_total"/></td>
+                                <td class="text-end"><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></td>
+                            </tr>
+                            <tr t-if="not ticket_transfers">
+                                <td colspan="6" class="text-muted text-center py-4">Aucun transfert de tickets société.</td>
+                            </tr>
+                        </tbody>
+                        <tfoot t-if="ticket_transfers">
+                            <tr class="table-light fw-semibold">
+                                <td colspan="4">Total</td>
+                                <td class="text-end" t-esc="ticket_transfer_totals['face_qty_total']"/>
+                                <td class="text-end">
+                                    <span t-esc="ticket_transfer_totals['amount_total']"/>
+                                    <span t-esc="ticket_transfer_totals['currency_name']"/>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_fueltoken_company_ticket_transfer_detail" name="Tickets Carburant Société - Détail transfert tickets">
+        <t t-call="portal.portal_layout">
+            <div class="container my-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="mb-1">Transfert de tickets <span t-esc="transfer.name"/></h2>
+                        <div class="text-muted">Bénéficiaire : <span t-esc="transfer.dest_partner_id.display_name"/></div>
+                    </div>
+                    <a href="/my/fueltoken/ticket-transfers" class="btn btn-outline-secondary">Retour transferts de tickets</a>
+                </div>
+                <div class="card mb-4">
+                    <div class="card-body row g-3">
+                        <div class="col-md-4"><strong>État</strong><br/><span t-field="transfer.state"/></div>
+                        <div class="col-md-4"><strong>Tickets</strong><br/><span t-esc="transfer.face_qty_total"/></div>
+                        <div class="col-md-4"><strong>Montant</strong><br/><span t-esc="transfer.amount_total"/> <span t-esc="transfer.currency_id.name"/></div>
+                    </div>
+                </div>
+                <div class="table-responsive card">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Carnet source</th>
+                                <th>Type de carnet</th>
+                                <th class="text-end">Tickets</th>
+                                <th class="text-end">Montant</th>
+                                <th>Fragment destination</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="transfer.line_ids" t-as="line">
+                                <td>
+                                    <span t-esc="line.source_face_line_id.carnet_short_code or line.source_face_line_id.carnet_no or line.source_face_line_id.id"/>
+                                    <div class="small text-muted" t-if="line.source_face_line_id.carnet_no" t-esc="line.source_face_line_id.carnet_no"/>
+                                </td>
+                                <td><span t-esc="line.carnet_type_id.display_name"/></td>
+                                <td class="text-end"><span t-esc="line.qty_faces"/></td>
+                                <td class="text-end"><span t-esc="line.amount_total"/> <span t-esc="line.currency_id.name"/></td>
+                                <td>
+                                    <span t-if="line.dest_face_line_id" t-esc="line.dest_face_line_id.carnet_short_code or line.dest_face_line_id.carnet_no or line.dest_face_line_id.id"/>
+                                    <span t-else="">—</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+
 </odoo>
