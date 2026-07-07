@@ -17,10 +17,9 @@ void main() {
       expect(source, contains('setState(() => _submitting = true);'));
       expect(source, contains('setState(() => _submitting = false);'));
       expect(source, contains('onSubmit: _submitting ? null : _submit'));
-      expect(
-        source,
-        contains('Vérifiez l’état de vos carnets avant de réessayer'),
-      );
+      expect(source, contains('unconfirmedActionMessage'));
+      expect(source, contains('Action non confirmée.'));
+      expect(source, contains('vos carnets avant de réessayer'));
     });
 
     test('ticket transfer parent has a real mutable submit lock', () {
@@ -34,10 +33,9 @@ void main() {
       expect(source, contains('setState(() => _submitting = true);'));
       expect(source, contains('setState(() => _submitting = false);'));
       expect(source, contains('onSubmit: _submitting ? null : _submit'));
-      expect(
-        source,
-        contains('Vérifiez l’état de vos tickets avant de réessayer'),
-      );
+      expect(source, contains('unconfirmedActionMessage'));
+      expect(source, contains('Action non confirmée.'));
+      expect(source, contains('vos tickets avant de réessayer'));
     });
 
     test(

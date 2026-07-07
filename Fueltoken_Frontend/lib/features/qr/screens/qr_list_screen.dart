@@ -14,7 +14,6 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/api_required_view.dart';
-import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/history_aligned_page_header.dart';
@@ -208,7 +207,9 @@ class _QrListScreenState extends State<QrListScreen> {
                     icon: _liveError != null
                         ? Icons.cloud_off_outlined
                         : Icons.qr_code_2,
-                    title: _liveError != null ? 'Erreur de chargement' : 'Aucun QR',
+                    title: _liveError != null
+                        ? 'Erreur de chargement'
+                        : 'Aucun QR',
                     message: _liveError != null
                         ? _liveError!
                         : 'Aucun QR ne correspond a ce filtre.',
@@ -375,24 +376,15 @@ class _QrCompactListTile extends StatelessWidget {
     }
   }
 
+  String get _referenceLabel {
+    final ref = (qr.internalRef ?? '').trim();
+    return ref.isEmpty ? 'Référence QR indisponible' : ref;
+  }
+
   String get _quantityLabel {
     final qty = qr.totalQty;
     if (qty <= 0) return 'Aucun ticket';
     return qty == 1 ? '1 ticket' : '$qty tickets';
-  }
-
-  String get _linesSummary {
-    final parts = <String>[];
-    final byFace = qr.aggregatedByFaceValue.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-
-    for (final entry in byFace.take(3)) {
-      parts.add('${entry.value} × ${Formatters.numberFr(entry.key)}');
-    }
-    if (byFace.length > 3) {
-      parts.add('+${byFace.length - 3}');
-    }
-    return parts.isEmpty ? _quantityLabel : parts.join(' • ');
   }
 
   void _openDetail(BuildContext context) {
@@ -415,11 +407,11 @@ class _QrCompactListTile extends StatelessWidget {
       child: InkWell(
         onTap: canOpen ? () => _openDetail(context) : null,
         borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
             boxShadow: [
               BoxShadow(
@@ -459,6 +451,30 @@ class _QrCompactListTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    Text(
+                      _referenceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _quantityLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.muted,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(

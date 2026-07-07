@@ -117,7 +117,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             lower.contains('refus'));
 
     if (looksLikeInvalidPin) {
-      return 'PIN incorrect. L\'opération n\'a pas été effectuée.';
+      return 'PIN incorrect. L’opération n’a pas été effectuée.';
     }
 
     if (message.isEmpty) {
@@ -589,9 +589,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         );
         final transactionReference =
             guarded['transaction_reference']?.toString().trim().isNotEmpty ==
-                    true
-                ? guarded['transaction_reference'].toString().trim()
-                : guarded['name']?.toString().trim();
+                true
+            ? guarded['transaction_reference'].toString().trim()
+            : guarded['name']?.toString().trim();
         AcpecQrMapper.fromRpcIssueEnvelope(
           guarded,
           ownerId: user.id,
@@ -791,10 +791,6 @@ class _CompositionRowState extends State<_CompositionRow> {
   String _referenceCode() {
     final code = widget.referenceCode.trim();
     return code.isNotEmpty ? code : 'Code carnet indisponible';
-  }
-
-  String _amountLabel(int amount) {
-    return '${Formatters.numberFr(amount)} ${Formatters.defaultCurrency}';
   }
 
   String _expirationLabel() {

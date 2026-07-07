@@ -389,7 +389,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
             final selectedTypes = _offerTypes
                 .where((type) => (_qty[type.id] ?? 0) > 0)
                 .toList();
-            final totalAmount = _totalAmount();
             final currency = _selectedCurrency;
             final hasProof = _proofPath != null;
             final canSubmit = hasProof && !_submitting;
@@ -1154,7 +1153,9 @@ class _PurchaseLinesSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = lines.isEmpty ? Formatters.fallbackCurrency : lines.first.currency;
+    final currency = lines.isEmpty
+        ? Formatters.fallbackCurrency
+        : lines.first.currency;
     final totalAmount = lines.fold<int>(0, (sum, line) => sum + line.amount);
 
     return Container(
