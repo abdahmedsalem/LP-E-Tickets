@@ -159,7 +159,7 @@ class TestTicketTransfer(TransactionCase):
         self.assertEqual(self.FaceLine.search_count([('origin_ticket_transfer_line_id', '=', line.id)]), 1)
         self.assertEqual(self.Tx.search_count([('transaction_type', '=', 'transfert_ticket'), ('ticket_transfer_id', '=', transfer.id)]), 2)
 
-    def test_i1_ticket_transfer_rejects_non_available_quantity_and_requires_note(self):
+    def test_i1_ticket_transfer_rejects_non_available_quantity_and_accepts_empty_note(self):
         suffix = uuid.uuid4().hex[:8]
         source_partner, source_wallet = self._create_partner_wallet('I1 Source guard %s' % suffix)
         _dest_partner, dest_wallet = self._create_partner_wallet('I1 Destination guard %s' % suffix)
@@ -179,8 +179,9 @@ class TestTicketTransfer(TransactionCase):
             transfer.action_confirm(actor_user=self.env.user)
 
         no_note = self._create_ticket_transfer(source_wallet, dest_wallet, face_line, 1, 'NO-NOTE-%s' % suffix, note=False)
-        with self.assertRaises(ValidationError):
-            no_note.action_confirm(actor_user=self.env.user)
+        no_note.action_confirm(actor_user=self.env.user)
+        self.assertEqual(no_note.state, 'confirmed')
+        self.assertFalse(no_note.note)
 
     def test_i1a_ticket_transfer_is_internal_create_only_and_bo_read_only(self):
         suffix = uuid.uuid4().hex[:8]

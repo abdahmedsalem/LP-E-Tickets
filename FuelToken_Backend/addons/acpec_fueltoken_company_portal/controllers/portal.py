@@ -3,7 +3,7 @@ import uuid
 
 from werkzeug.exceptions import NotFound
 
-from odoo import http, _
+from odoo import http, _, fields
 from odoo.exceptions import ValidationError, UserError
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal
@@ -126,6 +126,13 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         if not wallet:
             return request.env['acpec.fuel.carnet.transfer'].sudo().browse()
         return request.env['acpec.fuel.carnet.transfer'].sudo().search([
+            ('source_wallet_id', '=', wallet.id),
+        ], order='id desc', limit=limit)
+
+    def _get_ticket_transfers(self, wallet, limit=None):
+        if not wallet:
+            return request.env['acpec.fuel.ticket.transfer'].sudo().browse()
+        return request.env['acpec.fuel.ticket.transfer'].sudo().search([
             ('source_wallet_id', '=', wallet.id),
         ], order='id desc', limit=limit)
 
@@ -499,6 +506,186 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             'error': error,
         }
 
+    def _get_transferable_ticket_lines(self, wallet):
+        FaceLine = request.env['acpec.fuel.face.line'].sudo()
+        if not wallet:
+            return FaceLine.browse()
+        now = fields.Datetime.now()
+        return FaceLine.search([
+            ('wallet_id', '=', wallet.id),
+            ('qty_available', '>', 0),
+            '|',
+            ('expires_at', '=', False),
+            ('expires_at', '>', now),
+        ], order='expires_at NULLS LAST, lot_short_code, carnet_sequence, id')
+
+    def _build_ticket_transfer_line_rows(self, wallet, form_data=None):
+        form_data = form_data or {}
+        selected_qty_by_face_line_id = {}
+        for index in range(8):
+            try:
+                face_line_id = int(form_data.get('line_%s_face_line_id' % index) or 0)
+            except (TypeError, ValueError):
+                face_line_id = 0
+            try:
+                qty_tickets = int(form_data.get('line_%s_qty_tickets' % index) or 0)
+            except (TypeError, ValueError):
+                qty_tickets = 0
+            if face_line_id:
+                selected_qty_by_face_line_id[face_line_id] = qty_tickets
+
+        rows = []
+        for face_line in self._get_transferable_ticket_lines(wallet):
+            carnet_type = face_line.carnet_type_id
+            qty_available = int(face_line.qty_available or 0)
+            face_value = float(face_line.face_value or 0.0)
+            amount_available = float(face_line.amount_available or (qty_available * face_value))
+            carnet_label = face_line.carnet_short_code or face_line.carnet_no or str(face_line.id)
+            type_label = carnet_type.display_name or carnet_type.code or ''
+            label = '%s — %s' % (carnet_label, type_label) if type_label else carnet_label
+            currency = face_line.currency_id or carnet_type.currency_id or wallet.currency_id
+            rows.append({
+                'face_line': face_line,
+                'face_line_id': face_line.id,
+                'label': label,
+                'carnet_label': carnet_label,
+                'carnet_type': carnet_type,
+                'qty_available': qty_available,
+                'face_value': face_value,
+                'amount_available': amount_available,
+                'currency_name': currency.name if currency else '',
+                'expires_at': face_line.expires_at.strftime('%Y-%m-%d %H:%M') if face_line.expires_at else '',
+                'selected_qty': selected_qty_by_face_line_id.get(face_line.id, 0),
+            })
+        return rows
+
+    def _build_ticket_transfer_line_slots(self, form_data=None, slot_count=8):
+        form_data = form_data or {}
+        slots = []
+        for index in range(slot_count):
+            try:
+                face_line_id = int(form_data.get('line_%s_face_line_id' % index) or 0)
+            except (TypeError, ValueError):
+                face_line_id = 0
+            qty_tickets = form_data.get('line_%s_qty_tickets' % index) or ''
+            slots.append({
+                'index': index,
+                'face_line_id': face_line_id,
+                'qty_tickets': qty_tickets,
+                'visible': index == 0 or bool(face_line_id or qty_tickets),
+            })
+        return slots
+
+    def _ticket_transfer_catalog_by_id(self, ticket_rows):
+        return {row['face_line_id']: row for row in ticket_rows}
+
+    def _build_ticket_transfer_totals(self, ticket_rows, currency_name=False):
+        return {
+            'qty_available': sum(row.get('qty_available', 0) for row in ticket_rows),
+            'amount_available': sum(row.get('amount_available', 0) for row in ticket_rows),
+            'selected_ticket_qty': 0,
+            'selected_amount_total': 0,
+            'currency_name': currency_name or '',
+        }
+
+    def _build_selected_ticket_transfer_totals(self, ticket_rows, line_slots, currency_name=False):
+        catalog = self._ticket_transfer_catalog_by_id(ticket_rows)
+        selected_ticket_qty = 0
+        selected_amount_total = 0.0
+        for slot in line_slots:
+            row = catalog.get(slot.get('face_line_id'))
+            if not row:
+                continue
+            try:
+                qty_tickets = int(slot.get('qty_tickets') or 0)
+            except (TypeError, ValueError):
+                qty_tickets = 0
+            if qty_tickets <= 0:
+                continue
+            selected_ticket_qty += qty_tickets
+            selected_amount_total += float(row.get('face_value') or 0.0) * qty_tickets
+        return {
+            'selected_ticket_qty': selected_ticket_qty,
+            'selected_amount_total': selected_amount_total,
+            'currency_name': currency_name or '',
+        }
+
+    def _build_ticket_transfer_form_values(self, context, error=None, form_data=None):
+        form_data = form_data or {}
+        distributor = context['distributor']
+        wallet = self._get_company_wallet(distributor)
+        member_rows = [row for row in self._build_member_rows(distributor) if row['mobile_ready']]
+        ticket_rows = self._build_ticket_transfer_line_rows(wallet, form_data=form_data)
+        line_slots = self._build_ticket_transfer_line_slots(form_data=form_data)
+        currency = (wallet and wallet.currency_id) or context['company'].currency_id
+        currency_name = currency.name if currency else ''
+        return {
+            'page_name': 'fueltoken_company_ticket_transfer_new',
+            'distributor': distributor,
+            'commercial_partner': context['commercial_partner'],
+            'portal_company': context['company'],
+            'portal_company_name': context['portal_company_name'],
+            'wallet': wallet,
+            'member_rows': member_rows,
+            'ticket_rows': ticket_rows,
+            'ticket_transfer_line_slots': line_slots,
+            'ticket_transfer_totals': self._build_ticket_transfer_totals(ticket_rows, currency_name),
+            'selected_ticket_transfer_totals': self._build_selected_ticket_transfer_totals(ticket_rows, line_slots, currency_name),
+            'member_partner_id': int(form_data.get('member_partner_id') or 0),
+            'note': form_data.get('note', ''),
+            'idempotency_key': form_data.get('idempotency_key') or str(uuid.uuid4()),
+            'error': error,
+        }
+
+    def _parse_ticket_transfer_lines_from_post(self, wallet, post):
+        if not wallet:
+            raise ValidationError(_('Le Compte Société ne dispose d’aucun wallet source.'))
+
+        allowed_lines = self._get_transferable_ticket_lines(wallet)
+        allowed_by_id = {line.id: line for line in allowed_lines}
+        selected_lines = []
+        seen_face_line_ids = set()
+
+        for index in range(8):
+            raw_face_line = post.get('line_%s_face_line_id' % index)
+            raw_qty = post.get('line_%s_qty_tickets' % index)
+            if raw_face_line in (None, '') and raw_qty in (None, ''):
+                continue
+            try:
+                face_line_id = int(raw_face_line or 0)
+            except (TypeError, ValueError):
+                raise ValidationError(_('Carnet source invalide sur une ligne de transfert tickets.'))
+            try:
+                qty_tickets = int(raw_qty or 0)
+            except (TypeError, ValueError):
+                raise ValidationError(_('Les quantités de tickets doivent être des entiers.'))
+            if face_line_id <= 0:
+                raise ValidationError(_('Sélectionnez un carnet source pour chaque ligne renseignée.'))
+            if qty_tickets <= 0:
+                raise ValidationError(_('La quantité de tickets doit être positive pour chaque ligne renseignée.'))
+            if face_line_id in seen_face_line_ids:
+                raise ValidationError(_('Un même carnet ne peut pas apparaître plusieurs fois dans un transfert de tickets.'))
+            if face_line_id not in allowed_by_id:
+                raise ValidationError(_('Carnet source indisponible pour transfert de tickets.'))
+            face_line = allowed_by_id[face_line_id]
+            if qty_tickets > int(face_line.qty_available or 0):
+                raise ValidationError(_(
+                    "Tickets disponibles insuffisants pour '%s' : %d disponibles, %d demandés."
+                ) % (
+                    face_line.carnet_short_code or face_line.carnet_no or face_line.id,
+                    face_line.qty_available,
+                    qty_tickets,
+                ))
+            seen_face_line_ids.add(face_line_id)
+            selected_lines.append({
+                'face_line_id': face_line_id,
+                'qty_tickets': qty_tickets,
+            })
+
+        if not selected_lines:
+            raise ValidationError(_('Veuillez sélectionner au moins une quantité de tickets à transférer.'))
+        return selected_lines
+
     def _allocate_carnets_from_company_wallet(self, wallet, carnet_type, carnet_qty):
         """Legacy allocation by type kept for compatibility/back-office fallback."""
         if not wallet:
@@ -814,6 +1001,83 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             raise NotFound()
         return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_distribution_detail', {
             'page_name': 'fueltoken_company_distributions',
+            'distributor': distributor,
+            'commercial_partner': distributor.partner_id,
+            'portal_company': distributor.company_id,
+            'portal_company_name': distributor.company_id.name,
+            'wallet': wallet,
+            'transfer': transfer,
+        })
+
+
+    @http.route(['/my/fueltoken/ticket-transfers/new'], type='http', auth='user', website=True, methods=['GET'])
+    def portal_fueltoken_company_ticket_transfer_new(self, **kwargs):
+        context = self._get_portal_context(require_distributor=True)
+        return self._portal_render(
+            'acpec_fueltoken_company_portal.portal_fueltoken_company_ticket_transfer_new',
+            self._build_ticket_transfer_form_values(context)
+        )
+
+    @http.route(['/my/fueltoken/ticket-transfers/new'], type='http', auth='user', website=True, methods=['POST'])
+    def portal_fueltoken_company_ticket_transfer_submit(self, **post):
+        context = self._get_portal_context(require_distributor=True)
+        distributor = context['distributor']
+        wallet = self._get_company_wallet(distributor)
+        try:
+            member_id = int(post.get('member_partner_id') or 0)
+        except (TypeError, ValueError):
+            member_id = 0
+        try:
+            member = request.env['res.partner'].sudo().browse(member_id).exists()
+            if not member or member not in distributor.member_partner_ids.sudo():
+                raise ValidationError(_('Sélectionnez un membre autorisé.'))
+            if not distributor._get_active_mobile_user_for_member(member):
+                raise ValidationError(_('Le membre sélectionné n’a pas de compte mobile actif et éligible.'))
+            lines = self._parse_ticket_transfer_lines_from_post(wallet, post)
+            transfer = distributor.sudo().action_transfer_tickets_to_member(
+                member,
+                lines,
+                note=(post.get('note') or '').strip() or False,
+                idempotency_key=(post.get('idempotency_key') or '').strip() or False,
+                confirm=True,
+                operator_user=request.env.user,
+            )
+        except (ValidationError, UserError) as exc:
+            values = self._build_ticket_transfer_form_values(context, error=exc.args[0], form_data=post)
+            return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_ticket_transfer_new', values)
+        return request.redirect('/my/fueltoken/ticket-transfers/%s?created=1' % transfer.id)
+
+    @http.route(['/my/fueltoken/ticket-transfers'], type='http', auth='user', website=True)
+    def portal_fueltoken_company_ticket_transfers(self, **kwargs):
+        distributor = self._get_portal_distributor()
+        wallet = self._get_company_wallet(distributor)
+        transfers = self._get_ticket_transfers(wallet)
+        currency = (wallet and wallet.currency_id) or distributor.company_id.currency_id
+        return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_ticket_transfers', {
+            'page_name': 'fueltoken_company_ticket_transfers',
+            'distributor': distributor,
+            'commercial_partner': distributor.partner_id,
+            'portal_company': distributor.company_id,
+            'portal_company_name': distributor.company_id.name,
+            'wallet': wallet,
+            'ticket_transfers': transfers,
+            'ticket_transfer_totals': self._build_transfer_totals(transfers, currency.name if currency else ''),
+        })
+
+    @http.route(['/my/fueltoken/ticket-transfers/<int:transfer_id>'], type='http', auth='user', website=True)
+    def portal_fueltoken_company_ticket_transfer_detail(self, transfer_id, **kwargs):
+        distributor = self._get_portal_distributor()
+        wallet = self._get_company_wallet(distributor)
+        if not wallet:
+            raise NotFound()
+        transfer = request.env['acpec.fuel.ticket.transfer'].sudo().search([
+            ('id', '=', transfer_id),
+            ('source_wallet_id', '=', wallet.id),
+        ], limit=1)
+        if not transfer:
+            raise NotFound()
+        return self._portal_render('acpec_fueltoken_company_portal.portal_fueltoken_company_ticket_transfer_detail', {
+            'page_name': 'fueltoken_company_ticket_transfers',
             'distributor': distributor,
             'commercial_partner': distributor.partner_id,
             'portal_company': distributor.company_id,

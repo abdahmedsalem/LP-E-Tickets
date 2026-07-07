@@ -150,7 +150,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             'debug_reason': debug_reason,
         }
 
-    @http.route('/api/acpec/fueltoken/v1/station/profile', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/station/profile', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def profile(self, **kwargs):
         try:
             station, user = self._station_user()
@@ -160,7 +160,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/station/qr/check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/station/qr/check', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def check_qr(self, **kwargs):
         try:
             station, user = self._station_user()
@@ -210,7 +210,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/station/qr/use', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/station/qr/use', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def use_qr(self, **kwargs):
         try:
             with self._sensitive_action_transaction(kwargs, purpose='station_qr_use') as user:
@@ -265,7 +265,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/station/transactions', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/station/transactions', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def station_transactions(self, **kwargs):
         try:
             station, user = self._station_user()

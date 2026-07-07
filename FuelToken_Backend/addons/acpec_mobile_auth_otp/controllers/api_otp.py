@@ -14,7 +14,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
             return 'reset'
         return purpose or 'login'
 
-    @http.route('/api/acpec/mobile_auth/v1/request-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/request-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def request_otp(self, **kwargs):
         started_at = self._public_auth_started_at()
         try:
@@ -99,7 +99,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 started_at=started_at,
             )
 
-    @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def verify_otp(self, **kwargs):
         started_at = self._public_auth_started_at()
         try:

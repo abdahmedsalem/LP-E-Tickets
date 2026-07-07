@@ -150,10 +150,11 @@ class TestTicketTransferRuntimePolicy(TransactionCase):
                 "face_line_id": face_line.id,
                 "qty_tickets": qty,
             }],
-            "note": note,
             "action_code": "1234",
             "idempotency_key": key,
         }
+        if note is not None:
+            payload["note"] = note
         payload.update(extra)
         return payload
 
@@ -313,6 +314,23 @@ class TestTicketTransferRuntimePolicy(TransactionCase):
         self._assert_error_contains(second, "idempotency_conflict")
         transfers = self._transfer_by_key(source_wallet, key)
         self.assertEqual(len(transfers), 1)
+
+    def test_transfer_tickets_accepts_missing_optional_note(self):
+        (
+            controller, _source_user, _source_login, _recipient_user, recipient_login,
+            _session, _carnet_type, _purchase, face_line, source_wallet, _dest_wallet,
+        ) = self._controller_with_ticket_transfer_fixture(25008)
+        key = "ticket-transfer-no-note-i2"
+        response = self._call_transfer_tickets(
+            controller,
+            self._payload(recipient_login, face_line, key=key, note=None, qty=2),
+        )
+
+        self.assertIn("True", repr(response))
+        transfer = self._transfer_by_key(source_wallet, key)
+        self.assertEqual(len(transfer), 1)
+        self.assertEqual(transfer.state, "confirmed")
+        self.assertFalse(transfer.note)
 
     def test_transfer_tickets_requires_trusted_device(self):
         (

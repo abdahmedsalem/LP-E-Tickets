@@ -7,7 +7,7 @@ from .api_common import AcpecMobileAuthApiCommon, MobileSessionClosedError
 
 class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
 
-    @http.route('/api/acpec/mobile_auth/v1/session-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/session-check', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def session_check(self, **kwargs):
         try:
             session = self._get_mobile_session(required=False)
@@ -22,7 +22,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/me', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/me', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def me(self, **kwargs):
         try:
             session = self._get_mobile_session(required=True)
@@ -30,7 +30,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/confirm-pin', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/confirm-pin', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def confirm_pin(self, **kwargs):
         try:
             self._require_sensitive_action_pin(
@@ -47,7 +47,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
                 endpoint='/api/acpec/mobile_auth/v1/confirm-pin',
             )
 
-    @http.route('/api/acpec/mobile_auth/v1/refresh', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/refresh', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def refresh(self, **kwargs):
         try:
             refresh_token = self._get_refresh_token(kwargs)
@@ -69,7 +69,7 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/logout', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def logout(self, **kwargs):
         try:
             session = self._get_mobile_session(required=False)

@@ -8,7 +8,7 @@ from .api_common import AcpecMobileAuthApiCommon
 
 class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
 
-    @http.route('/api/acpec/mobile_auth/v1/admin/account-requests', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/admin/account-requests', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_account_requests(self, **kwargs):
         try:
             user = self._mobile_manager_guard()
@@ -48,7 +48,7 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/admin/account-requests/<int:request_id>/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/admin/account-requests/<int:request_id>/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_approve_account_request(self, request_id, **kwargs):
         try:
             user = self._mobile_manager_guard()
@@ -70,7 +70,7 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/admin/account-requests/<int:request_id>/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/mobile_auth/v1/admin/account-requests/<int:request_id>/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def admin_reject_account_request(self, request_id, **kwargs):
         try:
             user = self._mobile_manager_guard()

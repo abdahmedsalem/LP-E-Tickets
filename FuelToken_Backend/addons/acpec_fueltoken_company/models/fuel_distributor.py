@@ -580,6 +580,103 @@ class AcpecFuelDistributor(models.Model):
         })
         return transfer
 
+    def _prepare_ticket_transfer_line_vals(self, lines):
+        self.ensure_one()
+        if not lines:
+            raise ValidationError(_('Au moins une ligne de transfert de tickets est requise.'))
+
+        line_vals = []
+        seen_face_line_ids = set()
+        FaceLine = self.env['acpec.fuel.face.line'].sudo()
+        company_wallet = self._get_company_wallet(create=True)
+        now = fields.Datetime.now()
+
+        for item in lines:
+            face_line_id = int(item.get('face_line_id') or item.get('source_face_line_id') or 0)
+            qty_tickets = int(item.get('qty_tickets') or item.get('qty_faces') or 0)
+            if face_line_id <= 0:
+                raise ValidationError(_("Paramètre 'face_line_id' invalide ou manquant."))
+            if qty_tickets <= 0:
+                raise ValidationError(_("Paramètre 'qty_tickets' doit être un entier positif."))
+            if face_line_id in seen_face_line_ids:
+                raise ValidationError(_('Un même carnet ne peut pas apparaître plusieurs fois dans un transfert de tickets.'))
+            seen_face_line_ids.add(face_line_id)
+
+            face_line = FaceLine.browse(face_line_id).exists()
+            if not face_line:
+                raise ValidationError(_('Carnet source introuvable: %s.') % face_line_id)
+            if face_line.wallet_id != company_wallet:
+                raise ValidationError(_(
+                    "La ligne '%s' n’appartient pas au wallet du Compte Société."
+                ) % (face_line.carnet_short_code or face_line.carnet_no or face_line.id))
+            if face_line.company_id != self.company_id:
+                raise ValidationError(_('La ligne source doit appartenir à la même société que le Compte Société.'))
+            if face_line.expires_at and face_line.expires_at <= now:
+                raise ValidationError(_(
+                    "La ligne '%s' est expirée et ne peut pas être transférée."
+                ) % (face_line.carnet_short_code or face_line.carnet_no or face_line.id))
+            if face_line.qty_available < qty_tickets:
+                raise ValidationError(_(
+                    "Tickets disponibles insuffisants pour '%s' : %d disponibles, %d demandés."
+                ) % (
+                    face_line.carnet_short_code or face_line.carnet_no or face_line.id,
+                    face_line.qty_available,
+                    qty_tickets,
+                ))
+
+            line_vals.append({
+                'source_face_line_id': face_line.id,
+                'qty_faces': qty_tickets,
+            })
+
+        return line_vals
+
+    def action_transfer_tickets_to_member(self, member_partner, lines, note=False, idempotency_key=False, confirm=True, operator_user=None):
+        self.ensure_one()
+        operator_user = operator_user or self.env.user
+        member_partner = self.env['res.partner'].sudo().browse(
+            member_partner.id if hasattr(member_partner, 'id') else int(member_partner or 0)
+        ).exists()
+        if not member_partner:
+            raise ValidationError(_('Membre destinataire introuvable.'))
+
+        self._check_can_distribute_to_member(member_partner)
+        company_wallet = self._get_company_wallet(create=True)
+        member_wallet = self._get_member_wallet(member_partner, create=True)
+
+        if idempotency_key:
+            existing = self.env['acpec.fuel.ticket.transfer'].sudo().search([
+                ('source_wallet_id', '=', company_wallet.id),
+                ('idempotency_key', '=', idempotency_key),
+            ], limit=1)
+            if existing:
+                if confirm and existing.state == 'draft':
+                    existing.action_confirm(actor_user=operator_user)
+                return existing
+
+        transfer_line_vals = self._prepare_ticket_transfer_line_vals(lines)
+        transfer = self.env['acpec.fuel.ticket.transfer'].sudo().with_context(
+            allow_fuel_ticket_transfer_create=True,
+        ).create({
+            'source_wallet_id': company_wallet.id,
+            'dest_wallet_id': member_wallet.id,
+            'company_id': self.company_id.id,
+            'note': note or False,
+            'idempotency_key': idempotency_key or False,
+            'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
+        })
+        if confirm:
+            transfer.action_confirm(actor_user=operator_user)
+
+        self.message_post(body=_(
+            'Transfert de tickets société vers %(member)s: %(transfer)s, %(qty)s tickets.'
+        ) % {
+            'member': member_partner.display_name,
+            'transfer': transfer.name,
+            'qty': transfer.face_qty_total,
+        })
+        return transfer
+
     def action_distribute_bulk(self, distribution_lines, idempotency_key=False, operator_user=None):
         """Backend helper for later bulk distribution from the webclient.
 

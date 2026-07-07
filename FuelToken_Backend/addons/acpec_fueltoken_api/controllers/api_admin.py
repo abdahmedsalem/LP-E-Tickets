@@ -226,7 +226,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             'trusted_by': device.trusted_by.name if device.trusted_by else False,
         }
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def carnet_type_list(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -236,7 +236,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def carnet_type_create(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -246,7 +246,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def carnet_type_update(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -256,7 +256,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/carnet-types/delete', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def carnet_type_delete(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -266,7 +266,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/pending', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/pending', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def purchases_pending(self, **kwargs):
         try:
             user = self._admin_user()
@@ -290,7 +290,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/detail', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def purchase_detail(self, **kwargs):
         try:
             user = self._admin_user()
@@ -303,7 +303,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def purchase_approve(self, **kwargs):
         try:
             with self._sensitive_action_transaction(kwargs, purpose='purchase_approve') as user:
@@ -338,7 +338,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/purchases/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/purchases/reject', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def purchase_reject(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -348,7 +348,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def stations_list(self, **kwargs):
         try:
             user = self._admin_user()
@@ -361,7 +361,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             return self._handle_exception_response(exc)
 
 
-    @http.route('/api/acpec/fueltoken/v1/admin/devices/pending-trust', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/devices/pending-trust', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def devices_pending_trust(self, **kwargs):
         try:
             user = self._admin_user()
@@ -389,7 +389,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/devices/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/devices/approve', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def device_approve_pending_trust(self, **kwargs):
         try:
             with self._sensitive_action_transaction(kwargs, purpose='device_approve_pending_trust') as user:
@@ -427,7 +427,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/create', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def station_create(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -437,7 +437,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/update', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def station_update(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -447,7 +447,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/stations/disable', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/stations/disable', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def station_disable(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.
@@ -457,7 +457,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/fueltoken/v1/admin/reports/summary', type='jsonrpc', auth='public', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/acpec/fueltoken/v1/admin/reports/summary', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def reports_summary(self, **kwargs):
         try:
             # patch43H0C: le manager mobile est un valideur positif limité.

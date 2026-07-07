@@ -471,13 +471,10 @@ class AcpecMobileSession(models.Model):
                 'first_seen_at': now,
                 'last_seen_at': now,
             }
-            legacy_source = self._latest_session_trust_source_for_login(user, device_uid)
-            if legacy_source and legacy_source.device_trust_state == 'trusted':
-                create_vals.update({
-                    'trust_state': 'trusted',
-                    'trusted_at': legacy_source.device_trusted_at or now,
-                    'trust_note': legacy_source.device_trust_note or False,
-                })
+            # Patch43M20: a newly created durable device must never inherit
+            # trusted status from legacy session history.  A copied device_uid
+            # must still go through BO/manager approval.  Legacy blocked remains
+            # fail-closed in _assert_device_uid_can_open_session above.
             return Device.create(create_vals)
 
         if not device.active:

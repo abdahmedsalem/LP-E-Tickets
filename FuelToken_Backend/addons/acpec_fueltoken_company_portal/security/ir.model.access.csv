@@ -8,3 +8,5 @@ access_fuel_purchase_company_portal,acpec.fuel.purchase.company.portal,acpec_fue
 access_fuel_purchase_line_company_portal,acpec.fuel.purchase.line.company.portal,acpec_fueltoken_purchase.model_acpec_fuel_purchase_line,base.group_portal,1,0,0,0
 access_fuel_carnet_transfer_company_portal,acpec.fuel.carnet.transfer.company.portal,acpec_fueltoken_core.model_acpec_fuel_carnet_transfer,base.group_portal,1,0,0,0
 access_fuel_carnet_transfer_line_company_portal,acpec.fuel.carnet.transfer.line.company.portal,acpec_fueltoken_core.model_acpec_fuel_carnet_transfer_line,base.group_portal,1,0,0,0
+access_fuel_ticket_transfer_company_portal,acpec.fuel.ticket.transfer.company.portal,acpec_fueltoken_core.model_acpec_fuel_ticket_transfer,base.group_portal,1,0,0,0
+access_fuel_ticket_transfer_line_company_portal,acpec.fuel.ticket.transfer.line.company.portal,acpec_fueltoken_core.model_acpec_fuel_ticket_transfer_line,base.group_portal,1,0,0,0
