@@ -645,13 +645,15 @@ class _HeroQrCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _QrNumericCodePanel(
-            code: qrManualCode,
-            isActive: isActive,
-            revealing: revealingManualCode,
-            onReveal: isActive ? onRevealManualCode : null,
-          ),
-          const SizedBox(height: 14),
+          if (isActive) ...[
+            _QrNumericCodePanel(
+              code: qrManualCode,
+              isActive: isActive,
+              revealing: revealingManualCode,
+              onReveal: onRevealManualCode,
+            ),
+            const SizedBox(height: 14),
+          ],
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -879,12 +881,12 @@ class _CompositionLineRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
                     _title(),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 14.2,

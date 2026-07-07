@@ -40,6 +40,7 @@ class _QrListScreenState extends State<QrListScreen> {
     ('Actifs', QrState.active),
     ('Bloqués', QrState.blocked),
     ('Consommés', QrState.consumed),
+    ('Expirés', QrState.expired),
   ];
 
   late final VoidCallback _qrBusListener;
@@ -47,6 +48,7 @@ class _QrListScreenState extends State<QrListScreen> {
   @override
   void initState() {
     super.initState();
+    _filterState = QrState.active;
     _qrBusListener = () {
       if (mounted && AppEnvironment.useAcpecLiveData) {
         _refreshLive(force: true);
@@ -201,20 +203,27 @@ class _QrListScreenState extends State<QrListScreen> {
               totalCount: qrs.length,
               onSelected: _onSelectTab,
             ),
-            child: _liveLoading && qrs.isEmpty
+            child: _liveLoading
                 ? const _QrLoadingSkeleton()
                 : qrs.isEmpty
                 ? _QrEmptyState(
                     icon: _liveError != null
                         ? Icons.cloud_off_outlined
-                        : Icons.qr_code_2,
+                        : Icons.filter_alt_off_rounded,
                     title: _liveError != null
                         ? 'Erreur de chargement'
-                        : 'Aucun QR',
+                        : (_filterState == null
+                              ? 'Aucun QR'
+                              : 'Aucun résultat'),
                     message: _liveError != null
                         ? _liveError!
-                        : 'Aucun QR ne correspond a ce filtre.',
+                        : (_filterState == null
+                              ? 'Aucun QR n’est disponible pour le moment.'
+                              : 'Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.'),
                     onRefresh: () => _refreshLive(force: true),
+                    onClearFilter: _filterState == null
+                        ? null
+                        : () => _onSelectTab(null),
                   )
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -290,6 +299,7 @@ class _QrEmptyState extends StatelessWidget {
   const _QrEmptyState({
     required this.message,
     required this.onRefresh,
+    this.onClearFilter,
     this.icon = Icons.qr_code_2,
     this.title = 'Aucun QR',
   });
@@ -298,6 +308,7 @@ class _QrEmptyState extends StatelessWidget {
   final String title;
   final String message;
   final Future<void> Function() onRefresh;
+  final VoidCallback? onClearFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -311,10 +322,23 @@ class _QrEmptyState extends StatelessWidget {
             icon: icon,
             title: title,
             message: message,
-            action: FilledButton.tonalIcon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Actualiser'),
+            action: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Actualiser'),
+                ),
+                if (onClearFilter != null) ...[
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: onClearFilter,
+                    icon: const Icon(Icons.layers_clear_rounded),
+                    label: const Text('Voir tous les QR'),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

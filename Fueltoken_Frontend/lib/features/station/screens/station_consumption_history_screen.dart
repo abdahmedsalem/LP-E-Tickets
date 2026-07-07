@@ -801,6 +801,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
         : tx.userName.trim();
 
     return AppCard(
+      onTap: () => setState(() => _expanded = !_expanded),
       padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -868,14 +869,10 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
           ),
           const SizedBox(height: 8),
           Center(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Icon(
-                Icons.expand_more_rounded,
-                size: 22,
-                color: AppColors.muted,
-              ),
+            child: Icon(
+              Icons.expand_more_rounded,
+              size: 22,
+              color: AppColors.muted,
             ),
           ),
           AnimatedSize(

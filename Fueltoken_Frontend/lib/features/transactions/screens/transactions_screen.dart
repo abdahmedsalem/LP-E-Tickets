@@ -555,10 +555,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
         final groups = _groupByDay(txs);
 
-        if (acpec &&
-            _acpecLoading &&
-            _acpecItems.isEmpty &&
-            _acpecError == null) {
+        if (acpec && _acpecLoading && _acpecError == null) {
           return Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(
