@@ -573,6 +573,12 @@ class _HeroQrCard extends StatelessWidget {
     final isActive = qr.state == QrState.active;
     final showBadge = qr.state != QrState.active;
     final qrManualCode = manualCode?.trim() ?? '';
+    final qrColor = switch (qr.state) {
+      QrState.active => AppColors.ink,
+      QrState.consumed => AppColors.muted,
+      QrState.expired => AppColors.brandRed,
+      QrState.blocked => AppColors.warning,
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
       child: Column(
@@ -590,26 +596,18 @@ class _HeroQrCard extends StatelessWidget {
                 alignment: Alignment.center,
                 clipBehavior: Clip.none,
                 children: [
-                  ColorFiltered(
-                    colorFilter: isActive
-                        ? const ColorFilter.mode(
-                            Colors.transparent,
-                            BlendMode.dst,
-                          )
-                        : ColorFilter.matrix(_grayscale),
-                    child: QrImageView(
-                      data: qr.publicCode,
-                      version: QrVersions.auto,
-                      size: 172,
-                      backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: AppColors.ink,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: AppColors.ink,
-                      ),
+                  QrImageView(
+                    data: qr.publicCode,
+                    version: QrVersions.auto,
+                    size: 172,
+                    backgroundColor: Colors.white,
+                    eyeStyle: QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: qrColor,
+                    ),
+                    dataModuleStyle: QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: qrColor,
                     ),
                   ),
                   if (showBadge)
@@ -691,28 +689,6 @@ class _HeroQrCard extends StatelessWidget {
     );
   }
 
-  static const List<double> _grayscale = [
-    0.33,
-    0.33,
-    0.33,
-    0,
-    0,
-    0.33,
-    0.33,
-    0.33,
-    0,
-    0,
-    0.33,
-    0.33,
-    0.33,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-  ];
 }
 
 class _QrNumericCodePanel extends StatelessWidget {
