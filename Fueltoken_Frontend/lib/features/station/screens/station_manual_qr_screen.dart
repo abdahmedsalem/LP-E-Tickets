@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/config/odoo_fueltoken_rpc_config.dart';
+import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
+import '../../../data/models/station_qr_check_result.dart';
+import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
+import '../../../data/services/sensitive_action_intent.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -108,6 +112,159 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     );
   }
 
+  Object? _payloadAny(Map<String, dynamic>? payload, List<String> keys) {
+    if (payload == null) return null;
+    for (final key in keys) {
+      if (payload.containsKey(key)) return payload[key];
+    }
+    return null;
+  }
+
+  String? _payloadString(Map<String, dynamic>? payload, List<String> keys) {
+    final value = _payloadAny(payload, keys);
+    if (value == null || value == false) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  DateTime? _payloadDateTime(Map<String, dynamic>? payload, List<String> keys) {
+    final value = _payloadAny(payload, keys);
+    if (value is DateTime) return value;
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value.trim());
+    }
+    return null;
+  }
+
+  String _formatManualDateTime(DateTime value) {
+    final local = value.toLocal();
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  String _formatManualAmount(Object? value) {
+    if (value == null || value == false) return 'Non renseigné';
+    if (value is num) {
+      final rounded = value.roundToDouble() == value
+          ? value.toStringAsFixed(0)
+          : value.toStringAsFixed(2);
+      return '$rounded MRU';
+    }
+    final text = value.toString().trim();
+    return text.isEmpty ? 'Non renseigné' : text;
+  }
+
+  void _invalidateStationConsumptionCaches(String routeId) {
+    final detailParams = AcpecQrMapper.detailParamsForRouteId(routeId);
+    AcpecFueltokenRpcCoordinator.shared.invalidate(
+      OdooFueltokenRpcConfig.qrDetail,
+      detailParams,
+    );
+    for (final params in [
+      const <String, dynamic>{},
+      const <String, dynamic>{'state': 'active'},
+      const <String, dynamic>{'state': 'blocked'},
+      const <String, dynamic>{'state': 'consumed'},
+    ]) {
+      AcpecFueltokenRpcCoordinator.shared.invalidate(
+        OdooFueltokenRpcConfig.qrList,
+        params,
+      );
+    }
+    AcpecFueltokenRpcCoordinator.shared.invalidate(
+      OdooFueltokenRpcConfig.transactions,
+      null,
+    );
+    AcpecFueltokenRpcCoordinator.shared.invalidate(
+      OdooFueltokenRpcConfig.stationTransactions,
+      null,
+    );
+    AcpecFueltokenRpcCoordinator.shared.invalidate(
+      OdooFueltokenRpcConfig.walletCurrent,
+      Map<String, dynamic>.from(
+        OdooFueltokenRpcConfig.walletCurrentDefaultParams,
+      ),
+    );
+  }
+
+  Future<void> _showManualSuccessDialog({
+    required String amount,
+    required DateTime consumedAt,
+    required String transactionName,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: const Text(
+            'QR consommé avec succès',
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ManualSuccessInfoLine(label: 'Montant', value: amount),
+              const SizedBox(height: 8),
+              _ManualSuccessInfoLine(
+                label: 'Date/heure',
+                value: _formatManualDateTime(consumedAt),
+              ),
+              const SizedBox(height: 8),
+              _ManualSuccessInfoLine(
+                label: 'N° transaction',
+                value: transactionName,
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+              ),
+              child: const Text('Terminer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showManualFailureDialog({
+    required String title,
+    required String message,
+    required String actionLabel,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: Text(title, textAlign: TextAlign.center),
+          content: Text(message, textAlign: TextAlign.center),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(actionLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _checkManualCode() async {
     final code = _numericCode;
     if (code.isEmpty) {
@@ -124,14 +281,48 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
 
     try {
       final raw = await OdooFueltokenFacade().stationQrCheck(_payloadFor(code));
+      final result = StationQrCheckResult.fromRpc(raw);
       if (!mounted) return;
+
+      if (!result.canConsume) {
+        await _showManualFailureDialog(
+          title: 'QR non consommable',
+          message:
+              result.reason ??
+              'Le serveur indique que ce QR n’est pas consommable.',
+          actionLabel: 'Retour à l’accueil',
+        );
+        if (mounted) context.go('/station/home');
+        return;
+      }
+
+      final data = _dataMap(raw);
+      data['can_consume'] = true;
+      if (result.publicCode != null) {
+        data.putIfAbsent('public_code', () => result.publicCode);
+      }
+      if (result.clientName != null) {
+        data.putIfAbsent('client_name', () => result.clientName);
+      }
+      if (result.totalAmount != null) {
+        data.putIfAbsent('amount_total', () => result.totalAmount);
+      }
+
       setState(() {
-        _checkData = _dataMap(raw);
+        _checkData = data;
         _checkedNumericCode = code;
       });
     } catch (e) {
       if (!mounted) return;
-      _showSnack(_errorMessage(e), error: true);
+      // Panne réseau/serveur : le QR n’est pas jugé. L’opérateur reste sur
+      // la saisie pour réessayer sans retaper les 12 chiffres.
+      final technical = ErrorPresenter.isBackendUnavailable(e);
+      await _showManualFailureDialog(
+        title: technical ? 'Vérification impossible' : 'QR non consommable',
+        message: _errorMessage(e),
+        actionLabel: technical ? 'Retour à la saisie' : 'Retour à l’accueil',
+      );
+      if (mounted && !technical) context.go('/station/home');
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -145,10 +336,14 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     }
     if (!_boolAny(_checkData, const ['can_consume', 'canConsume'])) {
       final reason = _stringAny(_checkData, const ['reason', 'message']);
-      _showSnack(
-        reason.isEmpty ? 'Ce code QR n’est pas consommable.' : reason,
-        error: true,
+      await _showManualFailureDialog(
+        title: 'QR non consommable',
+        message: reason.isEmpty
+            ? 'Le serveur indique que ce QR n’est pas consommable.'
+            : reason,
+        actionLabel: 'Retour à l’accueil',
       );
+      if (mounted) context.go('/station/home');
       return;
     }
     if (_checking || _consuming) return;
@@ -163,18 +358,51 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
         description: 'Saisissez votre PIN station pour consommer ce code QR.',
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
-      final payload = <String, dynamic>{
-        ..._payloadFor(code),
-        'action_code': actionCode,
-        'idempotency_key': const Uuid().v4(),
-      };
-      final raw = await OdooFueltokenFacade().stationQrUse(payload);
-      acpecRpcMapOrThrow(
+      final intent = SensitiveActionIntent.create('station-qr-use');
+      final raw = await OdooFueltokenFacade().stationQrUse(
+        intent.withAuthParams(_payloadFor(code), actionCode: actionCode),
+      );
+      final guarded = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Consommation QR refusée par le serveur.',
         publicErrorMessage:
             'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
       );
+
+      final amount = _formatManualAmount(
+        _payloadAny(guarded, const ['amount_total', 'amountTotal']),
+      );
+      final transactionName =
+          _payloadString(guarded, const [
+            'transaction_name',
+            'transactionName',
+          ]) ??
+          'Non renseigné';
+      final consumedAt =
+          _payloadDateTime(guarded, const [
+            'consumed_at',
+            'consumedAt',
+            'transaction_created_at',
+            'transactionCreatedAt',
+            'created_at',
+            'createdAt',
+          ]) ??
+          DateTime.now();
+      final invalidationRouteId =
+          _payloadString(guarded, const [
+            'qr_public_code',
+            'public_code',
+            'publicCode',
+          ]) ??
+          _stringAny(_checkData, const [
+            'qr_public_code',
+            'public_code',
+            'publicCode',
+          ]);
+      _invalidateStationConsumptionCaches(
+        invalidationRouteId.isEmpty ? code : invalidationRouteId,
+      );
+
       ClientHistoryRefreshBus.instance.bump();
       WalletRefreshBus.instance.bump();
 
@@ -184,11 +412,22 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
         _checkedNumericCode = null;
         _codeController.clear();
       });
-      _showSnack('QR consommé avec succès.');
-      context.go('/station/journal');
+      await _showManualSuccessDialog(
+        amount: amount,
+        consumedAt: consumedAt,
+        transactionName: transactionName,
+      );
+      if (mounted) context.go('/station/home');
     } catch (e) {
       if (!mounted) return;
-      _showSnack(_sensitiveActionErrorMessage(e), error: true);
+      final technical = ErrorPresenter.isBackendUnavailable(e);
+      await _showManualFailureDialog(
+        title: technical ? 'Consommation non confirmée' : 'Opération refusée',
+        message: technical
+            ? _unconfirmedConsumptionMessage
+            : _sensitiveActionErrorMessage(e),
+        actionLabel: 'Retour à la saisie',
+      );
     } finally {
       if (mounted) setState(() => _consuming = false);
     }
@@ -208,11 +447,14 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       'publicCode',
       'qr_public_code',
     ]);
-    final owner = _stringAny(data, const ['partner_name', 'owner_name']);
+    final owner = _stringAny(data, const [
+      'client_name',
+      'partner_name',
+      'owner_name',
+    ]);
     final state = _stringAny(data, const ['state', 'qr_state']);
     final amount = _stringAny(data, const ['amount_total', 'amountTotal']);
     final qty = _stringAny(data, const ['face_qty_total', 'qty_total']);
-    final reason = _stringAny(data, const ['reason', 'message']);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -254,20 +496,67 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
               onCheck: _checkManualCode,
             ),
             const SizedBox(height: 18),
-            if (data != null)
+            if (data != null && canConsume)
               _CheckResultCard(
                 publicCode: publicCode,
                 owner: owner,
                 state: state,
                 amount: amount,
                 qty: qty,
-                reason: reason,
-                canConsume: canConsume,
                 consuming: _consuming,
                 onConsume: _consumeManualCode,
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ManualSuccessInfoLine extends StatelessWidget {
+  const _ManualSuccessInfoLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 104,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -391,8 +680,6 @@ class _CheckResultCard extends StatelessWidget {
     required this.state,
     required this.amount,
     required this.qty,
-    required this.reason,
-    required this.canConsume,
     required this.consuming,
     required this.onConsume,
   });
@@ -402,17 +689,13 @@ class _CheckResultCard extends StatelessWidget {
   final String state;
   final String amount;
   final String qty;
-  final String reason;
-  final bool canConsume;
   final bool consuming;
   final VoidCallback onConsume;
 
   @override
   Widget build(BuildContext context) {
-    final statusText = canConsume ? 'Consommable' : 'Non consommable';
-    final statusColor = canConsume
-        ? AppColors.leaderGreen
-        : Colors.red.shade700;
+    const statusText = 'Consommable';
+    final statusColor = AppColors.leaderGreen;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -446,12 +729,11 @@ class _CheckResultCard extends StatelessWidget {
           _InfoRow(label: 'État', value: state.isEmpty ? '—' : state),
           _InfoRow(label: 'Montant', value: amount.isEmpty ? '—' : amount),
           _InfoRow(label: 'Tickets', value: qty.isEmpty ? '—' : qty),
-          if (reason.isNotEmpty) _InfoRow(label: 'Motif', value: reason),
           const SizedBox(height: 16),
           SizedBox(
             height: 54,
             child: ElevatedButton.icon(
-              onPressed: canConsume && !consuming ? onConsume : null,
+              onPressed: consuming ? null : onConsume,
               icon: consuming
                   ? const SizedBox(
                       width: 18,

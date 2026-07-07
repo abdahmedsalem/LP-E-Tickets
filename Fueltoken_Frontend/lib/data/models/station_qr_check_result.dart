@@ -69,7 +69,8 @@ class StationQrCheckResult extends Equatable {
       'partnerName',
       'buyer_name',
       'buyerName',
-      'name',
+      // 'name' volontairement exclu : c'est souvent le nom technique de
+      // l'enregistrement QR (ex. "QR-0042"), pas celui du client.
     ]);
     final clientPhone = _stringAny(m, const [
       'client_phone',

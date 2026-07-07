@@ -6,58 +6,55 @@ String _read(String path) => File(path).readAsStringSync();
 
 void main() {
   group('Patch2QB manual QR consumption result guard', () {
-    test('manual station QR use validates backend result before success', () {
-      final source = _read(
-        'lib/features/station/screens/station_manual_qr_screen.dart',
-      );
-
-      final useIndex = source.indexOf('stationQrUse(payload)');
-      final guardIndex = source.indexOf('acpecRpcMapOrThrow(', useIndex);
-      final bumpIndex = source.indexOf(
-        'ClientHistoryRefreshBus.instance.bump();',
-        useIndex,
-      );
-      final successIndex = source.indexOf(
-        "_showSnack('QR consommé avec succès.');",
-        useIndex,
-      );
-
-      expect(
-        source,
-        contains(
-          "import '../../../data/services/acpec_rpc_result_guard.dart';",
-        ),
-      );
-      expect(useIndex, greaterThanOrEqualTo(0));
-      expect(guardIndex, greaterThan(useIndex));
-      expect(bumpIndex, greaterThan(guardIndex));
-      expect(successIndex, greaterThan(guardIndex));
-
-      expect(source, contains('Consommation QR refusée par le serveur.'));
-      expect(
-        source,
-        contains(
-          'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
-        ),
-      );
-    });
-
     test(
-      'manual station QR no longer bumps or succeeds immediately after rpc call',
+      'manual station QR use validates backend result before final success dialog',
       () {
         final source = _read(
           'lib/features/station/screens/station_manual_qr_screen.dart',
         );
 
+        final useIndex = source.indexOf('OdooFueltokenFacade().stationQrUse(');
+        final guardIndex = source.indexOf(
+          'final guarded = acpecRpcMapOrThrow(',
+          useIndex,
+        );
+        final bumpIndex = source.indexOf(
+          'ClientHistoryRefreshBus.instance.bump();',
+          guardIndex,
+        );
+        final successIndex = source.indexOf(
+          'await _showManualSuccessDialog(',
+          bumpIndex,
+        );
+        final homeIndex = source.indexOf(
+          "context.go('/station/home')",
+          successIndex,
+        );
+
+        expect(useIndex, greaterThanOrEqualTo(0));
+        expect(guardIndex, greaterThan(useIndex));
+        expect(bumpIndex, greaterThan(guardIndex));
+        expect(successIndex, greaterThan(bumpIndex));
+        expect(homeIndex, greaterThan(successIndex));
+
         expect(
           source,
-          isNot(
-            contains(
-              'await OdooFueltokenFacade().stationQrUse(payload);\n'
-              '      ClientHistoryRefreshBus.instance.bump();',
-            ),
-          ),
+          contains("SensitiveActionIntent.create('station-qr-use')"),
         );
+        expect(source, contains('intent.withAuthParams'));
+        expect(source, isNot(contains("'idempotency_key': const Uuid().v4()")));
+        expect(source, contains('_invalidateStationConsumptionCaches('));
+
+        expect(source, contains('fallbackMessage:'));
+        expect(source, contains('publicErrorMessage:'));
+        expect(source, contains('transaction_name'));
+        expect(source, contains('N° transaction'));
+
+        expect(
+          source,
+          isNot(contains("_showSnack('QR consommé avec succès.')")),
+        );
+        expect(source, isNot(contains("context.go('/station/journal')")));
       },
     );
   });

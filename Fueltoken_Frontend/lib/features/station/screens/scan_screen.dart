@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -19,8 +18,6 @@ import '../../../data/models/station_qr_check_result.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart'
-    show OdooJsonRpcException;
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../shared/widgets/mini_qr.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -38,35 +35,160 @@ class ScanScreen extends StatefulWidget {
   State<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> {
+class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
+    detectionSpeed: DetectionSpeed.normal,
     torchEnabled: false,
+    autoStart: false,
   );
 
   bool _processing = false;
   bool _consuming = false;
+  bool _leavingAfterSuccess = false;
+  bool _startingScanner = false;
+  String? _cameraError;
+  String? _lastHandledCode;
+  DateTime? _lastHandledAt;
+  static const Duration _sameCodeCooldown = Duration(seconds: 3);
   final Set<String> _consumedThisSession = <String>{};
   static const String _unconfirmedConsumptionMessage =
       'Action non confirmée. Vérifiez l’historique avant de réessayer.';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_startScanner());
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Ne pas toucher à la caméra tant qu'une modale/consommation est en cours :
+    // le flux _restartScannerAfterModal s'en charge lui-même.
+    if (_processing || _consuming) return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        unawaited(_restartScannerAfterModal());
+      case AppLifecycleState.inactive:
+        unawaited(_stopScannerForModal());
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  Future<void> _startScanner() async {
+    if (!mounted || _startingScanner) return;
+
+    _startingScanner = true;
+    try {
+      await _controller.start();
+      if (mounted && _cameraError != null) {
+        setState(() => _cameraError = null);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _cameraError =
+              'Caméra indisponible. Vérifiez les autorisations puis réessayez.',
+        );
+      }
+    } finally {
+      _startingScanner = false;
+    }
+  }
+
+  Future<void> _stopScannerForModal() async {
+    if (!mounted) return;
+    try {
+      await _controller.stop();
+    } catch (_) {
+      // Scanner may already be stopped or not fully initialized.
+    }
+  }
+
+  Future<void> _restartScannerAfterModal() async {
+    if (!mounted) return;
+
+    try {
+      await _controller.stop();
+    } catch (_) {
+      // Scanner may already be stopped or not fully initialized.
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 140));
+    if (!mounted) return;
+
+    await _startScanner();
+  }
+
+  void _goStationHome() {
+    if (!mounted) return;
+
+    setState(() {
+      _processing = false;
+      _consuming = false;
+      _leavingAfterSuccess = false;
+    });
+    unawaited(_stopScannerForModal());
+    context.go('/station/home');
+  }
+
+  void _scheduleScannerStartWhenVisible() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_processing || _consuming || _leavingAfterSuccess) return;
+
+      final path = GoRouterState.of(context).uri.path;
+      if (path == '/station/scan') {
+        unawaited(_startScanner());
+      }
+    });
   }
 
   void _onDetect(BarcodeCapture capture) {
     unawaited(_handleDetect(capture));
   }
 
+  Barcode? _firstQrBarcode(BarcodeCapture capture) {
+    for (final barcode in capture.barcodes) {
+      if (barcode.format == BarcodeFormat.qrCode) return barcode;
+    }
+    return null;
+  }
+
   Future<void> _handleDetect(BarcodeCapture capture) async {
-    if (_processing || _consuming) return;
-    if (capture.barcodes.isEmpty) return;
-    final code = capture.barcodes.first.rawValue;
+    if (_leavingAfterSuccess || _processing || _consuming) return;
+
+    final barcode = _firstQrBarcode(capture);
+    if (barcode == null) return;
+
+    final code = barcode.rawValue;
     if (code == null) return;
+
     final trimmed = code.trim();
     if (trimmed.isEmpty) return;
+
+    final now = DateTime.now();
+    final codeKey = trimmed.toLowerCase();
+    if (_lastHandledCode == codeKey &&
+        _lastHandledAt != null &&
+        now.difference(_lastHandledAt!) < _sameCodeCooldown) {
+      return;
+    }
+    _lastHandledCode = codeKey;
+    _lastHandledAt = now;
+
     if (AppEnvironment.useAcpecLiveData) {
       await _checkQrAcpec(trimmed);
     } else {
@@ -76,32 +198,52 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _checkQrAcpec(String publicCode) async {
     final codeKey = publicCode.trim().toLowerCase();
+
     if (_consumedThisSession.contains(codeKey)) {
       if (!mounted) return;
-      await showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (ctx) => _StationQrCheckSheet(
-          publicCode: publicCode,
-          result: const StationQrCheckResult(
-            canConsume: false,
-            reason:
-                'Ce QR vient d’être consommé sur cette session et ne peut plus être scanné.',
-          ),
-        ),
-      );
+      setState(() => _processing = true);
+      await _stopScannerForModal();
+      if (!mounted) return;
+
+      try {
+        await _showFailureDialog(
+          title: 'QR non consommable',
+          message: 'QR déjà consommé. Ce QR ne peut plus être consommé.',
+          actionLabel: 'Retour à l’accueil',
+        );
+        if (mounted) _goStationHome();
+      } finally {
+        if (mounted && _processing) {
+          setState(() => _processing = false);
+        }
+      }
       return;
     }
 
     setState(() => _processing = true);
+    await _stopScannerForModal();
+    if (!mounted) return;
+
+    var consumeRequested = false;
     try {
       final raw = await OdooFueltokenFacade().stationQrCheck({
         'public_code': publicCode,
       });
       final result = StationQrCheckResult.fromRpc(raw);
       if (!mounted) return;
-      setState(() => _processing = false);
+
+      if (!result.canConsume) {
+        await _showFailureDialog(
+          title: 'QR non consommable',
+          message:
+              result.reason ??
+              'Le serveur indique que ce QR n’est pas consommable.',
+          actionLabel: 'Retour à l’accueil',
+        );
+        if (mounted) _goStationHome();
+        return;
+      }
+
       await showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -111,25 +253,45 @@ class _ScanScreenState extends State<ScanScreen> {
         builder: (ctx) => _StationQrCheckSheet(
           publicCode: publicCode,
           result: result,
-          onConfirmConsume: result.canConsume
-              ? () async {
-                  if (!ctx.mounted) return;
-                  Navigator.pop(ctx);
-                  if (mounted) await _consume(publicCode);
-                }
-              : null,
+          onConfirmConsume: () async {
+            if (!ctx.mounted) return;
+            consumeRequested = true;
+            Navigator.pop(ctx);
+            if (mounted) {
+              await _consume(publicCode);
+            }
+          },
         ),
       );
-    } on OdooJsonRpcException catch (e) {
-      if (mounted) {
-        await _showError(ErrorPresenter.message(e));
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (mounted && !consumeRequested && !_consuming) {
+        setState(() => _processing = false);
+        await _restartScannerAfterModal();
       }
     } catch (e) {
       if (mounted) {
-        await _showError(ErrorPresenter.message(e));
+        // Une panne réseau/serveur ne signifie pas que le QR est non
+        // consommable : ne pas induire l’opérateur en erreur.
+        final technical = ErrorPresenter.isBackendUnavailable(e);
+        await _showFailureDialog(
+          title: technical ? 'Vérification impossible' : 'QR non consommable',
+          message: ErrorPresenter.message(e),
+          actionLabel: technical ? 'Retour au scan' : 'Retour à l’accueil',
+        );
+        if (mounted) {
+          if (technical) {
+            setState(() => _processing = false);
+            await _restartScannerAfterModal();
+          } else {
+            _goStationHome();
+          }
+        }
       }
     } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted && _processing) {
+        setState(() => _processing = false);
+      }
     }
   }
 
@@ -138,7 +300,21 @@ class _ScanScreenState extends State<ScanScreen> {
     final trimmed = code.trim();
     if (trimmed.isEmpty) return;
     setState(() => _consuming = true);
-    final user = context.read<AuthBloc>().state.user!;
+    await _stopScannerForModal();
+    if (!mounted) return;
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) {
+      await _showFailureDialog(
+        title: 'Session expirée',
+        message: 'Votre session station a expiré. Reconnectez-vous.',
+        actionLabel: 'Se reconnecter',
+      );
+      if (mounted) {
+        setState(() => _consuming = false);
+        context.read<AuthBloc>().add(const AuthSessionExpiredRequested());
+      }
+      return;
+    }
     try {
       if (!AppEnvironment.useAcpecLiveData) {
         throw Exception(
@@ -150,13 +326,14 @@ class _ScanScreenState extends State<ScanScreen> {
         title: 'Vérification du PIN',
         description: 'Saisissez votre PIN pour confirmer cette opération.',
       );
-      if (actionCode == null || actionCode.isEmpty || !mounted) return;
+      if (actionCode == null || actionCode.isEmpty) {
+        if (mounted) await _restartScannerAfterModal();
+        return;
+      }
+      if (!mounted) return;
       final intent = SensitiveActionIntent.create('station-qr-use');
       final raw = await OdooFueltokenFacade().stationQrUse(
-        intent.withAuthParams({
-          'public_code': trimmed,
-          'idempotency_key': const Uuid().v4(),
-        }, actionCode: actionCode),
+        intent.withAuthParams({'public_code': trimmed}, actionCode: actionCode),
       );
       final guarded = acpecRpcMapOrThrow(
         raw,
@@ -171,6 +348,22 @@ class _ScanScreenState extends State<ScanScreen> {
         stationUserName: user.name,
         companyId: AppEnvironment.companyIdForUser(user),
       );
+      final transactionName =
+          _payloadString(guarded, const [
+            'transaction_name',
+            'transactionName',
+          ]) ??
+          'Non renseigné';
+      final consumedAt =
+          _payloadDateTime(guarded, const [
+            'consumed_at',
+            'consumedAt',
+            'transaction_created_at',
+            'transactionCreatedAt',
+            'created_at',
+            'createdAt',
+          ]) ??
+          DateTime.now();
       final detailParams = AcpecQrMapper.detailParamsForRouteId(trimmed);
       AcpecFueltokenRpcCoordinator.shared.invalidate(
         OdooFueltokenRpcConfig.qrDetail,
@@ -205,208 +398,270 @@ class _ScanScreenState extends State<ScanScreen> {
       ClientHistoryRefreshBus.instance.bump();
       _consumedThisSession.add(trimmed.toLowerCase());
       if (mounted) {
-        await _showSuccess(qr);
-        if (mounted) context.pop();
+        setState(() => _leavingAfterSuccess = true);
+        await _showSuccess(
+          qr,
+          transactionName: transactionName,
+          consumedAt: consumedAt,
+        );
+        if (mounted) _goStationHome();
       }
     } catch (err) {
       if (mounted) {
-        await _showError(
-          ErrorPresenter.isBackendUnavailable(err)
+        final technical = ErrorPresenter.isBackendUnavailable(err);
+        await _showFailureDialog(
+          title: technical ? 'Consommation non confirmée' : 'Opération refusée',
+          message: technical
               ? _unconfirmedConsumptionMessage
               : ErrorPresenter.message(err),
+          actionLabel: 'Retour au scan',
         );
+        if (mounted) await _restartScannerAfterModal();
       }
     } finally {
-      if (mounted) setState(() => _consuming = false);
+      if (mounted && !_leavingAfterSuccess) {
+        setState(() => _consuming = false);
+      }
     }
   }
 
-  Future<void> _showSuccess(QrToken qr) async {
+  String? _payloadString(Map<String, dynamic> payload, List<String> keys) {
+    for (final key in keys) {
+      final value = payload[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return null;
+  }
+
+  DateTime? _payloadDateTime(Map<String, dynamic> payload, List<String> keys) {
+    for (final key in keys) {
+      final value = payload[key];
+      if (value is DateTime) return value;
+      if (value is String && value.trim().isNotEmpty) {
+        final parsed = DateTime.tryParse(value.trim());
+        if (parsed != null) return parsed;
+      }
+    }
+    return null;
+  }
+
+  String _formatStationDateTime(DateTime value) {
+    final local = value.toLocal();
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  Future<void> _showSuccess(
+    QrToken qr, {
+    required String transactionName,
+    required DateTime consumedAt,
+  }) async {
     await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
         final scheme = Theme.of(ctx).colorScheme;
-        return Dialog(
-          backgroundColor: scheme.surface,
+        return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(22),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: scheme.outline.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Consommation validée',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  Formatters.shortPublicCode(qr.publicCode),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: MiniQR(
-                    data: qr.publicCode,
-                    state: qr.state,
-                    size: 132,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryTint,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.primarySoft),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            Formatters.numberFr(qr.totalAmount),
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryDeep,
-                              letterSpacing: -0.4,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            Formatters.defaultCurrency,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.primaryDark,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: scheme.primary,
-                      foregroundColor: scheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          title: const Text(
+            'QR consommé avec succès',
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SuccessInfoLine(
+                label: 'Montant',
+                value: Formatters.money(qr.totalAmount),
+              ),
+              const SizedBox(height: 8),
+              _SuccessInfoLine(
+                label: 'Date/heure',
+                value: _formatStationDateTime(consumedAt),
+              ),
+              const SizedBox(height: 8),
+              _SuccessInfoLine(label: 'N° transaction', value: transactionName),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+              ),
+              child: const Text('Terminer'),
             ),
-          ),
+          ],
         );
       },
     );
   }
 
-  Future<void> _showError(String msg) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.ink,
-      ),
+  Future<void> _showFailureDialog({
+    required String title,
+    required String message,
+    required String actionLabel,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: Text(title, textAlign: TextAlign.center),
+          content: Text(message, textAlign: TextAlign.center),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(actionLabel),
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    _scheduleScannerStartWhenVisible();
     final size = MediaQuery.sizeOf(context);
 
-    return Scaffold(
-      backgroundColor: _scanBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _ScanHeader(),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 6, 24, 18),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: (size.height * 0.40).clamp(260.0, 380.0),
-                    child: _ScanCameraCard(
-                      controller: _controller,
-                      onDetect: _onDetect,
+    return PopScope(
+      canPop: !_consuming,
+      child: Scaffold(
+        backgroundColor: _scanBackground,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ScanHeader(onBack: _consuming ? null : _goStationHome),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 6, 24, 18),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: (size.height * 0.40).clamp(260.0, 380.0),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          _ScanCameraCard(
+                            controller: _controller,
+                            onDetect: _onDetect,
+                          ),
+                          if (_cameraError != null)
+                            _CameraErrorCard(
+                              message: _cameraError!,
+                              onRetry: () => unawaited(_startScanner()),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+class _SuccessInfoLine extends StatelessWidget {
+  const _SuccessInfoLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 104,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ScanHeader extends StatelessWidget {
-  const _ScanHeader();
+  const _ScanHeader({required this.onBack});
+
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
+      padding: const EdgeInsets.fromLTRB(14, 12, 26, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Scanner QR Client',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              height: 1.04,
-              letterSpacing: -0.9,
-              color: _scanInk,
-            ),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Retour à l’accueil',
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back_rounded),
+                color: _scanInk,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Scanner QR Client',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    height: 1.04,
+                    letterSpacing: -0.9,
+                    color: _scanInk,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           ConstrainedBox(
@@ -482,6 +737,48 @@ class _ScanCameraCard extends StatelessWidget {
   }
 }
 
+class _CameraErrorCard extends StatelessWidget {
+  const _CameraErrorCard({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        color: Colors.white,
+        border: Border.all(color: _scanBorder),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.videocam_off_outlined, size: 44, color: _scanMuted),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+              color: _scanMuted,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Réactiver la caméra'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CornerFrame extends StatelessWidget {
   const _CornerFrame();
 
@@ -544,12 +841,12 @@ class _StationQrCheckSheet extends StatefulWidget {
   const _StationQrCheckSheet({
     required this.publicCode,
     required this.result,
-    this.onConfirmConsume,
+    required this.onConfirmConsume,
   });
 
   final String publicCode;
   final StationQrCheckResult result;
-  final Future<void> Function()? onConfirmConsume;
+  final Future<void> Function() onConfirmConsume;
 
   @override
   State<_StationQrCheckSheet> createState() => _StationQrCheckSheetState();
@@ -612,9 +909,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   Center(
                     child: MiniQR(
                       data: widget.publicCode,
-                      state: result.canConsume
-                          ? QrState.active
-                          : QrState.blocked,
+                      state: QrState.active,
                       size: 128,
                     ),
                   ),
@@ -633,44 +928,50 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 12),
                   _QrStatePill(
-                    label: result.canConsume
-                        ? 'Consommation autorisée'
-                        : 'Consommation bloquée',
-                    color: result.canConsume
-                        ? AppColors.success
-                        : AppColors.danger,
-                    subtitle: result.canConsume
-                        ? 'Vous pouvez enregistrer la consommation sur ce QR.'
-                        : 'Ce QR ne peut pas être consommé dans son état actuel.',
+                    label: 'Consommation autorisée',
+                    color: AppColors.success,
+                    icon: Icons.check_circle_outline,
+                    subtitle:
+                        'Vous pouvez enregistrer la consommation sur ce QR.',
                   ),
                   const SizedBox(height: 18),
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: _confirming
-                          ? null
-                          : () async {
-                              if (widget.onConfirmConsume == null) {
-                                Navigator.pop(context);
-                                return;
-                              }
-                              setState(() => _confirming = true);
-                              try {
-                                await widget.onConfirmConsume!.call();
-                              } finally {
-                                if (mounted) {
-                                  setState(() => _confirming = false);
-                                }
-                              }
-                            },
-                      child: Text(
-                        _confirming
-                            ? 'Validation…'
-                            : (widget.onConfirmConsume == null
-                                  ? 'Fermer'
-                                  : 'Envoyer'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: _confirming
+                                ? null
+                                : () => Navigator.pop(context),
+                            child: const Text('Annuler'),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: FilledButton(
+                            onPressed: _confirming
+                                ? null
+                                : () async {
+                                    setState(() => _confirming = true);
+                                    try {
+                                      await widget.onConfirmConsume.call();
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _confirming = false);
+                                      }
+                                    }
+                                  },
+                            child: Text(
+                              _confirming ? 'Validation…' : 'Continuer',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -687,11 +988,13 @@ class _QrStatePill extends StatelessWidget {
     required this.label,
     required this.color,
     required this.subtitle,
+    this.icon = Icons.check_circle_outline,
   });
 
   final String label;
   final Color color;
   final String subtitle;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -706,7 +1009,7 @@ class _QrStatePill extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.check_circle_outline, size: 22, color: color),
+          Icon(icon, size: 22, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
