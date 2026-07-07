@@ -1405,11 +1405,11 @@ Color _historyAmountColor(TxType type) {
     case TxType.carnetTransfer:
     case TxType.stationConsumption:
     case TxType.expiration:
-      return AppColors.danger;
-    case TxType.qrBlocked:
     case TxType.qrEmission:
     case TxType.qrSeparer:
     case TxType.qrRetirer:
+      return AppColors.danger;
+    case TxType.qrBlocked:
     case TxType.walletLedger:
       return AppColors.primary;
   }

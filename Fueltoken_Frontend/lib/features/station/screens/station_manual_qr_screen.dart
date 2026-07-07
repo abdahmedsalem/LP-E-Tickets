@@ -442,19 +442,12 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
 
     final data = _checkData;
     final canConsume = _boolAny(data, const ['can_consume', 'canConsume']);
-    final publicCode = _stringAny(data, const [
-      'public_code',
-      'publicCode',
-      'qr_public_code',
-    ]);
     final owner = _stringAny(data, const [
       'client_name',
       'partner_name',
       'owner_name',
     ]);
-    final state = _stringAny(data, const ['state', 'qr_state']);
     final amount = _stringAny(data, const ['amount_total', 'amountTotal']);
-    final qty = _stringAny(data, const ['face_qty_total', 'qty_total']);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -498,11 +491,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
             const SizedBox(height: 18),
             if (data != null && canConsume)
               _CheckResultCard(
-                publicCode: publicCode,
                 owner: owner,
-                state: state,
                 amount: amount,
-                qty: qty,
                 consuming: _consuming,
                 onConsume: _consumeManualCode,
               ),
@@ -675,20 +665,14 @@ class _ManualQrCodeInputFormatter extends TextInputFormatter {
 
 class _CheckResultCard extends StatelessWidget {
   const _CheckResultCard({
-    required this.publicCode,
     required this.owner,
-    required this.state,
     required this.amount,
-    required this.qty,
     required this.consuming,
     required this.onConsume,
   });
 
-  final String publicCode;
   final String owner;
-  final String state;
   final String amount;
-  final String qty;
   final bool consuming;
   final VoidCallback onConsume;
 
@@ -724,11 +708,8 @@ class _CheckResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _InfoRow(label: 'QR', value: publicCode.isEmpty ? '—' : publicCode),
           _InfoRow(label: 'Client', value: owner.isEmpty ? '—' : owner),
-          _InfoRow(label: 'État', value: state.isEmpty ? '—' : state),
           _InfoRow(label: 'Montant', value: amount.isEmpty ? '—' : amount),
-          _InfoRow(label: 'Tickets', value: qty.isEmpty ? '—' : qty),
           const SizedBox(height: 16),
           SizedBox(
             height: 54,

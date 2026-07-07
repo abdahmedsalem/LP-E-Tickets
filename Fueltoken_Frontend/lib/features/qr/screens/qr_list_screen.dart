@@ -15,6 +15,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/history_aligned_page_header.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -435,17 +436,18 @@ class _QrCompactListTile extends StatelessWidget {
                       children: [
                         StatusBadge.qr(_displayState),
                         const Spacer(),
-                        Text(
-                          Formatters.numberFr(qr.totalAmount),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        AmountInline(
+                          amount: qr.totalAmount,
                           textAlign: TextAlign.right,
-                          style: const TextStyle(
+                          valueStyle: const TextStyle(
                             fontSize: 14.5,
                             fontWeight: FontWeight.w800,
                             color: AppColors.primaryDeep,
-                            height: 1,
-                            letterSpacing: -0.2,
+                          ),
+                          unitStyle: const TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryDeep,
                           ),
                         ),
                       ],
