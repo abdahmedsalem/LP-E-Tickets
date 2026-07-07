@@ -110,6 +110,12 @@ class AppRouter {
           if (role == UserRole.admin && _isClientAppPath(loc)) {
             return '/admin';
           }
+          if (role == UserRole.station && loc == '/transactions') {
+            return '/station/journal';
+          }
+          if (role == UserRole.station && _isClientAppPath(loc)) {
+            return '/station/home';
+          }
           if (loc.startsWith('/settings') && role != UserRole.user) {
             return _homeFor(role);
           }
@@ -125,9 +131,6 @@ class AppRouter {
           if (loc == '/home' && role != UserRole.user) return _homeFor(role);
           if (loc == '/station' && role == UserRole.station) {
             return '/station/home';
-          }
-          if (role == UserRole.station && loc == '/transactions') {
-            return '/station/journal';
           }
         }
         return null;
