@@ -1955,6 +1955,17 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _require_fuel_group(self, user, expected):
         self._assert_mobile_only_user(user)
         if expected == 'client':
+            # Patch2S-B: client mobile-only endpoints must reject operational
+            # FuelToken roles even if a user is misconfigured with both
+            # group_fuel_user and station/manager/admin groups.
+            forbidden_client_role_xmlids = (
+                'acpec_fueltoken_base.group_fuel_station',
+                'acpec_fueltoken_base.group_fuel_manager',
+                'acpec_fueltoken_base.group_fuel_admin',
+            )
+            for xmlid in forbidden_client_role_xmlids:
+                if self._has_group_safe(user, xmlid):
+                    raise AccessError('Droits insuffisants pour cette opération.')
             if self._has_group_safe(user, 'acpec_fueltoken_base.group_fuel_user'):
                 return True
         elif expected == 'station':
