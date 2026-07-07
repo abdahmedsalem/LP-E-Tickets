@@ -355,7 +355,7 @@ class _QrCompactListTile extends StatelessWidget {
   String get _expirationLabel {
     final exp = _effectiveExpiration;
     if (exp == null) return 'Expiration non définie';
-    return 'Expire dès ${Formatters.dateTime(exp)}';
+    return 'Expire dès ${Formatters.dateTimeDash(exp)}';
   }
 
   String get _stateDateLabel {
@@ -363,7 +363,7 @@ class _QrCompactListTile extends StatelessWidget {
       case QrState.consumed:
         final consumed = qr.consumedAt;
         if (consumed != null) {
-          return 'Consommé le ${Formatters.dateTime(consumed)}';
+          return 'Consommé le ${Formatters.dateTimeDash(consumed)}';
         }
         return 'Consommé';
       case QrState.expired:
@@ -375,17 +375,6 @@ class _QrCompactListTile extends StatelessWidget {
       case QrState.active:
         return _expirationLabel;
     }
-  }
-
-  String get _referenceLabel {
-    final ref = (qr.internalRef ?? '').trim();
-    return ref.isEmpty ? 'Référence QR indisponible' : ref;
-  }
-
-  String get _quantityLabel {
-    final qty = qr.totalQty;
-    if (qty <= 0) return 'Aucun ticket';
-    return qty == 1 ? '1 ticket' : '$qty tickets';
   }
 
   void _openDetail(BuildContext context) {
@@ -440,7 +429,7 @@ class _QrCompactListTile extends StatelessWidget {
                           amount: qr.totalAmount,
                           textAlign: TextAlign.right,
                           valueStyle: const TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 14.2,
                             fontWeight: FontWeight.w800,
                             color: AppColors.primaryDeep,
                           ),
@@ -453,30 +442,6 @@ class _QrCompactListTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      _referenceLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _quantityLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.muted,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -484,10 +449,10 @@ class _QrCompactListTile extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                          height: 1.25,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.muted,
+                          height: 1.2,
                         ),
                       ),
                     ),
