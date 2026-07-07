@@ -778,31 +778,29 @@ class _StationHistoryTotalTile extends StatelessWidget {
 }
 
 
-class _StationHistoryRow extends StatelessWidget {
+class _StationHistoryRow extends StatefulWidget {
   const _StationHistoryRow({required this.transaction});
 
   final BusinessTransaction transaction;
 
   @override
+  State<_StationHistoryRow> createState() => _StationHistoryRowState();
+}
+
+class _StationHistoryRowState extends State<_StationHistoryRow> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final tx = transaction;
+    final tx = widget.transaction;
     final amount = tx.totalAmount.abs();
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
-    final qrTitle = tx.qrDisplayName;
     final clientLabel = tx.userName.trim().isEmpty
         ? 'Client inconnu'
         : tx.userName.trim();
 
     return AppCard(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => _StationConsumptionDetailScreen(
-            tx: tx,
-            amount: amount,
-          ),
-        ),
-      ),
       padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -811,7 +809,7 @@ class _StationHistoryRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  qrTitle,
+                  'Consommation en station',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -868,7 +866,109 @@ class _StationHistoryRow extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Center(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Icon(
+                Icons.expand_more_rounded,
+                size: 22,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _expanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: _StationConsumptionPanel(transaction: tx),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _StationConsumptionPanel extends StatelessWidget {
+  const _StationConsumptionPanel({required this.transaction});
+
+  final BusinessTransaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final tx = transaction;
+    final totalQty = tx.lines.fold<int>(0, (sum, line) => sum + line.qty);
+    final titleCode = tx.qrDisplayName;
+
+    return Container(
+      padding: EdgeInsets.zero,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _StationInfoRow(label: 'N° transaction', value: tx.txNumber),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _StationInfoRow(label: 'Code QR', value: titleCode),
+          const Divider(height: 1, thickness: 1, color: AppColors.line),
+          _StationInfoRow(label: 'Nombre de tickets consommés', value: '$totalQty'),
+        ],
+      ),
+    );
+  }
+}
+
+class _StationInfoRow extends StatelessWidget {
+  const _StationInfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 7,
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
