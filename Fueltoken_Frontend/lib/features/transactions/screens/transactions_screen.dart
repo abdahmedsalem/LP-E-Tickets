@@ -671,7 +671,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 if (user.role == UserRole.user) ...[
                   const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 26),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _ClientHistoryDateFilters(
                       fromLabel: _compactDate(_draftFrom),
                       toLabel: _compactDate(_draftTo),
@@ -1379,7 +1379,7 @@ String historyTxTitle(TxType type) {
     case TxType.qrRetirer:
       return 'Retrait du QR';
     case TxType.carnetTransfer:
-      return 'Carnets envoyés';
+      return 'Transfert';
     case TxType.carnetReceived:
       return 'Carnets reçus';
     case TxType.qrBlocked:
@@ -1454,7 +1454,7 @@ class _ClientHistoryDateFilters extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Material(
-          color: AppColors.primary,
+          color: AppColors.leaderGreen,
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             onTap: onApply,

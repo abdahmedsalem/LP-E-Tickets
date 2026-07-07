@@ -30,6 +30,7 @@ Future<void> showTransferSuccessDialog(
   required DateTime confirmedAt,
   required String recipientName,
   required String recipientPhone,
+  String? transactionReference,
   List<TransferConfirmationLine> lines = const [],
   String linesTitle = 'Carnets transférés',
 }) {
@@ -40,6 +41,7 @@ Future<void> showTransferSuccessDialog(
         confirmedAt: confirmedAt,
         recipientName: recipientName,
         recipientPhone: recipientPhone,
+        transactionReference: transactionReference,
         lines: lines,
         linesTitle: linesTitle,
       ),
@@ -51,6 +53,7 @@ Future<void> showQrGenerationSuccessDialog(
   BuildContext context, {
   required int totalAmount,
   required DateTime confirmedAt,
+  String? transactionReference,
   List<QrGenerationSuccessLine> lines = const [],
 }) {
   return Navigator.of(context, rootNavigator: true).push<void>(
@@ -58,6 +61,7 @@ Future<void> showQrGenerationSuccessDialog(
       builder: (_) => QrGenerationSuccessScreen(
         totalAmount: totalAmount,
         confirmedAt: confirmedAt,
+        transactionReference: transactionReference,
         lines: lines,
       ),
     ),
@@ -122,10 +126,11 @@ class TransferSuccessScreen extends StatelessWidget {
   const TransferSuccessScreen({
     super.key,
     required this.totalAmount,
-    required this.confirmedAt,
-    required this.recipientName,
-    required this.recipientPhone,
-    this.lines = const [],
+  required this.confirmedAt,
+  required this.recipientName,
+  required this.recipientPhone,
+  this.transactionReference,
+  this.lines = const [],
     this.linesTitle = 'Carnets transférés',
   });
 
@@ -133,6 +138,7 @@ class TransferSuccessScreen extends StatelessWidget {
   final DateTime confirmedAt;
   final String recipientName;
   final String recipientPhone;
+  final String? transactionReference;
   final List<TransferConfirmationLine> lines;
   final String linesTitle;
 
@@ -146,6 +152,12 @@ class TransferSuccessScreen extends StatelessWidget {
           ? null
           : _TransferredLinesSection(lines: lines, title: linesTitle),
       rows: [
+        if ((transactionReference ?? '').trim().isNotEmpty)
+          _SuccessRowData(
+            label: 'Référence',
+            value: transactionReference!.trim(),
+            valueColor: AppColors.ink,
+          ),
         _SuccessRowData(
           label: 'Client receveur',
           value: recipientName,
@@ -176,11 +188,13 @@ class QrGenerationSuccessScreen extends StatelessWidget {
     super.key,
     required this.totalAmount,
     required this.confirmedAt,
+    this.transactionReference,
     this.lines = const [],
   });
 
   final int totalAmount;
   final DateTime confirmedAt;
+  final String? transactionReference;
   final List<QrGenerationSuccessLine> lines;
 
   @override
@@ -192,6 +206,12 @@ class QrGenerationSuccessScreen extends StatelessWidget {
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _GeneratedQrLinesSection(lines: lines),
       rows: [
+        if ((transactionReference ?? '').trim().isNotEmpty)
+          _SuccessRowData(
+            label: 'Référence',
+            value: transactionReference!.trim(),
+            valueColor: AppColors.ink,
+          ),
         _SuccessRowData(
           label: 'Montant total',
           value: totalAmount.toString(),
@@ -597,7 +617,7 @@ class _PurchasedLineRow extends StatelessWidget {
         Expanded(
           flex: 4,
           child: Text(
-            '${Formatters.numberFr(line.qty)} carnets',
+            Formatters.numberFr(line.qty),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,

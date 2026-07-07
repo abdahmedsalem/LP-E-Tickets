@@ -14,6 +14,7 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/api_required_view.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/history_aligned_page_header.dart';
@@ -330,15 +331,6 @@ class _QrCompactListTile extends StatelessWidget {
 
   bool get _hasPublicCode => qr.publicCode.trim().isNotEmpty;
 
-  String get _codeLabel {
-    final fallback = qr.internalRef?.trim();
-    if (fallback != null && fallback.isNotEmpty) {
-      return fallback;
-    }
-
-    return 'Référence QR indisponible';
-  }
-
   DateTime? get _effectiveExpiration {
     final direct = qr.expiresAt;
     if (direct != null && direct.year > 1970) {
@@ -389,9 +381,6 @@ class _QrCompactListTile extends StatelessWidget {
     return qty == 1 ? '1 ticket' : '$qty tickets';
   }
 
-  String get _amountLabel =>
-      '${Formatters.numberFr(qr.totalAmount)} ${Formatters.defaultCurrency}';
-
   String get _linesSummary {
     final parts = <String>[];
     final byFace = qr.aggregatedByFaceValue.entries.toList()
@@ -426,11 +415,11 @@ class _QrCompactListTile extends StatelessWidget {
       child: InkWell(
         onTap: canOpen ? () => _openDetail(context) : null,
         borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
             boxShadow: [
               BoxShadow(
@@ -452,54 +441,36 @@ class _QrCompactListTile extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            _codeLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.ink,
-                              letterSpacing: -0.2,
-                            ),
+                        StatusBadge.qr(_displayState),
+                        const Spacer(),
+                        Text(
+                          Formatters.numberFr(qr.totalAmount),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDeep,
+                            height: 1,
+                            letterSpacing: -0.2,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        StatusBadge.qr(_displayState),
                       ],
                     ),
-                    const SizedBox(height: 7),
-                    Text(
-                      '$_quantityLabel • $_amountLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.body,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _linesSummary,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _stateDateLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _stateDateLabel,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                          height: 1.25,
+                        ),
                       ),
                     ),
                   ],

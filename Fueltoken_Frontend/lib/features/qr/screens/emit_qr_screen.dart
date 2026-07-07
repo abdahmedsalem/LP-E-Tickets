@@ -27,6 +27,7 @@ import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/overview_info_card.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -116,11 +117,11 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             lower.contains('refus'));
 
     if (looksLikeInvalidPin) {
-      return 'PIN incorrect. L’opération n’a pas été effectuée.';
+      return 'PIN incorrect. L\'opération n\'a pas été effectuée.';
     }
 
     if (message.isEmpty) {
-      return 'Le QR n’a pas été créé. Réessayez.';
+      return 'Le QR n\'a pas été créé. Réessayez.';
     }
     return message;
   }
@@ -140,16 +141,44 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   String _lineCarnetLabel(FaceLine line) {
-    final shortCode = line.carnetShortCode.trim();
-    if (shortCode.isNotEmpty) return 'Carnet $shortCode';
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: _lineCarnetSize(line),
+        fallbackFaceValue: line.faceValue,
+      );
+    }
 
     final size = _lineCarnetSize(line);
-    return Formatters.carnetTypeLabelFromServer(
-      line.carnetTypeName,
-      fallbackSize: size,
-      fallbackFaceValue: line.faceValue,
-      fallbackCode: line.carnetTypeCode,
+    final rawCode = line.carnetTypeCode.trim();
+    if (rawCode.isNotEmpty) {
+      return Formatters.carnetTypeLabelFromServer(
+        rawCode,
+        fallbackSize: size,
+        fallbackFaceValue: line.faceValue,
+        fallbackCode: rawCode,
+      );
+    }
+
+    return Formatters.carnetTypeLabel(
+      size,
+      line.faceValue,
+      currency: Formatters.defaultCurrency,
     );
+  }
+
+  String _lineReferenceCode(FaceLine line) {
+    final shortCode = line.carnetShortCode.trim();
+    if (shortCode.isNotEmpty) return shortCode;
+
+    final typeCode = line.carnetTypeCode.trim();
+    if (typeCode.isNotEmpty) return typeCode;
+
+    final carnetNo = line.carnetNo.trim();
+    if (carnetNo.isNotEmpty) return carnetNo;
+
+    return 'Code carnet indisponible';
   }
 
   List<FaceLine> _availableLinesFor(String ownerId) {
@@ -398,11 +427,14 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                           final selected = _request[line.id] ?? 0;
                           return _CompositionRow(
                             title: _lineCarnetLabel(line),
+                            referenceCode: _lineReferenceCode(line),
                             faceValue: line.faceValue,
                             available: line.availableQty,
                             initialQty: line.initialQty,
                             carnetFaceCount: line.carnetFaceCount,
                             expirationDate: line.expirationDate,
+                            qrActiveQty: line.qrActiveQty,
+                            consumedQty: line.consumedQty,
                             selected: selected,
                             onChange: (n) => setState(() {
                               if (n <= 0) {
@@ -553,8 +585,13 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           raw,
           fallbackMessage: 'Émission QR refusée par le serveur.',
           publicErrorMessage:
-              'L’émission du QR a échoué. Réessayez ou contactez l’administrateur.',
+              'L\'émission du QR a échoué. Réessayez ou contactez l\'administrateur.',
         );
+        final transactionReference =
+            guarded['transaction_reference']?.toString().trim().isNotEmpty ==
+                    true
+                ? guarded['transaction_reference'].toString().trim()
+                : guarded['name']?.toString().trim();
         AcpecQrMapper.fromRpcIssueEnvelope(
           guarded,
           ownerId: user.id,
@@ -572,6 +609,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           context,
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
+          transactionReference: transactionReference,
           lines: successLines,
         );
         if (!mounted) return;
@@ -704,46 +742,70 @@ class _BottomBar extends StatelessWidget {
 // Composition row & stepper
 // --------------------------------------------------------------------------
 
-class _CompositionRow extends StatelessWidget {
+class _CompositionRow extends StatefulWidget {
   final String title;
+  final String referenceCode;
   final int faceValue;
   final int available;
   final int initialQty;
   final int carnetFaceCount;
   final DateTime? expirationDate;
+  final int qrActiveQty;
+  final int consumedQty;
   final int selected;
   final ValueChanged<int> onChange;
 
   const _CompositionRow({
     required this.title,
+    required this.referenceCode,
     required this.faceValue,
     required this.available,
     required this.initialQty,
     required this.carnetFaceCount,
     required this.expirationDate,
+    required this.qrActiveQty,
+    required this.consumedQty,
     required this.selected,
     required this.onChange,
   });
 
-  String _availabilityLabel() {
-    final denominator = initialQty > 0
-        ? initialQty
-        : (carnetFaceCount > 0 ? carnetFaceCount : 0);
+  @override
+  State<_CompositionRow> createState() => _CompositionRowState();
+}
 
-    if (denominator > 0 && denominator >= available) {
-      return '${Formatters.numberFr(available)}/${Formatters.numberFr(denominator)} disponibles';
+class _CompositionRowState extends State<_CompositionRow> {
+  bool _expanded = false;
+
+  String _availabilityLabel() {
+    final denominator = widget.initialQty > 0
+        ? widget.initialQty
+        : (widget.carnetFaceCount > 0 ? widget.carnetFaceCount : 0);
+
+    if (denominator > 0 && denominator >= widget.available) {
+      return '${Formatters.numberFr(widget.available)}/${Formatters.numberFr(denominator)}';
     }
 
-    return '${Formatters.numberFr(available)} disponibles';
+    return Formatters.numberFr(widget.available);
   }
 
-  String _subtitle() {
-    return 'Ticket ${Formatters.numberFr(faceValue)} ${Formatters.defaultCurrency} · ${_availabilityLabel()}';
+  String _referenceCode() {
+    final code = widget.referenceCode.trim();
+    return code.isNotEmpty ? code : 'Code carnet indisponible';
+  }
+
+  String _amountLabel(int amount) {
+    return '${Formatters.numberFr(amount)} ${Formatters.defaultCurrency}';
+  }
+
+  String _expirationLabel() {
+    final expirationDate = widget.expirationDate;
+    if (expirationDate == null) return 'Non disponible';
+    return 'Expire le ${Formatters.dateTimeDash(expirationDate)}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = selected > 0;
+    final isSelected = widget.selected > 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: ConstrainedBox(
@@ -764,7 +826,7 @@ class _CompositionRow extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
+                          widget.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -776,12 +838,12 @@ class _CompositionRow extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _subtitle(),
+                          _expirationLabel(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             color: Color(0xFF667085),
                             height: 1.08,
                           ),
@@ -792,15 +854,16 @@ class _CompositionRow extends StatelessWidget {
                   Align(
                     alignment: Alignment.topRight,
                     child: Text(
-                      '${Formatters.numberFr(faceValue)} ${Formatters.defaultCurrency}',
+                      _availabilityLabel(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 13.5,
+                      style: const TextStyle(
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        height: 1.08,
+                        color: AppColors.primaryDeep,
+                        height: 1,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
@@ -820,8 +883,42 @@ class _CompositionRow extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  _Stepper(value: selected, max: available, onChange: onChange),
+                  _Stepper(
+                    value: widget.selected,
+                    max: widget.available,
+                    onChange: widget.onChange,
+                  ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    size: 22,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: _expanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: OverviewInfoCard(
+                          items: [
+                            OverviewInfoItem(
+                              label: 'Code de référence',
+                              value: _referenceCode(),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
@@ -992,9 +1089,6 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
   final Map<String, int> request;
 
   String _labelFor(FaceLine line) {
-    final shortCode = line.carnetShortCode.trim();
-    if (shortCode.isNotEmpty) return 'Carnet $shortCode';
-
     return Formatters.normalizeCarnetTypeLabel(
       line.carnetTypeName,
       fallbackSize: line.carnetFaceCount,

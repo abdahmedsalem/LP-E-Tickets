@@ -664,6 +664,15 @@ class _HeroQrCard extends StatelessWidget {
             child: Column(
               children: [
                 _DetailInfoRow(
+                  label: 'Code de référence',
+                  value: qr.internalRef?.trim().isNotEmpty == true
+                      ? qr.internalRef!.trim()
+                      : qr.publicCode.trim().isNotEmpty
+                          ? qr.publicCode.trim()
+                          : 'Non disponible',
+                ),
+                const Divider(height: 1, thickness: 1, color: AppColors.line),
+                _DetailInfoRow(
                   label: 'Date d\'expiration',
                   value: qr.expiresAt != null
                       ? Formatters.dateTimeDash(qr.expiresAt!)

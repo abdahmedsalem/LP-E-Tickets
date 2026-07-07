@@ -20,6 +20,7 @@ import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/overview_info_card.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -179,9 +180,17 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: _carnetSizeFor(line),
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+
     final rawCode = line.carnetTypeCode
         .trim()
-        .replaceAll(' ', '')
         .toUpperCase();
     if (rawCode.isNotEmpty) {
       if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
@@ -193,15 +202,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
     final size = _carnetSizeFor(line);
     if (size > 0) {
       return 'C${size}T-${line.faceValue}${Formatters.defaultCurrency}';
-    }
-
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: size,
-        fallbackFaceValue: line.faceValue,
-      );
     }
 
     return 'Carnet';
@@ -353,6 +353,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       }
 
       var confirmedRecipientName = recipientName;
+      String? confirmedTransactionReference;
 
       if (!mounted) return;
       final confirmed = await Navigator.of(context).push<bool>(
@@ -373,7 +374,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
               sectionLabel: 'Tickets transférés',
               intentOperation: 'ticket-transfer',
               unconfirmedActionMessage:
-                  'Action non confirmée. Vérifiez l’état de vos tickets avant de réessayer.',
+                  'Action non confirmée. Vérifiez l\'état de vos tickets avant de réessayer.',
               onConfirmWithNote: (actionCode, intent, note) async {
                 final raw = await OdooFueltokenFacade().ticketsTransfer(
                   intent.withAuthParams({
@@ -387,8 +388,9 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                   fallbackMessage:
                       'Transfert de tickets refusé par le serveur.',
                   publicErrorMessage:
-                      'Le transfert a échoué. Réessayez ou contactez l’administrateur.',
+                      'Le transfert a échoué. Réessayez ou contactez l\'administrateur.',
                 );
+                confirmedTransactionReference = data['name']?.toString().trim();
                 final responseName = data['dest_partner']?.toString().trim();
                 if (responseName != null && responseName.isNotEmpty) {
                   confirmedRecipientName = responseName;
@@ -413,6 +415,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
           recipientPhone: phone,
+          transactionReference: confirmedTransactionReference,
           lines: confirmLines,
           linesTitle: 'Tickets transférés',
         );
@@ -718,7 +721,7 @@ class _TransferSelectionBottomBar extends StatelessWidget {
   }
 }
 
-class _TransferTicketLineCard extends StatelessWidget {
+class _TransferTicketLineCard extends StatefulWidget {
   const _TransferTicketLineCard({
     required this.line,
     required this.carnetTypeLabel,
@@ -732,41 +735,66 @@ class _TransferTicketLineCard extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   @override
+  State<_TransferTicketLineCard> createState() =>
+      _TransferTicketLineCardState();
+}
+
+class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
+  bool _expanded = false;
+
+  String _ticketAvailabilityLabel(int availableQty, int carnetSize) {
+    final available = Formatters.numberFr(availableQty);
+    if (carnetSize > 0) {
+      return '$available/${Formatters.numberFr(carnetSize)}';
+    }
+    return available;
+  }
+
+  String _referenceCode() {
+    final shortCode = widget.line.carnetShortCode.trim();
+    if (shortCode.isNotEmpty) return shortCode;
+    final typeCode = widget.line.carnetTypeCode.trim();
+    if (typeCode.isNotEmpty) return typeCode;
+    final carnetNo = widget.line.carnetNo.trim();
+    if (carnetNo.isNotEmpty) return carnetNo;
+    return 'Code carnet indisponible';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isSelected = selected > 0;
-    final selectedAmount = selected * line.faceValue;
+    final isSelected = widget.selected > 0;
+    final availableQtyLabel = _ticketAvailabilityLabel(
+      widget.line.availableQty,
+      widget.line.carnetFaceCount > 0 ? widget.line.carnetFaceCount : widget.line.availableQty,
+    );
     final subtitleParts = <String>[
-      _ticketExpirationLabel(line.expirationDate),
-      '${Formatters.numberFr(line.availableQty)} ticket(s) disponible(s)',
+      _ticketExpirationLabel(widget.line.expirationDate),
     ];
-    final carnetCode = line.carnetShortCode.trim().isNotEmpty
-        ? line.carnetShortCode.trim()
-        : line.carnetNo.trim();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSelected ? AppColors.leaderGreen : const Color(0xFFEAECEF),
+          color: isSelected ? AppColors.leaderGreen : AppColors.line,
           width: isSelected ? 1.5 : 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Stack(
             children: [
-              Expanded(
+              Padding(
+                padding: const EdgeInsets.only(right: 112),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      carnetTypeLabel,
-                      maxLines: 2,
+                      widget.carnetTypeLabel,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 15.5,
@@ -775,80 +803,111 @@ class _TransferTicketLineCard extends StatelessWidget {
                         height: 1.08,
                       ),
                     ),
-                    if (carnetCode.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        carnetCode,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
-                        ),
+                    const SizedBox(height: 16),
+                    Text(
+                      subtitleParts.join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF667085),
+                        height: 1.08,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Icon(
-                isSelected
-                    ? Icons.check_circle_rounded
-                    : Icons.radio_button_unchecked_rounded,
-                size: 20,
-                color: isSelected ? AppColors.leaderGreen : AppColors.muted,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            subtitleParts.join(' • '),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _QtyButton(
-                icon: Icons.remove_rounded,
-                onTap: selected <= 0 ? null : () => onChanged(selected - 1),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 58,
+              Align(
+                alignment: Alignment.topRight,
                 child: Text(
-                  Formatters.numberFr(selected),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
+                  availableQtyLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
+                    color: AppColors.primaryDeep,
+                    height: 1,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              _QtyButton(
-                icon: Icons.add_rounded,
-                onTap: selected >= line.availableQty
-                    ? null
-                    : () => onChanged(selected + 1),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: selected == line.availableQty
-                    ? null
-                    : () => onChanged(line.availableQty),
-                child: const Text('Tout'),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Container(height: 1, color: const Color(0xFFEAECEF)),
+          const SizedBox(height: 1),
+          Row(
+            children: [
+              Text(
+                'Quantité',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
               ),
               const Spacer(),
-              AmountInline(amount: selectedAmount, textAlign: TextAlign.right),
+              _QtyButton(
+                icon: Icons.remove,
+                onTap: widget.selected <= 0
+                    ? null
+                    : () => widget.onChanged(widget.selected - 1),
+              ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 30,
+                child: Text(
+                  '${widget.selected}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    height: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              _QtyButton(
+                icon: Icons.add,
+                onTap: widget.selected >= widget.line.availableQty
+                    ? null
+                    : () => widget.onChanged(widget.selected + 1),
+              ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Icon(
+                Icons.expand_more_rounded,
+                size: 22,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _expanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: OverviewInfoCard(
+                      items: [
+                        OverviewInfoItem(
+                          label: 'Identifiant de référence',
+                          value: _referenceCode(),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -864,21 +923,22 @@ class _QtyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 36,
-      height: 36,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          padding: EdgeInsets.zero,
-          foregroundColor: AppColors.leaderGreen,
-          side: BorderSide(color: AppColors.line.withValues(alpha: 0.9)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Icon(icon, size: 20),
+    return IconButton.filledTonal(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      style: IconButton.styleFrom(
+        backgroundColor: onTap != null
+            ? (icon == Icons.add ? const Color(0xFF43A047) : const Color(0xFFF2F4F7))
+            : const Color(0xFFF3F4F6),
+        foregroundColor: onTap != null
+            ? (icon == Icons.add ? Colors.white : const Color(0xFF344054))
+            : const Color(0xFFB8BEC7),
+        disabledBackgroundColor: const Color(0xFFF3F4F6),
+        disabledForegroundColor: const Color(0xFFB8BEC7),
       ),
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
     );
   }
 }

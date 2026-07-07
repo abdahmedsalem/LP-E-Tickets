@@ -18,6 +18,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../transfer_carnets_logic.dart';
 import 'transfer_confirmation_screen.dart';
+import '../../../shared/widgets/overview_info_card.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -169,6 +170,15 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
+    final rawName = line.carnetTypeName.trim();
+    if (rawName.isNotEmpty) {
+      return Formatters.normalizeCarnetTypeLabel(
+        rawName,
+        fallbackSize: _carnetSizeFor(line),
+        fallbackFaceValue: line.faceValue,
+      );
+    }
+
     final rawCode = line.carnetTypeCode
         .trim()
         .replaceAll(' ', '')
@@ -183,15 +193,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
     final size = _carnetSizeFor(line);
     if (size > 0) {
       return 'C${size}T-${line.faceValue}${Formatters.defaultCurrency}';
-    }
-
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: size,
-        fallbackFaceValue: line.faceValue,
-      );
     }
 
     return 'Carnet';
@@ -359,6 +360,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       }
 
       var confirmedRecipientName = recipientName;
+      String? confirmedTransactionReference;
 
       // Naviguer vers l'écran de confirmation
       if (!mounted) return;
@@ -379,7 +381,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
               sectionLabel: 'Carnets transférés',
               intentOperation: 'carnet-transfer',
               unconfirmedActionMessage:
-                  'Action non confirmée. Vérifiez l’état de vos carnets avant de réessayer.',
+                  'Action non confirmée. Vérifiez l\'état de vos carnets avant de réessayer.',
               onConfirmWithNote: (actionCode, intent, note) async {
                 final raw = await OdooFueltokenFacade().carnetsTransfer(
                   intent.withAuthParams({
@@ -392,8 +394,9 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                   raw,
                   fallbackMessage: 'Transfert refusé par le serveur.',
                   publicErrorMessage:
-                      'Le transfert a échoué. Réessayez ou contactez l’administrateur.',
+                      'Le transfert a échoué. Réessayez ou contactez l\'administrateur.',
                 );
+                confirmedTransactionReference = data['name']?.toString().trim();
                 final responseName = data['dest_partner']?.toString().trim();
                 if (responseName != null && responseName.isNotEmpty) {
                   confirmedRecipientName = responseName;
@@ -419,6 +422,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
           recipientPhone: phone,
+          transactionReference: confirmedTransactionReference,
           lines: confirmLines,
         );
         if (!mounted) return;
@@ -732,7 +736,7 @@ class _TransferSelectionBottomBar extends StatelessWidget {
   }
 }
 
-class _TransferLineCard extends StatelessWidget {
+class _TransferLineCard extends StatefulWidget {
   const _TransferLineCard({
     required this.line,
     required this.carnetTypeLabel,
@@ -748,17 +752,32 @@ class _TransferLineCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final transferableValue =
-        (line.availableQty ~/ carnetSize) * carnetSize * line.faceValue;
-    final isSelected = selected > 0;
-    final compositionLabel =
-        '$carnetSize tickets × ${Formatters.money(line.faceValue)}';
+  State<_TransferLineCard> createState() => _TransferLineCardState();
+}
 
+class _TransferLineCardState extends State<_TransferLineCard> {
+  bool _expanded = false;
+
+  String _referenceCode() {
+    final shortCode = widget.line.carnetShortCode.trim();
+    if (shortCode.isNotEmpty) return shortCode;
+    final typeCode = widget.line.carnetTypeCode.trim();
+    if (typeCode.isNotEmpty) return typeCode;
+    final carnetNo = widget.line.carnetNo.trim();
+    if (carnetNo.isNotEmpty) return carnetNo;
+    return 'Code carnet indisponible';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final line = widget.line;
+    final transferableValue =
+        (line.availableQty ~/ widget.carnetSize) * widget.carnetSize * line.faceValue;
+    final isSelected = widget.selected > 0;
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
@@ -776,12 +795,12 @@ class _TransferLineCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Stack(
                 children: [
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.only(right: 112),
                     child: Text(
-                      carnetTypeLabel,
+                      widget.carnetTypeLabel,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -792,45 +811,61 @@ class _TransferLineCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    isSelected
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    size: 20,
-                    color: isSelected ? AppColors.leaderGreen : AppColors.muted,
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: AmountInline(amount: transferableValue),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              Text(
-                _expirationLabel(line.expirationDate),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                ),
-              ),
-              const SizedBox(height: 4),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Text(
-                      compositionLabel,
+                    child: Text.rich(
+                      TextSpan(
+                        text: _expirationLabel(line.expirationDate),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  AmountInline(amount: transferableValue),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    size: 22,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: _expanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: OverviewInfoCard(
+                      items: [
+                        OverviewInfoItem(
+                          label: 'Identifiant de référence',
+                          value: _referenceCode(),
+                        ),
+                      ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
@@ -839,3 +874,7 @@ class _TransferLineCard extends StatelessWidget {
     );
   }
 }
+
+
+
+

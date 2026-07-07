@@ -391,14 +391,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 .toList();
             final totalAmount = _totalAmount();
             final currency = _selectedCurrency;
-            final totalCarnets = selectedTypes.fold<int>(
-              0,
-              (sum, type) => sum + (_qty[type.id] ?? 0),
-            );
-            final totalTickets = selectedTypes.fold<int>(
-              0,
-              (sum, type) => sum + ((_qty[type.id] ?? 0) * type.size),
-            );
             final hasProof = _proofPath != null;
             final canSubmit = hasProof && !_submitting;
 
@@ -451,83 +443,18 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F9FB),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: AppColors.line.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'R\u00e9sum\u00e9 panier',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.ink,
+                        _PurchaseLinesSummaryCard(
+                          lines: selectedTypes
+                              .map(
+                                (type) => _PurchaseLinesSummaryLine(
+                                  label: '${_qty[type.id] ?? 0} × ${type.name}',
+                                  qty: _qty[type.id] ?? 0,
+                                  amount:
+                                      (_qty[type.id] ?? 0) * type.totalAmount,
+                                  currency: currency,
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              for (final type in selectedTypes)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          '${_qty[type.id] ?? 0} \u00d7 ${type.name}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.ink2,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${Formatters.numberFr((_qty[type.id] ?? 0) * type.totalAmount)} $currency',
-                                        style: TextStyle(
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.ink,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const Divider(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '$totalCarnets carnet(s) / $totalTickets ticket(s)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.muted,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${Formatters.numberFr(totalAmount)} $currency',
-                                    style: TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.ink,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                              )
+                              .toList(),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -1216,6 +1143,166 @@ class _StepCapsule extends StatelessWidget {
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+class _PurchaseLinesSummaryCard extends StatelessWidget {
+  const _PurchaseLinesSummaryCard({required this.lines});
+
+  final List<_PurchaseLinesSummaryLine> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = lines.isEmpty ? Formatters.fallbackCurrency : lines.first.currency;
+    final totalAmount = lines.fold<int>(0, (sum, line) => sum + line.amount);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < lines.length; i++) ...[
+            _PurchaseLinesSummaryRow(
+              label: lines[i].label,
+              qty: lines[i].qty,
+              amount: lines[i].amount,
+              currency: lines[i].currency,
+            ),
+            if (i < lines.length - 1)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+              ),
+          ],
+          if (lines.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+            ),
+          _PurchaseLinesSummaryTotalRow(
+            totalAmount: totalAmount,
+            currency: currency,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PurchaseLinesSummaryLine {
+  const _PurchaseLinesSummaryLine({
+    required this.label,
+    required this.qty,
+    required this.amount,
+    required this.currency,
+  });
+
+  final String label;
+  final int qty;
+  final int amount;
+  final String currency;
+}
+
+class _PurchaseLinesSummaryRow extends StatelessWidget {
+  const _PurchaseLinesSummaryRow({
+    required this.label,
+    required this.qty,
+    required this.amount,
+    required this.currency,
+  });
+
+  final String label;
+  final int qty;
+  final int amount;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 7,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              height: 1.15,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 4,
+          child: Text(
+            Formatters.numberFr(qty),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.muted,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 4,
+          child: Text(
+            '${Formatters.numberFr(amount)} $currency',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF2E7D32),
+              height: 1.15,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PurchaseLinesSummaryTotalRow extends StatelessWidget {
+  const _PurchaseLinesSummaryTotalRow({
+    required this.totalAmount,
+    required this.currency,
+  });
+
+  final int totalAmount;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Montant total',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.body,
+            ),
+          ),
+        ),
+        Text(
+          '${Formatters.numberFr(totalAmount)} $currency',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            color: AppColors.ink,
+          ),
+        ),
+      ],
     );
   }
 }
