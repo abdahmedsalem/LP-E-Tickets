@@ -275,7 +275,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (confirmLines.isEmpty) return;
 
       final proofPath = _proofPath!;
-      final navigator = Navigator.of(context);
       final proofBytes =
           _proofBytes ?? (kIsWeb ? null : await File(proofPath).readAsBytes());
       if (!mounted) return;
@@ -355,7 +354,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       );
 
       if (!mounted) return;
-      if (result != null) {
+      if (result is AcpecPurchaseCreateResult) {
         ClientHistoryRefreshBus.instance.bump();
         PurchasesRefreshBus.instance.bump();
         final confirmedAt = DateTime.now();

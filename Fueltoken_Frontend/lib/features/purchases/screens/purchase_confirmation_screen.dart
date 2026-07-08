@@ -59,15 +59,12 @@ class _PurchaseConfirmationScreenState
   void _close(Object? result) {
     if (!mounted || _closing) return;
     _closing = true;
-    final navigator = Navigator.maybeOf(context, rootNavigator: true);
-    if (navigator != null && navigator.canPop()) {
-      navigator.pop(result);
-      return;
-    }
-    final fallback = Navigator.maybeOf(context);
-    if (fallback != null && fallback.canPop()) {
-      fallback.pop(result);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final nav = Navigator.maybeOf(context, rootNavigator: true) ?? Navigator.of(context);
+        nav.pop(result);
+      }
+    });
   }
 
   Future<void> _onConfirm() async {
@@ -101,12 +98,7 @@ class _PurchaseConfirmationScreenState
   Widget build(BuildContext context) {
     final lines = widget.args.lines;
 
-    return PopScope(
-      canPop: !_closing,
-      onPopInvoked: (didPop) {
-        if (!didPop) _close(false);
-      },
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.white,
         bottomNavigationBar: SafeArea(
         child: Padding(
@@ -168,7 +160,7 @@ class _PurchaseConfirmationScreenState
                 width: double.infinity,
                 height: 44,
                 child: TextButton(
-                  onPressed: () => _close(false),
+                  onPressed: () => _close(null),
                   child: const Text(
                     'Annuler',
                     style: TextStyle(
@@ -188,7 +180,7 @@ class _PurchaseConfirmationScreenState
           children: [
             ScreenHeader(
               title: "Confirmer l'achat",
-              onBack: () => _close(false),
+              onBack: () => _close(null),
             ),
             const SizedBox(height: 14),
             Expanded(
@@ -231,7 +223,6 @@ class _PurchaseConfirmationScreenState
               ),
             ),
           ],
-          ),
         ),
       ),
     );

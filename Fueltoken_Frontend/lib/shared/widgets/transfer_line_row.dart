@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/formatters.dart';
 import 'amount_inline.dart';
 import 'quantity_circle_badge.dart';
 
