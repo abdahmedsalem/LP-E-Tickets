@@ -559,6 +559,10 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(8),
+                      ],
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,

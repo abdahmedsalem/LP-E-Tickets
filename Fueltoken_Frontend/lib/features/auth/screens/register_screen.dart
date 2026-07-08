@@ -229,6 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             maxLength: 8,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(8),
                             ],
                             validator: validateMrLocalPhone,
                             counterLabel: '${_phoneLocalDigits.length}/8',

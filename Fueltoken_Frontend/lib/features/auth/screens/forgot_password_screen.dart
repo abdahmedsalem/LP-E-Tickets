@@ -166,6 +166,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   maxLength: 8,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(8),
                                   ],
                                   validator: validateMrLocalPhone,
                                   counterLabel:

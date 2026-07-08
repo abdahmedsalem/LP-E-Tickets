@@ -279,6 +279,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.phone,
                               textCapitalization: TextCapitalization.none,
                               autocorrect: false,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(8),
+                              ],
                               validator: _validateIdentifier,
                               borderColor: const Color(0xFFC7CEDA),
                               counterLabel: _phoneCounterLabel,
