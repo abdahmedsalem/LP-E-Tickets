@@ -210,10 +210,9 @@ class BusinessTransaction extends Equatable {
     return '—';
   }
 
-  /// Libellé contextuel enrichi (avec partie pour les transferts).
   String get displayTitle {
     if (type == TxType.carnetTransfer && transferParty != null) {
-      return 'Transfert vers $transferParty';
+      return 'Transfert';
     }
     if (type == TxType.carnetReceived && transferParty != null) {
       return 'Reçu de $transferParty';

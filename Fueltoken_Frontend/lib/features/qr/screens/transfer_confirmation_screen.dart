@@ -9,6 +9,7 @@ import '../../../data/models/face_line.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/standard_confirmation_scaffold.dart';
+import '../../../shared/widgets/transfer_line_row.dart';
 
 /// Arguments passés à [TransferConfirmationScreen].
 class TransferConfirmationArgs {
@@ -16,10 +17,7 @@ class TransferConfirmationArgs {
     required this.recipientPhone,
     required this.recipientName,
     required this.lines,
-    this.note,
-    this.noteRequired = false,
-    this.noteLabel = 'Message',
-    this.noteHint = 'Saisissez le motif du transfert',
+    this.showQuantity = false,
     this.title = 'Confirmer l\'envoi',
     this.introText = 'Vérifiez les carnets avant de confirmer.',
     this.confirmLabel = 'Confirmer l\'envoi',
@@ -29,8 +27,7 @@ class TransferConfirmationArgs {
     this.unconfirmedActionMessage =
         'Action non confirmée. Vérifiez l’état de l’opération avant de réessayer.',
     this.onConfirm,
-    this.onConfirmWithNote,
-  }) : assert(onConfirm != null || onConfirmWithNote != null);
+  }) : assert(onConfirm != null);
 
   /// Numéro de téléphone du destinataire (tel que saisi).
   final String recipientPhone;
@@ -40,14 +37,7 @@ class TransferConfirmationArgs {
 
   /// Lignes de transfert sélectionnées.
   final List<TransferConfirmationLine> lines;
-
-  /// Note optionnelle affichée ou préremplie.
-  final String? note;
-
-  /// Demande la saisie du motif sur l'écran de confirmation avant le PIN.
-  final bool noteRequired;
-  final String noteLabel;
-  final String noteHint;
+  final bool showQuantity;
 
   final String title;
   final String introText;
@@ -61,13 +51,6 @@ class TransferConfirmationArgs {
   final Future<void> Function(String actionCode, SensitiveActionIntent intent)?
   onConfirm;
 
-  /// Callback appelé quand l'écran de confirmation collecte le motif.
-  final Future<void> Function(
-    String actionCode,
-    SensitiveActionIntent intent,
-    String note,
-  )?
-  onConfirmWithNote;
 }
 
 class TransferConfirmationLine {
@@ -101,19 +84,6 @@ class _TransferConfirmationScreenState
     extends State<TransferConfirmationScreen> {
   bool _confirming = false;
   bool _closing = false;
-  late final TextEditingController _noteController;
-
-  @override
-  void initState() {
-    super.initState();
-    _noteController = TextEditingController(text: widget.args.note ?? '');
-  }
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
-  }
 
   void _close(Object? result) {
     if (!mounted || _closing) return;
@@ -130,10 +100,6 @@ class _TransferConfirmationScreenState
     var completed = false;
     setState(() => _confirming = true);
     try {
-      var note = _noteController.text.trim();
-      if (widget.args.noteRequired && note.isEmpty) {
-        note = 'Motif non renseigné';
-      }
       final actionCode = await showSensitiveActionCodeDialog(
         context,
         title: 'Vérification du PIN',
@@ -141,11 +107,7 @@ class _TransferConfirmationScreenState
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final intent = SensitiveActionIntent.create(widget.args.intentOperation);
-      if (widget.args.onConfirmWithNote != null) {
-        await widget.args.onConfirmWithNote!(actionCode, intent, note);
-      } else {
-        await widget.args.onConfirm!(actionCode, intent);
-      }
+      await widget.args.onConfirm!(actionCode, intent);
       if (!mounted) return;
       completed = true;
       _close(true);
@@ -197,20 +159,10 @@ class _TransferConfirmationScreenState
         const SizedBox(height: 20),
         _TransferConfirmationSectionHeader(label: args.sectionLabel),
         const SizedBox(height: 14),
-        _TransferConfirmationLinesCard(lines: args.lines),
-        if (args.noteRequired ||
-            (args.note != null && args.note!.isNotEmpty)) ...[
-          const SizedBox(height: 20),
-          _TransferConfirmationSectionHeader(label: args.noteLabel),
-          const SizedBox(height: 8),
-          if (args.noteRequired)
-            _TransferConfirmationNoteInput(
-              controller: _noteController,
-              hintText: args.noteHint,
-            )
-          else
-            _TransferConfirmationNoteCard(note: args.note!),
-        ],
+        _TransferConfirmationLinesCard(
+          lines: args.lines,
+          showQuantity: args.showQuantity,
+        ),
         const SizedBox(height: 24),
         _TransferConfirmationDisclaimerText(recipientName: args.recipientName),
       ],
@@ -306,9 +258,13 @@ class _TransferConfirmationSectionHeader extends StatelessWidget {
 }
 
 class _TransferConfirmationLinesCard extends StatelessWidget {
-  const _TransferConfirmationLinesCard({required this.lines});
+  const _TransferConfirmationLinesCard({
+    required this.lines,
+    required this.showQuantity,
+  });
 
   final List<TransferConfirmationLine> lines;
+  final bool showQuantity;
 
   @override
   Widget build(BuildContext context) {
@@ -325,7 +281,7 @@ class _TransferConfirmationLinesCard extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < lines.length; i++) ...[
-            _TransferLineRow(line: lines[i]),
+            _TransferLineRow(line: lines[i], showQuantity: showQuantity),
             if (i < lines.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -378,83 +334,6 @@ class _TransferTotalRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _TransferConfirmationNoteInput extends StatelessWidget {
-  const _TransferConfirmationNoteInput({
-    required this.controller,
-    required this.hintText,
-  });
-
-  final TextEditingController controller;
-  final String hintText;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      minLines: 2,
-      maxLines: 4,
-      textInputAction: TextInputAction.done,
-      style: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: AppColors.ink,
-        height: 1.35,
-      ),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        hintText: hintText,
-        hintStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: AppColors.muted,
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: AppColors.line),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: AppColors.line),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: AppColors.leaderGreen, width: 1.4),
-        ),
-      ),
-    );
-  }
-}
-
-class _TransferConfirmationNoteCard extends StatelessWidget {
-  const _TransferConfirmationNoteCard({required this.note});
-
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Text(
-        note,
-        style: const TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w500,
-          color: AppColors.body,
-          height: 1.45,
-        ),
-      ),
     );
   }
 }
@@ -518,8 +397,9 @@ class _RecipientAvatar extends StatelessWidget {
 }
 
 class _TransferLineRow extends StatelessWidget {
-  const _TransferLineRow({required this.line});
+  const _TransferLineRow({required this.line, required this.showQuantity});
   final TransferConfirmationLine line;
+  final bool showQuantity;
 
   String _carnetTypeLabel() {
     return Formatters.carnetTypeLabelFromServer(
@@ -532,52 +412,11 @@ class _TransferLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 7,
-          child: Text(
-            _carnetTypeLabel(),
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.15,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 4,
-          child: Text(
-            Formatters.numberFr(line.carnetQty),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 4,
-          child: _AmountInline(
-            amount: line.totalAmount,
-            textAlign: TextAlign.right,
-            valueStyle: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2E7D32),
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
-            ),
-          ),
-        ),
-      ],
+    return TransferLineRow(
+      title: _carnetTypeLabel(),
+      quantity: line.carnetQty,
+      amount: line.totalAmount,
+      showQuantity: showQuantity,
     );
   }
 }

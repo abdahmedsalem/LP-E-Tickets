@@ -187,12 +187,12 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
         return rawCode;
       }
-      return '$rawCode${Formatters.defaultCurrency}';
+      return rawCode;
     }
 
     final size = _carnetSizeFor(line);
     if (size > 0) {
-      return 'C${size}T-${line.faceValue}${Formatters.defaultCurrency}';
+      return 'C${size}T-${line.faceValue}';
     }
 
     return 'Carnet';
@@ -360,7 +360,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       }
 
       var confirmedRecipientName = recipientName;
-      String? confirmedTransactionReference;
 
       // Naviguer vers l'écran de confirmation
       if (!mounted) return;
@@ -371,10 +370,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
               recipientPhone: phone,
               recipientName: recipientName,
               lines: confirmLines,
-              noteRequired: true,
-              noteLabel: 'Motif du transfert (facultatif)',
-              noteHint:
-                  'Facultatif. Si vide, le transfert sera enregistré sans motif renseigné.',
               title: 'Confirmer le transfert',
               introText: 'Vérifiez les carnets avant de confirmer.',
               confirmLabel: 'Confirmer le transfert',
@@ -382,11 +377,10 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
               intentOperation: 'carnet-transfer',
               unconfirmedActionMessage:
                   'Action non confirmée. Vérifiez l\'état de vos carnets avant de réessayer.',
-              onConfirmWithNote: (actionCode, intent, note) async {
+              onConfirm: (actionCode, intent) async {
                 final raw = await OdooFueltokenFacade().carnetsTransfer(
                   intent.withAuthParams({
                     'recipient_phone': phone,
-                    'note': note,
                     'lines': apiLines,
                   }, actionCode: actionCode),
                 );
@@ -396,7 +390,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                   publicErrorMessage:
                       'Le transfert a échoué. Réessayez ou contactez l\'administrateur.',
                 );
-                confirmedTransactionReference = data['name']?.toString().trim();
                 final responseName = data['dest_partner']?.toString().trim();
                 if (responseName != null && responseName.isNotEmpty) {
                   confirmedRecipientName = responseName;
@@ -422,7 +415,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
           recipientPhone: phone,
-          transactionReference: confirmedTransactionReference,
           lines: confirmLines,
         );
         if (!mounted) return;
@@ -799,13 +791,14 @@ class _TransferLineCardState extends State<_TransferLineCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Stack(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 112),
+                  Expanded(
                     child: Text(
                       widget.carnetTypeLabel,
                       maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 15,
@@ -815,10 +808,8 @@ class _TransferLineCardState extends State<_TransferLineCard> {
                       ),
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: AmountInline(amount: transferableValue),
-                  ),
+                  const SizedBox(width: 12),
+                  AmountInline(amount: transferableValue),
                 ],
               ),
               const SizedBox(height: 16),

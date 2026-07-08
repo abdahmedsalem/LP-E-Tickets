@@ -397,7 +397,8 @@ class _PurchaseTile extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   typeLabel,
-                                  maxLines: 2,
+                                  maxLines: 1,
+                                  softWrap: false,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 17,
@@ -409,19 +410,38 @@ class _PurchaseTile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              StatusBadge.lot(lot.state),
+                              Text(
+                                Formatters.money(lot.totalAmount),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: amountColor,
+                                  height: 1.08,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 7),
-                          Text(
-                            lot.internalRef,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: scheme.onSurfaceVariant,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  lot.internalRef,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              StatusBadge.lot(lot.state),
+                            ],
                           ),
                         ],
                       ),

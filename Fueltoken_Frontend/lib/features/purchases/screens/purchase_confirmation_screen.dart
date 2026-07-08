@@ -11,6 +11,7 @@ import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/quantity_circle_badge.dart';
 import '../../../shared/widgets/screen_header.dart';
 
 class PurchaseConfirmationArgs {
@@ -58,7 +59,15 @@ class _PurchaseConfirmationScreenState
   void _close(Object? result) {
     if (!mounted || _closing) return;
     _closing = true;
-    Navigator.of(context, rootNavigator: true).pop(result);
+    final navigator = Navigator.maybeOf(context, rootNavigator: true);
+    if (navigator != null && navigator.canPop()) {
+      navigator.pop(result);
+      return;
+    }
+    final fallback = Navigator.maybeOf(context);
+    if (fallback != null && fallback.canPop()) {
+      fallback.pop(result);
+    }
   }
 
   Future<void> _onConfirm() async {
@@ -101,7 +110,7 @@ class _PurchaseConfirmationScreenState
         backgroundColor: Colors.white,
         bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -184,7 +193,7 @@ class _PurchaseConfirmationScreenState
             const SizedBox(height: 14),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
                 children: [
                   Text(
                     'Vérifiez les carnets avant de confirmer.',
@@ -333,49 +342,68 @@ class _PurchaseLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const rowHeight = 20.0;
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          flex: 7,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.15,
+          flex: 8,
+          child: SizedBox(
+            height: rowHeight,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    height: 1.15,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
         Expanded(
-          flex: 4,
-          child: Text(
-            Formatters.numberFr(qty),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
+          flex: 2,
+          child: SizedBox(
+            height: rowHeight,
+            child: Center(
+              child: QuantityCircleBadge(
+                quantity: qty,
+                size: rowHeight,
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
         Expanded(
-          flex: 4,
-          child: _AmountInline(
-            amount: amount,
-            currency: currency,
-            textAlign: TextAlign.right,
-            valueStyle: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2E7D32),
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+          flex: 3,
+          child: SizedBox(
+            height: rowHeight,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _AmountInline(
+                amount: amount,
+                currency: currency,
+                textAlign: TextAlign.right,
+                valueStyle: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2E7D32),
+                ),
+                unitStyle: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+                ),
+              ),
             ),
           ),
         ),

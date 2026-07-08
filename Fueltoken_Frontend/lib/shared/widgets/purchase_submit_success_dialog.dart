@@ -6,6 +6,8 @@ import '../../data/models/acpec_purchase_create_result.dart';
 import '../../features/purchases/screens/purchase_confirmation_screen.dart';
 import '../../features/qr/screens/transfer_confirmation_screen.dart';
 import 'amount_inline.dart';
+import 'quantity_circle_badge.dart';
+import 'transfer_line_row.dart';
 
 Future<void> showPurchaseSubmitSuccessDialog(
   BuildContext context, {
@@ -30,7 +32,6 @@ Future<void> showTransferSuccessDialog(
   required DateTime confirmedAt,
   required String recipientName,
   required String recipientPhone,
-  String? transactionReference,
   List<TransferConfirmationLine> lines = const [],
   String linesTitle = 'Carnets transférés',
 }) {
@@ -41,7 +42,6 @@ Future<void> showTransferSuccessDialog(
         confirmedAt: confirmedAt,
         recipientName: recipientName,
         recipientPhone: recipientPhone,
-        transactionReference: transactionReference,
         lines: lines,
         linesTitle: linesTitle,
       ),
@@ -129,8 +129,7 @@ class TransferSuccessScreen extends StatelessWidget {
   required this.confirmedAt,
   required this.recipientName,
   required this.recipientPhone,
-  this.transactionReference,
-  this.lines = const [],
+    this.lines = const [],
     this.linesTitle = 'Carnets transférés',
   });
 
@@ -138,7 +137,6 @@ class TransferSuccessScreen extends StatelessWidget {
   final DateTime confirmedAt;
   final String recipientName;
   final String recipientPhone;
-  final String? transactionReference;
   final List<TransferConfirmationLine> lines;
   final String linesTitle;
 
@@ -150,14 +148,12 @@ class TransferSuccessScreen extends StatelessWidget {
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty
           ? null
-          : _TransferredLinesSection(lines: lines, title: linesTitle),
+          : _TransferredLinesSection(
+              lines: lines,
+              title: linesTitle,
+              showQuantity: linesTitle.toLowerCase().contains('ticket'),
+            ),
       rows: [
-        if ((transactionReference ?? '').trim().isNotEmpty)
-          _SuccessRowData(
-            label: 'Référence',
-            value: transactionReference!.trim(),
-            valueColor: AppColors.ink,
-          ),
         _SuccessRowData(
           label: 'Client receveur',
           value: recipientName,
@@ -250,7 +246,7 @@ class _SuccessScaffold extends StatelessWidget {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           child: Column(
             children: [
               Expanded(
@@ -266,13 +262,22 @@ class _SuccessScaffold extends StatelessWidget {
                       child: Icon(icon, color: accentColor, size: 40),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
                       ),
                     ),
                     if (message != null) ...[
@@ -393,10 +398,15 @@ class _PurchasedLinesSection extends StatelessWidget {
 }
 
 class _TransferredLinesSection extends StatelessWidget {
-  const _TransferredLinesSection({required this.lines, required this.title});
+  const _TransferredLinesSection({
+    required this.lines,
+    required this.title,
+    required this.showQuantity,
+  });
 
   final List<TransferConfirmationLine> lines;
   final String title;
+  final bool showQuantity;
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +431,7 @@ class _TransferredLinesSection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
-            _TransferredLineRow(line: lines[i]),
+            _TransferredLineRow(line: lines[i], showQuantity: showQuantity),
             if (i < lines.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -439,9 +449,10 @@ class _TransferredLinesSection extends StatelessWidget {
 }
 
 class _TransferredLineRow extends StatelessWidget {
-  const _TransferredLineRow({required this.line});
+  const _TransferredLineRow({required this.line, required this.showQuantity});
 
   final TransferConfirmationLine line;
+  final bool showQuantity;
 
   String _carnetTypeLabel() {
     final size = line.carnetSize;
@@ -458,23 +469,11 @@ class _TransferredLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 5,
-          child: Text(
-            _carnetTypeLabel(),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.2,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        AmountInline(amount: line.totalAmount, textAlign: TextAlign.right),
-      ],
+    return TransferLineRow(
+      title: _carnetTypeLabel(),
+      quantity: line.carnetQty,
+      amount: line.totalAmount,
+      showQuantity: showQuantity,
     );
   }
 }
@@ -547,14 +546,17 @@ class _GeneratedQrLineRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          flex: 5,
+          flex: 8,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 _title(),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
                   height: 1.2,
@@ -572,7 +574,7 @@ class _GeneratedQrLineRow extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         AmountInline(amount: line.totalAmount),
       ],
     );
@@ -600,37 +602,58 @@ class _PurchasedLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const rowHeight = 20.0;
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          flex: 5,
-          child: Text(
-            _carnetTypeLabel(),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.2,
+          flex: 8,
+          child: SizedBox(
+            height: rowHeight,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _carnetTypeLabel(),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    height: 1.15,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
         Expanded(
-          flex: 4,
-          child: Text(
-            Formatters.numberFr(line.qty),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
+          flex: 2,
+          child: SizedBox(
+            height: rowHeight,
+            child: Center(
+              child: QuantityCircleBadge(
+                quantity: line.qty,
+                size: rowHeight,
+              ),
             ),
           ),
         ),
         Expanded(
-          flex: 4,
-          child: AmountInline(
-            amount: line.totalAmount,
-            textAlign: TextAlign.right,
+          flex: 3,
+          child: SizedBox(
+            height: rowHeight,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: AmountInline(
+                amount: line.totalAmount,
+                textAlign: TextAlign.right,
+              ),
+            ),
           ),
         ),
       ],
@@ -661,7 +684,10 @@ class _SummaryRow extends StatelessWidget {
   final String value;
   final Color valueColor;
 
-  bool _isNumericAmount(String text) => RegExp(r'^\d+$').hasMatch(text);
+  bool _isAmountRow() {
+    final normalized = label.toLowerCase();
+    return normalized.contains('montant');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -681,7 +707,7 @@ class _SummaryRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           flex: 2,
-          child: _isNumericAmount(value)
+          child: _isAmountRow()
               ? AmountInline(
                   amount: int.parse(value),
                   textAlign: TextAlign.right,

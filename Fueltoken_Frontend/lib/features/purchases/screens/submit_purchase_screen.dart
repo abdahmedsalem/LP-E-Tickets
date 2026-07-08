@@ -22,9 +22,11 @@ import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
+import '../../../shared/widgets/quantity_circle_badge.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -450,7 +452,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           lines: selectedTypes
                               .map(
                                 (type) => _PurchaseLinesSummaryLine(
-                                  label: '${_qty[type.id] ?? 0} × ${type.name}',
+                                  label: type.name,
                                   qty: _qty[type.id] ?? 0,
                                   amount:
                                       (_qty[type.id] ?? 0) * type.totalAmount,
@@ -859,85 +861,79 @@ class _CarnetCard extends StatelessWidget {
                     ),
                   ],
           ),
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: Text(
-                  '${Formatters.numberFr(type.totalAmount)} ${type.displayCurrency}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    height: 1.08,
-                  ),
-                ),
-              ),
-              Column(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 112),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          type.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Validité ${type.validityDays} jours',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF667085),
-                                  height: 1.08,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                  Expanded(
+                    child: Text(
+                      type.name,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                        height: 1.15,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Container(height: 1, color: const Color(0xFFEAECEF)),
-                  const SizedBox(height: 1),
-                  Row(
-                    children: [
-                      Text(
-                        'Quantité',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.muted,
-                        ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${Formatters.numberFr(type.totalAmount)} ${type.displayCurrency}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      height: 1.08,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Validité ${type.validityDays} jours',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF667085),
+                        height: 1.08,
                       ),
-                      const Spacer(),
-                      _StepperPair(
-                        value: quantity,
-                        onMinus: onMinus,
-                        onPlus: onPlus,
-                        canDecrement: quantity > 0,
-                        canIncrement: quantity < maxAllowed,
-                      ),
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              Container(height: 1, color: const Color(0xFFEAECEF)),
+              const SizedBox(height: 1),
+              Row(
+                children: [
+                  Text(
+                    'Quantité',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const Spacer(),
+                  _StepperPair(
+                    value: quantity,
+                    onMinus: onMinus,
+                    onPlus: onPlus,
+                    canDecrement: quantity > 0,
+                    canIncrement: quantity < maxAllowed,
                   ),
                 ],
               ),
@@ -1229,44 +1225,68 @@ class _PurchaseLinesSummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const rowHeight = 20.0;
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          flex: 7,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.15,
+          flex: 8,
+          child: SizedBox(
+            height: rowHeight,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    height: 1.15,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
         Expanded(
-          flex: 4,
-          child: Text(
-            Formatters.numberFr(qty),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
+          flex: 2,
+          child: SizedBox(
+            height: rowHeight,
+            child: Center(
+              child: QuantityCircleBadge(
+                quantity: qty,
+                size: rowHeight,
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
         Expanded(
-          flex: 4,
-          child: Text(
-            '${Formatters.numberFr(amount)} $currency',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2E7D32),
-              height: 1.15,
+          flex: 3,
+          child: SizedBox(
+            height: rowHeight,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: AmountInline(
+                amount: amount,
+                currency: currency,
+                textAlign: TextAlign.right,
+                valueStyle: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2E7D32),
+                ),
+                unitStyle: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+                ),
+              ),
             ),
           ),
         ),
@@ -1298,13 +1318,19 @@ class _PurchaseLinesSummaryTotalRow extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          '${Formatters.numberFr(totalAmount)} $currency',
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
-            color: AppColors.ink,
+        AmountInline(
+          amount: totalAmount,
+          currency: currency,
+          textAlign: TextAlign.right,
+          valueStyle: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
+          ),
+          unitStyle: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
           ),
         ),
       ],
@@ -1328,7 +1354,7 @@ class _ProofPicker extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
@@ -1352,8 +1378,8 @@ class _ProofPicker extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   color: hasFile
                       ? AppColors.success.withValues(alpha: 0.10)
@@ -1363,36 +1389,14 @@ class _ProofPicker extends StatelessWidget {
                 child: Icon(
                   hasFile ? Icons.verified_rounded : Icons.upload_file_outlined,
                   color: hasFile ? AppColors.success : AppColors.muted,
-                  size: 24,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: hasFile
-                            ? AppColors.success.withValues(alpha: 0.10)
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        hasFile ? 'Prête' : 'Pièce requise',
-                        style: TextStyle(
-                          color: hasFile ? AppColors.success : AppColors.muted,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          height: 1.0,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     Text(
                       hasFile
                           ? 'Preuve sélectionnée'
@@ -1400,11 +1404,11 @@ class _ProofPicker extends StatelessWidget {
                       style: TextStyle(
                         color: AppColors.ink,
                         fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
+                        fontSize: 15,
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 14),
                     Text(
                       hasFile
                           ? path!.split(RegExp(r'[/\\]')).last
@@ -1420,12 +1424,6 @@ class _ProofPicker extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                hasFile ? Icons.edit_outlined : Icons.chevron_right,
-                color: hasFile ? AppColors.success : AppColors.muted,
-                size: 22,
               ),
             ],
           ),

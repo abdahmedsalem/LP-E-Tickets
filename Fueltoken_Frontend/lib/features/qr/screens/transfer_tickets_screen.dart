@@ -196,12 +196,12 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
         return rawCode;
       }
-      return '$rawCode${Formatters.defaultCurrency}';
+      return rawCode;
     }
 
     final size = _carnetSizeFor(line);
     if (size > 0) {
-      return 'C${size}T-${line.faceValue}${Formatters.defaultCurrency}';
+      return 'C${size}T-${line.faceValue}';
     }
 
     return 'Carnet';
@@ -353,7 +353,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       }
 
       var confirmedRecipientName = recipientName;
-      String? confirmedTransactionReference;
 
       if (!mounted) return;
       final confirmed = await Navigator.of(context).push<bool>(
@@ -363,10 +362,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
               recipientPhone: phone,
               recipientName: recipientName,
               lines: confirmLines,
-              noteRequired: true,
-              noteLabel: 'Motif du transfert (facultatif)',
-              noteHint:
-                  'Facultatif. Si vide, le transfert sera enregistré sans motif renseigné.',
+              showQuantity: true,
               title: 'Confirmer le transfert',
               introText: 'Vérifiez les tickets avant de confirmer.',
               confirmLabel: 'Confirmer le transfert',
@@ -375,11 +371,10 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
               intentOperation: 'ticket-transfer',
               unconfirmedActionMessage:
                   'Action non confirmée. Vérifiez l\'état de vos tickets avant de réessayer.',
-              onConfirmWithNote: (actionCode, intent, note) async {
+              onConfirm: (actionCode, intent) async {
                 final raw = await OdooFueltokenFacade().ticketsTransfer(
                   intent.withAuthParams({
                     'recipient_phone': phone,
-                    'note': note,
                     'lines': apiLines,
                   }, actionCode: actionCode),
                 );
@@ -390,7 +385,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                   publicErrorMessage:
                       'Le transfert a échoué. Réessayez ou contactez l\'administrateur.',
                 );
-                confirmedTransactionReference = data['name']?.toString().trim();
                 final responseName = data['dest_partner']?.toString().trim();
                 if (responseName != null && responseName.isNotEmpty) {
                   confirmedRecipientName = responseName;
@@ -415,7 +409,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
           recipientPhone: phone,
-          transactionReference: confirmedTransactionReference,
           lines: confirmLines,
           linesTitle: 'Tickets transférés',
         );
@@ -786,19 +779,17 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
           width: isSelected ? 1.5 : 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 112),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
                       widget.carnetTypeLabel,
                       maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 15,
@@ -807,42 +798,38 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
                         height: 1.15,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      subtitleParts.join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF667085),
-                        height: 1.08,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Align(
-                alignment: Alignment.topRight,
-                child: Text(
-                  availableQtyLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryDeep,
-                    height: 1,
-                    letterSpacing: -0.2,
                   ),
+                  const SizedBox(width: 12),
+                  Text(
+                    availableQtyLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDeep,
+                      height: 1,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                subtitleParts.join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF667085),
+                  height: 1.08,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Container(height: 1, color: const Color(0xFFEAECEF)),
-          const SizedBox(height: 1),
+              const SizedBox(height: 5),
+              Container(height: 1, color: const Color(0xFFEAECEF)),
+              const SizedBox(height: 1),
           Row(
             children: [
               Text(

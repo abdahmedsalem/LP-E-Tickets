@@ -578,7 +578,8 @@ class _PurchaseHeroCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       lot.clientName,
-                      maxLines: 2,
+                      maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 18,
