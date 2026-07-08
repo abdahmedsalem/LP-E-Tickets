@@ -7,6 +7,7 @@ import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
