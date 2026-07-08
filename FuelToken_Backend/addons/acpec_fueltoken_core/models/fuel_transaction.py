@@ -13,9 +13,10 @@ class AcpecFuelTransaction(models.Model):
     TX_REFERENCE_RANDOM_DIGITS = 12
     TX_REFERENCE_MAX_RETRIES = 20
 
-    _sql_constraints = [
-        ('name_uniq', 'unique(name)', 'La référence de transaction doit être unique.'),
-    ]
+    _name_uniq = models.Constraint(
+        "UNIQUE(name)",
+        "La référence de transaction doit être unique.",
+    )
 
     name = fields.Char(
         string='Référence',
