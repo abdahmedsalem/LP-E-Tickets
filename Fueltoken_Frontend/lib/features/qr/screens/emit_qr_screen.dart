@@ -87,13 +87,13 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _liveLoading = false;
-        _liveError = e.toString().replaceFirst('Exception: ', '');
+        _liveError = ErrorPresenter.message(e);
       });
     }
   }

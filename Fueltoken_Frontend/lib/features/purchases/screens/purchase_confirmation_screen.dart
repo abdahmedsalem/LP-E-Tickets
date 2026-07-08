@@ -58,11 +58,7 @@ class _PurchaseConfirmationScreenState
   void _close(Object? result) {
     if (!mounted || _closing) return;
     _closing = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Navigator.of(context).pop(result);
-      }
-    });
+    Navigator.of(context, rootNavigator: true).pop(result);
   }
 
   Future<void> _onConfirm() async {
@@ -96,9 +92,14 @@ class _PurchaseConfirmationScreenState
   Widget build(BuildContext context) {
     final lines = widget.args.lines;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      bottomNavigationBar: SafeArea(
+    return PopScope(
+      canPop: !_closing,
+      onPopInvoked: (didPop) {
+        if (!didPop) _close(false);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Column(
@@ -172,9 +173,9 @@ class _PurchaseConfirmationScreenState
             ],
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
+        ),
+        body: SafeArea(
+          child: Column(
           children: [
             ScreenHeader(
               title: "Confirmer l'achat",
@@ -221,6 +222,7 @@ class _PurchaseConfirmationScreenState
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -252,12 +254,13 @@ class _PurchaseLinesCard extends StatelessWidget {
   final List<PurchaseConfirmationLine> lines;
 
   String _carnetTypeLabel(PurchaseConfirmationLine line) {
-    return Formatters.carnetTypeLabelFromServer(
+    final raw = Formatters.carnetTypeLabelFromServer(
       line.carnetType.name,
       fallbackSize: line.carnetType.size,
       fallbackFaceValue: line.carnetType.faceValue,
       fallbackCode: line.carnetType.code,
     );
+    return raw.replaceFirst(RegExp(r'^\s*\d+\s*[x×]\s*'), '');
   }
 
   String _currencyFor(PurchaseConfirmationLine line) =>

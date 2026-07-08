@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/odoo_api_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/acpec_mobile_auth_bootstrap.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
@@ -81,7 +82,7 @@ class _AcpecConnectionStep1ScreenState
     } on AcpecBootstrapException catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.message;
+          _error = ErrorPresenter.message(e);
           _loading = false;
         });
       }
@@ -90,7 +91,7 @@ class _AcpecConnectionStep1ScreenState
         setState(() {
           _error =
               'Connexion au service impossible. Vérifiez votre réseau et réessayez.';
-          _debugErrorDetail = e.message;
+          _debugErrorDetail = ErrorPresenter.message(e);
           _loading = false;
         });
       }
@@ -98,7 +99,7 @@ class _AcpecConnectionStep1ScreenState
       if (mounted) {
         setState(() {
           _error = 'Une erreur inattendue s?est produite. Réessayez plus tard.';
-          _debugErrorDetail = e.toString();
+          _debugErrorDetail = ErrorPresenter.message(e);
           _loading = false;
         });
       }

@@ -7,6 +7,7 @@ import '../../../core/auth/login_session_cache.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart'
     show kOtpSmsCodeLength;
+import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/app_alert_dialog.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -101,6 +102,23 @@ class _LoginScreenState extends State<LoginScreen> {
     return t;
   }
 
+  String _presentOtpFailure(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) {
+      return 'Code SMS incorrect. Réessayez.';
+    }
+
+    final normalized = t.toLowerCase();
+    if (normalized.contains('incorrect') ||
+        normalized.contains('invalid') ||
+        normalized.contains('pin incorrect') ||
+        normalized.contains('code sms')) {
+      return 'Code SMS incorrect. Réessayez.';
+    }
+
+    return _presentLoginFailure(t);
+  }
+
   static String? _validateIdentifier(String? v) {
     if (v == null || v.trim().isEmpty) {
       return 'Saisissez votre numéro de téléphone';
@@ -189,16 +207,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 state.errorMessage != null &&
                 !_handlingAuthMessage) {
               _handlingAuthMessage = true;
-              final msg = _presentLoginFailure(state.errorMessage!);
+              final msg = _otpStep
+                  ? _presentOtpFailure(state.errorMessage!)
+                  : _presentLoginFailure(state.errorMessage!);
               if (ctx.mounted) {
-                await showAppAlertDialog(
-                  ctx,
-                  title: 'Connexion',
-                  message: msg,
-                  confirmLabel: 'Fermer',
-                  isError: true,
-                  icon: Icons.gpp_maybe_outlined,
-                );
+                if (_otpStep) {
+                  AppMessage.error(ctx, msg);
+                } else {
+                  await showAppAlertDialog(
+                    ctx,
+                    title: 'Connexion',
+                    message: msg,
+                    confirmLabel: 'Fermer',
+                    isError: true,
+                    icon: Icons.gpp_maybe_outlined,
+                  );
+                }
               }
               _handlingAuthMessage = false;
             }

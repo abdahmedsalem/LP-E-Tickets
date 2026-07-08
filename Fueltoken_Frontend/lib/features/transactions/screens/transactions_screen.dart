@@ -438,7 +438,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecLoading = false;
         _acpecError = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;

@@ -11,6 +11,7 @@ import '../../../data/models/app_user.dart';
 import '../../../data/models/user_role.dart';
 import '../../../data/services/odoo_auth_service.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
@@ -172,7 +173,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
             'Demandez un nouveau code puis réessayez.$suffix';
       }
     }
-    return error.toString().replaceFirst('Exception: ', '');
+    return ErrorPresenter.message(error);
   }
 
   bool _hasSessionTokens(Map<String, dynamic>? tokens) {
@@ -267,7 +268,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         debugPrint('OTP resend failed: ${e.runtimeType}\n$st');
       }
       if (mounted) {
-        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+        AppMessage.error(context, ErrorPresenter.message(e));
       }
     } finally {
       if (mounted) setState(() => _resendBusy = false);

@@ -154,14 +154,14 @@ class _QrDetailScreenState extends State<QrDetailScreen>
         _loading = false;
         _error = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _qr = null;
         _loading = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = ErrorPresenter.message(e);
       });
     }
   }
@@ -224,11 +224,11 @@ class _QrDetailScreenState extends State<QrDetailScreen>
         context,
         e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message,
+            : ErrorPresenter.message(e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+      AppMessage.error(context, ErrorPresenter.message(e));
     } finally {
       if (mounted) setState(() => _revealingManualCode = false);
     }
@@ -310,11 +310,11 @@ class _QrDetailScreenState extends State<QrDetailScreen>
         context,
         e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message,
+            : ErrorPresenter.message(e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+      AppMessage.error(context, ErrorPresenter.message(e));
     } finally {
       if (mounted) setState(() => _separating = false);
     }

@@ -196,14 +196,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           _loading = false;
           _loadError = e.isOdooSessionExpired
               ? 'Session expirée. Reconnectez-vous.'
-              : e.message;
+              : ErrorPresenter.message(e);
           _lot = null;
         });
       } catch (e) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _loadError = e.toString().replaceFirst('Exception: ', '');
+          _loadError = ErrorPresenter.message(e);
           _lot = null;
         });
       }

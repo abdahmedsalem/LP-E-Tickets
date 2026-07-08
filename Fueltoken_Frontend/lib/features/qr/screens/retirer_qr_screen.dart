@@ -110,14 +110,14 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         _loading = false;
         _error = e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message;
+            : ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _parent = null;
         _loading = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = ErrorPresenter.message(e);
       });
     }
   }
@@ -277,11 +277,11 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         context,
         e.isOdooSessionExpired
             ? 'Session expirée. Reconnectez-vous.'
-            : e.message,
+            : ErrorPresenter.message(e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+      AppMessage.error(context, ErrorPresenter.message(e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

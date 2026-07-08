@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
@@ -101,7 +102,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (!mounted) return;
       setState(() {
         _loadingOffers = false;
-        _offerLoadError = e.toString().replaceFirst('Exception: ', '');
+        _offerLoadError = ErrorPresenter.message(e);
       });
     }
   }
@@ -289,7 +290,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         return;
       }
       // Naviguer vers l'écran de confirmation
-      final result = await navigator.push<AcpecPurchaseCreateResult>(
+      final result = await Navigator.of(
+        context,
+        rootNavigator: true,
+      ).push<AcpecPurchaseCreateResult>(
         MaterialPageRoute(
           builder: (_) => PurchaseConfirmationScreen(
             args: PurchaseConfirmationArgs(

@@ -13,7 +13,7 @@ Set-Location $Root
 $envDir = Join-Path $Root "scripts\env"
 $envFile = Join-Path $envDir "flutter.mobile.env"
 $envLocalOverride = Join-Path $envDir "flutter.mobile.local.env"
-$TeamOdooUrl = "http://127.0.0.1:8069"
+$TeamOdooUrl = "https://lpft.odoorim.com"
 $webPort = 8091
 
 function Import-FlutterMobileEnvFile([string]$path) {

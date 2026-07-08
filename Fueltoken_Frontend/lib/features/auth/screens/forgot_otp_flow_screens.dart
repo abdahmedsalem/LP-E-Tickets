@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/services/odoo_auth_service.dart';
@@ -70,7 +71,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+        AppMessage.error(context, ErrorPresenter.message(e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -100,7 +101,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
       context.go('/login');
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+        AppMessage.error(context, ErrorPresenter.message(e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -219,7 +220,7 @@ class _ResetPasswordAfterOtpScreenState
       context.go('/login');
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.toString().replaceFirst('Exception: ', ''));
+        AppMessage.error(context, ErrorPresenter.message(e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
