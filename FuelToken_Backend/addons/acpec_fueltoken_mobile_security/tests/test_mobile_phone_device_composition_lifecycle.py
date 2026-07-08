@@ -35,8 +35,8 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
             'login': phone,
             'mobile_phone': phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': state,
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -54,7 +54,7 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         self.assertFalse(Users.search([
             '|',
             ('login', '=', old_phone),
-            ('mobile_phone', '=', old_phone),
+            ('acpec_mobile_phone', '=', old_phone),
         ], limit=1))
 
     def test_f2j_phone_then_device_is_f2g_plus_f2h_composition(self):
@@ -64,7 +64,7 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         )
         original_user_id = user.id
         original_partner = user.partner_id
-        old_phone = user.mobile_phone
+        old_phone = user.acpec_mobile_phone
         new_phone = _acpec_test_mobile_phone('f2j-phone-then-device-new-phone')
 
         first_session = self._create_session(
@@ -85,7 +85,7 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
             source='backoffice',
         )
 
-        user.invalidate_recordset(['login', 'mobile_phone', 'partner_id', 'mobile_state'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone', 'partner_id', 'acpec_mobile_state'])
         first_session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state'])
         first_device.invalidate_recordset(['trust_state'])
 
@@ -93,8 +93,8 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, new_phone)
-        self.assertEqual(user.mobile_phone, new_phone)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_phone, new_phone)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
         self._assert_no_user_resolves_old_phone(old_phone)
 
         # F2G révoque les sessions, mais ne retire pas le trust durable
@@ -129,12 +129,12 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         self.assertEqual(first_device.trust_state, 'pending_trust')
         self.assertFalse(first_device.trusted_at)
 
-        user.invalidate_recordset(['login', 'mobile_phone', 'partner_id', 'mobile_state'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone', 'partner_id', 'acpec_mobile_state'])
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, new_phone)
-        self.assertEqual(user.mobile_phone, new_phone)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_phone, new_phone)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
 
     def test_f2j_device_then_phone_is_f2h_plus_f2g_composition(self):
         user = self._create_mobile_user(
@@ -143,7 +143,7 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         )
         original_user_id = user.id
         original_partner = user.partner_id
-        old_phone = user.mobile_phone
+        old_phone = user.acpec_mobile_phone
         new_phone = _acpec_test_mobile_phone('f2j-device-then-phone-new-phone')
 
         first_session = self._create_session(
@@ -184,7 +184,7 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
             source='backoffice',
         )
 
-        user.invalidate_recordset(['login', 'mobile_phone', 'partner_id', 'mobile_state'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone', 'partner_id', 'acpec_mobile_state'])
         second_session.invalidate_recordset(['state', 'revoked_at', 'device_trust_state'])
         first_device.invalidate_recordset(['trust_state'])
         second_device.invalidate_recordset(['trust_state'])
@@ -193,8 +193,8 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, new_phone)
-        self.assertEqual(user.mobile_phone, new_phone)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_phone, new_phone)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
         self._assert_no_user_resolves_old_phone(old_phone)
 
         # F2G révoque les sessions actives, mais ne modifie pas le trust durable
@@ -216,9 +216,9 @@ class TestMobilePhoneDeviceCompositionLifecycle(TransactionCase):
         self.assertEqual(successor_session.device_trust_state, 'trusted')
         self.assertEqual(second_device.trust_state, 'trusted')
 
-        user.invalidate_recordset(['login', 'mobile_phone', 'partner_id', 'mobile_state'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone', 'partner_id', 'acpec_mobile_state'])
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, new_phone)
-        self.assertEqual(user.mobile_phone, new_phone)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_phone, new_phone)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')

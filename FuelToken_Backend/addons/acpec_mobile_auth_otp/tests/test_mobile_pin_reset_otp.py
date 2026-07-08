@@ -43,8 +43,8 @@ class TestMobilePinResetOtp(TransactionCase):
             'email': login,
             'mobile_phone': mobile_phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -133,7 +133,7 @@ class TestMobilePinResetOtp(TransactionCase):
         self.assertTrue(user.check_mobile_pin(old_pin, purpose='old_pin_still_valid'))
         with self.assertRaises(AccessError):
             user.check_mobile_pin(new_pin, purpose='new_pin_must_not_be_active')
-        user.sudo().write({'mobile_pin_locked_until': False})
+        user.sudo().write({'acpec_mobile_pin_locked_until': False})
 
     def test_request_otp_forgot_pin_aliases_create_reset_challenge(self):
         for idx, alias in enumerate(('forgot_password', 'forgot_pin'), start=1):
@@ -160,20 +160,20 @@ class TestMobilePinResetOtp(TransactionCase):
 
         user.action_reset_mobile_pin()
         user.invalidate_recordset([
-            'mobile_pin_required',
-            'mobile_pin_set',
-            'mobile_pin_hash',
-            'mobile_pin_salt',
-            'mobile_pin_failed_count',
-            'mobile_pin_locked_until',
+            'acpec_mobile_pin_required',
+            'acpec_mobile_pin_set',
+            'acpec_mobile_pin_hash',
+            'acpec_mobile_pin_salt',
+            'acpec_mobile_pin_failed_count',
+            'acpec_mobile_pin_locked_until',
         ])
 
-        self.assertTrue(user.mobile_pin_required)
-        self.assertFalse(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_hash)
-        self.assertFalse(user.mobile_pin_salt)
-        self.assertEqual(user.mobile_pin_failed_count, 0)
-        self.assertFalse(user.mobile_pin_locked_until)
+        self.assertTrue(user.acpec_mobile_pin_required)
+        self.assertFalse(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_hash)
+        self.assertFalse(user.acpec_mobile_pin_salt)
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 0)
+        self.assertFalse(user.acpec_mobile_pin_locked_until)
 
     def test_verify_otp_reset_restores_pin_after_hard_block_with_secret_code(self):
         self._set_security_param('acpec_mobile_auth.mobile_pin_max_attempts', 2)
@@ -188,7 +188,7 @@ class TestMobilePinResetOtp(TransactionCase):
                 '9999',
                 purpose='wrong_pin_%s' % attempt,
             )
-            user.sudo().write({'mobile_pin_locked_until': False})
+            user.sudo().write({'acpec_mobile_pin_locked_until': False})
 
         self._expect_access_error_without_savepoint(
             user.check_mobile_pin,
@@ -197,13 +197,13 @@ class TestMobilePinResetOtp(TransactionCase):
         )
 
         user.invalidate_recordset([
-            'mobile_pin_required',
-            'mobile_pin_set',
-            'mobile_pin_hash',
-            'mobile_pin_salt',
+            'acpec_mobile_pin_required',
+            'acpec_mobile_pin_set',
+            'acpec_mobile_pin_hash',
+            'acpec_mobile_pin_salt',
         ])
-        self.assertTrue(user.mobile_pin_required)
-        self.assertFalse(user.mobile_pin_set)
+        self.assertTrue(user.acpec_mobile_pin_required)
+        self.assertFalse(user.acpec_mobile_pin_set)
 
         challenge, code = self._request_otp_dev(user, purpose='reset')
 
@@ -216,15 +216,15 @@ class TestMobilePinResetOtp(TransactionCase):
         )
 
         user.invalidate_recordset([
-            'mobile_pin_required',
-            'mobile_pin_set',
-            'mobile_pin_failed_count',
-            'mobile_pin_locked_until',
+            'acpec_mobile_pin_required',
+            'acpec_mobile_pin_set',
+            'acpec_mobile_pin_failed_count',
+            'acpec_mobile_pin_locked_until',
         ])
-        self.assertFalse(user.mobile_pin_required)
-        self.assertTrue(user.mobile_pin_set)
-        self.assertEqual(user.mobile_pin_failed_count, 0)
-        self.assertFalse(user.mobile_pin_locked_until)
+        self.assertFalse(user.acpec_mobile_pin_required)
+        self.assertTrue(user.acpec_mobile_pin_set)
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 0)
+        self.assertFalse(user.acpec_mobile_pin_locked_until)
         self.assertTrue(user.check_mobile_pin('5678', purpose='after_reset'))
 
     def test_verify_otp_reset_rejects_action_code_alias_without_consuming_otp(self):
@@ -252,9 +252,9 @@ class TestMobilePinResetOtp(TransactionCase):
             platform='android',
         )
 
-        user.invalidate_recordset(['mobile_pin_set', 'mobile_pin_required'])
-        self.assertTrue(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_required)
+        user.invalidate_recordset(['acpec_mobile_pin_set', 'acpec_mobile_pin_required'])
+        self.assertTrue(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_required)
         self.assertTrue(user.check_mobile_pin('5678', purpose='reset_after_alias_reuse'))
 
     def test_verify_otp_reset_rejects_other_pin_aliases_without_consuming_otp(self):
@@ -323,7 +323,7 @@ class TestMobilePinResetOtp(TransactionCase):
             platform='android',
         )
 
-        user.invalidate_recordset(['mobile_pin_set', 'mobile_pin_required'])
-        self.assertTrue(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_required)
+        user.invalidate_recordset(['acpec_mobile_pin_set', 'acpec_mobile_pin_required'])
+        self.assertTrue(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_required)
         self.assertTrue(user.check_mobile_pin('5678', purpose='reset_after_malformed_reuse'))

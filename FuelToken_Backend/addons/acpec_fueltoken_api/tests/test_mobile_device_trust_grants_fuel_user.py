@@ -36,8 +36,8 @@ class TestMobileDeviceTrustGrantsFuelUser(TransactionCase):
             'mobile_phone': phone,
             'email': label,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'self_registered',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'self_registered',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })

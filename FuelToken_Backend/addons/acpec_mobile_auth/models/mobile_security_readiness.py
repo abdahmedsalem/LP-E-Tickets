@@ -73,7 +73,7 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
     @api.model
     def _mobile_identity_issues(self):
         users_model = self.env['res.users'].sudo().with_context(active_test=False)
-        required_fields = {'mobile_only', 'mobile_phone', 'login'}
+        required_fields = {'acpec_mobile_only', 'acpec_mobile_phone', 'login'}
         missing_fields = sorted(required_fields - set(users_model._fields))
         if missing_fields:
             return [self._issue(
@@ -84,14 +84,14 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
             )]
 
         issues = []
-        mobile_users = users_model.search([('mobile_only', '=', True)])
+        mobile_users = users_model.search([('acpec_mobile_only', '=', True)])
         missing_phone = self.env['res.users']
         invalid_phone = self.env['res.users']
         login_mismatch = self.env['res.users']
 
         for user in mobile_users:
             login = (user.login or '').strip()
-            phone = (user.mobile_phone or '').strip()
+            phone = (user.acpec_mobile_phone or '').strip()
             if not phone:
                 missing_phone |= user
                 continue
@@ -107,29 +107,29 @@ class AcpecMobileSecurityReadiness(models.AbstractModel):
             issues.append(self._issue(
                 'MOBILE_IDENTITY_MOBILE_PHONE_MISSING',
                 'critical',
-                '%s utilisateur(s) mobile_only n’ont pas de mobile_phone.' % len(missing_phone),
-                'res.users.mobile_phone',
+                '%s utilisateur(s) mobile_only n’ont pas de acpec_mobile_phone.' % len(missing_phone),
+                'res.users.acpec_mobile_phone',
             ))
         if invalid_phone:
             issues.append(self._issue(
                 'MOBILE_IDENTITY_MOBILE_PHONE_INVALID',
                 'critical',
-                '%s utilisateur(s) mobile_only ont un mobile_phone non canonique local 8 chiffres.' % len(invalid_phone),
-                'res.users.mobile_phone',
+                '%s utilisateur(s) mobile_only ont un acpec_mobile_phone non canonique local 8 chiffres.' % len(invalid_phone),
+                'res.users.acpec_mobile_phone',
             ))
         if login_mismatch:
             issues.append(self._issue(
                 'MOBILE_IDENTITY_LOGIN_PHONE_MISMATCH',
                 'critical',
-                '%s utilisateur(s) mobile_only ont login différent de mobile_phone.' % len(login_mismatch),
+                '%s utilisateur(s) mobile_only ont login différent de acpec_mobile_phone.' % len(login_mismatch),
                 'res.users.login',
             ))
         if duplicate_rows:
             issues.append(self._issue(
                 'MOBILE_IDENTITY_MOBILE_PHONE_NOT_UNIQUE',
                 'critical',
-                'Des utilisateurs mobile_only partagent le même mobile_phone ; unicité obligatoire.',
-                'res.users.mobile_phone',
+                'Des utilisateurs mobile_only partagent le même acpec_mobile_phone ; unicité obligatoire.',
+                'res.users.acpec_mobile_phone',
             ))
         return issues
 

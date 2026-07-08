@@ -646,7 +646,7 @@ Patch42D ne change pas la doctrine account.request de Patch42C :
 
 ```text
 account.request.state = approved signifie demande traitée/clôturée,
-tandis que res.users.mobile_state = self_registered signifie compte créé mais accès métier non encore approuvé.
+tandis que res.users.acpec_mobile_state = self_registered signifie compte créé mais accès métier non encore approuvé.
 ```
 
 Correction complémentaire figée par Patch42D :

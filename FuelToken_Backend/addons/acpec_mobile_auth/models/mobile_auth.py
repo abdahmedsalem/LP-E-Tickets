@@ -69,7 +69,7 @@ class AcpecMobileAuthAccountRequest(models.Model):
             ], limit=1)
             duplicate_user_domain = [('login', '=', record.login)]
             if record.signup_identifier_type == 'phone':
-                duplicate_user_domain = ['|', ('login', '=', record.login), ('mobile_phone', '=', record.phone)]
+                duplicate_user_domain = ['|', ('login', '=', record.login), ('acpec_mobile_phone', '=', record.phone)]
             elif record.signup_identifier_type == 'email':
                 duplicate_user_domain = ['|', ('login', '=', record.login), ('email', '=', record.email)]
             duplicate_user = user_model.search(duplicate_user_domain, limit=1)
@@ -107,14 +107,14 @@ class AcpecMobileAuthAccountRequest(models.Model):
                 raise UserError(_('No linked user exists for this account request.'))
             vals = {
                 'active': True,
-                'mobile_only': True,
-                'mobile_state': 'approved',
+                'acpec_mobile_only': True,
+                'acpec_mobile_state': 'approved',
                 'password': record.user_id._acpec_mobile_unusable_password(),
             }
             if group_ids:
                 vals['group_ids'] = [(6, 0, group_ids)]
-            if record.phone and not record.user_id.mobile_phone:
-                vals['mobile_phone'] = record.phone
+            if record.phone and not record.user_id.acpec_mobile_phone:
+                vals['acpec_mobile_phone'] = record.phone
             if record.email and not record.user_id.email:
                 vals['email'] = record.email
             record.user_id.sudo().with_context(acpec_mobile_allow_password_write=True, no_reset_password=True).write(vals)
@@ -132,7 +132,7 @@ class AcpecMobileAuthAccountRequest(models.Model):
                 raise UserError(_('Only a pending account request can be rejected.'))
             if record.user_id:
                 record.user_id.sudo().write({
-                    'mobile_state': 'rejected',
+                    'acpec_mobile_state': 'rejected',
                     'active': False,
                 })
             record.write({

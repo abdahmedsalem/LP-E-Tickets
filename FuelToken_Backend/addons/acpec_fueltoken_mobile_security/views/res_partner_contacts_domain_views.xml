@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Patch43M1: masquage UI doux.
-         Le partner d'un user mobile_only est un support technique d'identité.
+         Le partner d'un user acpec_mobile_only est un support technique d'identité.
          On évite de polluer Contacts sans ir.rule sur res.partner/res.users.
 
          Important:

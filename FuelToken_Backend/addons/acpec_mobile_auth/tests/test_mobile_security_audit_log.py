@@ -37,8 +37,8 @@ class TestMobileSecurityAuditLog(TransactionCase):
             'mobile_phone': _acpec_test_mobile_phone(login),
             'email': login,
             'partner_id': partner.id,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'company_id': self.env.company.id,
             'company_ids': [(6, 0, [self.env.company.id])],
             'group_ids': [(6, 0, [
@@ -98,8 +98,8 @@ class TestMobileSecurityAuditLog(TransactionCase):
             'idempotency_key': 'audit-wrong-pin-key-32a',
         }, purpose='carnet_transfer')
 
-        user.invalidate_recordset(['mobile_pin_failed_count'])
-        self.assertEqual(user.mobile_pin_failed_count, 1)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 1)
 
         log = self.env['acpec.mobile.security.audit.log'].sudo().search([
             ('idempotency_key', '=', 'audit-wrong-pin-key-32a'),
@@ -131,8 +131,8 @@ class TestMobileSecurityAuditLog(TransactionCase):
             'idempotency_key': 'audit-pending-device-key-32a',
         }, purpose='carnet_transfer')
 
-        user.invalidate_recordset(['mobile_pin_failed_count'])
-        self.assertEqual(user.mobile_pin_failed_count, 0)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 0)
 
         log = self.env['acpec.mobile.security.audit.log'].sudo().search([
             ('idempotency_key', '=', 'audit-pending-device-key-32a'),
@@ -159,8 +159,8 @@ class TestMobileSecurityAuditLog(TransactionCase):
             'idempotency_key': 'audit-valid-before-wrong-key-32a',
         }, purpose='carnet_transfer')
 
-        user.invalidate_recordset(['mobile_pin_failed_count'])
-        self.assertEqual(user.mobile_pin_failed_count, 1)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 1)
 
         allowed_user = controller._require_sensitive_action_pin({
             'action_code': '1234',
@@ -173,13 +173,13 @@ class TestMobileSecurityAuditLog(TransactionCase):
         self.assertEqual(allowed_user, user)
 
         user.invalidate_recordset([
-            'mobile_pin_failed_count',
-            'mobile_pin_locked_until',
+            'acpec_mobile_pin_failed_count',
+            'acpec_mobile_pin_locked_until',
         ])
 
         reset_counter_visible = (
-            user.mobile_pin_failed_count == 0
-            and not user.mobile_pin_locked_until
+            user.acpec_mobile_pin_failed_count == 0
+            and not user.acpec_mobile_pin_locked_until
         )
         if not reset_counter_visible:
             # NOTE Patch43K1 / TransactionCase limitation:
@@ -200,8 +200,8 @@ class TestMobileSecurityAuditLog(TransactionCase):
                 'Patch43K1 TransactionCase limitation: reset compteur PIN '
                 'non visible dans ce test après PIN valide '
                 '(mobile_pin_failed_count=%s, mobile_pin_locked_until=%s).',
-                user.mobile_pin_failed_count,
-                user.mobile_pin_locked_until,
+                user.acpec_mobile_pin_failed_count,
+                user.acpec_mobile_pin_locked_until,
             )
 
         log = self.env['acpec.mobile.security.audit.log'].sudo().search([

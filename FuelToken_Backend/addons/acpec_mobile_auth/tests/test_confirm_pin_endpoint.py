@@ -38,8 +38,8 @@ class TestConfirmPinEndpoint(TransactionCase):
             'mobile_phone': _acpec_test_mobile_phone(login),
             'email': login,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -92,8 +92,8 @@ class TestConfirmPinEndpoint(TransactionCase):
         response = self._controller(session).confirm_pin(action_code='9999')
 
         self.assertEqual(self._error_code(response), 'INVALID_ACTION_CODE')
-        user.invalidate_recordset(['mobile_pin_failed_count'])
-        self.assertEqual(user.mobile_pin_failed_count, 1)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 1)
 
     def test_confirm_pin_exposes_action_code_locked(self):
         self._set_security_param('acpec_mobile_auth.mobile_pin_max_attempts', 1)
@@ -123,23 +123,23 @@ class TestConfirmPinEndpoint(TransactionCase):
 
         self.assertEqual(self._error_code(response), 'PIN_RESET_REQUIRED')
         user.invalidate_recordset([
-            'mobile_pin_required',
-            'mobile_pin_set',
-            'mobile_pin_hash',
-            'mobile_pin_salt',
+            'acpec_mobile_pin_required',
+            'acpec_mobile_pin_set',
+            'acpec_mobile_pin_hash',
+            'acpec_mobile_pin_salt',
         ])
-        self.assertTrue(user.mobile_pin_required)
-        self.assertFalse(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_hash)
-        self.assertFalse(user.mobile_pin_salt)
+        self.assertTrue(user.acpec_mobile_pin_required)
+        self.assertFalse(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_hash)
+        self.assertFalse(user.acpec_mobile_pin_salt)
 
     def test_confirm_pin_exposes_pending_device_without_touching_pin_counter(self):
         user, session = self._session('pending', trusted=False)
         response = self._controller(session).confirm_pin(action_code='1234')
 
         self.assertEqual(self._error_code(response), 'DEVICE_PENDING_TRUST')
-        user.invalidate_recordset(['mobile_pin_failed_count'])
-        self.assertEqual(user.mobile_pin_failed_count, 0)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 0)
 
     def test_confirm_pin_exposes_blocked_device(self):
         user, session = self._session('blocked', trusted=True)

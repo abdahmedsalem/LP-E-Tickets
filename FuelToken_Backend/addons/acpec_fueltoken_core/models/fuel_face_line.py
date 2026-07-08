@@ -180,12 +180,12 @@ class AcpecFuelFaceLine(models.Model):
 
         if partner_ids:
             base_domain = [('partner_id', 'in', partner_ids)]
-            if 'mobile_only' in Users._fields:
-                base_domain.append(('mobile_only', '=', True))
+            if 'acpec_mobile_only' in Users._fields:
+                base_domain.append(('acpec_mobile_only', '=', True))
 
             preferred_domain = list(base_domain)
-            if 'mobile_state' in Users._fields:
-                preferred_domain.append(('mobile_state', 'in', ['approved', 'self_registered']))
+            if 'acpec_mobile_state' in Users._fields:
+                preferred_domain.append(('acpec_mobile_state', 'in', ['approved', 'self_registered']))
 
             preferred_users = Users.search(preferred_domain, order='id desc')
             for user in preferred_users:
@@ -198,8 +198,8 @@ class AcpecFuelFaceLine(models.Model):
             ]
             if missing_partner_ids:
                 fallback_domain = [('partner_id', 'in', missing_partner_ids)]
-                if 'mobile_only' in Users._fields:
-                    fallback_domain.append(('mobile_only', '=', True))
+                if 'acpec_mobile_only' in Users._fields:
+                    fallback_domain.append(('acpec_mobile_only', '=', True))
                 fallback_users = Users.search(fallback_domain, order='id desc')
                 for user in fallback_users:
                     if user.partner_id and user.partner_id.id not in users_by_partner:
@@ -209,8 +209,8 @@ class AcpecFuelFaceLine(models.Model):
             user = users_by_partner.get(rec.partner_id.id)
             mobile_phone = False
             if user:
-                if 'mobile_phone' in Users._fields:
-                    mobile_phone = user.mobile_phone
+                if 'acpec_mobile_phone' in Users._fields:
+                    mobile_phone = user.acpec_mobile_phone
                 mobile_phone = mobile_phone or user.login
             rec.client_mobile_phone = mobile_phone or False
 

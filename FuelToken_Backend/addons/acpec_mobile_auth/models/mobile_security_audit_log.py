@@ -130,8 +130,8 @@ class AcpecMobileSecurityAuditLog(models.Model):
             'secret_code',
             'otp',
             'otp_code',
-            'mobile_pin_hash',
-            'mobile_pin_salt',
+            'acpec_mobile_pin_hash',
+            'acpec_mobile_pin_salt',
         ):
             vals.pop(forbidden, None)
 

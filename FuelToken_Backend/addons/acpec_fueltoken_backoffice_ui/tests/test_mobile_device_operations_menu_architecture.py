@@ -57,7 +57,7 @@ class TestMobileDeviceOperationsMenuArchitecture(TransactionCase):
         self.assertEqual(action.res_model, 'acpec.mobile.session')
 
         domain = self._domain(action)
-        self.assertIn(('user_id.mobile_only', '=', True), domain)
+        self.assertIn(('user_id.acpec_mobile_only', '=', True), domain)
         self.assertIn(('device_uid', '!=', False), domain)
         self.assertIn(('device_uid', '!=', ''), domain)
         self.assertIn(('is_device_approval_candidate', '=', True), domain)

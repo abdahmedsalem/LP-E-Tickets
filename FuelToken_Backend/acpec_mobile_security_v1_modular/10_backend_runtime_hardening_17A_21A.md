@@ -35,7 +35,7 @@ Pour un compte mobile-only :
 
 ## 3. États compte mobile
 
-`res.users.mobile_state` contrôle la session mobile :
+`res.users.acpec_mobile_state` contrôle la session mobile :
 
 - `pending` : compte en attente d'approbation ;
 - `approved` : session mobile autorisée ;

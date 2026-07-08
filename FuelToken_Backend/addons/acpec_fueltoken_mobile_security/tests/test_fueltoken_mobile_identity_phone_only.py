@@ -53,8 +53,8 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
             'mobile_phone': phone,
-            'mobile_only': True,
-            'mobile_state': 'self_registered',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'self_registered',
             'password': self.User._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self.mobile_group_ids)],
         }
@@ -63,7 +63,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
         """INV-I1: FuelToken mobile identity is login == mobile_phone == phone."""
         user = self.User.create(self._mobile_user_vals(phone='32345002'))
         self.assertEqual(user.login, '32345002')
-        self.assertEqual(user.mobile_phone, '32345002')
+        self.assertEqual(user.acpec_mobile_phone, '32345002')
 
         with self.assertRaises(ValidationError):
             self.User.create(self._mobile_user_vals(
@@ -134,7 +134,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
             with self.subTest(phone=phone):
                 user = self.User.create(self._mobile_user_vals(phone=phone))
                 self.assertEqual(user.login, phone)
-                self.assertEqual(user.mobile_phone, phone)
+                self.assertEqual(user.acpec_mobile_phone, phone)
 
     def test_f2b_fueltoken_mobile_user_rejects_non_canonical_phone_values(self):
         invalid_values = (

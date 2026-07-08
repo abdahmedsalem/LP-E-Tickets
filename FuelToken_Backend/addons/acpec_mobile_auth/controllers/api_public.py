@@ -74,7 +74,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
 
             user_domain = [('login', '=', identifier_vals['login'])]
             if identifier_vals['signup_identifier_type'] == 'phone':
-                user_domain = ['|', ('login', '=', identifier_vals['login']), ('mobile_phone', '=', identifier_vals['phone'])]
+                user_domain = ['|', ('login', '=', identifier_vals['login']), ('acpec_mobile_phone', '=', identifier_vals['phone'])]
             else:
                 user_domain = ['|', ('login', '=', identifier_vals['login']), ('email', '=', identifier_vals['email'])]
 

@@ -42,9 +42,9 @@ class AcpecMobileSession(models.Model):
             user = session.user_id.sudo().exists()
             if not user:
                 continue
-            if not getattr(user, 'mobile_only', False):
+            if not getattr(user, 'acpec_mobile_only', False):
                 continue
-            if getattr(user, 'mobile_state', False) not in ('self_registered', 'approved'):
+            if getattr(user, 'acpec_mobile_state', False) not in ('self_registered', 'approved'):
                 continue
 
             has_forbidden_group = False
@@ -122,8 +122,8 @@ class ResUsers(models.Model):
             'partner_id',
             'company_ids',
             'active',
-            'mobile_only',
-            'mobile_state',
+            'acpec_mobile_only',
+            'acpec_mobile_state',
         }
         if watched_fields & set(vals or {}):
             self._fueltoken_check_operational_role_wallet_segregation()

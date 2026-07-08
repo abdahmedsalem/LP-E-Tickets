@@ -46,20 +46,20 @@ class TestFuelTokenMobilePartnerTechnicalIdentity(TransactionCase):
             'company_id': self.fuel_company.id,
             'company_ids': [(6, 0, [self.fuel_company.id])],
             'mobile_phone': phone,
-            'mobile_only': True,
-            'mobile_state': 'self_registered',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'self_registered',
             'password': self.User._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self.mobile_group_ids)],
         })
 
     def test_patch43m1_exact_mobile_identity_field_names_are_used(self):
-        self.assertIn('mobile_only', self.env['res.users']._fields)
+        self.assertIn('acpec_mobile_only', self.env['res.users']._fields)
         self.assertIn('acpec_is_mobile_partner', self.env['res.partner']._fields)
 
         partner_fields = self.env['res.partner']._acpec_fueltoken_mobile_partner_identity_fields()
         self.assertEqual(partner_fields, {'name', 'ref', 'acpec_is_mobile_partner'})
         self.assertNotIn('acpec_mobile_only', partner_fields)
-        self.assertNotIn('mobile_only', partner_fields)
+        self.assertNotIn('acpec_mobile_only', partner_fields)
 
     def test_patch43m1_mobile_partner_is_canonical_and_technical_on_create(self):
         user = self._mobile_user('38374744', 'Sidi Mohamed')
@@ -122,7 +122,7 @@ class TestFuelTokenMobilePartnerTechnicalIdentity(TransactionCase):
 
         for vals in (
             {'name': 'Sidi Mokhtar Manual'},
-            {'mobile_only': False},
+            {'acpec_mobile_only': False},
         ):
             with self.subTest(vals=vals):
                 with self.assertRaises(ValidationError):
@@ -135,11 +135,11 @@ class TestFuelTokenMobilePartnerTechnicalIdentity(TransactionCase):
             '38374751',
             'Client changed phone number.',
         )
-        user.invalidate_recordset(['name', 'login', 'mobile_phone'])
+        user.invalidate_recordset(['name', 'login', 'acpec_mobile_phone'])
         user.partner_id.invalidate_recordset(['name', 'ref'])
 
         self.assertEqual(user.login, '38374751')
-        self.assertEqual(user.mobile_phone, '38374751')
+        self.assertEqual(user.acpec_mobile_phone, '38374751')
         self.assertEqual(user.name, '38374751 - Sidi Abdallahi')
         self.assertEqual(user.partner_id.name, '38374751 - Sidi Abdallahi')
         self.assertEqual(user.partner_id.ref, 'MOB:38374751')

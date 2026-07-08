@@ -110,8 +110,8 @@ class AcpecFuelStation(models.Model):
                 'ni public, ni admin back-office FuelToken.'
             ))
 
-        if 'mobile_state' in user._fields:
-            mobile_state = user.mobile_state
+        if 'acpec_mobile_state' in user._fields:
+            mobile_state = user.acpec_mobile_state
             if mobile_state not in ('approved', 'self_registered'):
                 raise ValidationError(_(
                     'L’utilisateur mobile station doit être auto-inscrit ou approuvé.'

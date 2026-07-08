@@ -20,8 +20,8 @@
                 <field name="name"/>
                 <field name="login"/>
                 <field name="partner_id"/>
-                <field name="mobile_phone"/>
-                <field name="mobile_state"/>
+                <field name="acpec_mobile_phone"/>
+                <field name="acpec_mobile_state"/>
                 <field name="active"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </list>
@@ -36,17 +36,17 @@
                 <field name="name"/>
                 <field name="login"/>
                 <field name="partner_id"/>
-                <field name="mobile_phone"/>
+                <field name="acpec_mobile_phone"/>
                 <field name="email"/>
-                <filter name="mobile_pending" string="En attente" domain="[('mobile_state', '=', 'pending')]"/>
-                <filter name="mobile_approved" string="Approuvés" domain="[('mobile_state', '=', 'approved')]"/>
-                <filter name="mobile_rejected" string="Rejetés" domain="[('mobile_state', '=', 'rejected')]"/>
+                <filter name="mobile_pending" string="En attente" domain="[('acpec_mobile_state', '=', 'pending')]"/>
+                <filter name="mobile_approved" string="Approuvés" domain="[('acpec_mobile_state', '=', 'approved')]"/>
+                <filter name="mobile_rejected" string="Rejetés" domain="[('acpec_mobile_state', '=', 'rejected')]"/>
                 <separator/>
-                <filter name="has_mobile_phone" string="Avec téléphone mobile" domain="[('mobile_phone', '!=', False)]"/>
+                <filter name="has_acpec_mobile_phone" string="Avec téléphone mobile" domain="[('acpec_mobile_phone', '!=', False)]"/>
                 <filter name="active_users" string="Actifs" domain="[('active', '=', True)]"/>
                 <filter name="inactive_users" string="Inactifs" domain="[('active', '=', False)]"/>
                 <group>
-                    <filter name="group_mobile_state" string="État mobile" context="{'group_by': 'mobile_state'}"/>
+                    <filter name="group_mobile_state" string="État mobile" context="{'group_by': 'acpec_mobile_state'}"/>
                     <filter name="group_company" string="Société Odoo" context="{'group_by': 'company_id'}"/>
                 </group>
             </search>
@@ -59,7 +59,7 @@
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="view_backoffice_mobile_user_list"/>
         <field name="search_view_id" ref="view_backoffice_mobile_user_search"/>
-        <field name="domain">[('mobile_only', '=', True)]</field>
+        <field name="domain">[('acpec_mobile_only', '=', True)]</field>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 
@@ -69,7 +69,7 @@
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="view_backoffice_mobile_user_list"/>
         <field name="search_view_id" ref="view_backoffice_mobile_user_search"/>
-        <field name="domain">[('mobile_only', '=', True)]</field>
+        <field name="domain">[('acpec_mobile_only', '=', True)]</field>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
 

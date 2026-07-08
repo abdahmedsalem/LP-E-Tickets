@@ -32,7 +32,7 @@ class TestMobileIdentity(TransactionCase):
         Users = self.env['res.users'].sudo().with_context(active_test=False)
         for number in range(43000000, 43009999):
             phone = str(number)
-            if not Users.search([('mobile_phone', '=', phone)], limit=1):
+            if not Users.search([('acpec_mobile_phone', '=', phone)], limit=1):
                 return phone
         self.fail('No unused mobile phone found for test')
 
@@ -43,8 +43,8 @@ class TestMobileIdentity(TransactionCase):
             'login': mobile_phone,
             'partner_id': self._existing_partner().id,
             'mobile_phone': mobile_phone,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids([
                 'base.group_portal',

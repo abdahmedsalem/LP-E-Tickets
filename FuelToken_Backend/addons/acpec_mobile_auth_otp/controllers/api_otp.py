@@ -42,7 +42,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 existing_user = request.env['res.users'].sudo().with_context(active_test=False).search([
                     '|',
                     ('login', '=', identifier_vals['login']),
-                    ('mobile_phone', '=', identifier_vals['phone']),
+                    ('acpec_mobile_phone', '=', identifier_vals['phone']),
                 ], limit=1)
                 if existing_user:
                     return self._mobile_signup_not_allowed_response(
@@ -282,7 +282,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 # Il n’accorde aucun accès métier Tickets Carburant.
                 user.sudo().write({
                     'active': True,
-                    'mobile_state': 'self_registered',
+                    'acpec_mobile_state': 'self_registered',
                 })
 
                 if account_request and account_request.state == 'pending':

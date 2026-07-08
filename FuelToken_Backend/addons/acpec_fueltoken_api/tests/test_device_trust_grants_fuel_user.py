@@ -35,8 +35,8 @@ class TestDeviceTrustGrantsFuelUser(TransactionCase):
             'company_id': self.env.company.id,
             'company_ids': [(6, 0, [self.env.company.id])],
             'mobile_phone': '32343939',
-            'mobile_only': True,
-            'mobile_state': mobile_state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': mobile_state,
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids([
                 'base.group_portal',

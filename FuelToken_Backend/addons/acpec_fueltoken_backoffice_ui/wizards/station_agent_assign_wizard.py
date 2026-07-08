@@ -93,9 +93,9 @@ class AcpecFuelStationAgentAssignWizard(models.TransientModel):
 
         Users = self.env['res.users'].sudo().with_context(active_test=False)
         users = Users.search([
-            ('mobile_only', '=', True),
+            ('acpec_mobile_only', '=', True),
             '|',
-            ('mobile_phone', '=', normalized),
+            ('acpec_mobile_phone', '=', normalized),
             ('login', '=', normalized),
         ], limit=2)
         if not users:
@@ -143,13 +143,13 @@ class AcpecFuelStationAgentAssignWizard(models.TransientModel):
         if phone != confirmation:
             raise ValidationError(_('Le téléphone de confirmation ne correspond pas.'))
 
-        user_phone = self._normalize_mobile_phone(user.mobile_phone or user.login)
+        user_phone = self._normalize_mobile_phone(user.acpec_mobile_phone or user.login)
         if user_phone != phone:
             raise ValidationError(_('Le téléphone confirmé ne correspond pas à l’utilisateur mobile trouvé.'))
 
     def _ensure_station_group(self, user):
         self.ensure_one()
-        if not getattr(user, 'mobile_only', False):
+        if not getattr(user, 'acpec_mobile_only', False):
             raise ValidationError(_('Ce téléphone ne correspond pas à un utilisateur mobile_only.'))
         if 'active' in user._fields and not user.active:
             raise ValidationError(_('L’utilisateur mobile est archivé/inactif.'))

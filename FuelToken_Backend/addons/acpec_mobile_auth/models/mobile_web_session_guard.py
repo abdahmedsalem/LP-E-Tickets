@@ -32,7 +32,7 @@ class IrHttp(models.AbstractModel):
         if not user or user._is_public():
             return False
 
-        return bool(getattr(user, "mobile_only", False))
+        return bool(getattr(user, "acpec_mobile_only", False))
 
     @classmethod
     def _acpec_enforce_no_mobile_only_web_session(cls):

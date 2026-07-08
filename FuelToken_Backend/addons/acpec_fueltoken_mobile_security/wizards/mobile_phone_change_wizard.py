@@ -17,7 +17,7 @@ class AcpecFuelTokenMobilePhoneChangeWizard(models.TransientModel):
         user = self.env['res.users'].browse(vals.get('user_id') or self.env.context.get('default_user_id')).exists()
         if user:
             vals.setdefault('user_id', user.id)
-            vals.setdefault('old_phone', user.mobile_phone or False)
+            vals.setdefault('old_phone', user.acpec_mobile_phone or False)
         return vals
 
     def action_apply(self):

@@ -79,8 +79,8 @@ class TestRoleBasedSmokeH3(TransactionCase):
             "active": True,
             "company_id": self.company.id,
             "company_ids": [(6, 0, [self.company.id])],
-            "mobile_only": True,
-            "mobile_state": "approved",
+            "acpec_mobile_only": True,
+            "acpec_mobile_state": "approved",
             "password": user_model._acpec_mobile_unusable_password(),
             "group_ids": [(6, 0, group_ids)],
         })
@@ -517,7 +517,7 @@ class TestRoleBasedSmokeH3(TransactionCase):
         self.assertTrue(unrelated_face_line)
         transfer_key = "h3-manager-must-not-transfer"
         self._assert_refused(self._call_mobile(mobile_as_manager, "transfer_carnets", {
-            "recipient_phone": transfer_recipient.mobile_phone,
+            "recipient_phone": transfer_recipient.acpec_mobile_phone,
             "lines": [{"face_line_id": unrelated_face_line.id, "carnet_qty": 1}],
             "action_code": "1234",
             "idempotency_key": transfer_key,

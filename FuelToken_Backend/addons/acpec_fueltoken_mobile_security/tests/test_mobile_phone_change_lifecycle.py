@@ -47,8 +47,8 @@ class TestFuelTokenMobilePhoneChangeLifecycle(TransactionCase):
             'company_id': self.fuel_company.id,
             'company_ids': [(6, 0, [self.fuel_company.id])],
             'mobile_phone': phone,
-            'mobile_only': True,
-            'mobile_state': 'self_registered',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'self_registered',
             'password': self.User._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self.mobile_group_ids)],
         })
@@ -78,13 +78,13 @@ class TestFuelTokenMobilePhoneChangeLifecycle(TransactionCase):
             '33003002',
             'Client changed phone number.',
         )
-        user.invalidate_recordset(['login', 'mobile_phone'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone'])
         user.partner_id.invalidate_recordset(['ref'])
         session.invalidate_recordset(['state', 'revoked_at'])
         device.invalidate_recordset(['trust_state'])
 
         self.assertEqual(user.login, '33003002')
-        self.assertEqual(user.mobile_phone, '33003002')
+        self.assertEqual(user.acpec_mobile_phone, '33003002')
         self.assertEqual(user.partner_id.ref, 'MOB:33003002')
         self.assertEqual(session.state, 'revoked')
         self.assertTrue(session.revoked_at)
@@ -143,9 +143,9 @@ class TestFuelTokenMobilePhoneChangeLifecycle(TransactionCase):
                 'mobile_phone': '33003008',
             })
 
-        user.invalidate_recordset(['login', 'mobile_phone'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone'])
         self.assertEqual(user.login, '33003007')
-        self.assertEqual(user.mobile_phone, '33003007')
+        self.assertEqual(user.acpec_mobile_phone, '33003007')
 
     def test_f2g_change_phone_rejects_duplicate_mobile_identity(self):
         user = self._mobile_user('33003009')
@@ -179,8 +179,8 @@ class TestFuelTokenMobilePhoneChangeLifecycle(TransactionCase):
         })
 
         request.action_approve()
-        user.invalidate_recordset(['mobile_phone', 'mobile_only', 'mobile_state'])
+        user.invalidate_recordset(['acpec_mobile_phone', 'acpec_mobile_only', 'acpec_mobile_state'])
 
-        self.assertTrue(user.mobile_only)
-        self.assertEqual(user.mobile_state, 'approved')
-        self.assertEqual(user.mobile_phone, phone)
+        self.assertTrue(user.acpec_mobile_only)
+        self.assertEqual(user.acpec_mobile_state, 'approved')
+        self.assertEqual(user.acpec_mobile_phone, phone)

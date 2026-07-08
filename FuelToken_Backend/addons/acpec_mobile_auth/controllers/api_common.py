@@ -1108,17 +1108,17 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
     def _classify_pin_failure(self, exc, user, failed_count_before=False):
         debug_reason = str(exc)
-        failed_count_after = user.mobile_pin_failed_count or 0
+        failed_count_after = user.acpec_mobile_pin_failed_count or 0
 
         # Lock contention is a transient availability condition, detected by
         # type (never by message string): it must not count as a failed PIN.
         if isinstance(exc, MobileSensitivePinBusy):
             return 'sensitive_action_busy', 'ACTION_IN_PROGRESS', 'warning', (failed_count_before or 0)
 
-        if user.mobile_pin_required or not user.mobile_pin_set:
+        if user.acpec_mobile_pin_required or not user.acpec_mobile_pin_set:
             return 'pin_hard_blocked', 'PIN_RESET_REQUIRED', 'critical', failed_count_after
 
-        if user.mobile_pin_locked_until:
+        if user.acpec_mobile_pin_locked_until:
             return 'pin_locked', 'ACTION_CODE_LOCKED', 'warning', failed_count_after
 
         if failed_count_after and failed_count_after > (failed_count_before or 0):
@@ -1506,7 +1506,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
 
         user_domain = [('login', '=', identifier_vals['login'])]
         if identifier_vals['signup_identifier_type'] == 'phone':
-            user_domain = ['|', ('login', '=', identifier_vals['login']), ('mobile_phone', '=', identifier_vals['phone'])]
+            user_domain = ['|', ('login', '=', identifier_vals['login']), ('acpec_mobile_phone', '=', identifier_vals['phone'])]
         else:
             user_domain = ['|', ('login', '=', identifier_vals['login']), ('email', '=', identifier_vals['email'])]
 
@@ -1528,14 +1528,14 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'company_id': company.id,
             'company_ids': [(6, 0, [company.id])],
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'pending',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'pending',
             'password': user_model._acpec_mobile_unusable_password(),
         }
         if mobile_group_ids:
             user_vals['group_ids'] = [(6, 0, mobile_group_ids)]
         if identifier_vals['phone']:
-            user_vals['mobile_phone'] = identifier_vals['phone']
+            user_vals['acpec_mobile_phone'] = identifier_vals['phone']
 
         user = request.env['res.users'].sudo().with_context(no_reset_password=True).create(user_vals)
         partner = user.partner_id.sudo()
@@ -1644,7 +1644,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
     def _assert_mobile_only_user(self, user):
         if not user or not user.exists() or not user.active:
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
-        if not getattr(user, 'mobile_only', False):
+        if not getattr(user, 'acpec_mobile_only', False):
             raise AccessError(_('Ce compte n’est pas un compte mobile-only FuelToken.'))
 
         required_xmlids = (
@@ -1808,21 +1808,21 @@ class AcpecMobileAuthApiCommon(http.Controller):
             )
 
         user.invalidate_recordset([
-            'mobile_pin_failed_count',
-            'mobile_pin_locked_until',
-            'mobile_pin_set',
-            'mobile_pin_required',
+            'acpec_mobile_pin_failed_count',
+            'acpec_mobile_pin_locked_until',
+            'acpec_mobile_pin_set',
+            'acpec_mobile_pin_required',
         ])
-        failed_count_before = user.mobile_pin_failed_count or 0
+        failed_count_before = user.acpec_mobile_pin_failed_count or 0
 
         try:
             user.check_mobile_pin(pin, purpose=purpose)
         except AccessError as exc:
             user.invalidate_recordset([
-                'mobile_pin_failed_count',
-                'mobile_pin_locked_until',
-                'mobile_pin_set',
-                'mobile_pin_required',
+                'acpec_mobile_pin_failed_count',
+                'acpec_mobile_pin_locked_until',
+                'acpec_mobile_pin_set',
+                'acpec_mobile_pin_required',
             ])
 
             event_type, code, severity, failed_count_after = self._classify_pin_failure(
@@ -1850,10 +1850,10 @@ class AcpecMobileAuthApiCommon(http.Controller):
             )
 
         user.invalidate_recordset([
-            'mobile_pin_failed_count',
-            'mobile_pin_locked_until',
+            'acpec_mobile_pin_failed_count',
+            'acpec_mobile_pin_locked_until',
         ])
-        failed_count_after = user.mobile_pin_failed_count or 0
+        failed_count_after = user.acpec_mobile_pin_failed_count or 0
 
         allowed_audit_vals = self._mobile_security_audit_vals(
             event_type='sensitive_action_allowed',
@@ -1905,12 +1905,12 @@ class AcpecMobileAuthApiCommon(http.Controller):
             'name': user.name,
             'login': user.login,
             'partner_id': user.partner_id.id,
-            'mobile_phone': user.mobile_phone,
+            'mobile_phone': user.acpec_mobile_phone,
             'email': user.email,
-            'mobile_state': user.mobile_state,
-            'mobile_only': bool(user.mobile_only),
-            'mobile_pin_set': bool(user.mobile_pin_set),
-            'mobile_pin_required': bool(user.mobile_pin_required),
+            'mobile_state': user.acpec_mobile_state,
+            'mobile_only': bool(user.acpec_mobile_only),
+            'mobile_pin_set': bool(user.acpec_mobile_pin_set),
+            'mobile_pin_required': bool(user.acpec_mobile_pin_required),
             'profile': self._get_mobile_profile(user),
             'company_id': user.company_id.id,
             'company_name': user.company_id.name,
