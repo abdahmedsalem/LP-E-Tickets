@@ -108,7 +108,7 @@ class AcpecMobileSession(models.Model):
         'user_id',
         'user_id.name',
         'user_id.login',
-        'user_id.mobile_phone',
+        'user_id.acpec_mobile_phone',
         'user_id.phone',
         'user_id.partner_id',
         'user_id.partner_id.name',
@@ -121,7 +121,7 @@ class AcpecMobileSession(models.Model):
             login = (user.login or '').strip() if user else ''
 
             mobile_phone = (
-                user.mobile_phone
+                user.acpec_mobile_phone
                 or user.phone
                 or partner.phone
                 or (login if login.isdigit() else False)
@@ -153,8 +153,8 @@ class AcpecMobileSession(models.Model):
             ('state', '=', 'active'),
             ('device_uid', '!=', False),
             ('device_uid', '!=', ''),
-            ('user_id.mobile_only', '=', True),
-            ('user_id.mobile_state', 'in', ['approved', 'self_registered']),
+            ('user_id.acpec_mobile_only', '=', True),
+            ('user_id.acpec_mobile_state', 'in', ['approved', 'self_registered']),
         ]
 
     def _device_approval_candidate_keys(self):
@@ -197,8 +197,8 @@ class AcpecMobileSession(models.Model):
                     ('state', '=', 'active'),
                     ('device_uid', '!=', False),
                     ('device_uid', '!=', ''),
-                    ('user_id.mobile_only', '=', True),
-                    ('user_id.mobile_state', 'in', ['approved', 'self_registered']),
+                    ('user_id.acpec_mobile_only', '=', True),
+                    ('user_id.acpec_mobile_state', 'in', ['approved', 'self_registered']),
                 ],
                 order='create_date desc, id desc',
                 limit=1,
@@ -313,7 +313,7 @@ class AcpecMobileSession(models.Model):
         if not user or not user.exists() or not user.active:
             raise AccessError(_('Utilisateur mobile invalide ou inactif.'))
 
-        mobile_state = getattr(user, 'mobile_state', False)
+        mobile_state = getattr(user, 'acpec_mobile_state', False)
         if mobile_state not in ('approved', 'self_registered'):
             if mobile_state == 'pending':
                 raise AccessError(_('Compte mobile en attente d’approbation.'))
@@ -323,7 +323,7 @@ class AcpecMobileSession(models.Model):
                 raise AccessError(_('Compte mobile bloqué.'))
             raise AccessError(_('Compte mobile non approuvé.'))
 
-        if not getattr(user, 'mobile_only', False):
+        if not getattr(user, 'acpec_mobile_only', False):
             raise AccessError(_('Ce compte n’est pas un compte mobile-only FuelToken.'))
 
         required_xmlids = (

@@ -32,8 +32,8 @@
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
-                <field name="mobile_only" invisible="1"/>
-                <field name="mobile_state" invisible="1"/>
+                <field name="acpec_mobile_only" invisible="1"/>
+                <field name="acpec_mobile_state" invisible="1"/>
             </xpath>
 
             <xpath expr="//header" position="inside">
@@ -42,13 +42,13 @@
                         string="Bloquer utilisateur mobile"
                         class="btn-danger"
                         groups="acpec_mobile_auth.group_mobile_auth_admin"
-                        invisible="not mobile_only or mobile_state == 'blocked'"/>
+                        invisible="not acpec_mobile_only or acpec_mobile_state == 'blocked'"/>
                 <button name="action_open_fueltoken_reactivate_mobile_user_wizard"
                         type="object"
                         string="Réactiver utilisateur mobile"
                         class="btn-primary"
                         groups="acpec_mobile_auth.group_mobile_auth_admin"
-                        invisible="not mobile_only or mobile_state != 'blocked'"/>
+                        invisible="not acpec_mobile_only or acpec_mobile_state != 'blocked'"/>
             </xpath>
         </field>
     </record>

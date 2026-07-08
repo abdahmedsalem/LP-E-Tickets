@@ -106,8 +106,8 @@ class _ConsumeFixtureMixin:
     
         vals['login'] = phone
         vals['mobile_phone'] = phone
-        vals['mobile_only'] = True
-        vals['mobile_state'] = vals.get('mobile_state') or 'approved'
+        vals['acpec_mobile_only'] = True
+        vals['acpec_mobile_state'] = vals.get('acpec_mobile_state') or 'approved'
         vals.setdefault(
             'password',
             env['res.users'].sudo()._acpec_mobile_unusable_password(),

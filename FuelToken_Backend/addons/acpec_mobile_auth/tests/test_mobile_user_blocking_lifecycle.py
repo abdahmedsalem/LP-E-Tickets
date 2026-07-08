@@ -35,8 +35,8 @@ class TestMobileUserBlockingLifecycle(TransactionCase):
             'login': phone,
             'mobile_phone': phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': state,
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -75,8 +75,8 @@ class TestMobileUserBlockingLifecycle(TransactionCase):
         self.assertEqual(pending_device.trust_state, 'pending_trust')
         self.assertEqual(blocked_device.trust_state, 'blocked')
 
-        user.sudo().write({'mobile_state': 'blocked'})
-        user.sudo().write({'mobile_state': 'approved'})
+        user.sudo().write({'acpec_mobile_state': 'blocked'})
+        user.sudo().write({'acpec_mobile_state': 'approved'})
 
         trusted_device.invalidate_recordset(['trust_state'])
         pending_device.invalidate_recordset(['trust_state'])

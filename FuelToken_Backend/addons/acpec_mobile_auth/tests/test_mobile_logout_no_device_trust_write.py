@@ -17,8 +17,8 @@ class TestMobileLogoutNoDeviceTrustWrite(TransactionCase):
             'login': 'j5c_logout_mobile_user',
             'email': 'j5c_logout_mobile_user@example.com',
             'mobile_phone': '49990001',
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'company_id': cls.env.company.id,
             'company_ids': [(6, 0, [cls.env.company.id])],
             'group_ids': [(6, 0, [

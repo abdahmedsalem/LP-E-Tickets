@@ -1157,101 +1157,101 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _titleLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                          height: 1.15,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: AppCard(
+          padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _titleLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                            height: 1.15,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _availabilityLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryDeep,
-                        height: 1,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                      const SizedBox(width: 12),
+                      Text(
+                        _availabilityLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600,
-                          height: 1.15,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryDeep,
+                          height: 1,
+                          letterSpacing: -0.2,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _expanded = !_expanded),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600,
+                            height: 1.15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
                     child: Icon(
                       Icons.expand_more_rounded,
                       size: 22,
                       color: AppColors.muted,
                     ),
                   ),
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  alignment: Alignment.topCenter,
-                  child: _expanded
-                      ? Padding(
-                          padding: const EdgeInsets.only(top: 14),
-                          child: _CarnetDetailOverviewCard(
-                            title: carnetTitle,
-                            carnetTypeLabel: carnetTypeLabel,
-                            fullCarnetNo: fullCarnetNo,
-                            ticketsAvailableLabel: ticketsAvailableLabel,
-                            availableAmountLabel: availableAmountLabel,
-                            totalAmountLabel: totalAmountLabel,
-                            expirationDate: line.expirationDate,
-                            displayQty: displayQty,
-                            stateLabel: stateLabel,
-                            stateColor: stateColor,
-                            activeQty: activeQty,
-                            consumedQty: consumedQty,
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-          ],
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    alignment: Alignment.topCenter,
+                    child: _expanded
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 14),
+                            child: _CarnetDetailOverviewCard(
+                              title: carnetTitle,
+                              carnetTypeLabel: carnetTypeLabel,
+                              fullCarnetNo: fullCarnetNo,
+                              ticketsAvailableLabel: ticketsAvailableLabel,
+                              availableAmountLabel: availableAmountLabel,
+                              totalAmountLabel: totalAmountLabel,
+                              expirationDate: line.expirationDate,
+                              displayQty: displayQty,
+                              stateLabel: stateLabel,
+                              stateColor: stateColor,
+                              activeQty: activeQty,
+                              consumedQty: consumedQty,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

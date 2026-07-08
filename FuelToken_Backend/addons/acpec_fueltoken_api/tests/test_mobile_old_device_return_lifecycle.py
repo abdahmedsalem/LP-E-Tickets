@@ -35,8 +35,8 @@ class TestMobileOldDeviceReturnLifecycle(TransactionCase):
             'login': phone,
             'mobile_phone': phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': state,
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -56,7 +56,7 @@ class TestMobileOldDeviceReturnLifecycle(TransactionCase):
         )
         original_user_id = user.id
         original_partner = user.partner_id
-        original_phone = user.mobile_phone
+        original_phone = user.acpec_mobile_phone
 
         old_session = self._create_session(
             user,
@@ -126,12 +126,12 @@ class TestMobileOldDeviceReturnLifecycle(TransactionCase):
         self.assertEqual(new_device.trust_state, 'pending_trust')
         self.assertFalse(new_device.trusted_at)
 
-        user.invalidate_recordset(['login', 'mobile_phone', 'partner_id', 'mobile_state'])
+        user.invalidate_recordset(['login', 'acpec_mobile_phone', 'partner_id', 'acpec_mobile_state'])
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, original_phone)
-        self.assertEqual(user.mobile_phone, original_phone)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_phone, original_phone)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
 
     def test_f2k_relogin_from_returned_old_device_reuses_durable_device_and_trust(self):
         user = self._create_mobile_user(

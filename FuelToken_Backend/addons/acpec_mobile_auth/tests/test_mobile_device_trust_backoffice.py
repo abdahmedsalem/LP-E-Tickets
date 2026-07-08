@@ -41,8 +41,8 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             'login': mobile_phone,
             'mobile_phone': mobile_phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -405,8 +405,8 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
         self.assertIn(('state', '=', 'active'), domain)
         self.assertIn(('device_uid', '!=', False), domain)
         self.assertIn(('device_uid', '!=', ''), domain)
-        self.assertIn(('user_id.mobile_only', '=', True), domain)
-        self.assertIn(('user_id.mobile_state', 'in', ['approved', 'self_registered']), domain)
+        self.assertIn(('user_id.acpec_mobile_only', '=', True), domain)
+        self.assertIn(('user_id.acpec_mobile_state', 'in', ['approved', 'self_registered']), domain)
 
         self.assertEqual(context.get('search_default_approval_candidate'), 1)
         self.assertEqual(context.get('search_default_group_by_mobile_user_label'), 1)

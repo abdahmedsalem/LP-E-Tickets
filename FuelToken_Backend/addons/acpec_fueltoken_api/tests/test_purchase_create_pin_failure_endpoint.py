@@ -40,8 +40,8 @@ class TestPurchaseCreatePinFailureEndpoint(TransactionCase):
             'mobile_phone': phone,
             'email': login,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -96,8 +96,8 @@ class TestPurchaseCreatePinFailureEndpoint(TransactionCase):
         self.env.invalidate_all()
 
         user = self.env['res.users'].sudo().browse(user.id)
-        user.invalidate_recordset(['mobile_pin_failed_count'])
-        self.assertEqual(user.mobile_pin_failed_count, 1)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 1)
 
         log = self.env['acpec.mobile.security.audit.log'].sudo().search([
             ('idempotency_key', '=', key),

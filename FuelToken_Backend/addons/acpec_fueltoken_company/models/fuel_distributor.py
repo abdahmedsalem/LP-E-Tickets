@@ -370,7 +370,7 @@ class AcpecFuelDistributor(models.Model):
         ])
         return users.filtered(
             lambda user: self._user_has_group_id(user, fuel_user_group.id)
-            and getattr(user, 'mobile_state', False) in ('approved', 'self_registered')
+            and getattr(user, 'acpec_mobile_state', False) in ('approved', 'self_registered')
         )[:1]
 
     def _check_can_distribute_to_member(self, member_partner):

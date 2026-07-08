@@ -39,8 +39,8 @@ class TestSensitiveActionPin(TransactionCase):
             'mobile_phone': _acpec_test_mobile_phone(login),
             'email': login,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -124,18 +124,18 @@ class TestSensitiveActionPin(TransactionCase):
             {'action_code': '9999'},
             purpose='wrong_pin_1',
         )
-        user.invalidate_recordset(['mobile_pin_failed_count', 'mobile_pin_locked_until'])
-        self.assertEqual(user.mobile_pin_failed_count, 1)
-        self.assertFalse(user.mobile_pin_locked_until)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count', 'acpec_mobile_pin_locked_until'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 1)
+        self.assertFalse(user.acpec_mobile_pin_locked_until)
 
         self._expect_access_error_without_savepoint(
             controller._require_sensitive_action_pin,
             {'action_code': '9999'},
             purpose='wrong_pin_2',
         )
-        user.invalidate_recordset(['mobile_pin_failed_count', 'mobile_pin_locked_until'])
-        self.assertEqual(user.mobile_pin_failed_count, 2)
-        self.assertTrue(user.mobile_pin_locked_until)
+        user.invalidate_recordset(['acpec_mobile_pin_failed_count', 'acpec_mobile_pin_locked_until'])
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 2)
+        self.assertTrue(user.acpec_mobile_pin_locked_until)
 
     def test_sensitive_action_pin_hard_block_requires_pin_reset(self):
         self._set_security_param('acpec_mobile_auth.mobile_pin_max_attempts', 2)
@@ -151,7 +151,7 @@ class TestSensitiveActionPin(TransactionCase):
                 {'action_code': '9999'},
                 purpose='wrong_pin_%s' % attempt,
             )
-            user.sudo().write({'mobile_pin_locked_until': False})
+            user.sudo().write({'acpec_mobile_pin_locked_until': False})
 
         self._expect_access_error_without_savepoint(
             controller._require_sensitive_action_pin,
@@ -160,19 +160,19 @@ class TestSensitiveActionPin(TransactionCase):
         )
 
         user.invalidate_recordset([
-            'mobile_pin_failed_count',
-            'mobile_pin_required',
-            'mobile_pin_set',
-            'mobile_pin_hash',
-            'mobile_pin_salt',
-            'mobile_pin_locked_until',
+            'acpec_mobile_pin_failed_count',
+            'acpec_mobile_pin_required',
+            'acpec_mobile_pin_set',
+            'acpec_mobile_pin_hash',
+            'acpec_mobile_pin_salt',
+            'acpec_mobile_pin_locked_until',
         ])
-        self.assertEqual(user.mobile_pin_failed_count, 10)
-        self.assertTrue(user.mobile_pin_required)
-        self.assertFalse(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_hash)
-        self.assertFalse(user.mobile_pin_salt)
-        self.assertFalse(user.mobile_pin_locked_until)
+        self.assertEqual(user.acpec_mobile_pin_failed_count, 10)
+        self.assertTrue(user.acpec_mobile_pin_required)
+        self.assertFalse(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_hash)
+        self.assertFalse(user.acpec_mobile_pin_salt)
+        self.assertFalse(user.acpec_mobile_pin_locked_until)
 
 
     def test_sensitive_action_pin_is_not_a_substitute_for_trusted_device(self):

@@ -17,28 +17,28 @@ _logger = logging.getLogger(__name__)
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
-    mobile_phone = fields.Char(string='Téléphone mobile', index=True)
-    mobile_state = fields.Selection([
+    acpec_mobile_phone = fields.Char(string='Téléphone mobile FuelToken', index=True)
+    acpec_mobile_state = fields.Selection([
         ('pending', 'En attente'),
         ('self_registered', 'Auto-inscrit'),
         ('approved', 'Approuvé'),
         ('rejected', 'Rejeté'),
         ('blocked', 'Bloqué'),
     ], string='État mobile', default='pending',)
-    mobile_only = fields.Boolean(
+    acpec_mobile_only = fields.Boolean(
         string='Utilisateur mobile uniquement',
         default=False,
         index=True,
         copy=False,
         help='Technical flag for FuelToken mobile-only portal users. These users authenticate through mobile OTP/session flows only.',
     )
-    mobile_pin_hash = fields.Char(string='Mobile PIN Hash', copy=False, groups='base.group_system')
-    mobile_pin_salt = fields.Char(string='Mobile PIN Salt', copy=False, groups='base.group_system')
-    mobile_pin_set = fields.Boolean(string='Mobile PIN Set', default=False, copy=False, readonly=True)
-    mobile_pin_required = fields.Boolean(string='Mobile PIN Required', default=False, copy=False)
-    mobile_pin_failed_count = fields.Integer(string='Mobile PIN Failed Count', default=0, copy=False, groups='base.group_system')
-    mobile_pin_locked_until = fields.Datetime(string='Mobile PIN Locked Until', copy=False, groups='base.group_system')
-    mobile_pin_set_at = fields.Datetime(string='Mobile PIN Set At', readonly=True)
+    acpec_mobile_pin_hash = fields.Char(string='Mobile PIN Hash', copy=False, groups='base.group_system')
+    acpec_mobile_pin_salt = fields.Char(string='Mobile PIN Salt', copy=False, groups='base.group_system')
+    acpec_mobile_pin_set = fields.Boolean(string='Mobile PIN Set', default=False, copy=False, readonly=True)
+    acpec_mobile_pin_required = fields.Boolean(string='Mobile PIN Required', default=False, copy=False)
+    acpec_mobile_pin_failed_count = fields.Integer(string='Mobile PIN Failed Count', default=0, copy=False, groups='base.group_system')
+    acpec_mobile_pin_locked_until = fields.Datetime(string='Mobile PIN Locked Until', copy=False, groups='base.group_system')
+    acpec_mobile_pin_set_at = fields.Datetime(string='Mobile PIN Set At', copy=False, readonly=True, groups='base.group_system')
 
     acpec_human_code = fields.Char(
         string='Code humain',
@@ -127,13 +127,32 @@ class ResUsers(models.Model):
     @api.model
     def init(self):
         super().init()
+        self.env.cr.execute("""
+            SELECT EXISTS (
+                SELECT 1
+                  FROM information_schema.columns
+                 WHERE table_name = 'res_users'
+                   AND column_name = 'mobile_phone'
+            )
+        """)
+        has_legacy_mobile_phone = self.env.cr.fetchone()[0]
+        if has_legacy_mobile_phone:
+            self.env.cr.execute("""
+                UPDATE res_users
+                   SET acpec_mobile_phone = mobile_phone
+                 WHERE acpec_mobile_only IS TRUE
+                   AND (acpec_mobile_phone IS NULL OR acpec_mobile_phone = '')
+                   AND mobile_phone IS NOT NULL
+                   AND mobile_phone <> ''
+            """)
+
         self.env.cr.execute(
             """
-            CREATE UNIQUE INDEX IF NOT EXISTS res_users_acpec_mobile_only_phone_uniq
-                ON res_users (mobile_phone)
-             WHERE mobile_only IS TRUE
-               AND mobile_phone IS NOT NULL
-               AND mobile_phone <> ''
+            CREATE UNIQUE INDEX IF NOT EXISTS res_users_acpec_mobile_only_acpec_phone_uniq
+                ON res_users (acpec_mobile_phone)
+             WHERE acpec_mobile_only IS TRUE
+               AND acpec_mobile_phone IS NOT NULL
+               AND acpec_mobile_phone <> ''
             """
         )
         self.env.cr.execute(
@@ -344,19 +363,50 @@ class ResUsers(models.Model):
     def _acpec_mobile_identity_duplicate_phone_rows(self, limit=5):
         self.env.cr.execute(
             """
-            SELECT mobile_phone, COUNT(*)
+            SELECT acpec_mobile_phone, COUNT(*)
               FROM res_users
-             WHERE mobile_only IS TRUE
-               AND mobile_phone IS NOT NULL
-               AND mobile_phone <> ''
-             GROUP BY mobile_phone
+             WHERE acpec_mobile_only IS TRUE
+               AND acpec_mobile_phone IS NOT NULL
+               AND acpec_mobile_phone <> ''
+             GROUP BY acpec_mobile_phone
             HAVING COUNT(*) > 1
-             ORDER BY mobile_phone
+             ORDER BY acpec_mobile_phone
              LIMIT %s
             """,
             (int(limit or 5),),
         )
         return self.env.cr.fetchall()
+
+    @api.model
+    def _acpec_prepare_mobile_phone_alias_vals(self, vals):
+        """Map legacy mobile FuelToken res.users fields to acpec_* fields.
+
+        ACPEC doctrine: custom fields on standard Odoo models must be prefixed
+        with acpec_.  Public/mobile payload keys may remain unprefixed for
+        compatibility, but res.users storage fields are acpec_*.
+
+        This also prevents accidental writes to Odoo/native fields when another
+        module defines a similarly named field.
+        """
+        vals = dict(vals or {})
+        legacy_aliases = {
+            'mobile_phone': 'acpec_mobile_phone',
+            'mobile_state': 'acpec_mobile_state',
+            'mobile_only': 'acpec_mobile_only',
+            'mobile_pin_hash': 'acpec_mobile_pin_hash',
+            'mobile_pin_salt': 'acpec_mobile_pin_salt',
+            'mobile_pin_set': 'acpec_mobile_pin_set',
+            'mobile_pin_required': 'acpec_mobile_pin_required',
+            'mobile_pin_failed_count': 'acpec_mobile_pin_failed_count',
+            'mobile_pin_locked_until': 'acpec_mobile_pin_locked_until',
+            'mobile_pin_set_at': 'acpec_mobile_pin_set_at',
+        }
+        for legacy_field, acpec_field in legacy_aliases.items():
+            if legacy_field in vals:
+                legacy_value = vals.pop(legacy_field)
+                vals.setdefault(acpec_field, legacy_value)
+        return vals
+
 
     @api.model
     def _validate_mobile_pin(self, pin):
@@ -413,13 +463,13 @@ class ResUsers(models.Model):
         for user in self.sudo():
             salt = user._new_mobile_pin_salt()
             user.write({
-                'mobile_pin_salt': salt,
-                'mobile_pin_hash': user._hash_mobile_pin(pin, salt),
-                'mobile_pin_set': True,
-                'mobile_pin_required': False,
-                'mobile_pin_failed_count': 0,
-                'mobile_pin_locked_until': False,
-                'mobile_pin_set_at': now,
+                'acpec_mobile_pin_salt': salt,
+                'acpec_mobile_pin_hash': user._hash_mobile_pin(pin, salt),
+                'acpec_mobile_pin_set': True,
+                'acpec_mobile_pin_required': False,
+                'acpec_mobile_pin_failed_count': 0,
+                'acpec_mobile_pin_locked_until': False,
+                'acpec_mobile_pin_set_at': now,
             })
         return True
 
@@ -432,23 +482,23 @@ class ResUsers(models.Model):
         """
         for user in self.sudo():
             user.write({
-                'mobile_pin_hash': False,
-                'mobile_pin_salt': False,
-                'mobile_pin_set': False,
-                'mobile_pin_required': True,
-                'mobile_pin_failed_count': 0,
-                'mobile_pin_locked_until': False,
-                'mobile_pin_set_at': False,
+                'acpec_mobile_pin_hash': False,
+                'acpec_mobile_pin_salt': False,
+                'acpec_mobile_pin_set': False,
+                'acpec_mobile_pin_required': True,
+                'acpec_mobile_pin_failed_count': 0,
+                'acpec_mobile_pin_locked_until': False,
+                'acpec_mobile_pin_set_at': False,
             })
         return True
 
     _MOBILE_PIN_STATE_FIELDS = [
-        'mobile_pin_hash',
-        'mobile_pin_salt',
-        'mobile_pin_set',
-        'mobile_pin_required',
-        'mobile_pin_failed_count',
-        'mobile_pin_locked_until',
+        'acpec_mobile_pin_hash',
+        'acpec_mobile_pin_salt',
+        'acpec_mobile_pin_set',
+        'acpec_mobile_pin_required',
+        'acpec_mobile_pin_failed_count',
+        'acpec_mobile_pin_locked_until',
     ]
 
     def _assert_mobile_pin_usable(self, user, now):
@@ -459,13 +509,13 @@ class ResUsers(models.Model):
         _classify_pin_failure still maps it to the right refusal code.
         """
         if (
-            user.mobile_pin_required
-            or not user.mobile_pin_set
-            or not user.mobile_pin_hash
-            or not user.mobile_pin_salt
+            user.acpec_mobile_pin_required
+            or not user.acpec_mobile_pin_set
+            or not user.acpec_mobile_pin_hash
+            or not user.acpec_mobile_pin_salt
         ):
             raise AccessError(_('Le PIN mobile doit être défini avant cette opération.'))
-        if user.mobile_pin_locked_until and user.mobile_pin_locked_until > now:
+        if user.acpec_mobile_pin_locked_until and user.acpec_mobile_pin_locked_until > now:
             raise AccessError(_('Trop de tentatives PIN. Veuillez réessayer plus tard.'))
 
     def _lock_mobile_pin_user_bounded(self, user, timeout_ms=3000):
@@ -524,10 +574,10 @@ class ResUsers(models.Model):
                 cr.execute("SET LOCAL lock_timeout = '3000ms'")
                 env = api.Environment(cr, SUPERUSER_ID, {})
                 locked_user = env['res.users'].browse(user.id)
-                if locked_user.mobile_pin_failed_count or locked_user.mobile_pin_locked_until:
+                if locked_user.acpec_mobile_pin_failed_count or locked_user.acpec_mobile_pin_locked_until:
                     locked_user.write({
-                        'mobile_pin_failed_count': 0,
-                        'mobile_pin_locked_until': False,
+                        'acpec_mobile_pin_failed_count': 0,
+                        'acpec_mobile_pin_locked_until': False,
                     })
                 # cursor __exit__ commits and releases the row lock
         except Exception:
@@ -571,11 +621,11 @@ class ResUsers(models.Model):
             user.invalidate_recordset(pin_fields)
             user._assert_mobile_pin_usable(user, now)
 
-            candidate = user._hash_mobile_pin(pin, user.mobile_pin_salt)
-            pin_is_valid = hmac.compare_digest(candidate or '', user.mobile_pin_hash or '')
+            candidate = user._hash_mobile_pin(pin, user.acpec_mobile_pin_salt)
+            pin_is_valid = hmac.compare_digest(candidate or '', user.acpec_mobile_pin_hash or '')
 
             if pin_is_valid:
-                if user.mobile_pin_failed_count or user.mobile_pin_locked_until:
+                if user.acpec_mobile_pin_failed_count or user.acpec_mobile_pin_locked_until:
                     # Valid PIN after earlier failures: reset the counters in a
                     # SEPARATE committed transaction so the business action that
                     # follows never runs while holding a res_users row lock.
@@ -591,17 +641,17 @@ class ResUsers(models.Model):
             user.invalidate_recordset(pin_fields)
             user._assert_mobile_pin_usable(user, now)
 
-            failed_count = (user.mobile_pin_failed_count or 0) + 1
-            vals = {'mobile_pin_failed_count': failed_count}
+            failed_count = (user.acpec_mobile_pin_failed_count or 0) + 1
+            vals = {'acpec_mobile_pin_failed_count': failed_count}
 
             hard_block_attempts = user._mobile_pin_hard_block_attempts()
             if hard_block_attempts and failed_count >= hard_block_attempts:
                 vals.update({
-                    'mobile_pin_hash': False,
-                    'mobile_pin_salt': False,
-                    'mobile_pin_set': False,
-                    'mobile_pin_required': True,
-                    'mobile_pin_locked_until': False,
+                    'acpec_mobile_pin_hash': False,
+                    'acpec_mobile_pin_salt': False,
+                    'acpec_mobile_pin_set': False,
+                    'acpec_mobile_pin_required': True,
+                    'acpec_mobile_pin_locked_until': False,
                 })
                 user.write(vals)
                 self.env.flush_all()
@@ -609,7 +659,7 @@ class ResUsers(models.Model):
 
             if failed_count >= user._mobile_pin_max_attempts():
                 vals.update({
-                    'mobile_pin_locked_until': now + relativedelta(
+                    'acpec_mobile_pin_locked_until': now + relativedelta(
                         seconds=user._mobile_pin_lock_duration(failed_count)
                     ),
                 })
@@ -630,9 +680,9 @@ class ResUsers(models.Model):
         Users = self.sudo().with_context(active_test=False)
 
         candidates = Users.search([
-            ('mobile_pin_set', '=', False),
-            ('mobile_pin_required', '=', False),
-            ('mobile_phone', '!=', False),
+            ('acpec_mobile_pin_set', '=', False),
+            ('acpec_mobile_pin_required', '=', False),
+            ('acpec_mobile_phone', '!=', False),
         ])
 
         mobile_group_ids = self._acpec_group_ids(self._acpec_mobile_identity_group_xmlids())
@@ -648,7 +698,7 @@ class ResUsers(models.Model):
             group_user_ids = [row[0] for row in self.env.cr.fetchall()]
             if group_user_ids:
                 candidates |= Users.browse(group_user_ids).filtered(
-                    lambda user: not user.mobile_pin_set and not user.mobile_pin_required
+                    lambda user: not user.acpec_mobile_pin_set and not user.acpec_mobile_pin_required
                 )
 
         forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
@@ -670,7 +720,7 @@ class ResUsers(models.Model):
         baseline_group_ids = self._acpec_group_ids(self._acpec_mobile_baseline_group_xmlids())
         forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
 
-        candidates = Users.search([('mobile_only', '=', True)])
+        candidates = Users.search([('acpec_mobile_only', '=', True)])
         if mobile_group_ids:
             self.env.cr.execute(
                 """
@@ -690,7 +740,7 @@ class ResUsers(models.Model):
             groups.update(baseline_group_ids)
             groups.difference_update(forbidden_group_ids)
             vals = {
-                'mobile_only': True,
+                'acpec_mobile_only': True,
                 'group_ids': [(6, 0, sorted(groups))],
             }
             if not user.password:
@@ -711,13 +761,13 @@ class ResUsers(models.Model):
         for user in users:
             user.with_context(acpec_mobile_allow_password_write=True, no_reset_password=True).write({
                 'password': user._acpec_mobile_unusable_password(),
-                'mobile_pin_hash': False,
-                'mobile_pin_salt': False,
-                'mobile_pin_set': False,
-                'mobile_pin_required': True,
-                'mobile_pin_failed_count': 0,
-                'mobile_pin_locked_until': False,
-                'mobile_pin_set_at': False,
+                'acpec_mobile_pin_hash': False,
+                'acpec_mobile_pin_salt': False,
+                'acpec_mobile_pin_set': False,
+                'acpec_mobile_pin_required': True,
+                'acpec_mobile_pin_failed_count': 0,
+                'acpec_mobile_pin_locked_until': False,
+                'acpec_mobile_pin_set_at': False,
             })
         return len(users)
 
@@ -727,7 +777,7 @@ class ResUsers(models.Model):
         baseline_group_ids = self._acpec_group_ids(self._acpec_mobile_baseline_group_xmlids())
 
         mobile_group_users = self._acpec_users_with_group_ids(mobile_group_ids)
-        mobile_only_users = self.filtered(lambda user: bool(user.mobile_only))
+        mobile_only_users = self.filtered(lambda user: bool(user.acpec_mobile_only))
         mobile_users = mobile_group_users | mobile_only_users
         if not mobile_users:
             return
@@ -745,7 +795,7 @@ class ResUsers(models.Model):
                     "et pas de groupe back-office FuelToken. Utilisateurs concernés: %s"
                 ) % names)
 
-        missing_mobile_only = mobile_group_users.filtered(lambda user: not user.mobile_only)
+        missing_mobile_only = mobile_group_users.filtered(lambda user: not user.acpec_mobile_only)
         if missing_mobile_only:
             names = ', '.join(
                 str(user.display_name or user.name or user.login or user.id)
@@ -787,7 +837,7 @@ class ResUsers(models.Model):
         if not self._acpec_is_password_credential(credential):
             return
         user = self._acpec_mobile_user_from_login(credential.get('login'))
-        if user and user.mobile_only:
+        if user and user.acpec_mobile_only:
             raise AccessDenied()
 
     @api.model
@@ -807,7 +857,7 @@ class ResUsers(models.Model):
     def _acpec_mobile_password_write_targets(self):
         if not self:
             return self.env['res.users']
-        return self.sudo().with_context(active_test=False).filtered(lambda user: bool(user.mobile_only))
+        return self.sudo().with_context(active_test=False).filtered(lambda user: bool(user.acpec_mobile_only))
 
     def _acpec_assert_mobile_password_write_allowed(self, vals):
         if 'password' not in vals or self._acpec_mobile_password_write_allowed():
@@ -824,7 +874,7 @@ class ResUsers(models.Model):
             ) % names)
 
     def action_reset_password(self):
-        mobile_users = self.sudo().filtered(lambda user: bool(user.mobile_only))
+        mobile_users = self.sudo().filtered(lambda user: bool(user.acpec_mobile_only))
         if mobile_users:
             raise UserError(_("La réinitialisation du mot de passe web est désactivée pour les utilisateurs mobile-only FuelToken."))
         return super().action_reset_password()
@@ -837,7 +887,7 @@ class ResUsers(models.Model):
         while preventing auth_signup from issuing a web password reset token.
         """
         user = self._acpec_mobile_user_from_login(login)
-        if user and user.mobile_only:
+        if user and user.acpec_mobile_only:
             return True
         return super().reset_password(login)
 
@@ -850,7 +900,7 @@ class ResUsers(models.Model):
         is still blocked separately by authenticate().
         """
         Users = self.sudo().with_context(active_test=False, acpec_mobile_allow_password_write=True, no_reset_password=True)
-        users = Users.search([('mobile_only', '=', True)])
+        users = Users.search([('acpec_mobile_only', '=', True)])
         rotated = 0
         forbidden_group_ids = self._acpec_group_ids(self._acpec_mobile_forbidden_group_xmlids())
         for user in users:
@@ -863,7 +913,7 @@ class ResUsers(models.Model):
 
     def _acpec_revoke_mobile_sessions(self):
         """Revoke active mobile sessions for mobile-only users in this recordset."""
-        users = self.filtered(lambda user: bool(getattr(user, 'mobile_only', False)))
+        users = self.filtered(lambda user: bool(getattr(user, 'acpec_mobile_only', False)))
         if not users:
             return True
 
@@ -880,6 +930,10 @@ class ResUsers(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [
+            self._acpec_prepare_mobile_phone_alias_vals(vals)
+            for vals in vals_list
+        ]
         vals_list = [dict(vals) for vals in vals_list]
         self._acpec_prepare_human_code_create_vals(vals_list)
         users = super().create(vals_list)
@@ -887,6 +941,7 @@ class ResUsers(models.Model):
         return users
 
     def write(self, vals):
+        vals = self._acpec_prepare_mobile_phone_alias_vals(vals)
         vals = dict(vals or {})
         self._acpec_assert_human_code_write_allowed(vals)
         self._acpec_assert_mobile_password_write_allowed(vals)
@@ -894,7 +949,7 @@ class ResUsers(models.Model):
         self._check_acpec_mobile_user_separation()
 
         should_revoke_mobile_sessions = (
-            ('mobile_state' in vals and vals.get('mobile_state') not in ('approved', 'self_registered'))
+            ('acpec_mobile_state' in vals and vals.get('acpec_mobile_state') not in ('approved', 'self_registered'))
             or vals.get('active') is False
         )
         if should_revoke_mobile_sessions:

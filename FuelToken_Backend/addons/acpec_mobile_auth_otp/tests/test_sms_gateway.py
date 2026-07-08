@@ -137,7 +137,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         })
         user.write({
             'active': active,
-            'mobile_state': mobile_state,
+            'acpec_mobile_state': mobile_state,
         })
         return user
 
@@ -890,12 +890,12 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertTrue(user)
         self.assertTrue(user.active)
         self.assertEqual(user.login, '32524655')
-        self.assertEqual(user.mobile_phone, '32524655')
-        self.assertEqual(user.mobile_state, 'self_registered')
-        self.assertTrue(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_required)
-        self.assertTrue(user.mobile_pin_hash)
-        self.assertTrue(user.mobile_pin_salt)
+        self.assertEqual(user.acpec_mobile_phone, '32524655')
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
+        self.assertTrue(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_required)
+        self.assertTrue(user.acpec_mobile_pin_hash)
+        self.assertTrue(user.acpec_mobile_pin_salt)
         user.check_mobile_pin('1234')
 
         account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
@@ -985,7 +985,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             self.assertTrue(verify_result['ok'])
             user = self.env['res.users'].sudo().search([('login', '=', identifier)], limit=1)
             self.assertTrue(user)
-            self.assertEqual(user.mobile_state, 'self_registered')
+            self.assertEqual(user.acpec_mobile_state, 'self_registered')
             self.assertEqual(verify_result['data']['device_uid'], device_uid)
 
             account_request = self.env['acpec.mobile.auth.account.request'].sudo().search([
@@ -1102,11 +1102,11 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         user = self.env['res.users'].sudo().search([('login', '=', '32524657')], limit=1)
         self.assertTrue(user.active)
         self.assertEqual(user.login, '32524657')
-        self.assertEqual(user.mobile_phone, '32524657')
-        self.assertEqual(user.mobile_state, 'self_registered')
-        self.assertTrue(user.mobile_pin_set_at)
-        self.assertTrue(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_required)
+        self.assertEqual(user.acpec_mobile_phone, '32524657')
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
+        self.assertTrue(user.acpec_mobile_pin_set_at)
+        self.assertTrue(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_required)
         self.assertTrue(session_data['mobile_pin_set'])
         self.assertFalse(session_data['mobile_pin_required'])
         user.check_mobile_pin('1234')
@@ -1177,9 +1177,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         user = self.env['res.users'].sudo().search([('login', '=', phone)], limit=1)
         self.assertTrue(user)
         self.assertEqual(user.login, phone)
-        self.assertEqual(user.mobile_phone, phone)
-        self.assertTrue(user.mobile_only)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_phone, phone)
+        self.assertTrue(user.acpec_mobile_only)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
 
         partner = user.partner_id.sudo()
         self.assertTrue(partner)
@@ -1233,8 +1233,8 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         ]
 
         poisoned_payload = {
-            'mobile_only': False,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': False,
+            'acpec_mobile_state': 'approved',
             'active': False,
             'login': 'evil-f2c@example.com',
             'password': '9999',
@@ -1283,10 +1283,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         user = self.env['res.users'].sudo().search([('login', '=', phone)], limit=1)
         self.assertTrue(user)
         self.assertTrue(user.active)
-        self.assertTrue(user.mobile_only)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertTrue(user.acpec_mobile_only)
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
         self.assertEqual(user.login, phone)
-        self.assertEqual(user.mobile_phone, phone)
+        self.assertEqual(user.acpec_mobile_phone, phone)
         self.assertEqual(user.company_id, self.env.company)
         self.assertIn(self.env.company, user.company_ids)
         self.assertNotIn(other_company, user.company_ids)
@@ -1386,11 +1386,11 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         user = self.env['res.users'].sudo().search([('login', '=', '32524656')], limit=1)
         self.assertTrue(user.active)
         self.assertEqual(user.login, '32524656')
-        self.assertEqual(user.mobile_phone, '32524656')
-        self.assertEqual(user.mobile_state, 'self_registered')
-        self.assertTrue(user.mobile_pin_set_at)
-        self.assertTrue(user.mobile_pin_set)
-        self.assertFalse(user.mobile_pin_required)
+        self.assertEqual(user.acpec_mobile_phone, '32524656')
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
+        self.assertTrue(user.acpec_mobile_pin_set_at)
+        self.assertTrue(user.acpec_mobile_pin_set)
+        self.assertFalse(user.acpec_mobile_pin_required)
         self.assertTrue(session_data['mobile_pin_set'])
         self.assertFalse(session_data['mobile_pin_required'])
         user.check_mobile_pin('1234')
@@ -1430,8 +1430,8 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             'company_ids': [(6, 0, [self.env.company.id])],
             'group_ids': [(6, 0, mobile_baseline_group_ids)],
             'mobile_phone': '32524001',
-            'mobile_state': 'approved',
-            'mobile_only': True,
+            'acpec_mobile_state': 'approved',
+            'acpec_mobile_only': True,
         })
 
         internal_partner = self.env['res.partner'].create({'name': 'Internal User'})
@@ -1448,13 +1448,13 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         migrated = self.env['res.users'].sudo()._acpec_migrate_legacy_mobile_pin_credentials()
 
         self.assertGreaterEqual(migrated, 1)
-        mobile_user.invalidate_recordset(['mobile_pin_set', 'mobile_pin_required', 'mobile_pin_hash', 'mobile_pin_salt'])
-        internal_user.invalidate_recordset(['mobile_pin_required'])
-        self.assertFalse(mobile_user.mobile_pin_set)
-        self.assertTrue(mobile_user.mobile_pin_required)
-        self.assertFalse(mobile_user.mobile_pin_hash)
-        self.assertFalse(mobile_user.mobile_pin_salt)
-        self.assertFalse(internal_user.mobile_pin_required)
+        mobile_user.invalidate_recordset(['acpec_mobile_pin_set', 'acpec_mobile_pin_required', 'acpec_mobile_pin_hash', 'acpec_mobile_pin_salt'])
+        internal_user.invalidate_recordset(['acpec_mobile_pin_required'])
+        self.assertFalse(mobile_user.acpec_mobile_pin_set)
+        self.assertTrue(mobile_user.acpec_mobile_pin_required)
+        self.assertFalse(mobile_user.acpec_mobile_pin_hash)
+        self.assertFalse(mobile_user.acpec_mobile_pin_salt)
+        self.assertFalse(internal_user.acpec_mobile_pin_required)
 
 
 

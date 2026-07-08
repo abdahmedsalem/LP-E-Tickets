@@ -196,14 +196,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           _loading = false;
           _loadError = e.isOdooSessionExpired
               ? 'Session expirée. Reconnectez-vous.'
-              : e.message;
+              : ErrorPresenter.message(e);
           _lot = null;
         });
       } catch (e) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _loadError = e.toString().replaceFirst('Exception: ', '');
+          _loadError = ErrorPresenter.message(e);
           _lot = null;
         });
       }
@@ -578,7 +578,8 @@ class _PurchaseHeroCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       lot.clientName,
-                      maxLines: 2,
+                      maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 18,

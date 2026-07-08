@@ -87,7 +87,7 @@ Mais une distribution vers ce membre est refusée tant que le membre n’a pas u
     res.users.partner_id = membre
     res.users.company_ids contient company_id du Compte Société
     appartenance au groupe acpec_fueltoken_base.group_fuel_user vérifiée via res_groups_users_rel
-    res.users.mobile_state in ('approved', 'self_registered')
+    res.users.acpec_mobile_state in ('approved', 'self_registered')
 
 
 La distribution société ne valide jamais automatiquement un compte mobile, ne change jamais `mobile_state` et n’ajoute jamais de groupe mobile.

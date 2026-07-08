@@ -237,13 +237,13 @@ class AcpecMobileAuthOtp(models.Model):
         identifier = (identifier or '').strip()
         if not identifier:
             raise ValidationError(_('Identifiant requis.'))
-        domain = ['|', '|', ('login', '=', identifier), ('mobile_phone', '=', identifier), ('email', '=', identifier)]
+        domain = ['|', '|', ('login', '=', identifier), ('acpec_mobile_phone', '=', identifier), ('email', '=', identifier)]
         user = self.env['res.users'].sudo().with_context(active_test=False).search(domain, limit=1)
         if not user:
             raise AccessError(_('Compte mobile introuvable.'))
-        if getattr(user, 'mobile_state', False) == 'rejected':
+        if getattr(user, 'acpec_mobile_state', False) == 'rejected':
             raise AccessError(_('Compte mobile rejeté.'))
-        if getattr(user, 'mobile_state', False) == 'blocked':
+        if getattr(user, 'acpec_mobile_state', False) == 'blocked':
             raise AccessError(_('Compte mobile bloqué.'))
         return user
 
@@ -270,7 +270,7 @@ class AcpecMobileAuthOtp(models.Model):
         if purpose == 'register':
             if '@' in identifier:
                 raise ValidationError(_('Registration OTP currently supports phone numbers only.'))
-            user_domain = ['|', ('login', '=', identifier), ('mobile_phone', '=', identifier)]
+            user_domain = ['|', ('login', '=', identifier), ('acpec_mobile_phone', '=', identifier)]
             user = self.env['res.users'].sudo().with_context(active_test=False).search(user_domain, limit=1)
             if user:
                 raise AccessError(_('Compte mobile déjà existant.'))
@@ -286,7 +286,7 @@ class AcpecMobileAuthOtp(models.Model):
                 is_station = user.has_group('acpec_fueltoken_base.group_fuel_station')
             except Exception:
                 is_station = False
-            mobile_state = getattr(user, 'mobile_state', False)
+            mobile_state = getattr(user, 'acpec_mobile_state', False)
             if not user.active:
                 raise AccessError(_('Compte mobile inactif.'))
             if not is_station and mobile_state not in (False, 'approved', 'self_registered'):
@@ -301,7 +301,7 @@ class AcpecMobileAuthOtp(models.Model):
         salt = secrets.token_urlsafe(16)
         challenge = self.sudo().create({
             'identifier': identifier,
-            'mobile': user.mobile_phone or identifier,
+            'mobile': user.acpec_mobile_phone or identifier,
             'email': user.email or False,
             'request_ip': request_ip or False,
             'user_id': user.id if user else False,
@@ -317,7 +317,7 @@ class AcpecMobileAuthOtp(models.Model):
 
     def _sms_recipient_phone(self):
         self.ensure_one()
-        return self.mobile or self.user_id.mobile_phone or self.identifier
+        return self.mobile or self.user_id.acpec_mobile_phone or self.identifier
 
     def _sms_lang(self):
         self.ensure_one()
@@ -397,7 +397,7 @@ class AcpecMobileAuthOtp(models.Model):
             raise ValidationError(_("Ce challenge OTP n'est plus actif."))
         if self.blocked_until and self.blocked_until > now:
             raise AccessError(_('Ce challenge OTP est temporairement bloqué.'))
-        if self.user_id and getattr(self.user_id.sudo(), 'mobile_state', False) == 'blocked':
+        if self.user_id and getattr(self.user_id.sudo(), 'acpec_mobile_state', False) == 'blocked':
             raise AccessError(_('Compte mobile bloqué.'))
         if self.expires_at and self.expires_at <= now:
             self.write({'state': 'expired'})

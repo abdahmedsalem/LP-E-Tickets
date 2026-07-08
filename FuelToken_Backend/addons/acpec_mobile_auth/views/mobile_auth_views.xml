@@ -351,8 +351,8 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <separator/>
-                <filter string="Utilisateurs mobiles" name="acpec_mobile_only_users" domain="[('mobile_only', '=', True)]"/>
-                <filter string="Utilisateurs non mobiles" name="acpec_non_mobile_users" domain="[('mobile_only', '=', False)]"/>
+                <filter string="Utilisateurs mobiles" name="acpec_mobile_only_users" domain="[('acpec_mobile_only', '=', True)]"/>
+                <filter string="Utilisateurs non mobiles" name="acpec_non_mobile_users" domain="[('acpec_mobile_only', '=', False)]"/>
             </xpath>
         </field>
     </record>

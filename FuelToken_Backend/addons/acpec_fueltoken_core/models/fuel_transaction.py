@@ -260,7 +260,7 @@ class AcpecFuelTransaction(models.Model):
 
     def _check_station_regularization_allowed(self):
         user = self.env.user
-        if getattr(user, 'mobile_only', False):
+        if getattr(user, 'acpec_mobile_only', False):
             raise AccessError(_('La régularisation station est réservée au back-office.'))
         if not (
             user.has_group('acpec_fueltoken_base.group_fuel_admin')

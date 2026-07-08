@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../data/services/odoo_auth_service.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -63,11 +64,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
     } on StateError catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.message);
+        AppMessage.error(context, ErrorPresenter.message(e));
       }
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, e.toString());
+        AppMessage.error(context, ErrorPresenter.message(e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -165,6 +166,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   maxLength: 8,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(8),
                                   ],
                                   validator: validateMrLocalPhone,
                                   counterLabel:

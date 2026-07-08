@@ -17,7 +17,7 @@ class ResUsers(models.Model):
         FuelToken company, the mobile identity is the local phone number.
         """
         return self.filtered(
-            lambda user: bool(user.mobile_only)
+            lambda user: bool(user.acpec_mobile_only)
             and bool(
                 getattr(user.company_id, 'acpec_fueltoken_enabled', False)
                 or any(getattr(company, 'acpec_fueltoken_enabled', False) for company in user.company_ids)
@@ -29,7 +29,7 @@ class ResUsers(models.Model):
         invalid_users = self.env['res.users']
         for user in self.sudo()._acpec_fueltoken_is_mobile_identity_scope():
             login = (user.login or '').strip()
-            phone = (user.mobile_phone or '').strip()
+            phone = (user.acpec_mobile_phone or '').strip()
             if not phone or not user._acpec_is_canonical_mobile_phone(phone) or login != phone:
                 invalid_users |= user
 
@@ -40,7 +40,7 @@ class ResUsers(models.Model):
             )
             raise ValidationError(_(
                 "Identité mobile FuelToken invalide : pour un utilisateur mobile-only "
-                "rattaché à la société Tickets Carburant, login et mobile_phone "
+                "rattaché à la société Tickets Carburant, login et acpec_mobile_phone "
                 "doivent être le même numéro local mauritanien canonique à 8 chiffres. "
                 "Utilisateurs concernés: %s"
             ) % names)
@@ -76,15 +76,15 @@ class ResUsers(models.Model):
         prepared = []
         for vals in vals_list:
             vals = dict(vals or {})
-            phone = (vals.get('mobile_phone') or vals.get('login') or '').strip()
-            if (vals.get('mobile_only') or vals.get('mobile_phone')) and self._acpec_is_canonical_mobile_phone(phone):
+            phone = (vals.get('acpec_mobile_phone') or vals.get('mobile_phone') or vals.get('login') or '').strip()
+            if (vals.get('acpec_mobile_only') or vals.get('acpec_mobile_phone') or vals.get('mobile_phone')) and self._acpec_is_canonical_mobile_phone(phone):
                 vals['name'] = self._acpec_fueltoken_mobile_canonical_name(phone, vals.get('name') or '')
             prepared.append(vals)
         return prepared
 
     def _acpec_fueltoken_mobile_partner_identity_vals(self):
         self.ensure_one()
-        phone = (self.mobile_phone or '').strip()
+        phone = (self.acpec_mobile_phone or '').strip()
         if not self._acpec_is_canonical_mobile_phone(phone):
             return {}
         return {
@@ -118,7 +118,7 @@ class ResUsers(models.Model):
         if self.env.context.get(self._ACPEC_FUELTOKEN_MOBILE_PARTNER_IDENTITY_CONTEXT):
             return True
 
-        locked_fields = {'name', 'mobile_only'} & set(vals or {})
+        locked_fields = {'name', 'acpec_mobile_only'} & set(vals or {})
 
         if not locked_fields:
             return True
@@ -170,7 +170,7 @@ class ResUsers(models.Model):
     def _acpec_fueltoken_has_established_mobile_identity(self):
         self.ensure_one()
         login = (self.login or '').strip()
-        phone = (self.mobile_phone or '').strip()
+        phone = (self.acpec_mobile_phone or '').strip()
         return bool(
             login
             and phone
@@ -181,7 +181,7 @@ class ResUsers(models.Model):
     def _check_acpec_fueltoken_mobile_phone_write_allowed(self, vals):
         if self.env.context.get('acpec_fueltoken_allow_mobile_phone_change'):
             return True
-        if not ({'login', 'mobile_phone'} & set(vals)):
+        if not ({'login', 'acpec_mobile_phone'} & set(vals)):
             return True
 
         blocked_users = self.env['res.users']
@@ -190,7 +190,7 @@ class ResUsers(models.Model):
                 continue
 
             login_changed = 'login' in vals and (vals.get('login') or '').strip() != (user.login or '').strip()
-            phone_changed = 'mobile_phone' in vals and (vals.get('mobile_phone') or '').strip() != (user.mobile_phone or '').strip()
+            phone_changed = 'acpec_mobile_phone' in vals and (vals.get('acpec_mobile_phone') or '').strip() != (user.acpec_mobile_phone or '').strip()
             if login_changed or phone_changed:
                 blocked_users |= user
 
@@ -210,10 +210,10 @@ class ResUsers(models.Model):
     def _acpec_fueltoken_duplicate_phone_user(self, new_phone):
         return self.env['res.users'].with_context(active_test=False).sudo().search([
             ('id', 'not in', self.ids),
-            ('mobile_only', '=', True),
+            ('acpec_mobile_only', '=', True),
             '|',
             ('login', '=', new_phone),
-            ('mobile_phone', '=', new_phone),
+            ('acpec_mobile_phone', '=', new_phone),
         ], limit=1)
 
     def action_fueltoken_change_mobile_phone(self, new_phone, reason, source='backoffice'):
@@ -232,10 +232,10 @@ class ResUsers(models.Model):
         if user not in user._acpec_fueltoken_is_mobile_identity_scope():
             raise ValidationError(_('Le changement de téléphone contrôlé est réservé aux utilisateurs mobiles FuelToken.'))
 
-        old_phone = (user.mobile_phone or '').strip()
+        old_phone = (user.acpec_mobile_phone or '').strip()
         old_login = (user.login or '').strip()
         if not old_phone or old_login != old_phone or not user._acpec_is_canonical_mobile_phone(old_phone):
-            raise ValidationError(_('Identité mobile FuelToken courante invalide : login et mobile_phone doivent être le même numéro canonique.'))
+            raise ValidationError(_('Identité mobile FuelToken courante invalide : login et acpec_mobile_phone doivent être le même numéro canonique.'))
 
         if new_phone == old_phone:
             raise ValidationError(_('Le nouveau téléphone est identique au téléphone actuel.'))
@@ -266,7 +266,7 @@ class ResUsers(models.Model):
             no_reset_password=True,
         ).write({
             'login': new_phone,
-            'mobile_phone': new_phone,
+            'acpec_mobile_phone': new_phone,
         })
         user._sync_acpec_fueltoken_mobile_partner_identity()
         partner.invalidate_recordset([
@@ -295,6 +295,10 @@ class ResUsers(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [
+            self._acpec_prepare_mobile_phone_alias_vals(vals)
+            for vals in vals_list
+        ]
         vals_list = self._acpec_fueltoken_prepare_mobile_identity_create_vals(vals_list)
         created_users = super(
             ResUsers,
@@ -308,10 +312,11 @@ class ResUsers(models.Model):
         return users
 
     def write(self, vals):
+        vals = self._acpec_prepare_mobile_phone_alias_vals(vals)
         self._check_acpec_fueltoken_mobile_user_technical_identity_write_allowed(vals)
         self._check_acpec_fueltoken_mobile_phone_write_allowed(vals)
         result = super().write(vals)
         self._check_acpec_fueltoken_mobile_identity()
-        if {'name', 'login', 'mobile_phone', 'mobile_only'} & set(vals or {}):
+        if {'name', 'login', 'acpec_mobile_phone', 'acpec_mobile_only'} & set(vals or {}):
             self._sync_acpec_fueltoken_mobile_partner_identity()
         return result

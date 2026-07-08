@@ -7,6 +7,7 @@ import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/odoo_auth_rpc_config.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/services/odoo_auth_service.dart';
@@ -155,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     }
 
-    return error.toString().replaceFirst('Exception: ', '');
+    return ErrorPresenter.message(error);
   }
 
   int? _extractChallengeId(Map<String, dynamic> response) {
@@ -228,6 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             maxLength: 8,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(8),
                             ],
                             validator: validateMrLocalPhone,
                             counterLabel: '${_phoneLocalDigits.length}/8',

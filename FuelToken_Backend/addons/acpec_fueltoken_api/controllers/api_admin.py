@@ -44,8 +44,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
         user_domain = [
             ('partner_id', '=', purchase.partner_id.id),
             ('active', '=', True),
-            ('mobile_only', '=', True),
-            ('mobile_state', 'in', ['approved', 'self_registered']),
+            ('acpec_mobile_only', '=', True),
+            ('acpec_mobile_state', 'in', ['approved', 'self_registered']),
         ]
         if company:
             user_domain.append(('company_ids', 'in', [company.id]))
@@ -210,7 +210,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             'name': device.name,
             'user_id': user.id if user else False,
             'user_name': user.name if user else False,
-            'mobile_phone': user.mobile_phone if user else False,
+            'mobile_phone': user.acpec_mobile_phone if user else False,
             'partner_id': user.partner_id.id if user and user.partner_id else False,
             'partner_name': user.partner_id.name if user and user.partner_id else False,
             'company_id': device.company_id.id if device.company_id else False,
@@ -371,8 +371,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
             domain.extend([
                 ('trust_state', '=', 'pending_trust'),
                 ('active', '=', True),
-                ('user_id.mobile_only', '=', True),
-                ('user_id.mobile_state', 'in', ['approved', 'self_registered']),
+                ('user_id.acpec_mobile_only', '=', True),
+                ('user_id.acpec_mobile_state', 'in', ['approved', 'self_registered']),
             ])
             Device = request.env['acpec.mobile.device'].sudo()
             total = Device.search_count(domain)
@@ -408,9 +408,9 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
 
                 if device.user_id == user:
                     raise AccessError('Un manager mobile ne peut pas approuver son propre device.')
-                if not device.user_id.mobile_only:
+                if not device.user_id.acpec_mobile_only:
                     raise AccessError('Seul un device d’utilisateur mobile peut être approuvé.')
-                if device.user_id.mobile_state == 'blocked':
+                if device.user_id.acpec_mobile_state == 'blocked':
                     raise AccessError('Impossible d’approuver un device d’un utilisateur mobile bloqué.')
                 if device.trust_state != 'pending_trust':
                     raise AccessError('Seul un device en attente peut être approuvé par l’API manager mobile.')

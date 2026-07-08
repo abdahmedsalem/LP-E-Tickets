@@ -5,6 +5,7 @@ import '../../core/config/app_environment.dart';
 import '../../core/config/diagnostic_config.dart';
 import '../../core/debug/acpec_rpc_debug.dart';
 import '../../core/config/odoo_fueltoken_rpc_config.dart';
+import '../../core/utils/error_presenter.dart';
 import '../models/carnet_type.dart';
 import 'acpec_carnet_types_mapper.dart';
 import 'odoo_fueltoken_facade.dart';
@@ -410,7 +411,7 @@ class AcpecCarnetCatalogService {
       }
       return (
         list: null,
-        err: e.toString(),
+        err: ErrorPresenter.message(e),
         preview: preview,
         usedAdminRoute: false,
       );
@@ -423,7 +424,7 @@ class AcpecCarnetCatalogService {
       }
       return (
         list: null,
-        err: e.toString(),
+        err: ErrorPresenter.message(e),
         preview: preview,
         usedAdminRoute: false,
       );
@@ -462,7 +463,7 @@ class AcpecCarnetCatalogService {
       fPreview = AcpecRpcDebug.clip(fRaw);
       _walk(_unwrapAcpec(fRaw), agg);
     } on OdooJsonRpcException catch (e) {
-      fErr = e.toString();
+      fErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -470,7 +471,7 @@ class AcpecCarnetCatalogService {
         );
       }
     } catch (e) {
-      fErr = e.toString();
+      fErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -489,7 +490,7 @@ class AcpecCarnetCatalogService {
       wPreview = AcpecRpcDebug.clip(wRaw);
       _walk(_unwrapAcpec(wRaw), agg);
     } on OdooJsonRpcException catch (e) {
-      wErr = e.toString();
+      wErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -497,7 +498,7 @@ class AcpecCarnetCatalogService {
         );
       }
     } catch (e) {
-      wErr = e.toString();
+      wErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -514,7 +515,7 @@ class AcpecCarnetCatalogService {
       pPreview = AcpecRpcDebug.clip(pRaw);
       _walk(_unwrapAcpec(pRaw), agg);
     } on OdooJsonRpcException catch (e) {
-      pErr = e.toString();
+      pErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -522,7 +523,7 @@ class AcpecCarnetCatalogService {
         );
       }
     } catch (e) {
-      pErr = e.toString();
+      pErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -595,7 +596,7 @@ class AcpecCarnetCatalogService {
       fPreview = AcpecRpcDebug.clip(fRaw);
       _walk(_unwrapAcpec(fRaw), agg);
     } on OdooJsonRpcException catch (e) {
-      fErr = e.toString();
+      fErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',
@@ -603,7 +604,7 @@ class AcpecCarnetCatalogService {
         );
       }
     } catch (e) {
-      fErr = e.toString();
+      fErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
           'RPC failed: ${e.runtimeType}',

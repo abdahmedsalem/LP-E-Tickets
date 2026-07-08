@@ -97,8 +97,8 @@ class TestMobileSecurityReadiness(TransactionCase):
             'login': valid_phone,
             'mobile_phone': valid_phone,
             'partner_id': self._existing_partner().id,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids([
                 'base.group_portal',
@@ -110,12 +110,12 @@ class TestMobileSecurityReadiness(TransactionCase):
         # Patch43F2A this can no longer go through ORM; corrupt it directly.
         if mobile_phone is False:
             self.env.cr.execute(
-                "UPDATE res_users SET login=%s, mobile_phone=NULL WHERE id=%s",
+                "UPDATE res_users SET login=%s, acpec_mobile_phone=NULL WHERE id=%s",
                 (login, user.id),
             )
         elif login != mobile_phone or not Users._acpec_is_canonical_mobile_phone(mobile_phone):
             self.env.cr.execute(
-                "UPDATE res_users SET login=%s, mobile_phone=%s WHERE id=%s",
+                "UPDATE res_users SET login=%s, acpec_mobile_phone=%s WHERE id=%s",
                 (login, mobile_phone, user.id),
             )
         self.env.invalidate_all()

@@ -196,7 +196,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             user_digits = self._normalize_phone_digits(user.mobile_phone or user.login)
             if user_digits != target_digits and not (user_digits.endswith(target_digits) or target_digits.endswith(user_digits)):
                 continue
-            if not user.active or getattr(user, 'mobile_state', False) not in ('approved', 'self_registered'):
+            if not user.active or getattr(user, 'acpec_mobile_state', False) not in ('approved', 'self_registered'):
                 continue
             if not self._user_has_group_id(user, fuel_user_group):
                 continue

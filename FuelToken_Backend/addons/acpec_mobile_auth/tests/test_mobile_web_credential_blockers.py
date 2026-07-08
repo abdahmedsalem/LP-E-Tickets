@@ -37,8 +37,8 @@ class TestMobileWebCredentialBlockers(TransactionCase):
             'login': identity_login,
             'partner_id': self._existing_partner().id,
             'password': 'Credential-Blocker-18B!',
-            'mobile_only': mobile_only,
-            'mobile_state': 'approved' if mobile_only else False,
+            'acpec_mobile_only': mobile_only,
+            'acpec_mobile_state': 'approved' if mobile_only else False,
         }
         if mobile_only:
             vals['mobile_phone'] = identity_login

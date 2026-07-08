@@ -38,8 +38,8 @@ class TestMobileUserBlockedOtp(TransactionCase):
             'login': phone,
             'mobile_phone': phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': state,
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -58,7 +58,7 @@ class TestMobileUserBlockedOtp(TransactionCase):
 
         Otp = self.env['acpec.mobile.auth.otp'].sudo()
         before_count = Otp.search_count([
-            ('identifier', '=', user.mobile_phone),
+            ('identifier', '=', user.acpec_mobile_phone),
             ('purpose', '=', 'login'),
         ])
 
@@ -67,11 +67,11 @@ class TestMobileUserBlockedOtp(TransactionCase):
             return_value=True,
         ):
             with self.assertRaises(AccessError) as ctx:
-                Otp.request_otp(user.mobile_phone, purpose='login')
+                Otp.request_otp(user.acpec_mobile_phone, purpose='login')
 
         self.assertIn('bloqué', str(ctx.exception))
         after_count = Otp.search_count([
-            ('identifier', '=', user.mobile_phone),
+            ('identifier', '=', user.acpec_mobile_phone),
             ('purpose', '=', 'login'),
         ])
         self.assertEqual(after_count, before_count)
@@ -88,9 +88,9 @@ class TestMobileUserBlockedOtp(TransactionCase):
             'odoo.addons.acpec_mobile_auth_otp.models.mobile_auth_otp.AcpecMobileAuthOtp._send_otp_code',
             return_value=True,
         ):
-            challenge, code = Otp.request_otp(user.mobile_phone, purpose='login')
+            challenge, code = Otp.request_otp(user.acpec_mobile_phone, purpose='login')
 
-        user.sudo().write({'mobile_state': 'blocked'})
+        user.sudo().write({'acpec_mobile_state': 'blocked'})
         before_sessions = Session.search_count([('user_id', '=', user.id)])
 
         with self.assertRaises(AccessError) as ctx:

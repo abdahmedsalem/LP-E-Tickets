@@ -38,8 +38,8 @@ class TestMobileDeviceReplacementLifecycle(TransactionCase):
             'login': phone,
             'mobile_phone': phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'self_registered',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'self_registered',
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._base_mobile_group_ids())],
         })
@@ -71,7 +71,7 @@ class TestMobileDeviceReplacementLifecycle(TransactionCase):
         original_user_id = user.id
         original_partner = user.partner_id
         original_login = user.login
-        original_mobile_phone = user.mobile_phone
+        original_mobile_phone = user.acpec_mobile_phone
 
         self.assertFalse(fuel_group in user.group_ids)
         if station_group:
@@ -100,17 +100,17 @@ class TestMobileDeviceReplacementLifecycle(TransactionCase):
             'is_device_approval_candidate',
         ])
         first_session.device_id.invalidate_recordset(['trust_state', 'trusted_at'])
-        user.invalidate_recordset(['group_ids', 'mobile_state', 'login', 'mobile_phone', 'partner_id'])
+        user.invalidate_recordset(['group_ids', 'acpec_mobile_state', 'login', 'acpec_mobile_phone', 'partner_id'])
 
         self.assertEqual(first_session.state, 'active')
         self.assertEqual(first_session.device_trust_state, 'trusted')
         self.assertEqual(first_session.device_id.trust_state, 'trusted')
         self.assertFalse(first_session.is_device_approval_candidate)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, original_login)
-        self.assertEqual(user.mobile_phone, original_mobile_phone)
+        self.assertEqual(user.acpec_mobile_phone, original_mobile_phone)
         self.assertTrue(fuel_group in user.group_ids)
         if station_group:
             self.assertFalse(station_group in user.group_ids)
@@ -163,7 +163,7 @@ class TestMobileDeviceReplacementLifecycle(TransactionCase):
         ])
         first_session.device_id.invalidate_recordset(['trust_state', 'trusted_at', 'blocked_at'])
         second_session.device_id.invalidate_recordset(['trust_state', 'trusted_at', 'blocked_at'])
-        user.invalidate_recordset(['group_ids', 'mobile_state', 'login', 'mobile_phone', 'partner_id'])
+        user.invalidate_recordset(['group_ids', 'acpec_mobile_state', 'login', 'acpec_mobile_phone', 'partner_id'])
 
         self.assertEqual(second_session.device_trust_state, 'trusted')
         self.assertEqual(second_session.device_id.trust_state, 'trusted')
@@ -186,11 +186,11 @@ class TestMobileDeviceReplacementLifecycle(TransactionCase):
         trusted_user = self._controller_for_session(second_session)._require_trusted_mobile_auth()
         self.assertEqual(trusted_user, user.sudo())
 
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
         self.assertEqual(user.id, original_user_id)
         self.assertEqual(user.partner_id, original_partner)
         self.assertEqual(user.login, original_login)
-        self.assertEqual(user.mobile_phone, original_mobile_phone)
+        self.assertEqual(user.acpec_mobile_phone, original_mobile_phone)
         self.assertTrue(fuel_group in user.group_ids)
         if station_group:
             self.assertFalse(station_group in user.group_ids)

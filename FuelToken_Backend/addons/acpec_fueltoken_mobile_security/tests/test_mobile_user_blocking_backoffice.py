@@ -42,8 +42,8 @@ class TestMobileUserBlockingBackofficeLifecycle(TransactionCase):
             'login': phone,
             'mobile_phone': phone,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': state,
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -87,7 +87,7 @@ class TestMobileUserBlockingBackofficeLifecycle(TransactionCase):
 
         self.assertTrue(result)
 
-        user.invalidate_recordset(['mobile_state', 'active'])
+        user.invalidate_recordset(['acpec_mobile_state', 'active'])
         trusted_session.invalidate_recordset(['state', 'revoked_at'])
         pending_session.invalidate_recordset(['state', 'revoked_at'])
         blocked_session.invalidate_recordset(['state', 'revoked_at'])
@@ -96,7 +96,7 @@ class TestMobileUserBlockingBackofficeLifecycle(TransactionCase):
         blocked_device.invalidate_recordset(['trust_state', 'trusted_at', 'blocked_at'])
 
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'blocked')
+        self.assertEqual(user.acpec_mobile_state, 'blocked')
 
         self.assertEqual(trusted_session.state, 'revoked')
         self.assertTrue(trusted_session.revoked_at)
@@ -149,14 +149,14 @@ class TestMobileUserBlockingBackofficeLifecycle(TransactionCase):
 
         self.assertTrue(result)
 
-        user.invalidate_recordset(['mobile_state', 'active'])
+        user.invalidate_recordset(['acpec_mobile_state', 'active'])
         trusted_session.invalidate_recordset(['state'])
         pending_session.invalidate_recordset(['state'])
         trusted_device.invalidate_recordset(['trust_state'])
         pending_device.invalidate_recordset(['trust_state'])
 
         self.assertTrue(user.active)
-        self.assertEqual(user.mobile_state, 'self_registered')
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
 
         # Réactivation user : aucune session restaurée, aucun device modifié.
         self.assertEqual(trusted_session.state, 'revoked')
@@ -189,8 +189,8 @@ class TestMobileUserBlockingBackofficeLifecycle(TransactionCase):
 
         self.assertEqual(action.get('type'), 'ir.actions.act_window_close')
 
-        user.invalidate_recordset(['mobile_state'])
-        self.assertEqual(user.mobile_state, 'blocked')
+        user.invalidate_recordset(['acpec_mobile_state'])
+        self.assertEqual(user.acpec_mobile_state, 'blocked')
         self._assert_partner_chatter_contains(user.partner_id, block_reason)
 
         reactivate_reason = 'F2L wizard reactivate reason'
@@ -204,8 +204,8 @@ class TestMobileUserBlockingBackofficeLifecycle(TransactionCase):
 
         self.assertEqual(action.get('type'), 'ir.actions.act_window_close')
 
-        user.invalidate_recordset(['mobile_state'])
-        self.assertEqual(user.mobile_state, 'self_registered')
+        user.invalidate_recordset(['acpec_mobile_state'])
+        self.assertEqual(user.acpec_mobile_state, 'self_registered')
         self._assert_partner_chatter_contains(user.partner_id, reactivate_reason)
 
     def test_f2l_backoffice_views_expose_buttons_and_warning_wizard(self):

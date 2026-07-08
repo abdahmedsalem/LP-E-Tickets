@@ -155,7 +155,7 @@ class AcpecFuelWallet(models.Model):
     def _fueltoken_is_operational_mobile_user(self, user):
         if not user or not user.exists():
             return False
-        if not getattr(user, 'mobile_only', False):
+        if not getattr(user, 'acpec_mobile_only', False):
             return False
         operational_xmlids = (
             'acpec_fueltoken_base.group_fuel_station',

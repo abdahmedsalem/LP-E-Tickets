@@ -121,8 +121,8 @@ class TestAdminManagerApiContract(TransactionCase):
     def test_h2_device_approve_keeps_positive_validator_and_audit_context_contract(self):
         source = self._source(AcpecFuelTokenAdminApi.device_approve_pending_trust)
         self.assertIn("device.user_id == user", source)
-        self.assertIn("not device.user_id.mobile_only", source)
-        self.assertIn("device.user_id.mobile_state == 'blocked'", source)
+        self.assertIn("not device.user_id.acpec_mobile_only", source)
+        self.assertIn("device.user_id.acpec_mobile_state == 'blocked'", source)
         self.assertIn("device.trust_state != 'pending_trust'", source)
         self.assertIn("acpec_mobile_source_session_id", source)
         self.assertIn("acpec_fueltoken_mobile_manager_device_approval_user_id", source)

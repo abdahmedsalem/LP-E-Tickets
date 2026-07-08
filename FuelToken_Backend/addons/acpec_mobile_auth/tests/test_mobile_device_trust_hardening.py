@@ -19,8 +19,8 @@ class TestMobileDeviceTrustHardening(TransactionCase):
             'name': 'F2N Mobile User %s' % phone,
             'login': phone,
             'mobile_phone': phone,
-            'mobile_only': True,
-            'mobile_state': 'self_registered',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'self_registered',
             'group_ids': [(6, 0, [portal_group.id, mobile_group.id])],
         })
 
@@ -108,7 +108,7 @@ class TestMobileDeviceTrustHardening(TransactionCase):
         session = self._create_session(user, 'ft-f2n-user-blocked-device')
         device = session.device_id
 
-        user.sudo().write({'mobile_state': 'blocked'})
+        user.sudo().write({'acpec_mobile_state': 'blocked'})
 
         with self.assertRaises(UserError):
             device.action_trust_device()

@@ -266,7 +266,7 @@ class AcpecMobileDevice(models.Model):
                     "Un device mobile bloqué ne peut pas être approuvé directement. "
                     "Remettez-le d'abord en attente avec un motif, puis approuvez-le séparément."
                 ))
-            if device.user_id.mobile_state == 'blocked':
+            if device.user_id.acpec_mobile_state == 'blocked':
                 raise UserError(_("Impossible d'approuver un device d'un utilisateur mobile bloqué."))
         return True
 

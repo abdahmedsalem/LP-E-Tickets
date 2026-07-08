@@ -15,7 +15,7 @@ class AcpecMobileWebCredentialMixin(models.AbstractModel):
 
     @api.model
     def _acpec_is_mobile_only_user(self, user):
-        return bool(user and user.sudo().mobile_only)
+        return bool(user and user.sudo().acpec_mobile_only)
 
     @api.model
     def _acpec_assert_current_user_not_mobile_only_for_web_credential(self):
@@ -35,7 +35,7 @@ class AcpecMobileWebCredentialMixin(models.AbstractModel):
         that are present in the registry. It does not touch acpec.mobile.session.
         """
         Users = self.env['res.users'].sudo().with_context(active_test=False)
-        mobile_users = Users.search([('mobile_only', '=', True)])
+        mobile_users = Users.search([('acpec_mobile_only', '=', True)])
         user_ids = set(mobile_users.ids)
         cleaned = {
             'api_keys': 0,

@@ -36,7 +36,7 @@ class ResUsers(models.Model):
         ).format(
             title=escape(_("Sécurité mobile — changement état utilisateur")),
             user=escape(self.display_name or self.login or self.id),
-            phone=escape(self.mobile_phone or self.login or ''),
+            phone=escape(self.acpec_mobile_phone or self.login or ''),
             previous=escape(previous_state or ''),
             new=escape(new_state or ''),
             source=escape(source or 'backoffice'),
@@ -54,14 +54,14 @@ class ResUsers(models.Model):
         reason = self._acpec_fueltoken_required_reason(reason)
 
         for user in self:
-            if not user.mobile_only:
+            if not user.acpec_mobile_only:
                 raise UserError(_("Seuls les utilisateurs mobiles peuvent être bloqués par cette action."))
-            if user.mobile_state == 'blocked':
+            if user.acpec_mobile_state == 'blocked':
                 raise UserError(_("L'utilisateur mobile est déjà bloqué."))
 
-            previous_state = user.mobile_state or False
-            user.sudo().write({'mobile_state': 'blocked'})
-            user.invalidate_recordset(['mobile_state', 'active'])
+            previous_state = user.acpec_mobile_state or False
+            user.sudo().write({'acpec_mobile_state': 'blocked'})
+            user.invalidate_recordset(['acpec_mobile_state', 'active'])
             user._acpec_fueltoken_post_mobile_user_state_note(
                 previous_state,
                 'blocked',
@@ -78,14 +78,14 @@ class ResUsers(models.Model):
             raise UserError(_("L'état cible de réactivation doit être self_registered ou approved."))
 
         for user in self:
-            if not user.mobile_only:
+            if not user.acpec_mobile_only:
                 raise UserError(_("Seuls les utilisateurs mobiles peuvent être réactivés par cette action."))
-            if user.mobile_state != 'blocked':
+            if user.acpec_mobile_state != 'blocked':
                 raise UserError(_("Seul un utilisateur mobile bloqué peut être réactivé."))
 
-            previous_state = user.mobile_state or False
-            user.sudo().write({'mobile_state': target_state})
-            user.invalidate_recordset(['mobile_state', 'active'])
+            previous_state = user.acpec_mobile_state or False
+            user.sudo().write({'acpec_mobile_state': target_state})
+            user.invalidate_recordset(['acpec_mobile_state', 'active'])
             user._acpec_fueltoken_post_mobile_user_state_note(
                 previous_state,
                 target_state,

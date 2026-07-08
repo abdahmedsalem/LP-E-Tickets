@@ -39,8 +39,8 @@ class TestMobileDeviceTrust(TransactionCase):
             'mobile_phone': _acpec_test_mobile_phone(login),
             'email': login,
             'active': True,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -259,7 +259,7 @@ class TestMobileDeviceTrust(TransactionCase):
         first_session = first['session']
         first_session.action_trust_device()
 
-        user.sudo().write({'mobile_state': 'rejected'})
+        user.sudo().write({'acpec_mobile_state': 'rejected'})
 
         with self.assertRaises(AccessError):
             Session.create_for_user(user, {

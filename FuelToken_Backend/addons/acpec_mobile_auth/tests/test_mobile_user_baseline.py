@@ -42,8 +42,8 @@ class TestMobileUserBaseline(TransactionCase):
             'login': _acpec_test_mobile_phone('mobile-baseline-test'),
             'mobile_phone': _acpec_test_mobile_phone('mobile-baseline-test'),
             'partner_id': partner.id,
-            'mobile_only': True,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': 'approved',
             'password': Users._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids([
                 'base.group_portal',
@@ -60,8 +60,8 @@ class TestMobileUserBaseline(TransactionCase):
                 'name': 'Mobile Missing Flag Test',
                 'login': 'mobile-missing-flag-test',
                 'partner_id': partner.id,
-                'mobile_only': False,
-                'mobile_state': 'approved',
+                'acpec_mobile_only': False,
+                'acpec_mobile_state': 'approved',
                 'password': Users._acpec_mobile_unusable_password(),
                 'group_ids': [(6, 0, self._group_ids([
                     'base.group_portal',
@@ -78,8 +78,8 @@ class TestMobileUserBaseline(TransactionCase):
                 'login': _acpec_test_mobile_phone('mobile-missing-portal-test'),
                 'mobile_phone': _acpec_test_mobile_phone('mobile-missing-portal-test'),
                 'partner_id': partner.id,
-                'mobile_only': True,
-                'mobile_state': 'approved',
+                'acpec_mobile_only': True,
+                'acpec_mobile_state': 'approved',
                 'password': Users._acpec_mobile_unusable_password(),
                 'group_ids': [(6, 0, self._group_ids([
                     'acpec_mobile_auth.group_mobile_auth_user',
@@ -93,8 +93,8 @@ class TestMobileUserBaseline(TransactionCase):
             'name': 'Non Mobile Test',
             'login': 'non-mobile-test',
             'partner_id': partner.id,
-            'mobile_only': False,
-            'mobile_state': 'approved',
+            'acpec_mobile_only': False,
+            'acpec_mobile_state': 'approved',
             'password': Users._acpec_mobile_unusable_password(),
         })
         with self.assertRaises(AccessError):

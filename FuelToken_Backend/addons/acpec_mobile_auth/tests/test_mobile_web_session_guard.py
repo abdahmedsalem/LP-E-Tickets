@@ -21,7 +21,7 @@ class _FakeSession:
 
 class _FakeUser:
     def __init__(self, mobile_only=False, is_public=False, raise_on_public=False):
-        self.mobile_only = mobile_only
+        self.acpec_mobile_only = mobile_only
         self._public = is_public
         self._raise_on_public = raise_on_public
 

@@ -37,8 +37,8 @@ class TestMobileStateGate(TransactionCase):
             'mobile_phone': _acpec_test_mobile_phone(login),
             'email': login,
             'active': active,
-            'mobile_only': True,
-            'mobile_state': state,
+            'acpec_mobile_only': True,
+            'acpec_mobile_state': state,
             'password': user_model._acpec_mobile_unusable_password(),
             'group_ids': [(6, 0, self._group_ids())],
         })
@@ -75,7 +75,7 @@ class TestMobileStateGate(TransactionCase):
         })
         session = token_data['session']
 
-        user.sudo().write({'mobile_state': 'blocked'})
+        user.sudo().write({'acpec_mobile_state': 'blocked'})
         session.invalidate_recordset(['state', 'revoked_at'])
 
         self.assertEqual(session.state, 'revoked')
@@ -89,7 +89,7 @@ class TestMobileStateGate(TransactionCase):
         })
         session = token_data['session']
 
-        user.sudo().write({'mobile_state': 'pending'})
+        user.sudo().write({'acpec_mobile_state': 'pending'})
         session.invalidate_recordset(['state'])
 
         self.assertEqual(session.state, 'revoked')
@@ -139,7 +139,7 @@ class TestMobileStateGate(TransactionCase):
         })
         session = token_data['session']
 
-        user.sudo().write({'mobile_state': 'self_registered'})
+        user.sudo().write({'acpec_mobile_state': 'self_registered'})
         session.invalidate_recordset(['state', 'revoked_at'])
 
         self.assertEqual(session.state, 'active')

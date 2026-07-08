@@ -60,7 +60,7 @@ class ResPartner(models.Model):
             return self.env['res.users']
         users = self.env['res.users'].sudo().with_context(active_test=False).search([
             ('partner_id', 'in', self.ids),
-            ('mobile_only', '=', True),
+            ('acpec_mobile_only', '=', True),
         ])
         return users._acpec_fueltoken_is_mobile_identity_scope()
 

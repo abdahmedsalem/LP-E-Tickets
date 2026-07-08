@@ -8,6 +8,7 @@ import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_context.dart';
+import '../../../core/utils/error_presenter.dart';
 import '../../../main.dart';
 import '../../../data/models/acpec_station_profile.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -57,7 +58,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
       return 'Session expirée. Reconnectez-vous.';
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    return ErrorPresenter.message(e).trim();
   }
 
   Future<void> _loadAcpecProfile({bool forceRefresh = false}) async {
