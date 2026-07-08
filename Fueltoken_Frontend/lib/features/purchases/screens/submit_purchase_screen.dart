@@ -889,10 +889,10 @@ class _CarnetCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.ink,
-                            height: 1.08,
+                            height: 1.15,
                           ),
                         ),
                         const SizedBox(height: 16),

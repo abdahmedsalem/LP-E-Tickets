@@ -801,13 +801,13 @@ class _TransferLineCardState extends State<_TransferLineCard> {
                     padding: const EdgeInsets.only(right: 112),
                     child: Text(
                       widget.carnetTypeLabel,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.ink,
-                        height: 1.08,
+                        height: 1.15,
                       ),
                     ),
                   ),
