@@ -116,7 +116,20 @@ class AcpecFuelTransaction(models.Model):
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     line_ids = fields.One2many('acpec.fuel.transaction.line', 'transaction_id', string='Lignes')
+    transaction_effect = fields.Selection([
+        ('no_effect', 'Sans effet'),
+        ('incoming', 'Entrant'),
+        ('outgoing', 'Sortant'),
+    ], string='Effet économique', default='no_effect', readonly=True, copy=False, index=True)
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
+    signed_amount = fields.Monetary(
+        string='Montant signé',
+        compute='_compute_signed_amount',
+        store=True,
+        readonly=True,
+        copy=False,
+        help="Montant signé selon l'effet économique : entrant positif, sortant négatif, sans effet à zéro.",
+    )
     qty_total = fields.Integer(string='Quantité', compute='_compute_totals', store=True)
     note = fields.Text(string='Note')
     regularization_state = fields.Selection([
@@ -155,6 +168,23 @@ class AcpecFuelTransaction(models.Model):
     def _generate_transaction_sequence_name(self):
         return self.env['ir.sequence'].next_by_code('acpec.fuel.transaction') or 'New'
 
+    @api.model
+    def _default_transaction_effect(self, transaction_type):
+        mapping = {
+            'purchase_submitted': 'no_effect',
+            'purchase_approved': 'incoming',
+            'emission_qr': 'outgoing',
+            'retirer_qr': 'no_effect',
+            'separer_qr': 'no_effect',
+            'blocage_qr': 'no_effect',
+            'consommation_station': 'no_effect',
+            'expiration_faces': 'outgoing',
+            'expiration_qr': 'no_effect',
+            'transfert_carnet': 'no_effect',
+            'transfert_ticket': 'no_effect',
+        }
+        return mapping.get(transaction_type or '', 'no_effect')
+
     @api.model_create_multi
     def create(self, vals_list):
         reserved_operation_refs = set()
@@ -175,6 +205,9 @@ class AcpecFuelTransaction(models.Model):
                 vals['operation_ref'] = self._generate_unique_transaction_reference(reserved_operation_refs)
             reserved_operation_refs.add(vals.get('operation_ref'))
 
+            if not vals.get('transaction_effect'):
+                vals['transaction_effect'] = self._default_transaction_effect(vals.get('transaction_type'))
+
             if vals.get('transaction_type') == 'consommation_station' and not vals.get('regularization_state'):
                 vals['regularization_state'] = 'pending'
         return super().create(vals_list)
@@ -184,6 +217,16 @@ class AcpecFuelTransaction(models.Model):
         for rec in self:
             rec.amount_total = sum(rec.line_ids.mapped('amount'))
             rec.qty_total = sum(rec.line_ids.mapped('qty'))
+
+    @api.depends('transaction_effect', 'amount_total')
+    def _compute_signed_amount(self):
+        for rec in self:
+            if rec.transaction_effect == 'incoming':
+                rec.signed_amount = rec.amount_total
+            elif rec.transaction_effect == 'outgoing':
+                rec.signed_amount = -rec.amount_total
+            else:
+                rec.signed_amount = 0.0
 
     @api.model
     def _single_user_for_partner(self, partner):
@@ -218,6 +261,7 @@ class AcpecFuelTransaction(models.Model):
         counterparty_partner=False,
         counterparty_user=False,
         operation_ref=False,
+        transaction_effect=False,
     ):
         vals = {
             'transaction_type': transaction_type,
@@ -236,6 +280,7 @@ class AcpecFuelTransaction(models.Model):
             'counterparty_partner_id': counterparty_partner.id if counterparty_partner else False,
             'counterparty_user_id': counterparty_user.id if counterparty_user else False,
             'operation_ref': operation_ref or False,
+            'transaction_effect': transaction_effect or self._default_transaction_effect(transaction_type),
         }
         if transaction_type == 'consommation_station':
             vals['regularization_state'] = 'pending'
@@ -362,6 +407,58 @@ class AcpecFuelTransaction(models.Model):
                AND name != ''
             """
         )
+
+        # Patch43M20-C: backfill economic effect for existing transactions.
+        # Keep simple: classify already journalized transaction_type values.
+        # Do not restrict to NULL values: on module upgrade, the new selection
+        # default may have initialized old rows to no_effect before init().
+        self.env.cr.execute("""
+            UPDATE acpec_fuel_transaction
+               SET transaction_effect = CASE
+                    WHEN transaction_type = 'purchase_approved' THEN 'incoming'
+                    WHEN transaction_type = 'emission_qr' THEN 'outgoing'
+                    WHEN transaction_type = 'expiration_faces' THEN 'outgoing'
+                    WHEN transaction_type = 'transfert_carnet' AND note ILIKE '%%sortant%%' THEN 'outgoing'
+                    WHEN transaction_type = 'transfert_carnet' AND note ILIKE '%%entrant%%' THEN 'incoming'
+                    WHEN transaction_type = 'transfert_ticket' AND note ILIKE '%%sortant%%' THEN 'outgoing'
+                    WHEN transaction_type = 'transfert_ticket' AND note ILIKE '%%entrant%%' THEN 'incoming'
+                    ELSE 'no_effect'
+                END
+             WHERE transaction_type IN (
+                    'purchase_submitted',
+                    'purchase_approved',
+                    'emission_qr',
+                    'retirer_qr',
+                    'separer_qr',
+                    'blocage_qr',
+                    'consommation_station',
+                    'expiration_faces',
+                    'expiration_qr',
+                    'transfert_carnet',
+                    'transfert_ticket'
+                )
+        """)
+        self.env.cr.execute("""
+            UPDATE acpec_fuel_transaction
+               SET signed_amount = CASE
+                    WHEN transaction_effect = 'incoming' THEN COALESCE(amount_total, 0)
+                    WHEN transaction_effect = 'outgoing' THEN -COALESCE(amount_total, 0)
+                    ELSE 0
+                END
+             WHERE transaction_type IN (
+                    'purchase_submitted',
+                    'purchase_approved',
+                    'emission_qr',
+                    'retirer_qr',
+                    'separer_qr',
+                    'blocage_qr',
+                    'consommation_station',
+                    'expiration_faces',
+                    'expiration_qr',
+                    'transfert_carnet',
+                    'transfert_ticket'
+                )
+        """)
 
         # Backfill existing station consumption transactions created before Patch43H3B.
         self.env.cr.execute(

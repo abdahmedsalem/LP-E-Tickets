@@ -319,7 +319,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             totals_rows = tx_model._read_group(
                 domain,
                 [],
-                ['amount_total:sum', 'qty_total:sum'],
+                ['amount_total:sum', 'qty_total:sum', 'signed_amount:sum'],
             )
             totals_row = totals_rows[0] if totals_rows else ()
             totals_amount_total = (
@@ -332,6 +332,11 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 if len(totals_row) > 1 and totals_row[1] is not None
                 else 0.0
             )
+            totals_signed_amount = (
+                totals_row[2]
+                if len(totals_row) > 2 and totals_row[2] is not None
+                else 0.0
+            )
             records = tx_model.search(domain, order='create_date desc, id desc', limit=limit, offset=offset)
             items = []
             for tx in records:
@@ -340,6 +345,8 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'name': tx.operation_ref or tx.name,
                     'operation_ref': tx.operation_ref or tx.name,
                     'transaction_type': tx.transaction_type,
+                    'transaction_effect': tx.transaction_effect,
+                    'signed_amount': tx.signed_amount,
                     'amount_total': tx.amount_total,
                     'qty_total': tx.qty_total,
                     'created_at': fields.Datetime.to_string(tx.create_date) if tx.create_date else False,
@@ -372,6 +379,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'qr_count': total_count,
                     'transaction_count': total_count,
                     'amount_total': totals_amount_total,
+                    'signed_amount': totals_signed_amount,
                     'qty_total': totals_qty_total,
                 },
                 **self._pagination_meta_legacy(total_count, limit, offset, len(records), include_meta),
