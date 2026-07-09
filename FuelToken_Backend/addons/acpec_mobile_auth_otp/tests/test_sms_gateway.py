@@ -362,7 +362,15 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertEqual(result['error'].get('reference'), audit.reference)
 
     def test_signup_disabled_company_audits_technical_reason_without_public_leak(self):
-        self.env.company.write({'acpec_mobile_auth_enabled': False})
+        # Patch2W-B0: use an isolated company without mobile users so the
+        # Mobile Auth guard remains tested elsewhere and this test can focus
+        # on the public signup refusal for a disabled company.
+        disabled_company = self.env['res.company'].sudo().create({
+            'name': 'Patch2W-B0 Mobile Auth Disabled Company',
+            'acpec_mobile_auth_enabled': True,
+        })
+        disabled_company.write({'acpec_mobile_auth_enabled': False})
+        disabled_company.invalidate_recordset(['acpec_mobile_auth_enabled'])
         controller = AcpecMobileAuthApiPublic()
 
         with patch('odoo.addons.acpec_mobile_auth.models.mobile_security_policy.os.getenv', return_value=''):
@@ -371,7 +379,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                     name='Disabled Company Signup',
                     signup_identifier='46009104',
                     secret_code='1234',
-                    company_id=self.env.company.id,
+                    company_id=disabled_company.id,
                 ))
 
         self._assert_public_error_is_not_enumerating(result)
@@ -379,7 +387,7 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
         self.assertNotIn('debug_reason', result['error'])
         audit = self._assert_latest_signup_denial_audit(
             'signup_not_allowed',
-            company=self.env.company,
+            company=disabled_company,
         )
         self.assertTrue(str(result['error'].get('reference') or '').startswith('SEC-'))
         self.assertEqual(result['error'].get('reference'), audit.reference)
