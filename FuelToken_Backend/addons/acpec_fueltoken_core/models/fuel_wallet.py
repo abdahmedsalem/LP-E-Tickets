@@ -218,7 +218,29 @@ class AcpecFuelWallet(models.Model):
             self._assert_no_non_empty_client_wallet_for_operational_mobile_user(user, company=company)
         return True
 
+    def _check_wallet_economic_identity_write_allowed(self, vals):
+        protected_fields = {'partner_id', 'company_id'} & set(vals or {})
+        if not protected_fields:
+            return True
+
+        for rec in self:
+            for field_name in protected_fields:
+                current_record = rec[field_name]
+                current_id = current_record.id if current_record else False
+                new_value = vals.get(field_name)
+                new_id = new_value.id if hasattr(new_value, 'id') else new_value
+
+                if new_id == current_id:
+                    continue
+
+                raise ValidationError(_(
+                    "L'identité économique d'un compte Tickets Carburant "
+                    "(client/société) ne peut pas être modifiée après création."
+                ))
+        return True
+
     def write(self, vals):
         if 'balance' in vals:
             raise UserError(_('Le solde Tickets Carburant est calculé et ne peut pas être modifié directement.'))
+        self._check_wallet_economic_identity_write_allowed(vals)
         return super().write(vals)
