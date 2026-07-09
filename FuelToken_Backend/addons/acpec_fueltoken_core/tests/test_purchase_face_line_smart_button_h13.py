@@ -17,7 +17,7 @@ class TestPurchaseFaceLineSmartButtonH13(TransactionCase):
         partner = self.env['res.partner'].sudo().create({
             'name': 'Client H13 carnets smart button',
         })
-        purchase = self.env['acpec.fuel.purchase'].sudo().create({
+        purchase = self.env['acpec.fuel.purchase'].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
             'partner_id': partner.id,
             'company_id': self.env.company.id,
         })

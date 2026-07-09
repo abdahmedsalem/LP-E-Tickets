@@ -899,7 +899,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         try:
             lines = self._prepare_purchase_lines_from_post(context['company'], post)
             proof_filename, proof_data = self._read_purchase_proof_from_post(post)
-            purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
+            purchase = request.env['acpec.fuel.purchase'].create_from_api(
                 partner=context['commercial_partner'],
                 company=context['company'],
                 lines=lines,

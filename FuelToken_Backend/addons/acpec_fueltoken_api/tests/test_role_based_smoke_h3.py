@@ -172,12 +172,12 @@ class TestRoleBasedSmokeH3(TransactionCase):
 
     def _create_available_stock(self, client_user, suffix):
         carnet_type = self._create_unique_carnet_type()
-        purchase = self.env["acpec.fuel.purchase"].sudo().create({
+        purchase = self.env["acpec.fuel.purchase"].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
             "partner_id": client_user.partner_id.id,
             "company_id": self.company.id,
             "payment_reference": "PAY-H3-%s" % suffix,
         })
-        self.env["acpec.fuel.purchase.line"].sudo().create({
+        self.env["acpec.fuel.purchase.line"].with_context(allow_fuel_purchase_line_create=True).sudo().create({
             "purchase_id": purchase.id,
             "carnet_type_id": carnet_type.id,
             "carnet_qty": 1,
@@ -212,12 +212,12 @@ class TestRoleBasedSmokeH3(TransactionCase):
             trusted=True,
         )
         carnet_type = self._create_unique_carnet_type()
-        purchase = self.env["acpec.fuel.purchase"].sudo().create({
+        purchase = self.env["acpec.fuel.purchase"].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
             "partner_id": client_user.partner_id.id,
             "company_id": self.company.id,
             "payment_reference": "PAY-H3-SUBMITTED-%s" % suffix,
         })
-        self.env["acpec.fuel.purchase.line"].sudo().create({
+        self.env["acpec.fuel.purchase.line"].with_context(allow_fuel_purchase_line_create=True).sudo().create({
             "purchase_id": purchase.id,
             "carnet_type_id": carnet_type.id,
             "carnet_qty": 1,
@@ -534,4 +534,3 @@ class TestRoleBasedSmokeH3(TransactionCase):
             "action_code": "1234",
             "idempotency_key": "h3-manager-carnet-type-create-bo-only",
         }))
-

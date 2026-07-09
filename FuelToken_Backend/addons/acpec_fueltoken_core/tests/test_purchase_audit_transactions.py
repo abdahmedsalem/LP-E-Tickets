@@ -40,12 +40,12 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
         self.fail('Impossible de créer un type de carnet isolé pour le test.')
 
     def _create_purchase(self, carnet_qty=2):
-        purchase = self.Purchase.create({
+        purchase = self.Purchase.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).create({
             'partner_id': self.partner.id,
             'company_id': self.company.id,
             'payment_reference': 'PAY-AUDIT-001',
         })
-        self.env['acpec.fuel.purchase.line'].sudo().create({
+        self.env['acpec.fuel.purchase.line'].with_context(allow_fuel_purchase_line_create=True).sudo().create({
             'purchase_id': purchase.id,
             'carnet_type_id': self.carnet_type.id,
             'carnet_qty': carnet_qty,
