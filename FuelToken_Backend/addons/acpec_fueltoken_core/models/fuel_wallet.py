@@ -33,6 +33,21 @@ class AcpecFuelWallet(models.Model):
         'Un client ne peut avoir qu’un compte Tickets Carburant par société.',
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_wallet_create'):
+            raise UserError(_(
+                'La création de comptes Tickets Carburant est réservée aux flux métier internes contrôlés.'
+            ))
+        return super().create(vals_list)
+
+    def unlink(self):
+        if not self.env.context.get('allow_fuel_wallet_unlink'):
+            raise UserError(_(
+                'Les comptes Tickets Carburant ne peuvent pas être supprimés hors flux interne contrôlé.'
+            ))
+        return super().unlink()
+
     @api.depends('partner_id', 'company_id')
     def _compute_name(self):
         for rec in self:
@@ -120,7 +135,7 @@ class AcpecFuelWallet(models.Model):
         if len(company) != 1:
             raise ValidationError(_('Une seule société est requise pour créer le compte Tickets Carburant.'))
 
-        Wallet = self.sudo()
+        Wallet = self.sudo().with_context(allow_fuel_wallet_create=True)
         domain = [
             ('partner_id', '=', partner.id),
             ('company_id', '=', company.id),

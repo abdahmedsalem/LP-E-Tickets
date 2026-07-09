@@ -14,3 +14,4 @@ from . import test_company_fueltoken_enabled_guard
 from . import test_internal_reference_labels
 from . import test_transaction_economic_effect
 from . import test_transaction_runtime_guards
+from . import test_wallet_qr_runtime_guards

@@ -200,6 +200,10 @@ class AcpecFuelQr(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_qr_create'):
+            raise UserError(_(
+                'La création de QR est réservée aux flux métier internes contrôlés.'
+            ))
         Sequence = self.env['ir.sequence'].sudo()
         for vals in vals_list:
             if not vals.get('public_code'):
@@ -211,6 +215,13 @@ class AcpecFuelQr(models.Model):
             if vals.get('name', 'New') == 'New' or self._is_qr_manual_code_label(vals.get('name')):
                 vals['name'] = Sequence.next_by_code('acpec.fuel.qr') or 'New'
         return super().create(vals_list)
+
+    def unlink(self):
+        if not self.env.context.get('allow_fuel_qr_unlink'):
+            raise UserError(_(
+                'Les QR ne peuvent pas être supprimés hors flux interne contrôlé.'
+            ))
+        return super().unlink()
 
     @api.depends('line_ids.qty', 'line_ids.face_value', 'line_ids.expires_at')
     def _compute_totals(self):
@@ -239,13 +250,13 @@ class AcpecFuelQr(models.Model):
                 (wallet.id,),
             )
             wallet.invalidate_recordset()
-            qr = self.sudo().create({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False, 'request_hash': request_hash or False})
+            qr = self.sudo().with_context(allow_fuel_qr_create=True).create({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False, 'request_hash': request_hash or False})
             allocations = self.env['acpec.fuel.face.line'].sudo().reserve_available(wallet, requests)
             tx_lines = []
             for allocation in allocations:
                 face_line = allocation['face_line']
                 qty = allocation['qty']
-                qr_line = self.env['acpec.fuel.qr.line'].sudo().create({
+                qr_line = self.env['acpec.fuel.qr.line'].sudo().with_context(allow_fuel_qr_line_create=True).create({
                     'qr_id': qr.id,
                     'face_line_id': face_line.id,
                     'purchase_id': face_line.purchase_id.id,
@@ -458,7 +469,7 @@ class AcpecFuelQr(models.Model):
             source_lines = self.env['acpec.fuel.qr.line'].sudo().browse(list(requested.keys())).exists()
             source_by_id = {line.id: line for line in source_lines}
 
-            qr_child = self.sudo().create({
+            qr_child = self.sudo().with_context(allow_fuel_qr_create=True).create({
                 'wallet_id': self.wallet_id.id,
                 'parent_id': self.id,
             })
@@ -478,7 +489,7 @@ class AcpecFuelQr(models.Model):
                     moved_line = src
                 else:
                     src.with_context(allow_fuel_qr_line_state_update=True).write({'qty': src.qty - qty})
-                    moved_line = self.env['acpec.fuel.qr.line'].sudo().create({
+                    moved_line = self.env['acpec.fuel.qr.line'].sudo().with_context(allow_fuel_qr_line_create=True).create({
                         'qr_id': qr_child.id,
                         'source_qr_line_id': src.id,
                         'face_line_id': src.face_line_id.id,
@@ -565,7 +576,7 @@ class AcpecFuelQr(models.Model):
                 [tuple(valid_lines.ids)],
             )
 
-            qr_child = self.sudo().create({
+            qr_child = self.sudo().with_context(allow_fuel_qr_create=True).create({
                 'wallet_id': self.wallet_id.id,
                 'parent_id': self.id,
             })
@@ -681,6 +692,14 @@ class AcpecFuelQrLine(models.Model):
         ('expired', 'Expiré'),
     ], string='État', default='active', index=True)
     expires_at = fields.Datetime(string='Expiration')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_qr_line_create'):
+            raise UserError(_(
+                'La création de lignes QR est réservée aux flux métier internes contrôlés.'
+            ))
+        return super().create(vals_list)
 
     @api.depends('face_value', 'qty')
     def _compute_amount(self):
