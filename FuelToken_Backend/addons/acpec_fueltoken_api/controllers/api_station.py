@@ -252,7 +252,8 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     })
                 return self._json_response({
                     'transaction_id': tx.id,
-                    'transaction_name': tx.name,
+                    'transaction_name': tx.operation_ref or tx.name,
+                    'transaction_operation_ref': tx.operation_ref or tx.name,
                     'qr_id': qr.id,
                     'qr_public_code': qr.public_code,
                     'qr_state': qr.state,
@@ -336,7 +337,8 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             for tx in records:
                 items.append({
                     'id': tx.id,
-                    'name': tx.name,
+                    'name': tx.operation_ref or tx.name,
+                    'operation_ref': tx.operation_ref or tx.name,
                     'transaction_type': tx.transaction_type,
                     'amount_total': tx.amount_total,
                     'qty_total': tx.qty_total,

@@ -342,7 +342,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
         return {
             'id': tx.id,
-            'name': tx.name,
+            'name': tx.operation_ref or tx.name,
+            'operation_ref': tx.operation_ref or tx.name,
             'transaction_type': tx.transaction_type,
             'transaction_type_label': self._tx_type_label(tx),
             'amount_total': tx.amount_total,
