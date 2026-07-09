@@ -19,7 +19,7 @@ class AcpecFuelTransaction(models.Model):
     )
 
     name = fields.Char(
-        string='Référence Backoffice',
+        string='Référence interne',
         default='New',
         readonly=True,
         copy=False,

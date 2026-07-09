@@ -8,7 +8,7 @@ class AcpecFuelTicketTransfer(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
-    name = fields.Char(string='Référence', default='New', readonly=True, copy=False)
+    name = fields.Char(string='Référence interne', default='New', readonly=True, copy=False)
     source_wallet_id = fields.Many2one(
         'acpec.fuel.wallet', string='Compte source',
         required=True, index=True, ondelete='restrict', tracking=True,
