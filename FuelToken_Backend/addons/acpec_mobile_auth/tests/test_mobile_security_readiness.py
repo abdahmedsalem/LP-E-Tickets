@@ -149,9 +149,17 @@ class TestMobileSecurityReadiness(TransactionCase):
 
     def test_fueltoken_company_missing_is_reported_as_critical(self):
         Company = self.env['res.company'].sudo()
-        Company.search([('acpec_fueltoken_enabled', '=', True)]).write({
-            'acpec_fueltoken_enabled': False,
-        })
+        # Patch2W-B0: this readiness test intentionally simulates a broken
+        # persisted configuration. Do not use ORM write(False) here because
+        # the Patch2W runtime guard correctly protects companies with
+        # FuelToken business objects.
+        fueltoken_companies = Company.search([('acpec_fueltoken_enabled', '=', True)])
+        if fueltoken_companies:
+            self.env.cr.execute(
+                "UPDATE res_company SET acpec_fueltoken_enabled = FALSE WHERE id IN %s",
+                (tuple(fueltoken_companies.ids),),
+            )
+            fueltoken_companies.invalidate_recordset(['acpec_fueltoken_enabled'])
 
         env = {}
         env.update(self._runtime_env('production'))
