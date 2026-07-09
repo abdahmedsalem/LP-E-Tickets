@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
@@ -89,6 +89,19 @@ class TestD2MechanicalInvariants(TransactionCase):
             ('company_id', '=', self.company.id),
         ])
         self.assertEqual(len(wallets), 1)
+
+
+    def test_m21b3_face_line_create_requires_internal_context(self):
+        FaceLine = self.env['acpec.fuel.face.line']
+
+        with self.assertRaises(UserError):
+            FaceLine.create({})
+
+    def test_m21b3_face_line_unlink_is_forbidden(self):
+        _purchase, face_line = self._create_purchase_with_face_line()
+
+        with self.assertRaises(UserError):
+            face_line.unlink()
 
     def test_g3_c2_face_quantities_must_conserve_initial_quantity(self):
         _purchase, face_line = self._create_purchase_with_face_line()

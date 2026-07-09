@@ -188,7 +188,7 @@ class AcpecFuelTicketTransfer(models.Model):
                     ))
 
                 identity_vals = self._prepare_fragment_identity_vals(src_face_line, trf_line)
-                dest_face_line = FaceLine.create(dict(identity_vals, **{
+                dest_face_line = FaceLine.with_context(allow_fuel_face_line_create=True).sudo().create(dict(identity_vals, **{
                     'wallet_id': self.dest_wallet_id.id,
                     'purchase_id': src_face_line.purchase_id.id,
                     'purchase_line_id': src_face_line.purchase_line_id.id,
