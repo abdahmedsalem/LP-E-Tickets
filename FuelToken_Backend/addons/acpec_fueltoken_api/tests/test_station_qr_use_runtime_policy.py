@@ -357,7 +357,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             'name': 'Foreign station tx 43E2',
             'acpec_fueltoken_enabled': False,
         })
-        foreign_tx = self.env['acpec.fuel.transaction'].sudo().create({
+        foreign_tx = self.env['acpec.fuel.transaction'].sudo().with_context(allow_fuel_transaction_create=True).create({
             'transaction_type': 'consommation_station',
             'company_id': other_company.id,
             'station_id': station.id,
@@ -619,7 +619,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         controller, station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
             "m6-limit-cap",
         )
-        Tx = self.env["acpec.fuel.transaction"].sudo()
+        Tx = self.env["acpec.fuel.transaction"].sudo().with_context(allow_fuel_transaction_create=True)
         for index in range(105):
             Tx.create({
                 "transaction_type": "consommation_station",
@@ -790,13 +790,13 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             if 'company_id' in station._fields and station.company_id
             else self.env.company
         )
-        tx = self.env['acpec.fuel.transaction'].sudo().create({
+        tx = self.env['acpec.fuel.transaction'].sudo().with_context(allow_fuel_transaction_create=True).create({
             'name': 'TX-M15-%s' % suffix,
             'transaction_type': 'consommation_station',
             'company_id': company.id,
             'station_id': station.id,
         })
-        self.env['acpec.fuel.transaction.line'].sudo().create({
+        self.env['acpec.fuel.transaction.line'].sudo().with_context(allow_fuel_transaction_line_create=True).create({
             'transaction_id': tx.id,
             'face_value': amount,
             'qty': 1,
@@ -973,4 +973,3 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             current_pending_tx.amount_total + current_regularized_tx.amount_total,
         )
         self.assertNotIn(str(old_tx.id), repr(all_response))
-
