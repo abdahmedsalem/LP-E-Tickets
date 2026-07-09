@@ -331,7 +331,7 @@ class AcpecFuelFaceLine(models.Model):
                     label = line.carnet_short_code or line.carnet_no or line.id
                     raise ValidationError(_('Quantite disponible insuffisante pour %s.') % label)
 
-                line.with_context(allow_fuel_face_line_state_update=True).write({
+                line.with_context(allow_fuel_face_line_state_update=True).sudo().write({
                     'qty_available': line.qty_available - remaining,
                     'qty_qr_active': line.qty_qr_active + remaining,
                 })
@@ -388,7 +388,7 @@ class AcpecFuelFaceLine(models.Model):
                 ) != 0:
                     continue
                 qty = min(remaining, line.qty_available)
-                line.with_context(allow_fuel_face_line_state_update=True).write({
+                line.with_context(allow_fuel_face_line_state_update=True).sudo().write({
                     'qty_available': line.qty_available - qty,
                     'qty_qr_active': line.qty_qr_active + qty,
                 })
@@ -404,4 +404,4 @@ class AcpecFuelFaceLine(models.Model):
         for rec in self:
             qty = rec.qty_available
             if qty > 0:
-                rec.with_context(allow_fuel_face_line_state_update=True).write({'qty_available': 0, 'qty_expired': rec.qty_expired + qty})
+                rec.with_context(allow_fuel_face_line_state_update=True).sudo().write({'qty_available': 0, 'qty_expired': rec.qty_expired + qty})
