@@ -26,11 +26,16 @@ class TestFuelTransactionAppendOnly(TransactionCase):
         self.assertTrue(tx.line_ids)
         return tx
 
-    def test_g2_transaction_note_remains_editable_but_economic_write_is_blocked(self):
+    def test_g2_transaction_direct_write_is_blocked(self):
         tx = self._make_transaction()
 
-        tx.write({'note': 'Note post-audit autorisée'})
-        self.assertEqual(tx.note, 'Note post-audit autorisée')
+        with self.assertRaises(UserError):
+            tx.write({'note': 'Note post-audit interdite hors flux interne'})
+
+        tx.with_context(allow_fuel_transaction_update=True).write({
+            'note': 'Note post-audit interne autorisée',
+        })
+        self.assertEqual(tx.note, 'Note post-audit interne autorisée')
 
         with self.assertRaises(UserError):
             tx.write({'transaction_type': 'emission_qr'})

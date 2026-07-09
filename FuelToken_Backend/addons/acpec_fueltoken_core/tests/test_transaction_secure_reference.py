@@ -23,7 +23,7 @@ class TestFuelTransactionSecureReference(TransactionCase):
             'note': 'Patch43M20-A reference test',
         }
         vals.update(extra)
-        return self.Transaction.create(vals)
+        return self.Transaction.with_context(allow_fuel_transaction_create=True).create(vals)
 
     def test_patch43m20_operation_ref_uses_secure_public_reference_format(self):
         tx = self._make_transaction()
