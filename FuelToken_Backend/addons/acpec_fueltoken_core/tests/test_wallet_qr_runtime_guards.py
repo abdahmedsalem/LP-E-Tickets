@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -93,3 +93,36 @@ class TestWalletQrRuntimeGuards(TransactionCase):
 
         qr.with_context(allow_fuel_qr_unlink=True).unlink()
         self.assertFalse(qr.exists())
+
+    def test_m21b2_qr_write_state_requires_internal_context(self):
+        qr = self._qr()
+
+        with self.assertRaises(ValidationError):
+            qr.write({'state': 'blocked'})
+
+        qr.with_context(allow_fuel_qr_state_update=True).write({'state': 'blocked'})
+        self.assertEqual(qr.state, 'blocked')
+
+    def test_m21b2_qr_write_economic_fields_rejects_state_context(self):
+        parent = self._qr()
+        child = self.Qr.with_context(allow_fuel_qr_create=True).create({
+            'wallet_id': self._wallet().id,
+            'parent_id': parent.id,
+        })
+
+        with self.assertRaises(ValidationError):
+            child.write({'parent_id': False})
+
+        with self.assertRaises(ValidationError):
+            child.with_context(allow_fuel_qr_state_update=True).write({'parent_id': False})
+
+    def test_m21b2_qr_write_economic_context_is_internal_only(self):
+        qr = self._qr()
+
+        with self.assertRaises(ValidationError):
+            qr.write({'request_hash': 'm21b2-direct'})
+
+        qr.with_context(allow_fuel_qr_economic_update=True).write({
+            'request_hash': 'm21b2-internal',
+        })
+        self.assertEqual(qr.request_hash, 'm21b2-internal')
