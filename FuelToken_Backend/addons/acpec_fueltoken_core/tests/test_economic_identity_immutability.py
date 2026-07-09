@@ -73,6 +73,41 @@ class TestEconomicIdentityImmutability(TransactionCase):
         self.assertEqual(len(face_lines), 2)
         return purchase, purchase_line, face_lines
 
+    def test_patch2v_wallet_partner_and_company_are_immutable_after_creation(self):
+        suffix = uuid.uuid4().hex[:8]
+        source_partner, wallet = self._create_partner_wallet('G8 Wallet Identity Source %s' % suffix)
+        other_partner = self.env['res.partner'].sudo().create({
+            'name': 'G8 Wallet Identity Other %s' % suffix,
+        })
+        other_company = self.env['res.company'].sudo().create({
+            'name': 'G8 Wallet Identity Company %s' % suffix,
+        })
+
+        old_partner = wallet.partner_id
+        old_company = wallet.company_id
+
+        # Idempotent writes are harmless and must not break normal ORM/form flows.
+        wallet.write({
+            'partner_id': old_partner.id,
+            'company_id': old_company.id,
+        })
+
+        forbidden_writes = [
+            {'partner_id': other_partner.id},
+            {'partner_id': False},
+            {'company_id': other_company.id},
+            {'company_id': False},
+            {'partner_id': other_partner.id, 'company_id': other_company.id},
+        ]
+
+        for vals in forbidden_writes:
+            with self.assertRaises(ValidationError):
+                wallet.write(vals)
+
+            wallet.invalidate_recordset(['partner_id', 'company_id'])
+            self.assertEqual(wallet.partner_id.id, old_partner.id)
+            self.assertEqual(wallet.company_id.id, old_company.id)
+
     def test_g8_face_line_direct_economic_mutations_are_blocked_but_transfer_flow_works(self):
         suffix = uuid.uuid4().hex[:8]
         source_partner, source_wallet = self._create_partner_wallet('G8 Source %s' % suffix)
