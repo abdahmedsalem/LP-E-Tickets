@@ -311,9 +311,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         purchase_event_state = self._purchase_event_state(tx)
         is_purchase_submitted = tx.transaction_type == 'purchase_submitted'
         is_purchase_approved = tx.transaction_type == 'purchase_approved'
-        # M13: rejected purchases do not create a new TX and do not introduce a
-        # purchase_rejected type. A rejected purchase keeps the submitted TX and
-        # exposes rejection through purchase_state / related purchase fields.
+        # Patch43M20-B: rejected purchases do not create a new TX and do not
+        # introduce a purchase_rejected type. A rejected purchase keeps the
+        # submitted TX and exposes rejection through purchase_state / related
+        # purchase fields.
         is_purchase_rejected = bool(purchase and purchase.state == 'rejected')
 
         # Direction du transfert : sortant (source) ou entrant (dest).

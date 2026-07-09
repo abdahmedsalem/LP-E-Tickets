@@ -336,22 +336,9 @@ class AcpecFuelTransaction(models.Model):
         if vals_keys <= {'note'}:
             return super().write(vals)
 
-        if self.env.context.get('allow_fuel_transaction_purchase_lifecycle_update'):
-            # M13 doctrine: achat uniquement.
-            # Une transaction publique purchase_submitted peut être finalisée en
-            # purchase_approved sans créer une deuxième référence TX. Cette
-            # exception reste volontairement étroite et ne permet pas les writes
-            # directs généraux sur les transactions.
-            allowed_fields = {'transaction_type', 'note', 'idempotency_key', 'request_hash'}
-            forbidden_fields = vals_keys - allowed_fields
-            if forbidden_fields:
-                raise UserError(_('Mise à jour cycle achat transaction non autorisée.'))
-            if vals.get('transaction_type') != 'purchase_approved':
-                raise UserError(_('La conversion achat doit cibler purchase_approved.'))
-            for tx in self:
-                if tx.transaction_type != 'purchase_submitted' or not tx.purchase_id:
-                    raise UserError(_('Seule une transaction achat soumise peut être convertie en achat approuvé.'))
-            return super().write(vals)
+        # Patch43M20-B: purchase lifecycle updates are no longer an exception.
+        # Approval must create a new purchase_approved transaction with the same
+        # operation_ref instead of mutating purchase_submitted.
 
         # Régularisation station : uniquement via l'action dédiée.
         if vals_keys & regularization_fields and not self.env.context.get('allow_fuel_transaction_regularization_update'):
