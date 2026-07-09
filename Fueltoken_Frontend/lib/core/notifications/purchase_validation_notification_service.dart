@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -165,7 +165,7 @@ class PurchaseValidationNotificationService {
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
-          '[purchase-validation] sync des notifications d achats ignorée: ${e.runtimeType}',
+          '[purchase-validation] sync des notifications de commandes ignorée: ${e.runtimeType}',
         );
       }
     }
@@ -467,11 +467,12 @@ class PurchaseValidationNotificationService {
         )
         .toList(growable: false);
     final isRejected = lot.state == PurchaseLotState.rejected;
-    final title = isRejected ? 'Achat refusé' : 'Achat validé';
+    final title =
+        isRejected ? 'Commande de carnets rejetée' : 'Commande de carnets validée';
     final rejectionReason = isRejected ? lot.rejectionReason : null;
     final body = isRejected
         ? _rejectedBody(amountLabel, dateLabel, rejectionReason)
-        : '$amountLabel • Validée le $dateLabel';
+        : ' • Commande validée le ';
 
     return NotificationItem(
       id: 'purchase-${lot.id}',
@@ -510,9 +511,8 @@ class PurchaseValidationNotificationService {
         )
         .toList(growable: false);
     final title = tx.displayTitle;
-    final body = party.isNotEmpty
-        ? '$amountLabel • Reçu de $party • $dateLabel'
-        : '$amountLabel • Reçu • $dateLabel';
+    final roleLabel = tx.transferIsIncoming ? 'Expéditeur' : 'Bénéficiaire';
+    final body = party.isNotEmpty ? '$roleLabel : $party' : roleLabel;
 
     return NotificationItem(
       id: 'transfer-${tx.id}',

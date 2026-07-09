@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -294,7 +294,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         final actionCode = await showSensitiveActionCodeDialog(
           context,
           title: 'Confirmer la validation',
-          description: 'Saisissez votre code PIN pour valider cet achat.',
+          description: 'Saisissez votre code PIN pour valider cette commande.',
         );
         if (actionCode == null || actionCode.isEmpty) return;
         if (!mounted) return;
@@ -346,14 +346,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (widget.adminMode) {
           AppMessage.success(
             context,
-            'Achat validé. Les tickets sont disponibles pour le client.',
+            'Commande validée. Les tickets sont disponibles pour le client.',
           );
           context.pop(true);
           return;
         }
         AppMessage.success(
           context,
-          'Lot validé. Les tickets sont disponibles pour le client.',
+          'Commande validée. Les tickets sont disponibles pour le client.',
         );
       } on OdooJsonRpcException catch (e) {
         if (mounted) {
@@ -415,7 +415,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ScreenHeader(title: 'Détail achat', onBack: _handleBack),
+            ScreenHeader(title: 'Détail de la commande', onBack: _handleBack),
             Expanded(
               child: _loading
                   ? ListView(
@@ -469,7 +469,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       padding: const EdgeInsets.all(24),
                       children: [
                         SizedBox(height: 48),
-                        Center(child: Text('Achat introuvable.')),
+                        Center(child: Text('Commande introuvable.')),
                       ],
                     )
                   : RefreshIndicator(
@@ -824,7 +824,7 @@ class _LinesCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Text(
           AppEnvironment.useAcpecLiveData
-              ? 'Le serveur n?a pas renvoy? de lignes pour cet achat. V?rifiez que la commande existe et vous appartient.'
+              ? 'Le serveur n?a pas renvoy? de lignes pour cette commande. V?rifiez que la commande existe et vous appartient.'
               : 'Aucune ligne pour ce lot.',
           style: const TextStyle(
             color: AppColors.textSecondary,
@@ -958,7 +958,7 @@ class _ProofsSection extends StatelessWidget {
       return const AppCard(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Aucune preuve de paiement jointe à cet achat.',
+          'Aucune preuve de paiement jointe à cette commande.',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,

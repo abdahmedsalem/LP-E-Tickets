@@ -485,7 +485,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   static String _emptyMessage(UserRole role) {
     switch (role) {
       case UserRole.user:
-        return 'Vos achats, QR préparés, envois et utilisations apparaîtront ici.';
+        return 'Vos commandes, la génération de QR et vos utilisations apparaîtront ici.';
       case UserRole.station:
         return 'Les contrôles et utilisations traités pour cette station s\u0027afficheront ici.';
       case UserRole.admin:
@@ -1267,12 +1267,14 @@ List<_TxDetailRow> _transactionDetailRows(
   BusinessTransaction tx,
   String currentUserId,
 ) {
+  final qr = tx.qrPublicCode ?? tx.qrId;
   final lotRef = tx.lotInternalRef ?? tx.lotId;
   final station = tx.stationName ?? tx.stationId;
   final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
-  final transferPartyLabel = tx.displayTitleForViewer(currentUserId) == 'Réception'
-      ? 'Expéditeur'
-      : 'Bénéficiaire';
+  final transferPartyLabel =
+      tx.displayTitleForViewer(currentUserId) == 'Réception'
+          ? 'Expéditeur'
+          : 'Bénéficiaire';
   final baseRows = <_TxDetailRow>[
     _TxDetailRow(
       label: 'Référence publique',
@@ -1350,6 +1352,8 @@ List<_TxDetailRow> _transactionDetailRows(
     case TxType.expiration:
       return [
         ...baseRows,
+        if (qr != null && qr.trim().isNotEmpty)
+          _TxDetailRow(label: 'Code de référence QR', value: qr.trim()),
       ];
     case TxType.qrBlocked:
     case TxType.walletLedger:
@@ -1369,13 +1373,13 @@ List<_TxDetailRow> _transactionDetailRows(
 String historyTxTitle(TxType type) {
   switch (type) {
     case TxType.purchaseSubmitted:
-      return 'Achat en attente';
+      return 'Commande de carnets';
     case TxType.purchaseValidated:
-      return 'Achat validé';
+      return 'Carnets commandés';
     case TxType.purchaseRejected:
-      return 'Achat rejeté';
+      return 'Commande de carnets rejetée';
     case TxType.qrEmission:
-      return 'QR prêt';
+      return 'Génération de QR';
     case TxType.qrSeparer:
       return 'Partage du QR';
     case TxType.qrRetirer:
@@ -1389,7 +1393,7 @@ String historyTxTitle(TxType type) {
     case TxType.stationConsumption:
       return 'Utilisation en station';
     case TxType.expiration:
-      return 'Fin de validité';
+      return 'Expiration QR';
     case TxType.walletLedger:
       return 'Mouvement';
   }
@@ -1539,7 +1543,7 @@ class _HistoryFilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       (_HistoryQuickFilter.all, 'Tous'),
-      (_HistoryQuickFilter.purchases, 'Achats'),
+      (_HistoryQuickFilter.purchases, 'Commandes'),
       (_HistoryQuickFilter.transfer, 'Envoi / reçu'),
       (_HistoryQuickFilter.consumption, 'Consommation'),
       (_HistoryQuickFilter.qr, 'QR'),
@@ -1866,7 +1870,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.expiration:
       return [
         _TransactionFact(
-          label: 'Code QR',
+          label: 'Code de référence QR',
           value: qr ?? '—',
           icon: Icons.hourglass_bottom_rounded,
           color: amber,
@@ -1901,6 +1905,11 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
       ];
   }
 }
+
+
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 
 enum TxType {
   purchaseSubmitted,
@@ -50,11 +50,11 @@ extension TxTypeX on TxType {
   String get label {
     switch (this) {
       case TxType.purchaseSubmitted:
-        return 'Achat en attente';
+        return 'Commande en attente';
       case TxType.purchaseValidated:
-        return 'Achat validé';
+        return 'Commande validée';
       case TxType.purchaseRejected:
-        return 'Achat rejeté';
+        return 'Commande rejetée';
       case TxType.qrEmission:
         return 'Génération QR';
       case TxType.qrSeparer:
@@ -70,7 +70,7 @@ extension TxTypeX on TxType {
       case TxType.stationConsumption:
         return 'Consommation station';
       case TxType.expiration:
-        return 'Expiration';
+        return 'Expiration QR';
       case TxType.walletLedger:
         return 'Opération';
     }
@@ -149,7 +149,7 @@ class BusinessTransaction extends Equatable {
   final String? actorUserName;
   final String? counterpartyUserName;
 
-  /// Pour les transferts : nom de l'autre partie (destinataire si sortant, expéditeur si entrant).
+  /// Pour les transferts : nom de l'autre partie (destinataire si sortant, Expéditeur si entrant).
   final String? transferParty;
 
   /// Pour les transferts : numéro de téléphone de l'autre partie.

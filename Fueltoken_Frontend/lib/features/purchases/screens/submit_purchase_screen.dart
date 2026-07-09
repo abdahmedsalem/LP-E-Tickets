@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -252,7 +252,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (_totalTickets() > _kMaxTicketsPerPurchase) {
         AppMessage.warning(
           context,
-          'Maximum $_kMaxTicketsPerPurchase tickets par achat.',
+          'Maximum $_kMaxTicketsPerPurchase tickets par commande.',
         );
         return;
       }
@@ -305,7 +305,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 // Appel API réel: les erreurs remontent au confirmation screen
                 if (!AppEnvironment.useAcpecLiveData) {
                   throw Exception(
-                    'Connexion serveur ACPEC requise pour soumettre un achat.',
+                    'Connexion serveur ACPEC requise pour soumettre une commande de carnets.',
                   );
                 }
                 if (kIsWeb) {
@@ -508,7 +508,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                             child: _submitting
                                 ? const AppInlineLoading(size: 20)
                                 : const Text(
-                                    'Soumettre la commande',
+                                    'Envoyer la commande',
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
@@ -562,7 +562,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         top: true,
         child: Column(
           children: [
-            ScreenHeader(title: 'Commander', onBack: () => context.pop()),
+            ScreenHeader(title: 'Commande de carnets', onBack: () => context.pop()),
             const SizedBox(height: 18),
             Expanded(
               child: ListView(

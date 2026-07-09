@@ -19,7 +19,7 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// Liste des achats (donnÃ©es locales ou synchronisÃ©es ACPEC selon la configuration).
+/// Liste des commandes (données locales ou synchronisées ACPEC selon la configuration).
 class PurchasesListScreen extends StatefulWidget {
   const PurchasesListScreen({super.key});
 
@@ -91,7 +91,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
         setState(() {
           _loading = false;
           _error = e.isOdooSessionExpired
-              ? 'Session expirÃ©e. Reconnectez-vous pour actualiser la liste.'
+              ? 'Session expirée. Reconnectez-vous pour actualiser la liste.'
               : ErrorPresenter.message(e);
         });
       } catch (e) {
@@ -108,7 +108,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
 
     setState(() {
       _loading = false;
-      _error = 'Connexion serveur ACPEC requise pour afficher vos achats.';
+      _error = 'Connexion serveur ACPEC requise pour afficher vos commandes de carnets.';
       _lots = [];
     });
   }
@@ -139,7 +139,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
         backgroundColor: const Color(0xFF0F7A5A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Nouvel achat'),
+        label: const Text('Nouvelle commande'),
       ),
       body: SafeArea(
         child: Container(
@@ -154,9 +154,9 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Mes achats',
+                title: 'Mes commandes',
                 subtitle:
-                    'Chaque carte rÃ©sume le carnet, le montant total et la date de validation.',
+                    'Chaque carte résume la commande de carnets, le montant total et la date de validation.',
                 onBack: () => context.pop(),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
@@ -168,7 +168,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '$totalLots achats',
+                    '$totalLots commandes',
                     style: const TextStyle(
                       color: Color(0xFF374151),
                       fontSize: 12,
@@ -184,7 +184,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                   children: [
                     Expanded(
                       child: _SummaryPill(
-                        label: 'ValidÃ©s',
+                        label: 'Carnets commandés',
                         value: '$approvedLots',
                         color: const Color(0xFFDCFCE7),
                         foreground: const Color(0xFF0F7A5A),
@@ -193,7 +193,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _SummaryPill(
-                        label: 'RejetÃ©s',
+                        label: 'Commandes rejetées',
                         value: '$rejectedLots',
                         color: const Color(0xFFFFE4E6),
                         foreground: const Color(0xFFB91C1C),
@@ -236,7 +236,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                               icon: Icons.cloud_off_outlined,
                               title: 'Connexion requise',
                               message: _error!,
-                              actionLabel: 'RÃ©essayer',
+                              actionLabel: 'Réessayer',
                               onAction: _refresh,
                             ),
                           ),
@@ -259,10 +259,10 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                                     height: minEmptyHeight,
                                     child: _EmptyPanel(
                                       icon: Icons.receipt_long_outlined,
-                                      title: 'Aucun achat',
+                                      title: 'Aucune commande',
                                       message:
-                                          'CrÃ©ez un nouvel achat pour faire apparaÃ®tre ici le carnet, le montant et sa validation.',
-                                      actionLabel: 'Nouvel achat',
+                                          'Créez une nouvelle commande pour faire apparaître ici la commande, le montant et sa validation.',
+                                      actionLabel: 'Nouvelle commande',
                                       onAction: () async {
                                         await context.push('/purchases/new');
                                         await _refresh();
@@ -534,7 +534,7 @@ class _PurchaseTile extends StatelessWidget {
 }
 
 String _purchaseTypeLabel(PurchaseLot lot) {
-  if (lot.lines.isEmpty) return 'Achat';
+  if (lot.lines.isEmpty) return 'Commande de carnets';
   final labels = lot.lines
       .map(
         (line) => Formatters.carnetTypeLabelFromServer(

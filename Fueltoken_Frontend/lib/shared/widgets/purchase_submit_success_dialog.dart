@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
@@ -99,8 +99,8 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SuccessScaffold(
-      title: 'Commande enregistrée',
-      message: 'Votre commande est en attente de validation.',
+      title: 'Commande de carnets enregistrée',
+      message: 'Votre commande de carnets est en attente de validation.',
       icon: Icons.check_circle_rounded,
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _PurchasedLinesSection(lines: lines),
@@ -362,7 +362,7 @@ class _PurchasedLinesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Carnets achetés',
+            'Carnets commandés',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,

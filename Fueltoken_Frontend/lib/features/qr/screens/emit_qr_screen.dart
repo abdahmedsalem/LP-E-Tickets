@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -121,7 +121,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     }
 
     if (message.isEmpty) {
-      return 'Le QR n\'a pas été créé. Réessayez.';
+      return "Le QR n'a pas été créé. Réessayez.";
     }
     return message;
   }
@@ -231,7 +231,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Générer QR Code',
+                title: 'Génération de QR',
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -271,7 +271,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Générer QR Code',
+                title: 'Génération de QR',
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -281,7 +281,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
                     Text(
-                      'Sélectionnez les carnets à inclure dans le QR Code.',
+                      'Sélectionnez les carnets à inclure dans le QR.',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -308,7 +308,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Générer QR Code',
+                title: 'Génération de QR',
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -318,7 +318,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
                     Text(
-                      'Sélectionnez les carnets à inclure dans le QR Code.',
+                      'Sélectionnez les carnets à inclure dans le QR.',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -348,7 +348,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Générer QR Code',
+                title: 'Génération de QR',
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -403,7 +403,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ScreenHeader(
-              title: 'Générer QR Code',
+              title: 'Génération de QR',
               onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
@@ -500,7 +500,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             details: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _ConfirmationSectionHeader(title: 'Tickets à émettre'),
+                const _ConfirmationSectionHeader(title: 'Tickets à générer'),
                 const SizedBox(height: 14),
                 _EmitConfirmationLinesSection(
                   lines: selectedLines,
@@ -510,7 +510,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             ),
             summaryRows: const [],
             disclaimer:
-                'La génération créera un QR à partir des carnets sélectionnés.',
+                'La génération de QR se fera à partir des carnets sélectionnés.',
           ),
         ),
       ),
@@ -574,7 +574,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       if (AppEnvironment.useAcpecLiveData) {
         final linesPayload = _acpecIssueLinePayload(user.id);
         if (linesPayload.isEmpty) {
-          throw Exception('Aucune ligne à émettre (stock ou sélection vide).');
+          throw Exception('Aucune ligne à générer (stock ou sélection vide).');
         }
         final raw = await OdooFueltokenFacade().qrIssue(
           intent.withAuthParams({
@@ -583,9 +583,9 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         );
         final guarded = acpecRpcMapOrThrow(
           raw,
-          fallbackMessage: 'Émission QR refusée par le serveur.',
+          fallbackMessage: 'Génération de QR refusée par le serveur.',
           publicErrorMessage:
-              'L\'émission du QR a échoué. Réessayez ou contactez l\'administrateur.',
+              "La génération de QR a échoué. Réessayez ou contactez l'administrateur.",
         );
         final transactionReference =
             guarded['transaction_reference']?.toString().trim().isNotEmpty ==
@@ -1342,3 +1342,7 @@ class _AmountInline extends StatelessWidget {
     );
   }
 }
+
+
+
+

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -123,10 +123,10 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
-            title: 'Separer les tickets valides',
+            title: 'Séparer les tickets valides',
             subtitle:
                 'Les tickets expirés restent séparés des tickets encore utilisables',
-            confirmLabel: 'Separer les tickets valides',
+            confirmLabel: 'Séparer les tickets valides',
             hero: _SeparerConfirmationHero(
               qrCode: parent.publicCode,
               validCount: parent.lines
@@ -154,7 +154,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
               ),
             ],
             disclaimer:
-                'La séparation créera un nouveau QR pour les lignes non expirées.',
+                'La séparation générera un nouveau QR pour les lignes non expirées.',
           ),
         ),
       ),
@@ -187,7 +187,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         raw,
         fallbackMessage: 'Séparation QR refusée par le serveur.',
         publicErrorMessage:
-            'La séparation du QR a échoué. Réessayez ou contactez l’administrateur.',
+            "La séparation du QR a échoué. Réessayez ou contactez l'administrateur.",
       );
 
       final newQrRaw = payload['new_qr'];
@@ -249,7 +249,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
           child: Column(
             children: [
               ScreenHeader(
-                title: 'Separer les tickets valides',
+                title: 'Séparer les tickets valides',
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const Expanded(
@@ -347,7 +347,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         child: Column(
           children: [
             ScreenHeader(
-              title: 'Separer les tickets valides',
+              title: 'Séparer les tickets valides',
               subtitle:
                   'Les tickets expirés restent séparés des tickets encore utilisables',
               onBack: () => popOrGo(context, '/qr'),
@@ -807,3 +807,6 @@ class _LineCard extends StatelessWidget {
     );
   }
 }
+
+
+

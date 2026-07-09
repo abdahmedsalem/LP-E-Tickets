@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -144,7 +144,7 @@ class _PurchaseConfirmationScreenState
                             ),
                             SizedBox(width: 10),
                             Text(
-                              "Confirmer l'achat",
+                              'Confirmer la commande',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -179,7 +179,7 @@ class _PurchaseConfirmationScreenState
           child: Column(
           children: [
             ScreenHeader(
-              title: "Confirmer l'achat",
+              title: 'Confirmer la commande',
               onBack: () => _close(null),
             ),
             const SizedBox(height: 14),
@@ -188,7 +188,7 @@ class _PurchaseConfirmationScreenState
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
                 children: [
                   Text(
-                    'Vérifiez les carnets avant de confirmer.',
+                    'Vérifiez la commande de carnets avant de confirmer.',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
@@ -198,7 +198,7 @@ class _PurchaseConfirmationScreenState
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const _SectionHeader(title: 'Carnets achetés'),
+                  const _SectionHeader(title: 'Commande de carnets'),
                   const SizedBox(height: 14),
                   _PurchaseLinesCard(lines: lines),
                   const SizedBox(height: 22),
@@ -210,7 +210,7 @@ class _PurchaseConfirmationScreenState
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    "En confirmant, votre demande d'achat sera envoyée à un administrateur pour validation. "
+                    "En confirmant, votre commande de carnets sera envoyée à un administrateur pour validation. "
                     'Les carnets seront crédités après approbation.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -531,7 +531,7 @@ class _PaymentProofSummaryCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
-              'La génération créera un QR à partir des carnets sélectionnés.',
+              'La génération de QR se fera à partir des carnets sélectionnés.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -607,3 +607,5 @@ class _PaymentProofImageCard extends StatelessWidget {
     );
   }
 }
+
+

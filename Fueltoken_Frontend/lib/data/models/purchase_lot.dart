@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 
@@ -12,11 +12,11 @@ extension PurchaseLotStateX on PurchaseLotState {
       case PurchaseLotState.draft:
         return 'Brouillon';
       case PurchaseLotState.submitted:
-        return 'En attente';
+        return 'Commande de carnets';
       case PurchaseLotState.approved:
-        return 'Validé';
+        return 'Carnets achetés';
       case PurchaseLotState.rejected:
-        return 'Rejeté';
+        return 'Commande de carnets rejetée';
     }
   }
 }
@@ -56,7 +56,7 @@ class PurchaseLine extends Equatable {
   ];
 }
 
-/// Preuve ou pièce jointe liée à un achat (détail Odoo).
+/// Preuve ou pièce jointe liée à une commande de carnets (détail Odoo).
 class PurchaseProofSummary extends Equatable {
   const PurchaseProofSummary({
     required this.label,

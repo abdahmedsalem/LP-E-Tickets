@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
@@ -199,7 +199,7 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Destinataire',
+                  'Bénéficiaire',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
