@@ -1,7 +1,7 @@
 import secrets
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 
 
@@ -116,6 +116,10 @@ class AcpecFuelFaceLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_face_line_create'):
+            raise UserError(_(
+                'La création de carnets économiques est réservée aux flux métier internes contrôlés.'
+            ))
         for vals in vals_list:
             name = vals.get('name')
             short_code = vals.get('carnet_short_code')
@@ -134,6 +138,11 @@ class AcpecFuelFaceLine(models.Model):
     def write(self, vals):
         self._check_protected_write_vals(vals)
         return super().write(vals)
+
+    def unlink(self):
+        raise UserError(_(
+            'Les carnets économiques ne doivent pas être supprimés.'
+        ))
 
     def init(self):
         super().init()
