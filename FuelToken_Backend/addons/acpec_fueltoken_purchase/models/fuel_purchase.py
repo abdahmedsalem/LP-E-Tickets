@@ -13,7 +13,7 @@ class AcpecFuelPurchase(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
-    name = fields.Char(string='Reference interne', default='New', readonly=True, copy=False)
+    name = fields.Char(string='Référence interne', default='New', readonly=True, copy=False)
     partner_id = fields.Many2one('res.partner', string='Client', required=True, index=True, tracking=True)
     company_id = fields.Many2one('res.company', string='Societe', default=lambda self: self.env.company, required=True, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)

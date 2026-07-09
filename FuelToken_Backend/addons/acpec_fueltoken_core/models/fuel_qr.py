@@ -16,7 +16,7 @@ class AcpecFuelQr(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
-    name = fields.Char(string='Référence QR', default='New', readonly=True, copy=False)
+    name = fields.Char(string='Référence interne', default='New', readonly=True, copy=False)
     wallet_id = fields.Many2one('acpec.fuel.wallet', string='Compte Tickets Carburant', required=True, index=True)
     partner_id = fields.Many2one('res.partner', related='wallet_id.partner_id', store=True, readonly=True, index=True)
     company_id = fields.Many2one('res.company', related='wallet_id.company_id', store=True, readonly=True, index=True)
