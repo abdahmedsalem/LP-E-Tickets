@@ -119,13 +119,13 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
         self.fail("Impossible de créer un type de carnet isolé pour le test M14.")
 
     def _create_purchase_for_mobile_report(self, user, carnet_qty=1):
-        purchase = self.env["acpec.fuel.purchase"].sudo().create({
+        purchase = self.env["acpec.fuel.purchase"].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
             "partner_id": user.partner_id.id,
             "company_id": self.company.id,
             "payment_reference": "PAY-M14-REJECTED",
         })
         carnet_type = self._create_unique_carnet_type_for_purchase_report()
-        self.env["acpec.fuel.purchase.line"].sudo().create({
+        self.env["acpec.fuel.purchase.line"].with_context(allow_fuel_purchase_line_create=True).sudo().create({
             "purchase_id": purchase.id,
             "carnet_type_id": carnet_type.id,
             "carnet_qty": carnet_qty,

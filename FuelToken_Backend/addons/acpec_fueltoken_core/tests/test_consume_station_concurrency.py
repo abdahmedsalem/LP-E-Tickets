@@ -127,12 +127,12 @@ class _ConsumeFixtureMixin:
         })
         carnet_type = self._unique_carnet_type(env, company)
 
-        purchase = env['acpec.fuel.purchase'].sudo().create({
+        purchase = env['acpec.fuel.purchase'].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
             'partner_id': partner.id,
             'company_id': company.id,
             'payment_reference': 'PAY-CONC-%s' % suffix,
         })
-        env['acpec.fuel.purchase.line'].sudo().create({
+        env['acpec.fuel.purchase.line'].with_context(allow_fuel_purchase_line_create=True).sudo().create({
             'purchase_id': purchase.id,
             'carnet_type_id': carnet_type.id,
             'carnet_qty': 1,  # 1 carnet * 10 tickets = 10 tickets disponibles

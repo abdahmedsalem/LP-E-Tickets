@@ -674,7 +674,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='purchase_create')
                 wallet = self._mobile_wallet()
                 mobile_session = self._get_mobile_session(required=True)
-                purchase = request.env['acpec.fuel.purchase'].sudo().create_from_api(
+                purchase = request.env['acpec.fuel.purchase'].create_from_api(
                     wallet.partner_id,
                     wallet.company_id,
                     kwargs.get('lines') or [],

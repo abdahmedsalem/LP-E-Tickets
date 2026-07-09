@@ -61,6 +61,10 @@ class AcpecFuelPurchase(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.context.get('allow_fuel_purchase_create'):
+            raise UserError(_(
+                'La création de lots d’achat est réservée aux flux métier internes contrôlés.'
+            ))
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('acpec.fuel.purchase') or 'New'
@@ -240,7 +244,7 @@ class AcpecFuelPurchase(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError(_('Seuls les lots en brouillon peuvent etre soumis.'))
-            rec.with_context(allow_fuel_purchase_workflow_update=True).write({
+            rec.with_context(allow_fuel_purchase_workflow_update=True).sudo().write({
                 'state': 'submitted',
                 'submitted_at': fields.Datetime.now(),
             })
@@ -251,7 +255,7 @@ class AcpecFuelPurchase(models.Model):
             for rec in self:
                 if rec.state not in ('draft', 'submitted'):
                     raise UserError(_('Seuls les lots brouillon ou soumis peuvent etre valides.'))
-                rec.with_context(allow_fuel_purchase_workflow_update=True).write({
+                rec.with_context(allow_fuel_purchase_workflow_update=True).sudo().write({
                     'state': 'approved',
                     'approved_at': fields.Datetime.now(),
                     'approved_by': self.env.user.id,
@@ -263,7 +267,7 @@ class AcpecFuelPurchase(models.Model):
         for rec in self:
             if rec.state == 'approved':
                 raise UserError(_('Un lot valide ne peut pas etre rejete.'))
-            rec.with_context(allow_fuel_purchase_workflow_update=True).write({
+            rec.with_context(allow_fuel_purchase_workflow_update=True).sudo().write({
                 'state': 'rejected',
                 'rejected_at': fields.Datetime.now(),
                 'rejected_by': self.env.user.id,
@@ -326,6 +330,11 @@ class AcpecFuelPurchase(models.Model):
         self._assert_purchase_mutation_allowed(vals)
         return super().write(vals)
 
+    def unlink(self):
+        raise UserError(_(
+            'Les lots d’achat ne doivent pas être supprimés.'
+        ))
+
     def _set_approval_idempotency(self, idempotency_key, request_hash):
         self.ensure_one()
         if not idempotency_key or not request_hash:
@@ -348,7 +357,7 @@ class AcpecFuelPurchase(models.Model):
                 return existing
         proof_filename, proof_data, proof_mimetype = self._validate_purchase_proof(proof_filename, proof_data)
         with self.env.cr.savepoint():
-            purchase = self.sudo().create({
+            purchase = self.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
                 'partner_id': partner.id,
                 'company_id': company.id,
                 'payment_reference': payment_reference or False,
@@ -363,7 +372,7 @@ class AcpecFuelPurchase(models.Model):
                     raise ValidationError(_("Type de carnet '%s' desactive.") % carnet_type.display_name)
                 if carnet_type.company_id and carnet_type.company_id != company:
                     raise ValidationError(_("Type de carnet '%s' indisponible pour cette societe.") % carnet_type.display_name)
-                purchase.line_ids.create({
+                purchase.with_context(allow_fuel_purchase_line_create=True).line_ids.create({
                     'purchase_id': purchase.id,
                     'carnet_type_id': carnet_type.id,
                     'carnet_qty': int(item.get('carnet_qty') or 0),
@@ -417,15 +426,18 @@ class AcpecFuelPurchaseLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_purchase_line_update'):
-            purchase_ids = {
-                vals.get('purchase_id')
-                for vals in vals_list
-                if vals.get('purchase_id')
-            }
-            purchases = self.env['acpec.fuel.purchase'].browse(list(purchase_ids)).exists()
-            if purchases.filtered(lambda purchase: purchase.state != 'draft'):
-                raise UserError(_('Impossible d ajouter une ligne sur un lot achat soumis, valide ou rejete.'))
+        if not self.env.context.get('allow_fuel_purchase_line_create'):
+            raise UserError(_(
+                'La creation de lignes achat est reservee aux flux metier internes controles.'
+            ))
+        purchase_ids = {
+            vals.get('purchase_id')
+            for vals in vals_list
+            if vals.get('purchase_id')
+        }
+        purchases = self.env['acpec.fuel.purchase'].browse(list(purchase_ids)).exists()
+        if purchases.filtered(lambda purchase: purchase.state != 'draft'):
+            raise UserError(_('Impossible d ajouter une ligne sur un lot achat soumis, valide ou rejete.'))
         return super().create(vals_list)
 
     def write(self, vals):
@@ -438,11 +450,10 @@ class AcpecFuelPurchaseLine(models.Model):
         return super().write(vals)
 
     def unlink(self):
-        if (
-            not self.env.context.get('allow_fuel_purchase_line_update')
-            and self.mapped('purchase_id').filtered(lambda purchase: purchase.state != 'draft')
-        ):
-            raise UserError(_('Impossible de supprimer une ligne de lot achat soumis, valide ou rejete.'))
+        if not self.env.context.get('allow_fuel_purchase_line_unlink'):
+            raise UserError(_(
+                'Les lignes d’achat ne doivent pas être supprimées directement.'
+            ))
         return super().unlink()
 
     @api.depends('purchase_id.name', 'carnet_qty', 'face_count', 'face_value', 'currency_id')

@@ -36,12 +36,12 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
 
     def _submitted_purchase(self):
         partner = self.Partner.create({'name': 'H13 Client'})
-        purchase = self.Purchase.create({
+        purchase = self.Purchase.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).create({
             'partner_id': partner.id,
             'company_id': self.env.company.id,
             'payment_reference': 'PAY-H13-001',
         })
-        self.PurchaseLine.create({
+        self.PurchaseLine.with_context(allow_fuel_purchase_line_create=True).create({
             'purchase_id': purchase.id,
             'carnet_type_id': self._carnet_type().id,
             'carnet_qty': 1,
@@ -94,7 +94,7 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
             line.write({'carnet_qty': line.carnet_qty + 1})
 
         with self.assertRaises(UserError):
-            self.PurchaseLine.create({
+            self.PurchaseLine.with_context(allow_fuel_purchase_line_create=True).create({
                 'purchase_id': purchase.id,
                 'carnet_type_id': self._carnet_type().id,
                 'carnet_qty': 1,

@@ -158,12 +158,12 @@ class TestAdminPurchaseRuntimePolicy(TransactionCase):
                 "name": "Client admin purchase %s" % suffix,
                 "company_id": self.company.id,
             })
-        purchase = self.env["acpec.fuel.purchase"].sudo().create({
+        purchase = self.env["acpec.fuel.purchase"].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
             "partner_id": partner.id,
             "company_id": self.company.id,
             "payment_reference": "PAY-ADMIN-PURCHASE-%s" % suffix,
         })
-        self.env["acpec.fuel.purchase.line"].sudo().create({
+        self.env["acpec.fuel.purchase.line"].with_context(allow_fuel_purchase_line_create=True).sudo().create({
             "purchase_id": purchase.id,
             "carnet_type_id": carnet_type.id,
             "carnet_qty": 1,
@@ -414,4 +414,3 @@ class TestAdminPurchaseRuntimePolicy(TransactionCase):
         self.assertFalse(purchase.rejection_reason)
         self.assertFalse(self._face_lines_for_purchase(purchase))
         self.assertFalse(self._approved_txs_for_purchase(purchase))
-
