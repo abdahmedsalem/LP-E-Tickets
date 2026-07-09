@@ -78,7 +78,7 @@ class TestD2MechanicalInvariants(TransactionCase):
         with mute_logger('odoo.sql_db'):
             with self.assertRaises(Exception):
                 with self.env.cr.savepoint():
-                    self.Wallet.create({
+                    self.Wallet.with_context(allow_fuel_wallet_create=True).create({
                         'partner_id': self.partner.id,
                         'company_id': self.company.id,
                     })
@@ -143,8 +143,8 @@ class TestD2MechanicalInvariants(TransactionCase):
     def test_g3_q8_qr_public_and_numeric_identifiers_are_generated_and_unique(self):
         wallet = self.Wallet.get_or_create(self.partner, self.company)
 
-        qr_1 = self.Qr.create({'wallet_id': wallet.id})
-        qr_2 = self.Qr.create({'wallet_id': wallet.id})
+        qr_1 = self.Qr.with_context(allow_fuel_qr_create=True).create({'wallet_id': wallet.id})
+        qr_2 = self.Qr.with_context(allow_fuel_qr_create=True).create({'wallet_id': wallet.id})
 
         self.assertTrue(qr_1.public_code)
         self.assertTrue(qr_2.public_code)
@@ -162,7 +162,7 @@ class TestD2MechanicalInvariants(TransactionCase):
         with mute_logger('odoo.sql_db'):
             with self.assertRaises(Exception):
                 with self.env.cr.savepoint():
-                    self.Qr.create({
+                    self.Qr.with_context(allow_fuel_qr_create=True).create({
                         'wallet_id': wallet.id,
                         'public_code': qr_1.public_code,
                     })

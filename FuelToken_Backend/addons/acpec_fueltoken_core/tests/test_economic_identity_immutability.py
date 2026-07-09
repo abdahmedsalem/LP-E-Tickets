@@ -187,7 +187,7 @@ class TestEconomicIdentityImmutability(TransactionCase):
         with self.assertRaises(ValidationError):
             qr_line.write({'state': 'consumed'})
 
-        empty_qr = self.Qr.create({'wallet_id': source_wallet.id})
+        empty_qr = self.Qr.with_context(allow_fuel_qr_create=True).create({'wallet_id': source_wallet.id})
         with self.assertRaises(ValidationError):
             qr_line.write({'qr_id': empty_qr.id})
 
