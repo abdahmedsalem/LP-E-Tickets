@@ -4,7 +4,7 @@ import '../models/purchase_lot.dart';
 import '../models/business_transaction.dart';
 import '../models/qr_token.dart';
 
-/// Totaux agrégés backend pour l'historique station.
+/// Totaux agrÃ©gÃ©s backend pour l'historique station.
 class AcpecTransactionsTotals {
   const AcpecTransactionsTotals({
     required this.qrCount,
@@ -22,8 +22,7 @@ class AcpecTransactionsTotals {
   final String? scope;
   final String? regularizationState;
 }
-
-/// Page d’historique des transactions (portefeuille ou station).
+/// Page dâ€™historique des transactions (portefeuille ou station).
 class AcpecTransactionsPage {
   const AcpecTransactionsPage({
     required this.items,
@@ -38,7 +37,7 @@ class AcpecTransactionsPage {
   final bool hasMore;
 }
 
-/// Mappe la réponse JSON-RPC ACPEC vers [BusinessTransaction] et la pagination.
+/// Mappe la rÃ©ponse JSON-RPC ACPEC vers [BusinessTransaction] et la pagination.
 class AcpecTransactionsMapper {
   AcpecTransactionsMapper._();
 
@@ -47,7 +46,7 @@ class AcpecTransactionsMapper {
     isUtc: true,
   );
 
-  /// Filtre côté client (l’API 5.6 ne filtre pas par type).
+  /// Filtre cÃ´tÃ© client (lâ€™API 5.6 ne filtre pas par type).
   static bool matchesClientFilter(BusinessTransaction tx, TxType filter) {
     if (tx.type == filter) return true;
     switch (filter) {
@@ -152,7 +151,7 @@ class AcpecTransactionsMapper {
     if (!_hasQrRef(tx)) return false;
     if (_looksLikeQrBlocked(tx)) return false;
     final blob = _txBlob(tx);
-    return blob.contains('émission') ||
+    return blob.contains('Ã©mission') ||
         blob.contains('emission') ||
         blob.contains('issue') ||
         blob.contains('emit');
@@ -166,7 +165,7 @@ class AcpecTransactionsMapper {
     return blob.contains('split') ||
         blob.contains('partage') ||
         blob.contains('separer') ||
-        blob.contains('séparer') ||
+        blob.contains('sÃ©parer') ||
         blob.contains('separer_qr');
   }
 
@@ -324,7 +323,7 @@ class AcpecTransactionsMapper {
     return out;
   }
 
-  /// Repli si l’historique ne contient pas de mouvement « bloqué » explicite.
+  /// Repli si lâ€™historique ne contient pas de mouvement Â« bloquÃ© Â» explicite.
   static List<BusinessTransaction> fromBlockedQrTokens(
     List<QrToken> qrs, {
     required String userId,
@@ -385,7 +384,7 @@ class AcpecTransactionsMapper {
     int requestedOffset = 0,
   }) {
     if (raw is! Map) {
-      throw Exception('Réponse historique transactions invalide.');
+      throw Exception('RÃ©ponse historique transactions invalide.');
     }
     var m = Map<String, dynamic>.from(raw);
     if (m['ok'] == false) {
@@ -450,14 +449,14 @@ class AcpecTransactionsMapper {
     );
   }
 
-  /// Réponse route `…/transactions/detail` (`transaction_id`).
+  /// RÃ©ponse route `â€¦/transactions/detail` (`transaction_id`).
   static BusinessTransaction parseDetail(
     dynamic raw, {
     required String userId,
     required String userName,
   }) {
     if (raw is! Map) {
-      throw Exception('Réponse détail transaction invalide.');
+      throw Exception('RÃ©ponse dÃ©tail transaction invalide.');
     }
     var root = Map<String, dynamic>.from(raw);
     _ensureOk(root);
@@ -504,7 +503,7 @@ class AcpecTransactionsMapper {
   static void _ensureOk(Map<String, dynamic> m) {
     if (m['ok'] == false) {
       throw Exception(
-        m['message']?.toString() ?? 'Détail transaction indisponible.',
+        m['message']?.toString() ?? 'DÃ©tail transaction indisponible.',
       );
     }
   }
@@ -589,18 +588,47 @@ class AcpecTransactionsMapper {
     if (id.isEmpty) return null;
 
     var type = _resolveTxType(row);
+    var transferIsIncoming = false;
 
     // Affiner la direction du transfert depuis le champ backend
     if (type == TxType.carnetTransfer) {
-      final direction = row['transfer_direction']?.toString() ?? '';
-      if (direction == 'incoming') {
+      final direction = (row['transfer_direction']?.toString() ??
+              row['ticket_transfer_direction']?.toString() ??
+              '')
+          .trim()
+          .toLowerCase();
+      if (direction == 'incoming' ||
+          direction == 'received' ||
+          direction == 'receive' ||
+          direction == 'in' ||
+          direction == 'entrant' ||
+          direction == 'inbound') {
+        transferIsIncoming = true;
         type = TxType.carnetReceived;
       } else if (direction.isEmpty) {
         // Fallback : lire la note si le backend ne renvoie pas encore le champ
-        final note = row['note']?.toString().toLowerCase() ?? '';
-        if (note.contains('entrant') ||
-            note.contains('reçu de') ||
-            note.contains('recu de')) {
+        final noteBlob = _blob(
+          row['note'],
+          row['description'],
+          row['label'],
+          row['reference'],
+          row['display_name'],
+        );
+        final outMatch = RegExp(
+          r'vers\s+(.+?)\.?\s*$',
+          caseSensitive: false,
+        ).firstMatch(noteBlob);
+        final inMatch = RegExp(
+          r'de\s+(.+?)\.?\s*$',
+          caseSensitive: false,
+        ).firstMatch(noteBlob);
+        if (noteBlob.contains('entrant') ||
+            noteBlob.contains('reçu de') ||
+            noteBlob.contains('recu de') ||
+            noteBlob.contains('received') ||
+            noteBlob.contains('incoming') ||
+            (inMatch != null && outMatch == null)) {
+          transferIsIncoming = true;
           type = TxType.carnetReceived;
         }
       }
@@ -634,6 +662,37 @@ class AcpecTransactionsMapper {
         row['user_name']?.toString() ??
         row['partner_name']?.toString() ??
         userName;
+    bool _matchesSelf(String? value) {
+      final candidate = (value ?? '').trim();
+      if (candidate.isEmpty) return false;
+      final normalizedCandidate = candidate.toLowerCase();
+      final normalizedUserId = userId.trim().toLowerCase();
+      final normalizedUserName = userName.trim().toLowerCase();
+      final normalizedUid = uid.trim().toLowerCase();
+      final normalizedUname = uname.trim().toLowerCase();
+      return candidate == userId ||
+          candidate == userName ||
+          normalizedCandidate == normalizedUserId ||
+          normalizedCandidate == normalizedUserName ||
+          normalizedCandidate == normalizedUid ||
+          normalizedCandidate == normalizedUname;
+    }
+
+    String? _firstNonSelf(List<String?> values) {
+      for (final value in values) {
+        final candidate = (value ?? '').trim();
+        if (candidate.isEmpty || candidate == 'false') continue;
+        if (_matchesSelf(candidate)) continue;
+        return candidate;
+      }
+      return null;
+    }
+
+    final actorUserId = row['actor_user_id']?.toString().trim();
+    final counterpartyUserId = row['counterparty_user_id']?.toString().trim();
+    final actorUserName = row['actor_user_name']?.toString().trim();
+    final counterpartyUserName =
+        row['counterparty_user_name']?.toString().trim();
 
     final lines = _finalizeLines(
       row,
@@ -647,11 +706,13 @@ class AcpecTransactionsMapper {
 
     if (lines.isEmpty) return null;
 
-    // Extraire l'autre partie pour les transferts de carnets
+    // Extraire l'autre partie pour les transferts de carnets ou tickets
     String? transferParty;
     String? transferPartyPhone;
     if (type == TxType.carnetTransfer || type == TxType.carnetReceived) {
-      final fromField = row['transfer_other_party']?.toString().trim() ?? '';
+      final fromField = row['transfer_other_party']?.toString().trim() ??
+          row['ticket_transfer_other_party']?.toString().trim() ??
+          '';
       if (fromField.isNotEmpty && fromField != 'false') {
         transferParty = fromField;
       } else {
@@ -672,8 +733,31 @@ class AcpecTransactionsMapper {
         }
       }
 
+      if ((transferParty ?? '').isEmpty) {
+        if (type == TxType.carnetReceived) {
+          transferParty = _firstNonSelf([
+            actorUserName,
+            counterpartyUserName,
+            row['transfer_other_party_name']?.toString(),
+            row['ticket_transfer_other_party_name']?.toString(),
+            row['transfer_other_party']?.toString(),
+            row['ticket_transfer_other_party']?.toString(),
+          ]);
+        } else {
+          transferParty = _firstNonSelf([
+            counterpartyUserName,
+            actorUserName,
+            row['transfer_other_party_name']?.toString(),
+            row['ticket_transfer_other_party_name']?.toString(),
+            row['transfer_other_party']?.toString(),
+            row['ticket_transfer_other_party']?.toString(),
+          ]);
+        }
+      }
+
       final phoneField =
           row['transfer_other_party_phone']?.toString().trim() ??
+          row['ticket_transfer_other_party_phone']?.toString().trim() ??
           row['transfer_other_party_mobile']?.toString().trim() ??
           row['transfer_phone']?.toString().trim() ??
           row['partner_phone']?.toString().trim() ??
@@ -733,6 +817,15 @@ class AcpecTransactionsMapper {
       regularizationDate: _parseDate(
         row['regularization_date'] ?? row['regularisation_date'],
       ),
+      transferIsIncoming: transferIsIncoming,
+      actorUserId: actorUserId?.isNotEmpty == true ? actorUserId : null,
+      counterpartyUserId:
+          counterpartyUserId?.isNotEmpty == true ? counterpartyUserId : null,
+      actorUserName: actorUserName?.isNotEmpty == true ? actorUserName : null,
+      counterpartyUserName:
+          counterpartyUserName?.isNotEmpty == true
+              ? counterpartyUserName
+              : null,
       transferParty: transferParty,
       transferPartyPhone: transferPartyPhone,
     );
@@ -740,11 +833,14 @@ class AcpecTransactionsMapper {
 
   static String? _txReference(Map<String, dynamic> row, String fallbackId) {
     for (final key in [
+      'tx_reference',
       'name',
       'transaction_name',
       'tx_name',
       'transaction_ref',
       'reference',
+      'public_reference',
+      'display_name',
     ]) {
       final v = row[key];
       if (v == null || v is bool) continue;
@@ -753,6 +849,11 @@ class AcpecTransactionsMapper {
       if (RegExp(r'^TX[-/\s]', caseSensitive: false).hasMatch(s)) {
         return s;
       }
+    }
+    final fallback = fallbackId.trim();
+    if (fallback.isNotEmpty &&
+        RegExp(r'^TX[-/\s]', caseSensitive: false).hasMatch(fallback)) {
+      return fallback;
     }
     return null;
   }
@@ -786,7 +887,7 @@ class AcpecTransactionsMapper {
     return null;
   }
 
-  /// QR passé en état bloqué (prioritaire sur `qr_issue`, `split`, etc.).
+  /// QR passÃ© en Ã©tat bloquÃ© (prioritaire sur `qr_issue`, `split`, etc.).
   static bool _rowIndicatesQrBlocked(Map<String, dynamic> row) {
     if (row['is_blocked'] == true ||
         row['blocked'] == true ||
@@ -830,7 +931,7 @@ class AcpecTransactionsMapper {
     return false;
   }
 
-  /// Libellé affiché : uniquement les types des filtres (pas « Opération » générique).
+  /// LibellÃ© affichÃ© : uniquement les types des filtres (pas Â« OpÃ©ration Â» gÃ©nÃ©rique).
   static TxType _resolveTxType(Map<String, dynamic> row) {
     if (_rowIndicatesQrBlocked(row)) {
       return TxType.qrBlocked;
@@ -896,7 +997,7 @@ class AcpecTransactionsMapper {
     }
 
     if (combined.contains('separer') ||
-        combined.contains('séparer') ||
+        combined.contains('sÃ©parer') ||
         combined.contains('separer_qr')) {
       return TxType.qrSeparer;
     }
@@ -909,7 +1010,13 @@ class AcpecTransactionsMapper {
     }
 
     if (combined.contains('transfert') || combined.contains('transfer')) {
-      // La direction est résolue après via transfer_direction
+      if (combined.contains('entrant') ||
+          combined.contains('incoming') ||
+          combined.contains('reçu') ||
+          combined.contains('recu') ||
+          combined.contains('received')) {
+        return TxType.carnetReceived;
+      }
       return TxType.carnetTransfer;
     }
 
@@ -927,7 +1034,7 @@ class AcpecTransactionsMapper {
         RegExp(r'\bqr[\s_-]', caseSensitive: false).hasMatch(name)) {
       if (combined.contains('issue') ||
           combined.contains('emit') ||
-          combined.contains('émission') ||
+          combined.contains('Ã©mission') ||
           combined.contains('emission')) {
         return TxType.qrEmission;
       }
@@ -1002,16 +1109,16 @@ class AcpecTransactionsMapper {
         s = s.replaceAll(qr, '').trim();
       }
       s = s.replaceAll(
-        RegExp(r'[·•]\s*(true|false)\s*$', caseSensitive: false),
+        RegExp(r'[Â·â€¢]\s*(true|false)\s*$', caseSensitive: false),
         '',
       );
       s = s.replaceAll(RegExp(r'\b(true|false)\b', caseSensitive: false), '');
       s = s
-          .replaceAll(RegExp(r'[·•]+'), ' ')
+          .replaceAll(RegExp(r'[Â·â€¢]+'), ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
       if (s.isNotEmpty &&
-          !RegExp(r'^[·•\s]+$').hasMatch(s) &&
+          !RegExp(r'^[Â·â€¢\s]+$').hasMatch(s) &&
           !RegExp(r'^qr[\s_-]', caseSensitive: false).hasMatch(s)) {
         return s;
       }
@@ -1029,7 +1136,7 @@ class AcpecTransactionsMapper {
     final s = v?.toString().toLowerCase().trim() ?? '';
     if (s.isEmpty) return TxType.walletLedger;
 
-    // Plus spécifique d’abord (sous-chaînes ambiguës « qr »).
+    // Plus spÃ©cifique dâ€™abord (sous-chaÃ®nes ambiguÃ«s Â« qr Â»).
     if (s.contains('expir') ||
         s.contains('expired') ||
         s == 'expire' ||
@@ -1040,7 +1147,7 @@ class AcpecTransactionsMapper {
         (s.contains('qr') || s.contains('code'))) {
       return TxType.qrSeparer;
     }
-    if (s.contains('separer') || s.contains('séparer') || s == 'separer_qr') {
+    if (s.contains('separer') || s.contains('sÃ©parer') || s == 'separer_qr') {
       return TxType.qrSeparer;
     }
     if (s.contains('retirer') ||
@@ -1119,7 +1226,7 @@ class AcpecTransactionsMapper {
         s == 'purchase_validation' ||
         s == 'lot_validation' ||
         s == 'achat_valide' ||
-        s == 'achat_validé') {
+        s == 'achat_validÃ©') {
       return TxType.purchaseValidated;
     }
     if (s == 'rejected' ||
@@ -1130,14 +1237,14 @@ class AcpecTransactionsMapper {
         s == 'purchase_reject' ||
         s == 'lot_reject' ||
         s == 'achat_rejete' ||
-        s == 'achat_rejeté') {
+        s == 'achat_rejetÃ©') {
       return TxType.purchaseRejected;
     }
 
     if ((s.contains('qr') || s.contains('code')) &&
         (s.contains('issue') ||
             s.contains('emit') ||
-            s.contains('émission') ||
+            s.contains('Ã©mission') ||
             s.contains('emission'))) {
       return TxType.qrEmission;
     }

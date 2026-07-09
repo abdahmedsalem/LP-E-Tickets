@@ -256,13 +256,6 @@ class _NotificationCard extends StatelessWidget {
                         const SizedBox(height: 12),
                     ],
                   ] else if (isTransfer) ...[
-                    if ((item.transferPartyPhone ?? '').trim().isNotEmpty) ...[
-                      _NotificationMetaTile(
-                        label: 'Téléphone de l’envoyeur',
-                        value: item.transferPartyPhone!.trim(),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
                     for (final line in item.transferLines) ...[
                       _ReceiptLineTile(line: line),
                       if (line != item.transferLines.last)
@@ -437,46 +430,6 @@ class _ReceiptLineTile extends StatelessWidget {
       return normalized.substring(0, normalized.length - 4).trim();
     }
     return normalized;
-  }
-}
-
-class _NotificationMetaTile extends StatelessWidget {
-  const _NotificationMetaTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-                height: 1.15,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
-              height: 1.15,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

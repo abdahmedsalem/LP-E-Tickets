@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,7 +19,7 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-/// Liste des achats (données locales ou synchronisées ACPEC selon la configuration).
+/// Liste des achats (donnÃ©es locales ou synchronisÃ©es ACPEC selon la configuration).
 class PurchasesListScreen extends StatefulWidget {
   const PurchasesListScreen({super.key});
 
@@ -91,7 +91,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
         setState(() {
           _loading = false;
           _error = e.isOdooSessionExpired
-              ? 'Session expirée. Reconnectez-vous pour actualiser la liste.'
+              ? 'Session expirÃ©e. Reconnectez-vous pour actualiser la liste.'
               : ErrorPresenter.message(e);
         });
       } catch (e) {
@@ -156,7 +156,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
               ScreenHeader(
                 title: 'Mes achats',
                 subtitle:
-                    'Chaque carte résume le carnet, le montant total et la date de validation.',
+                    'Chaque carte rÃ©sume le carnet, le montant total et la date de validation.',
                 onBack: () => context.pop(),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
@@ -184,7 +184,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                   children: [
                     Expanded(
                       child: _SummaryPill(
-                        label: 'Validés',
+                        label: 'ValidÃ©s',
                         value: '$approvedLots',
                         color: const Color(0xFFDCFCE7),
                         foreground: const Color(0xFF0F7A5A),
@@ -193,7 +193,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _SummaryPill(
-                        label: 'Rejetés',
+                        label: 'RejetÃ©s',
                         value: '$rejectedLots',
                         color: const Color(0xFFFFE4E6),
                         foreground: const Color(0xFFB91C1C),
@@ -236,7 +236,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                               icon: Icons.cloud_off_outlined,
                               title: 'Connexion requise',
                               message: _error!,
-                              actionLabel: 'Réessayer',
+                              actionLabel: 'RÃ©essayer',
                               onAction: _refresh,
                             ),
                           ),
@@ -261,7 +261,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                                       icon: Icons.receipt_long_outlined,
                                       title: 'Aucun achat',
                                       message:
-                                          'Créez un nouvel achat pour faire apparaître ici le carnet, le montant et sa validation.',
+                                          'CrÃ©ez un nouvel achat pour faire apparaÃ®tre ici le carnet, le montant et sa validation.',
                                       actionLabel: 'Nouvel achat',
                                       onAction: () async {
                                         await context.push('/purchases/new');
@@ -535,13 +535,19 @@ class _PurchaseTile extends StatelessWidget {
 
 String _purchaseTypeLabel(PurchaseLot lot) {
   if (lot.lines.isEmpty) return 'Achat';
-  final codes = lot.lines
-      .map((line) => line.carnetTypeCode.trim())
-      .where((code) => code.isNotEmpty && code != '—')
+  final labels = lot.lines
+      .map(
+        (line) => Formatters.carnetTypeLabelFromServer(
+          line.carnetTypeName,
+          fallbackSize: line.carnetSize,
+          fallbackFaceValue: line.faceValue,
+        ).trim(),
+      )
+      .where((label) => label.isNotEmpty && label != 'Carnet')
       .toList();
-  if (codes.isEmpty) return 'Achat';
-  if (codes.length == 1) return codes.first;
-  return '${codes.first} +${codes.length - 1}';
+  if (labels.isEmpty) return 'Carnet';
+  if (labels.length == 1) return labels.first;
+  return '${labels.first} +${labels.length - 1}';
 }
 
 class _MetricBlock extends StatelessWidget {
@@ -757,3 +763,4 @@ class _EmptyPanel extends StatelessWidget {
     );
   }
 }
+

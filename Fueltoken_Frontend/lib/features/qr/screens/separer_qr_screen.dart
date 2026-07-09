@@ -139,7 +139,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
             details: _SeparerConfirmationLinesSection(lines: parent.lines),
             summaryRows: [
               QrActionSummaryRow(
-                label: 'Lignes',
+                label: 'Detail',
                 value: '${parent.lines.length}',
               ),
               QrActionSummaryRow(

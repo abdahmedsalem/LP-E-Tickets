@@ -509,7 +509,7 @@ class PurchaseValidationNotificationService {
           ),
         )
         .toList(growable: false);
-    final title = 'Carnet reçu';
+    final title = tx.displayTitle;
     final body = party.isNotEmpty
         ? '$amountLabel • Reçu de $party • $dateLabel'
         : '$amountLabel • Reçu • $dateLabel';

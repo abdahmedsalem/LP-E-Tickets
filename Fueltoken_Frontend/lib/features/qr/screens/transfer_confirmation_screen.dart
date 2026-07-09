@@ -154,7 +154,6 @@ class _TransferConfirmationScreenState
       content: [
         _TransferConfirmationHeroCard(
           recipientName: args.recipientName,
-          recipientPhone: args.recipientPhone,
         ),
         const SizedBox(height: 20),
         _TransferConfirmationSectionHeader(label: args.sectionLabel),
@@ -177,11 +176,9 @@ class _TransferConfirmationScreenState
 class _TransferConfirmationHeroCard extends StatelessWidget {
   const _TransferConfirmationHeroCard({
     required this.recipientName,
-    required this.recipientPhone,
   });
 
   final String recipientName;
-  final String recipientPhone;
 
   @override
   Widget build(BuildContext context) {
@@ -218,15 +215,6 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  recipientPhone,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.muted,
                   ),
                 ),
               ],

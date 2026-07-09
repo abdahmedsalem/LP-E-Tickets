@@ -414,7 +414,6 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
-          recipientPhone: phone,
           lines: confirmLines,
         );
         if (!mounted) return;

@@ -31,7 +31,6 @@ Future<void> showTransferSuccessDialog(
   required int totalAmount,
   required DateTime confirmedAt,
   required String recipientName,
-  required String recipientPhone,
   List<TransferConfirmationLine> lines = const [],
   String linesTitle = 'Carnets transférés',
 }) {
@@ -41,7 +40,6 @@ Future<void> showTransferSuccessDialog(
         totalAmount: totalAmount,
         confirmedAt: confirmedAt,
         recipientName: recipientName,
-        recipientPhone: recipientPhone,
         lines: lines,
         linesTitle: linesTitle,
       ),
@@ -126,9 +124,8 @@ class TransferSuccessScreen extends StatelessWidget {
   const TransferSuccessScreen({
     super.key,
     required this.totalAmount,
-  required this.confirmedAt,
-  required this.recipientName,
-  required this.recipientPhone,
+    required this.confirmedAt,
+    required this.recipientName,
     this.lines = const [],
     this.linesTitle = 'Carnets transférés',
   });
@@ -136,7 +133,6 @@ class TransferSuccessScreen extends StatelessWidget {
   final int totalAmount;
   final DateTime confirmedAt;
   final String recipientName;
-  final String recipientPhone;
   final List<TransferConfirmationLine> lines;
   final String linesTitle;
 
@@ -155,13 +151,8 @@ class TransferSuccessScreen extends StatelessWidget {
             ),
       rows: [
         _SuccessRowData(
-          label: 'Client receveur',
+          label: 'Bénéficiaire',
           value: recipientName,
-          valueColor: AppColors.ink,
-        ),
-        _SuccessRowData(
-          label: 'Téléphone receveur',
-          value: recipientPhone,
           valueColor: AppColors.ink,
         ),
         _SuccessRowData(

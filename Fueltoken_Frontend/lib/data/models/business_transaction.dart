@@ -143,6 +143,11 @@ class BusinessTransaction extends Equatable {
   final String? regularizationState;
   final String? regularizationReference;
   final DateTime? regularizationDate;
+  final bool transferIsIncoming;
+  final String? actorUserId;
+  final String? counterpartyUserId;
+  final String? actorUserName;
+  final String? counterpartyUserName;
 
   /// Pour les transferts : nom de l'autre partie (destinataire si sortant, expéditeur si entrant).
   final String? transferParty;
@@ -169,6 +174,11 @@ class BusinessTransaction extends Equatable {
     this.regularizationState,
     this.regularizationReference,
     this.regularizationDate,
+    this.transferIsIncoming = false,
+    this.actorUserId,
+    this.counterpartyUserId,
+    this.actorUserName,
+    this.counterpartyUserName,
     this.transferParty,
     this.transferPartyPhone,
   });
@@ -211,13 +221,32 @@ class BusinessTransaction extends Equatable {
   }
 
   String get displayTitle {
-    if (type == TxType.carnetTransfer && transferParty != null) {
-      return 'Transfert';
+    if (type == TxType.carnetTransfer) {
+      return transferIsIncoming ? 'Réception' : 'Transfert';
     }
-    if (type == TxType.carnetReceived && transferParty != null) {
-      return 'Reçu de $transferParty';
+    if (type == TxType.carnetReceived) {
+      return 'Réception';
     }
     return type.label;
+  }
+
+  String displayTitleForViewer(String? viewerUserId) {
+    final viewer = (viewerUserId ?? '').trim();
+    if (viewer.isEmpty) {
+      return displayTitle;
+    }
+
+    if (type == TxType.carnetTransfer || type == TxType.carnetReceived) {
+      if ((counterpartyUserId ?? '').trim() == viewer) {
+        return 'Réception';
+      }
+      if ((actorUserId ?? '').trim() == viewer) {
+        return 'Transfert';
+      }
+      return transferIsIncoming ? 'Réception' : 'Transfert';
+    }
+
+    return displayTitle;
   }
 
   @override
@@ -230,5 +259,10 @@ class BusinessTransaction extends Equatable {
     regularizationState,
     regularizationReference,
     regularizationDate,
+    transferIsIncoming,
+    actorUserId,
+    counterpartyUserId,
+    actorUserName,
+    counterpartyUserName,
   ];
 }

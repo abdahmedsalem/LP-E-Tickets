@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -518,6 +518,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
         final acpec = AppEnvironment.useAcpecLiveData;
         final showBack = user.role != UserRole.user;
+        final currentUserId = user.id;
 
         if (!acpec) {
           return Scaffold(
@@ -805,7 +806,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ),
                                   const SizedBox(height: 10),
                                   for (final t in g.items) ...[
-                                    _TxCard(tx: t),
+                                    _TxCard(
+                                      tx: t,
+                                      currentUserId: currentUserId,
+                                    ),
                                     const SizedBox(height: 10),
                                   ],
                                 ],
@@ -849,9 +853,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 }
 
 class _TxCard extends StatefulWidget {
-  const _TxCard({required this.tx});
+  const _TxCard({required this.tx, required this.currentUserId});
 
   final BusinessTransaction tx;
+  final String currentUserId;
 
   @override
   State<_TxCard> createState() => _TxCardState();
@@ -864,7 +869,7 @@ class _TxCardState extends State<_TxCard> {
   Widget build(BuildContext context) {
     final tx = widget.tx;
     final amountColor = _historyAmountColor(tx.type);
-    final title = tx.displayTitle;
+    final title = tx.displayTitleForViewer(widget.currentUserId);
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
 
@@ -954,7 +959,7 @@ class _TxCardState extends State<_TxCard> {
               },
               body: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-                child: _TxDetailBody(tx: tx),
+                child: _TxDetailBody(tx: tx, currentUserId: widget.currentUserId),
               ),
             ),
           ],
@@ -965,13 +970,14 @@ class _TxCardState extends State<_TxCard> {
 }
 
 class _TxDetailBody extends StatelessWidget {
-  const _TxDetailBody({required this.tx});
+  const _TxDetailBody({required this.tx, required this.currentUserId});
 
   final BusinessTransaction tx;
+  final String currentUserId;
 
   @override
   Widget build(BuildContext context) {
-    final rows = _transactionDetailRows(tx);
+    final rows = _transactionDetailRows(tx, currentUserId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -983,7 +989,7 @@ class _TxDetailBody extends StatelessWidget {
         if (tx.lines.isNotEmpty) ...[
           const SizedBox(height: 10),
           Text(
-            'Lignes',
+            'Detail',
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
@@ -1257,13 +1263,23 @@ class _TxLineRow extends StatelessWidget {
   }
 }
 
-List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
+List<_TxDetailRow> _transactionDetailRows(
+  BusinessTransaction tx,
+  String currentUserId,
+) {
   final lotRef = tx.lotInternalRef ?? tx.lotId;
-  final qrRef = tx.qrPublicCode ?? tx.qrId;
   final station = tx.stationName ?? tx.stationId;
   final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
+  final transferPartyLabel = tx.displayTitleForViewer(currentUserId) == 'Réception'
+      ? 'Expéditeur'
+      : 'Bénéficiaire';
   final baseRows = <_TxDetailRow>[
-    if (tx.hasTxReference) _TxDetailRow(label: 'N° TX', value: tx.txNumber),
+    _TxDetailRow(
+      label: 'Référence publique',
+      value: tx.txReference?.trim().isNotEmpty == true
+          ? tx.txReference!.trim()
+          : tx.txNumber,
+    ),
   ];
 
   switch (tx.type) {
@@ -1272,7 +1288,9 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
     case TxType.purchaseRejected:
       return [
         ...baseRows,
-        if (lotRef != null && lotRef.isNotEmpty)
+        if (tx.type != TxType.purchaseValidated &&
+            lotRef != null &&
+            lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
         _TxDetailRow(label: 'Acheteur', value: tx.userName),
         if (tx.type == TxType.purchaseSubmitted &&
@@ -1285,75 +1303,62 @@ List<_TxDetailRow> _transactionDetailRows(BusinessTransaction tx) {
     case TxType.qrEmission:
       return [
         ...baseRows,
-        if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'Code QR', value: qrRef),
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
       ];
     case TxType.qrSeparer:
       return [
         ...baseRows,
-        if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'QR', value: qrRef),
         _TxDetailRow(label: 'Tickets', value: '$totalQty'),
       ];
     case TxType.qrRetirer:
       return [
         ...baseRows,
-        if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'Code QR', value: qrRef),
         _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
       ];
-    case TxType.carnetTransfer:
+    case TxType.carnetTransfer: {
       return [
         ...baseRows,
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Receveur', value: tx.transferParty!.trim()),
-        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
           _TxDetailRow(
-            label: 'Téléphone receveur',
-            value: tx.transferPartyPhone!.trim(),
+            label: transferPartyLabel,
+            value: tx.transferParty!.trim(),
           ),
       ];
+    }
     case TxType.carnetReceived:
       return [
         ...baseRows,
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Envoyeur', value: tx.transferParty!.trim()),
-        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
-          _TxDetailRow(
-            label: 'Téléphone envoyeur',
-            value: tx.transferPartyPhone!.trim(),
-          ),
+          _TxDetailRow(label: 'Expéditeur', value: tx.transferParty!.trim()),
       ];
     case TxType.stationConsumption:
       return [
         ...baseRows,
         if (station != null && station.isNotEmpty)
           _TxDetailRow(label: 'Station', value: station),
-        if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'Code QR', value: qrRef),
+        if ((tx.actorUserName ?? '').trim().isNotEmpty)
+          _TxDetailRow(
+            label: 'Pompiste',
+            value: tx.actorUserName!.trim(),
+          ),
       ];
     case TxType.expiration:
       return [
         ...baseRows,
-        if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'Code QR', value: qrRef),
       ];
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return [
         ...baseRows,
-        if (qrRef != null && qrRef.isNotEmpty)
-          _TxDetailRow(label: 'Code QR', value: qrRef),
         if (tx.type == TxType.qrBlocked)
           const _TxDetailRow(
             label: 'Message',
-            value: 'QR bloqué a cause des tickets expirés',
+            value: 'QR bloqué à cause des tickets expirés',
           )
         else if ((tx.note ?? '').trim().isNotEmpty)
           _TxDetailRow(label: 'Message', value: tx.note!.trim()),
@@ -1669,12 +1674,13 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
     case TxType.purchaseValidated:
     case TxType.purchaseRejected:
       return [
-        _TransactionFact(
-          label: 'Carnet',
-          value: lotRef ?? '—',
-          icon: Icons.shopping_bag_outlined,
-          color: green,
-        ),
+        if (tx.type != TxType.purchaseValidated)
+          _TransactionFact(
+            label: 'Carnet',
+            value: lotRef ?? '—',
+            icon: Icons.shopping_bag_outlined,
+            color: green,
+          ),
         _TransactionFact(
           label: 'Acheteur',
           value: client,
@@ -1779,18 +1785,11 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: green,
         ),
         _TransactionFact(
-          label: 'Receveur',
+          label: 'Expéditeur',
           value: client,
           icon: Icons.person_outline_rounded,
           color: gray,
         ),
-        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
-          _TransactionFact(
-            label: 'Téléphone receveur',
-            value: tx.transferPartyPhone!.trim(),
-            icon: Icons.phone_outlined,
-            color: gray,
-          ),
       ];
     case TxType.carnetReceived:
       return [
@@ -1813,20 +1812,13 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           color: green,
         ),
         _TransactionFact(
-          label: 'Envoyeur',
+          label: 'Expéditeur',
           value: tx.transferParty?.trim().isNotEmpty == true
               ? tx.transferParty!.trim()
               : client,
           icon: Icons.person_outline_rounded,
           color: gray,
         ),
-        if ((tx.transferPartyPhone ?? '').trim().isNotEmpty)
-          _TransactionFact(
-            label: 'Téléphone envoyeur',
-            value: tx.transferPartyPhone!.trim(),
-            icon: Icons.phone_outlined,
-            color: gray,
-          ),
       ];
     case TxType.qrBlocked:
       return [
@@ -1838,7 +1830,7 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
         ),
         _TransactionFact(
           label: 'Message',
-          value: 'QR bloqué a cause des tickets expirés',
+          value: 'QR bloqué à cause des tickets expirés',
           icon: Icons.info_outline_rounded,
           color: blue,
         ),
@@ -1851,6 +1843,13 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
           icon: Icons.local_gas_station_outlined,
           color: green,
         ),
+        if ((tx.actorUserName ?? '').trim().isNotEmpty)
+          _TransactionFact(
+            label: 'Pompiste',
+            value: tx.actorUserName!.trim(),
+            icon: Icons.badge_outlined,
+            color: gray,
+          ),
         _TransactionFact(
           label: 'Tickets',
           value: '$totalQty',
@@ -1902,3 +1901,9 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
       ];
   }
 }
+
+
+
+
+
+

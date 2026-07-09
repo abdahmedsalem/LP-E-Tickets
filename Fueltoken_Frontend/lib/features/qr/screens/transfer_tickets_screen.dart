@@ -408,7 +408,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
-          recipientPhone: phone,
           lines: confirmLines,
           linesTitle: 'Tickets transférés',
         );
