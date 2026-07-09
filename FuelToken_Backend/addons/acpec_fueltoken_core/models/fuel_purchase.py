@@ -16,10 +16,10 @@ class AcpecFuelPurchaseCore(models.Model):
         tx_model = self.env['acpec.fuel.transaction'].sudo()
         wallet_model = self.env['acpec.fuel.wallet'].sudo()
         for purchase in self:
-            # M13 doctrine: one purchase keeps one public TX reference.
-            # action_submit creates the pending purchase transaction, but must
-            # not recreate a submitted TX if the same purchase has already been
-            # converted to purchase_approved by approval replay/repair.
+            # M20-B doctrine: purchase history is append-only.
+            # action_submit creates the pending purchase transaction once. If a
+            # purchase already has an audit TX, do not recreate a submitted row
+            # during replay/repair.
             existing = tx_model.search([
                 ('purchase_id', '=', purchase.id),
                 ('transaction_type', 'in', ['purchase_submitted', 'purchase_approved']),
@@ -70,19 +70,18 @@ class AcpecFuelPurchaseCore(models.Model):
     def _create_face_lines_after_approval(self):
         """Create the real fuel value after purchase approval.
 
-        M13 lifecycle doctrine: an approved purchase must not receive a second
-        public transaction reference.  The TX created at submission represents
-        the purchase operation while it is pending; approval materializes the
-        fuel value and converts that same TX from ``purchase_submitted`` to
-        ``purchase_approved`` while preserving ``name``.
+        M20-B append-only doctrine: approval is a new business event and must
+        create a new ``purchase_approved`` transaction. The previously exposed
+        ``purchase_submitted`` transaction stays unchanged and both rows share
+        the same ``operation_ref``.
 
         Rejection is different: it creates no new TX and does not introduce a
         ``purchase_rejected`` type. The existing ``purchase_submitted`` TX keeps
-        the same public reference and exposes rejection through the related
+        the same operation reference and exposes rejection through the related
         purchase fields.
 
         Idempotence is mandatory: approving or replaying the hook must never
-        create duplicate ticket balances or duplicate public purchase TX rows.
+        create duplicate ticket balances or duplicate approved purchase TX rows.
         The purchase row is locked and ``fuel_value_created`` remains the
         primary fuel-value guard.
         """
@@ -157,17 +156,16 @@ class AcpecFuelPurchaseCore(models.Model):
                         ('purchase_id', '=', purchase.id),
                         ('transaction_type', '=', 'purchase_submitted'),
                     ], limit=1)
+                    operation_ref = submitted_tx.operation_ref if submitted_tx else False
                     if submitted_tx:
-                        # M13: keep the public TX reference returned at submit.
-                        # The pending transaction becomes the approved purchase
-                        # transaction; only its lifecycle semantics and lines
-                        # change after the wallet is actually funded.
-                        # purchase_submitted_amount_guard_m13:
-                        # La TX publique a déjà été exposée au client à la
-                        # soumission. À l'approbation, on garde le même name/id
-                        # et on remplace uniquement les lignes provisoires par
-                        # les lignes matérialisées. Le montant public ne doit
-                        # donc jamais changer silencieusement.
+                        # M20-B: keep the submitted transaction immutable.
+                        # Approval is a distinct append-only transaction that
+                        # reuses the same operation_ref for mobile/business
+                        # grouping, while name remains a new internal sequence.
+                        # purchase_submitted_amount_guard_m20b:
+                        # The submitted provisional amount and the materialized
+                        # approved amount must stay coherent before the approved
+                        # append-only row is created.
                         submitted_tx.invalidate_recordset(['amount_total'])
                         submitted_amount = submitted_tx.amount_total
                         approved_amount = sum(
@@ -187,32 +185,23 @@ class AcpecFuelPurchaseCore(models.Model):
                                 'submitted': submitted_amount,
                                 'approved': approved_amount,
                             })
-
-                        submitted_tx.sudo().with_context(allow_fuel_transaction_purchase_lifecycle_update=True).write({
-                            'transaction_type': 'purchase_approved',
-                            'note': _("Achat approuve - tickets crees"),
-                            'idempotency_key': purchase.approval_idempotency_key or purchase.idempotency_key or False,
-                            'request_hash': purchase.approval_request_hash or purchase.request_hash or False,
-                        })
-                        submitted_tx.line_ids.sudo().with_context(allow_fuel_transaction_purchase_lifecycle_line_replace=True).unlink()
-                        for tx_line in tx_lines:
-                            self.env['acpec.fuel.transaction.line'].sudo().create(
-                                dict(tx_line, transaction_id=submitted_tx.id)
-                            )
                     else:
                         # Repair/fallback path for legacy data where the submit
-                        # TX is missing. New runtime must normally pass through
-                        # purchase_submitted first and therefore keep the same
-                        # public reference on approval.
-                        tx_model.log(
-                            'purchase_approved',
-                            purchase.company_id,
-                            wallet=wallet,
-                            purchase=purchase,
-                            lines=tx_lines,
-                            note=_("Achat approuve - tickets crees"),
-                            idempotency_key=purchase.approval_idempotency_key or purchase.idempotency_key,
-                            request_hash=purchase.approval_request_hash or purchase.request_hash,
-                        )
+                        # TX is missing. Runtime should normally pass through
+                        # purchase_submitted first; without it, approval gets a
+                        # fresh operation_ref generated by tx_model.log().
+                        operation_ref = False
+
+                    tx_model.log(
+                        'purchase_approved',
+                        purchase.company_id,
+                        wallet=wallet,
+                        purchase=purchase,
+                        lines=tx_lines,
+                        note=_("Achat approuve - tickets crees"),
+                        idempotency_key=purchase.approval_idempotency_key or purchase.idempotency_key,
+                        request_hash=purchase.approval_request_hash or purchase.request_hash,
+                        operation_ref=operation_ref,
+                    )
                 purchase.sudo().write({'fuel_value_created': True})
         return True
