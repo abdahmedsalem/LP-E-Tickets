@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
+import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/business_transaction.dart';
 import '../../../data/models/user_role.dart';
 import '../../../shared/widgets/api_required_view.dart';
@@ -24,14 +25,29 @@ import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
+enum TransactionsScreenMode { history, wallet }
+
 class TransactionsScreen extends StatefulWidget {
-  const TransactionsScreen({super.key});
+  const TransactionsScreen({
+    super.key,
+    this.mode = TransactionsScreenMode.history,
+  });
+
+  final TransactionsScreenMode mode;
 
   @override
   State<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-enum _HistoryQuickFilter { all, purchases, transfer, consumption, qr }
+enum _HistoryQuickFilter {
+  all,
+  purchases,
+  transfer,
+  consumption,
+  qr,
+  receipts,
+  expirations,
+}
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
@@ -60,7 +76,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   bool _acpecHasMore = true;
   int? _acpecTotal;
   VoidCallback? _historyRevisionListener;
-  int _lastHistoryRevision = -1;
+  int _lastRefreshRevision = -1;
+
+  bool get _isWalletMode => widget.mode == TransactionsScreenMode.wallet;
+
+  ValueNotifier<int> get _revisionNotifier => _isWalletMode
+      ? WalletRefreshBus.instance.revision
+      : ClientHistoryRefreshBus.instance.revision;
+
+  static const Set<TxType> _walletTypes = {
+    TxType.purchaseValidated,
+    TxType.carnetTransfer,
+    TxType.carnetReceived,
+    TxType.expiration,
+  };
 
   @override
   void initState() {
@@ -81,21 +110,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     });
     _historyRevisionListener = () {
       if (!mounted || !AppEnvironment.useAcpecLiveData) return;
-      final rev = ClientHistoryRefreshBus.instance.revision.value;
-      if (rev == _lastHistoryRevision) return;
-      _lastHistoryRevision = rev;
+      final rev = _revisionNotifier.value;
+      if (rev == _lastRefreshRevision) return;
+      _lastRefreshRevision = rev;
       unawaited(_reloadAcpecForCurrentFilter());
     };
-    ClientHistoryRefreshBus.instance.revision.addListener(
-      _historyRevisionListener!,
-    );
+    _revisionNotifier.addListener(_historyRevisionListener!);
   }
 
   @override
   void dispose() {
-    ClientHistoryRefreshBus.instance.revision.removeListener(
-      _historyRevisionListener ?? () {},
-    );
+    _revisionNotifier.removeListener(_historyRevisionListener ?? () {});
     _scroll.removeListener(_onAcpecScroll);
     _scroll.dispose();
     super.dispose();
@@ -179,12 +204,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   bool _matchesTypeFilter(BusinessTransaction t) {
+    if (_isWalletMode && !_walletTypes.contains(t.type)) {
+      return false;
+    }
     final f = _effectiveFilter;
     if (f == null) return true;
     return AcpecTransactionsMapper.matchesClientFilter(t, f);
   }
 
   bool _matchesQuickFilter(BusinessTransaction t) {
+    if (_isWalletMode) {
+      switch (_quickFilter) {
+        case _HistoryQuickFilter.all:
+          return true;
+        case _HistoryQuickFilter.purchases:
+          return t.type == TxType.purchaseValidated;
+        case _HistoryQuickFilter.transfer:
+          return t.type == TxType.carnetTransfer && !t.transferIsIncoming;
+        case _HistoryQuickFilter.consumption:
+          return false;
+        case _HistoryQuickFilter.qr:
+          return false;
+        case _HistoryQuickFilter.receipts:
+          return t.type == TxType.carnetReceived ||
+              (t.type == TxType.carnetTransfer && t.transferIsIncoming);
+        case _HistoryQuickFilter.expirations:
+          return t.type == TxType.expiration;
+      }
+    }
     switch (_quickFilter) {
       case _HistoryQuickFilter.all:
         return true;
@@ -203,6 +250,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             t.type == TxType.qrRetirer ||
             t.type == TxType.qrBlocked ||
             t.type == TxType.expiration;
+      case _HistoryQuickFilter.receipts:
+        return t.type == TxType.carnetReceived ||
+            (t.type == TxType.carnetTransfer && t.transferIsIncoming);
+      case _HistoryQuickFilter.expirations:
+        return t.type == TxType.expiration;
     }
   }
 
@@ -334,14 +386,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       );
       if (!mounted) return;
       final batch = page.items.where(_matchesTypeFilter).toList();
-      final submitted = reset
+      final submitted = reset && !_isWalletMode
           ? await _submittedPurchasesHistory(user)
           : const <BusinessTransaction>[];
       setState(() {
         if (reset) {
           _acpecItems = _mergeHistory(batch, submitted);
-          _lastHistoryRevision =
-              ClientHistoryRefreshBus.instance.revision.value;
+          _lastRefreshRevision = _revisionNotifier.value;
         } else {
           _acpecItems.addAll(batch);
         }
@@ -422,11 +473,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         if (!page.hasMore || page.items.isEmpty) break;
         if (offset >= _pageSize * _maxPagesFullRange) break;
       }
-      final submitted = await _submittedPurchasesHistory(user);
+      final submitted = _isWalletMode
+          ? const <BusinessTransaction>[]
+          : await _submittedPurchasesHistory(user);
       if (!mounted) return;
       setState(() {
         _acpecItems = _mergeHistory(all, submitted);
-        _lastHistoryRevision = ClientHistoryRefreshBus.instance.revision.value;
+        _lastRefreshRevision = _revisionNotifier.value;
         _acpecTotal = totalHint ?? all.length;
         _acpecHasMore = false;
         _acpecLoading = false;
@@ -460,7 +513,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  static String _titleForRole(UserRole role) {
+  static String _titleForRole(UserRole role, TransactionsScreenMode mode) {
+    if (mode == TransactionsScreenMode.wallet) {
+      return 'Portefeuille';
+    }
     switch (role) {
       case UserRole.user:
         return 'Historique';
@@ -471,7 +527,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  static String _emptyTitle(UserRole role) {
+  static String _emptyTitle(UserRole role, TransactionsScreenMode mode) {
+    if (mode == TransactionsScreenMode.wallet) {
+      return 'Aucun mouvement de portefeuille pour l\u0027instant';
+    }
     switch (role) {
       case UserRole.user:
         return 'Aucun mouvement pour l\u0027instant';
@@ -482,7 +541,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  static String _emptyMessage(UserRole role) {
+  static String _emptyMessage(UserRole role, TransactionsScreenMode mode) {
+    if (mode == TransactionsScreenMode.wallet) {
+      return 'Les commandes validées, transferts, réceptions et expirations apparaîtront ici.';
+    }
     switch (role) {
       case UserRole.user:
         return 'Vos commandes, la génération de QR et vos utilisations apparaîtront ici.';
@@ -527,7 +589,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 children: [
                   AppBarHeader(
-                    title: _titleForRole(user.role),
+                    title: _titleForRole(user.role, widget.mode),
                     onBack: () => popOrGoRoleHome(context, user.role),
                     showBack: showBack,
                     leadingOnlyWhenNavigatorCanPop: true,
@@ -563,7 +625,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 children: [
                   AppBarHeader(
-                    title: _titleForRole(user.role),
+                    title: _titleForRole(user.role, widget.mode),
                     onBack: () => popOrGoRoleHome(context, user.role),
                     showBack: showBack,
                     leadingOnlyWhenNavigatorCanPop: true,
@@ -593,7 +655,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 children: [
                   AppBarHeader(
-                    title: _titleForRole(user.role),
+                    title: _titleForRole(user.role, widget.mode),
                     onBack: () => popOrGoRoleHome(context, user.role),
                     showBack: showBack,
                     leadingOnlyWhenNavigatorCanPop: true,
@@ -643,7 +705,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _titleForRole(user.role),
+                          _titleForRole(user.role, widget.mode),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -662,6 +724,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 26),
                   child: _HistoryFilterChips(
+                    mode: widget.mode,
                     selected: _quickFilter,
                     onSelected: _setQuickFilter,
                   ),
@@ -693,8 +756,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                     MediaQuery.sizeOf(context).height * 0.25,
                                 child: EmptyState(
                                   icon: Icons.fact_check_outlined,
-                                  title: _emptyTitle(user.role),
-                                  message: _emptyMessage(user.role),
+                                  title: _emptyTitle(user.role, widget.mode),
+                                  message: _emptyMessage(user.role, widget.mode),
                                 ),
                               ),
                             ],
@@ -809,6 +872,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                     _TxCard(
                                       tx: t,
                                       currentUserId: currentUserId,
+                                      mode: widget.mode,
                                     ),
                                     const SizedBox(height: 10),
                                   ],
@@ -853,10 +917,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 }
 
 class _TxCard extends StatefulWidget {
-  const _TxCard({required this.tx, required this.currentUserId});
+  const _TxCard({
+    required this.tx,
+    required this.currentUserId,
+    required this.mode,
+  });
 
   final BusinessTransaction tx;
   final String currentUserId;
+  final TransactionsScreenMode mode;
 
   @override
   State<_TxCard> createState() => _TxCardState();
@@ -868,10 +937,17 @@ class _TxCardState extends State<_TxCard> {
   @override
   Widget build(BuildContext context) {
     final tx = widget.tx;
-    final amountColor = _historyAmountColor(tx.type);
+    final amountColor = _amountColorFor(
+      tx,
+      mode: widget.mode,
+    );
     final title = tx.displayTitleForViewer(widget.currentUserId);
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
+    final amountPrefix = _historyAmountPrefix(
+      tx,
+      mode: widget.mode,
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -927,6 +1003,7 @@ class _TxCardState extends State<_TxCard> {
                           const SizedBox(width: 12),
                           _AmountInline(
                             amount: tx.totalAmount.abs(),
+                            prefix: amountPrefix,
                             textAlign: TextAlign.right,
                             valueStyle: TextStyle(
                               fontSize: 13.5,
@@ -1421,6 +1498,48 @@ Color _historyAmountColor(TxType type) {
   }
 }
 
+Color _amountColorFor(
+  BusinessTransaction tx, {
+  required TransactionsScreenMode mode,
+}) {
+  if (mode != TransactionsScreenMode.wallet) {
+    return _historyAmountColor(tx.type);
+  }
+  switch (tx.type) {
+    case TxType.purchaseValidated:
+      return AppColors.danger;
+    case TxType.carnetTransfer:
+      return tx.transferIsIncoming ? AppColors.leaderGreen : AppColors.danger;
+    case TxType.carnetReceived:
+      return AppColors.leaderGreen;
+    case TxType.expiration:
+      return AppColors.danger;
+    default:
+      return AppColors.primary;
+  }
+}
+
+String _historyAmountPrefix(
+  BusinessTransaction tx, {
+  required TransactionsScreenMode mode,
+}) {
+  if (mode != TransactionsScreenMode.wallet) return '';
+  switch (tx.type) {
+    case TxType.purchaseValidated:
+      return '- ';
+    case TxType.carnetTransfer:
+      return tx.transferIsIncoming
+          ? '+ '
+          : '- ';
+    case TxType.carnetReceived:
+      return '+ ';
+    case TxType.expiration:
+      return '- ';
+    default:
+      return '';
+  }
+}
+
 
 class _ClientHistoryDateFilters extends StatelessWidget {
   const _ClientHistoryDateFilters({
@@ -1534,20 +1653,33 @@ class _HistoryDateFilterChip extends StatelessWidget {
 
 
 class _HistoryFilterChips extends StatelessWidget {
-  const _HistoryFilterChips({required this.selected, required this.onSelected});
+  const _HistoryFilterChips({
+    required this.mode,
+    required this.selected,
+    required this.onSelected,
+  });
 
+  final TransactionsScreenMode mode;
   final _HistoryQuickFilter selected;
   final ValueChanged<_HistoryQuickFilter> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      (_HistoryQuickFilter.all, 'Tous'),
-      (_HistoryQuickFilter.purchases, 'Commandes'),
-      (_HistoryQuickFilter.transfer, 'Envoi / reçu'),
-      (_HistoryQuickFilter.consumption, 'Consommation'),
-      (_HistoryQuickFilter.qr, 'QR'),
-    ];
+    final items = mode == TransactionsScreenMode.wallet
+        ? [
+            (_HistoryQuickFilter.all, 'Tous'),
+            (_HistoryQuickFilter.purchases, 'Achats'),
+            (_HistoryQuickFilter.transfer, 'Transferts'),
+            (_HistoryQuickFilter.receipts, 'Réceptions'),
+            (_HistoryQuickFilter.expirations, 'Expirations'),
+          ]
+        : [
+            (_HistoryQuickFilter.all, 'Tous'),
+            (_HistoryQuickFilter.purchases, 'Commandes'),
+            (_HistoryQuickFilter.transfer, 'Envoi / reçu'),
+            (_HistoryQuickFilter.consumption, 'Consommation'),
+            (_HistoryQuickFilter.qr, 'QR'),
+          ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1631,22 +1763,26 @@ class _AmountInline extends StatelessWidget {
     required this.valueStyle,
     required this.unitStyle,
     this.textAlign = TextAlign.left,
+    this.prefix = '',
   });
 
   final int amount;
   final TextStyle valueStyle;
   final TextStyle unitStyle;
   final TextAlign textAlign;
+  final String prefix;
 
   @override
   Widget build(BuildContext context) {
-    final label = Formatters.money(amount);
+    final label = prefix.isEmpty
+        ? Formatters.money(amount)
+        : '$prefix${Formatters.money(amount)}';
     return Semantics(
       label: label,
       child: Text.rich(
         TextSpan(
           children: [
-            TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
+            TextSpan(text: '$prefix${Formatters.numberFr(amount)}', style: valueStyle),
             TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
           ],
         ),

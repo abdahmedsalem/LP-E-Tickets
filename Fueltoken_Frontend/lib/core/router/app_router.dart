@@ -44,6 +44,7 @@ import '../../features/station/screens/station_home_screen.dart';
 import '../../features/station/screens/station_profile_screen.dart';
 import '../../features/station/screens/station_shell_scaffold.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
+import '../../features/transactions/screens/wallet_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 
 class AppRouter {
@@ -191,7 +192,7 @@ class AppRouter {
           },
         ),
 
-        // Client shell, 5 tabs
+        // Client shell, 6 branches
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return ClientShellScaffold(navigationShell: navigationShell);
@@ -230,6 +231,15 @@ class AppRouter {
                   path: '/transactions',
                   pageBuilder: (context, state) =>
                       const NoTransitionPage<void>(child: TransactionsScreen()),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/wallet',
+                  pageBuilder: (context, state) =>
+                      const NoTransitionPage<void>(child: WalletScreen()),
                 ),
               ],
             ),

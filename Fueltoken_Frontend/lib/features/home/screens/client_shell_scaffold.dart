@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
-import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 
@@ -36,6 +35,11 @@ class ClientShellScaffold extends StatelessWidget {
       icon: Icons.receipt_long_outlined,
       selectedIcon: Icons.receipt_long,
     ),
+    _ClientTabDestination(
+      label: 'Portefeuille',
+      icon: Icons.account_balance_wallet_outlined,
+      selectedIcon: Icons.account_balance_wallet,
+    ),
   ];
 
   void _onTabTap(int index) {
@@ -60,8 +64,8 @@ class ClientShellScaffold extends StatelessWidget {
       case 3: // Historique
         ClientHistoryRefreshBus.instance.bump();
         break;
-      case 4: // Profil / Achats
-        PurchasesRefreshBus.instance.bump();
+      case 4: // Portefeuille
+        WalletRefreshBus.instance.bump();
         break;
     }
   }
