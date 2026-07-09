@@ -128,23 +128,41 @@ class TestFuelTokenMobilePartnerTechnicalIdentity(TransactionCase):
                 with self.assertRaises(ValidationError):
                     user.write(vals)
 
-    def test_patch43m1_controlled_phone_change_resyncs_name_and_ref(self):
+    def test_patch2t_b_established_mobile_identity_phone_change_is_refused(self):
         user = self._mobile_user('38374750', 'Sidi Abdallahi')
+        partner = user.partner_id
 
-        log = user.action_fueltoken_change_mobile_phone(
-            '38374751',
-            'Client changed phone number.',
-        )
+        old_login = user.login
+        old_phone = user.acpec_mobile_phone
+        old_user_name = user.name
+        old_partner_name = partner.name
+        old_partner_ref = partner.ref
+
+        with self.assertRaises(ValidationError):
+            user.action_fueltoken_change_mobile_phone(
+                '38374751',
+                'Client changed phone number.',
+            )
+
         user.invalidate_recordset(['name', 'login', 'acpec_mobile_phone'])
-        user.partner_id.invalidate_recordset(['name', 'ref'])
+        partner.invalidate_recordset(['name', 'ref'])
 
-        self.assertEqual(user.login, '38374751')
-        self.assertEqual(user.acpec_mobile_phone, '38374751')
-        self.assertEqual(user.name, '38374751 - Sidi Abdallahi')
-        self.assertEqual(user.partner_id.name, '38374751 - Sidi Abdallahi')
-        self.assertEqual(user.partner_id.ref, 'MOB:38374751')
-        self.assertEqual(log.old_partner_ref, 'MOB:38374750')
-        self.assertEqual(log.new_partner_ref, 'MOB:38374751')
+        self.assertEqual(user.login, old_login)
+        self.assertEqual(user.acpec_mobile_phone, old_phone)
+        self.assertEqual(user.name, old_user_name)
+        self.assertEqual(partner.name, old_partner_name)
+        self.assertEqual(partner.ref, old_partner_ref)
+
+    def test_patch2t_b_mobile_partner_false_to_true_is_allowed(self):
+        partner = self.Partner.create({
+            'name': 'Normal Partner For Mobile Marking',
+            'acpec_is_mobile_partner': False,
+        })
+
+        partner.write({'acpec_is_mobile_partner': True})
+        partner.invalidate_recordset(['acpec_is_mobile_partner'])
+
+        self.assertTrue(partner.acpec_is_mobile_partner)
 
     def test_patch43m1_contacts_action_hides_mobile_technical_partners_without_record_rules(self):
         action = self.env.ref('base.action_partner_form')
