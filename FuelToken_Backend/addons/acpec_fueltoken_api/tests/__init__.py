@@ -30,3 +30,4 @@ from . import test_purchase_payment_proof_guard
 from . import test_mobile_transaction_report_runtime_policy
 from . import test_client_mobile_role_exclusive_guard
 from . import test_client_mobile_only_endpoint_guard
+from . import test_reference_api_archive_delete_doctrine_m21f
