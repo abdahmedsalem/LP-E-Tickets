@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class AcpecFuelCarnetType(models.Model):
@@ -117,14 +117,39 @@ class AcpecFuelCarnetType(models.Model):
         return super().create(vals_list)
 
 
+    def _has_economic_usage(self):
+        self.ensure_one()
+        usage_checks = (
+            ('acpec.fuel.purchase.line', [('carnet_type_id', '=', self.id)]),
+            ('acpec.fuel.face.line', [('carnet_type_id', '=', self.id)]),
+        )
+        for model_name, domain in usage_checks:
+            if model_name not in self.env.registry:
+                continue
+            model = self.env[model_name].sudo().with_context(active_test=False)
+            if 'carnet_type_id' not in model._fields:
+                continue
+            if model.search_count(domain):
+                return True
+        return False
+
     def write(self, vals):
         vals = dict(vals)
         vals.pop('name', None)
         vals.pop('code', None)
 
-        protected = {'face_count', 'face_value', 'company_id'}
+        protected = {'face_count', 'face_value', 'validity_days', 'company_id'}
         if protected.intersection(vals):
             for rec in self:
-                if rec.purchase_line_count:
-                    raise ValidationError(_('Un type de carnet déjà utilisé ne peut pas être modifié sur ses paramètres structurants. Désactivez-le et créez un nouveau type.'))
+                if rec._has_economic_usage():
+                    raise ValidationError(_(
+                        'Un type de carnet déjà utilisé ne peut pas être modifié sur ses paramètres structurants. '
+                        'Archivez-le et créez un nouveau type.'
+                    ))
         return super().write(vals)
+
+    def unlink(self):
+        raise UserError(_(
+            'Les types de carnet ne doivent pas être supprimés. '
+            'Archivez le type pour conserver la traçabilité.'
+        ))

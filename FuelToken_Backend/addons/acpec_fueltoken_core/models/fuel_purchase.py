@@ -1,4 +1,4 @@
-from odoo import fields, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from odoo.tools import float_compare
 
@@ -207,3 +207,60 @@ class AcpecFuelPurchaseCore(models.Model):
                     'fuel_value_created': True,
                 })
         return True
+
+
+class AcpecFuelPurchaseLineSnapshotRepairM21E(models.Model):
+    _inherit = 'acpec.fuel.purchase.line'
+
+    @api.model
+    def _repair_m21e_snapshots_from_face_lines(self):
+        self.env.cr.execute("""
+            SELECT
+                purchase_line_id,
+                MIN(qty_initial) AS min_face_count,
+                MAX(qty_initial) AS max_face_count,
+                MIN(face_value) AS min_face_value,
+                MAX(face_value) AS max_face_value
+              FROM acpec_fuel_face_line
+             WHERE purchase_line_id IS NOT NULL
+             GROUP BY purchase_line_id
+        """)
+        repaired = 0
+        purchase_ids = set()
+        for row in self.env.cr.dictfetchall():
+            line = self.sudo().browse(row['purchase_line_id']).exists()
+            if not line:
+                continue
+            if row['min_face_count'] != row['max_face_count'] or row['min_face_value'] != row['max_face_value']:
+                raise ValidationError(_(
+                    'Réparation snapshot impossible : valeurs de carnets incohérentes pour la ligne achat %s.'
+                ) % line.id)
+
+            vals = {
+                'face_count': int(row['min_face_count'] or 0),
+                'face_value': row['min_face_value'] or 0.0,
+            }
+            if line.face_count != vals['face_count'] or line.face_value != vals['face_value']:
+                line.with_context(allow_fuel_purchase_line_update=True).sudo().write(vals)
+                if line.purchase_id:
+                    purchase_ids.add(line.purchase_id.id)
+                repaired += 1
+
+        if purchase_ids:
+            self.flush_model(['purchase_id', 'amount_total'])
+            self.env.cr.execute("""
+                UPDATE acpec_fuel_purchase purchase
+                   SET amount_total = totals.amount_total,
+                       write_uid = %s,
+                       write_date = NOW()
+                  FROM (
+                      SELECT purchase_id, SUM(amount_total) AS amount_total
+                        FROM acpec_fuel_purchase_line
+                       WHERE purchase_id = ANY(%s)
+                       GROUP BY purchase_id
+                  ) totals
+                 WHERE purchase.id = totals.purchase_id
+            """, [self.env.uid, list(purchase_ids)])
+            self.env['acpec.fuel.purchase'].sudo().browse(list(purchase_ids)).invalidate_recordset(['amount_total'])
+
+        return repaired
