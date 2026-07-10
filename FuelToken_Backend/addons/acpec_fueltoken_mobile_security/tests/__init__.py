@@ -1,3 +1,4 @@
 from . import test_fueltoken_mobile_identity_phone_only
 from . import test_mobile_user_blocking_backoffice
 from . import test_mobile_partner_technical_identity
+from . import test_mobile_identity_views_readonly_m23b
