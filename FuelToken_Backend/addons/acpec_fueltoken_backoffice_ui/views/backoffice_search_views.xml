@@ -118,10 +118,10 @@
                 <field name="partner_id"/>
                 <field name="purchase_id"/>
                 <field name="carnet_type_id"/>
-                <filter name="available" string="Disponibles" domain="[('qty_available', '&gt;', 0)]"/>
-                <filter name="in_qr" string="En QR" domain="['|', ('qty_qr_active', '&gt;', 0), ('qty_qr_blocked', '&gt;', 0)]"/>
-                <filter name="consumed" string="Consommées" domain="[('qty_consumed', '&gt;', 0)]"/>
-                <filter name="expired" string="Expirées" domain="[('qty_expired', '&gt;', 0)]"/>
+                <filter name="available" string="Avec tickets disponibles" domain="[('qty_available', '&gt;', 0)]"/>
+                <filter name="in_qr" string="Avec tickets en QR" domain="['|', ('qty_qr_active', '&gt;', 0), ('qty_qr_blocked', '&gt;', 0)]"/>
+                <filter name="consumed" string="Avec tickets consommés" domain="[('qty_consumed', '&gt;', 0)]"/>
+                <filter name="expired" string="Avec tickets expirés" domain="[('qty_expired', '&gt;', 0)]"/>
                 <group>
                     <filter name="group_wallet" string="Compte Tickets Carburant" context="{'group_by': 'wallet_id'}"/>
                     <filter name="group_partner" string="Client" context="{'group_by': 'partner_id'}"/>

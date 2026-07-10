@@ -7,7 +7,7 @@
     </record>
 
     <record id="action_report_faces_available" model="ir.actions.act_window">
-        <field name="name">Faces disponibles</field>
+        <field name="name">Carnets avec tickets disponibles</field>
         <field name="res_model">acpec.fuel.face.line</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('qty_available', '&gt;', 0)]</field>
@@ -57,7 +57,7 @@
     </record>
 
     <menuitem id="menu_report_purchases" name="Achats" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_purchases" sequence="10"/>
-    <menuitem id="menu_report_faces_available" name="Faces disponibles" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_faces_available" sequence="20"/>
+    <menuitem id="menu_report_faces_available" name="Carnets avec tickets disponibles" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_faces_available" sequence="20"/>
     <menuitem id="menu_report_qr_active" name="QR actifs" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_active" sequence="25"/>
     <menuitem id="menu_report_qr_blocked" name="QR bloqués" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_blocked" sequence="30"/>
     <menuitem id="menu_report_qr_consumed" name="QR consommés" parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit" action="action_report_qr_consumed" sequence="40"/>

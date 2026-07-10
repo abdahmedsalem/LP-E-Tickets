@@ -60,7 +60,7 @@
                                            optional="hide"/>
 
                                     <field name="face_count"
-                                           string="Tickets par carnet"
+                                           string="Nombre de tickets par carnet"
                                            readonly="1"
                                            force_save="1"
                                            optional="hide"/>

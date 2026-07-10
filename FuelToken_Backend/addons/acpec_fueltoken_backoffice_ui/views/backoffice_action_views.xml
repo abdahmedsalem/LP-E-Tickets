@@ -83,7 +83,7 @@
     </record>
 
     <record id="acpec_fueltoken_core.action_fuel_face_line" model="ir.actions.act_window">
-        <field name="name">Tickets disponibles</field>
+        <field name="name">Carnets</field>
         <field name="search_view_id" ref="view_backoffice_fuel_face_line_search"/>
         <field name="context">{'search_default_available': 1, 'create': False, 'delete': False}</field>
     </record>
@@ -156,13 +156,13 @@
                 <field name="amount_total" string="Montant" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total montant" width="130px"/>
 
                 <field name="carnet_no" string="Référence complète carnet" optional="hide"/>
-                <field name="face_value" string="Valeur ticket" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
-                <field name="qty_initial" string="Tickets initiaux" optional="hide" sum="Total initial"/>
-                <field name="qty_available" string="Tickets disponibles" optional="hide" sum="Total disponible"/>
-                <field name="qty_qr_active" string="QR actif" optional="hide" sum="Total QR actif"/>
-                <field name="qty_qr_blocked" string="QR bloqué" optional="hide" sum="Total QR bloqué"/>
-                <field name="qty_consumed" string="Consommé" optional="hide" sum="Total consommé"/>
-                <field name="qty_expired" string="Expiré" optional="hide" sum="Total expiré"/>
+                <field name="face_value" string="Valeur du ticket" widget="monetary" options="{'currency_field': 'currency_id'}" optional="hide"/>
+                <field name="qty_initial" string="Tickets initiaux" optional="hide" sum="Total tickets initiaux"/>
+                <field name="qty_available" string="Tickets disponibles" optional="hide" sum="Total tickets disponibles"/>
+                <field name="qty_qr_active" string="Tickets en QR actif" optional="hide" sum="Total tickets en QR actif"/>
+                <field name="qty_qr_blocked" string="Tickets en QR bloqué" optional="hide" sum="Total tickets en QR bloqué"/>
+                <field name="qty_consumed" string="Tickets consommés" optional="hide" sum="Total tickets consommés"/>
+                <field name="qty_expired" string="Tickets expirés" optional="hide" sum="Total tickets expirés"/>
                 <field name="expires_at" string="Expiration" optional="hide"/>
                 <field name="company_id" string="Société" optional="hide"/>
             </list>

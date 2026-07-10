@@ -14,12 +14,12 @@
                 <field name="carnet_type_id" width="180px"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="face_value" widget="monetary" options="{'currency_field': 'currency_id'}" width="110px"/>
-                <field name="qty_initial" sum="Total initial" width="100px"/>
-                <field name="qty_available" sum="Total disponible" width="120px"/>
-                <field name="qty_qr_active" sum="Total QR actif" width="110px"/>
-                <field name="qty_qr_blocked" sum="Total QR bloqué" width="120px"/>
-                <field name="qty_consumed" sum="Total consommé" width="120px"/>
-                <field name="qty_expired" sum="Total expiré" width="100px"/>
+                <field name="qty_initial" sum="Total tickets initiaux" width="100px"/>
+                <field name="qty_available" sum="Total tickets disponibles" width="120px"/>
+                <field name="qty_qr_active" sum="Total tickets en QR actif" width="110px"/>
+                <field name="qty_qr_blocked" sum="Total tickets en QR bloqué" width="120px"/>
+                <field name="qty_consumed" sum="Total tickets consommés" width="120px"/>
+                <field name="qty_expired" sum="Total tickets expirés" width="100px"/>
                 <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total montant" width="130px"/>
                 <field name="amount_available" widget="monetary" options="{'currency_field': 'currency_id'}" sum="Total disponible" width="140px"/>
                 <field name="expires_at"/>
