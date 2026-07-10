@@ -17,6 +17,7 @@
         'views/backoffice_search_views.xml',
         'views/station_regularization_wizard_views.xml',
         'views/station_agent_assign_wizard_views.xml',
+        'views/backoffice_ticket_transfer_views.xml',
         'views/backoffice_action_views.xml',
         'views/mobile_users_backoffice_views.xml',
         'views/mobile_user_human_code_views.xml',

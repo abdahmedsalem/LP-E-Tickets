@@ -134,14 +134,21 @@
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_today_carnet_transfers"
-              name="Derniers transferts"
+              name="Transfert de carnets"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_carnet_transfers"
               sequence="30"
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
+    <menuitem id="menu_today_ticket_transfers"
+              name="Transfert de tickets"
+              parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
+              action="action_today_ticket_transfers"
+              sequence="35"
+              groups="acpec_fueltoken_base.group_fuel_admin"/>
+
     <menuitem id="menu_today_qr_watch"
-              name="QR à surveiller"
+              name="QR de retrait"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_qr_watch"
               sequence="40"
