@@ -103,13 +103,66 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
         with self.assertRaises(UserError):
             line.unlink()
 
-    def test_h13_view_locks_purchase_after_submission_with_force_save(self):
-        view = self.env.ref('acpec_fueltoken_purchase.view_fuel_purchase_form')
-        arch = view.arch_db or ''
+    def test_m23a_purchase_view_is_readonly_without_force_save(self):
+        form_view = self.env.ref(
+            'acpec_fueltoken_purchase.view_fuel_purchase_form'
+        )
+        form_arch = form_view.arch_db or ''
 
-        self.assertIn('name="partner_id" readonly="state != \'draft\'" force_save="1"', arch)
-        self.assertIn('name="payment_reference" readonly="state != \'draft\'" force_save="1"', arch)
-        self.assertIn('name="proof_attachment_ids" widget="many2many_binary" readonly="state != \'draft\'" force_save="1"', arch)
+        self.assertIn(
+            '<form create="0" edit="0" delete="0">',
+            form_arch,
+        )
+        self.assertIn(
+            'name="state" widget="statusbar" '
+            'statusbar_visible="draft,submitted,approved,rejected" '
+            'readonly="1"',
+            form_arch,
+        )
+        self.assertIn(
+            'name="partner_id" readonly="1"',
+            form_arch,
+        )
+        self.assertIn(
+            'name="company_id" readonly="1" '
+            'groups="base.group_multi_company"',
+            form_arch,
+        )
+        self.assertIn(
+            'name="payment_reference" readonly="1"',
+            form_arch,
+        )
+        self.assertIn(
+            'name="proof_attachment_ids" '
+            'widget="many2many_binary" readonly="1"',
+            form_arch,
+        )
+        self.assertIn(
+            'name="rejection_reason" readonly="1"',
+            form_arch,
+        )
+        self.assertNotIn(
+            'force_save=',
+            form_arch,
+        )
+
+        for button_name in (
+            'action_submit',
+            'action_approve',
+            'action_reject',
+        ):
+            self.assertIn(
+                'name="%s"' % button_name,
+                form_arch,
+            )
+
+        list_view = self.env.ref(
+            'acpec_fueltoken_purchase.view_fuel_purchase_list'
+        )
+        self.assertIn(
+            '<list create="0" edit="0" delete="0">',
+            list_view.arch_db or '',
+        )
 
     def test_h13_view_warns_before_approve_or_reject(self):
         view = self.env.ref('acpec_fueltoken_purchase.view_fuel_purchase_form')
