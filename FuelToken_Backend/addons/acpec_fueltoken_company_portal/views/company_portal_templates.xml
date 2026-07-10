@@ -141,7 +141,7 @@
                                             <td class="text-end"><span t-esc="row['line'].amount_available"/> <span t-esc="row['line'].currency_id.name"/></td>
                                             <td><span t-if="row['line'].expires_at" t-field="row['line'].expires_at"/><span t-else="">—</span></td>
                                         </tr>
-                                        <tr t-if="not ticket_rows"><td colspan="5" class="text-muted text-center py-4">Aucun ticket disponible.</td></tr>
+                                        <tr t-if="not ticket_rows"><td colspan="5" class="text-muted text-center py-4">Aucun carnet avec tickets disponibles.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -367,8 +367,8 @@
                                 <thead>
                                     <tr>
                                         <th>Type de carnet</th>
-                                        <th class="text-end">Tickets / carnet</th>
-                                        <th class="text-end">Valeur ticket</th>
+                                        <th class="text-end">Nombre de tickets par carnet</th>
+                                        <th class="text-end">Valeur du ticket</th>
                                         <th class="text-end">Montant carnet</th>
                                         <th style="width: 180px;" class="text-end">Carnets à acheter</th>
                                     </tr>
@@ -1009,7 +1009,7 @@
                                     </div>
                                 </div>
                                 <div t-if="not ticket_rows" class="alert alert-warning rounded-3" role="alert">
-                                    Aucun ticket disponible dans le wallet société.
+                                    Aucun carnet avec tickets disponibles dans le wallet société.
                                 </div>
                                 <div t-if="ticket_rows">
                                     <div class="row g-2 fw-semibold small ft-muted px-2 mb-2 d-none d-lg-flex">

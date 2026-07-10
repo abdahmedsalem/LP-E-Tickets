@@ -169,7 +169,7 @@
     </record>
 
     <record id="acpec_fueltoken_core.menu_fuel_face_line" model="ir.ui.menu">
-        <field name="name">Tickets disponibles</field>
+        <field name="name">Carnets</field>
         <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
         <field name="sequence">20</field>
     </record>
@@ -266,7 +266,7 @@
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <record id="acpec_fueltoken_reports.menu_report_faces_available" model="ir.ui.menu">
-        <field name="name">Analyse des tickets disponibles</field>
+        <field name="name">Analyse des carnets avec tickets disponibles</field>
         <field name="sequence">60</field>
     </record>
 
