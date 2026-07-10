@@ -36,13 +36,13 @@ class AcpecFuelTransaction(models.Model):
     transaction_type = fields.Selection([
         ('purchase_submitted', 'Demande d’achat soumise'),
         ('purchase_approved', 'Achat approuvé'),
-        ('emission_qr', 'Émission QR'),
-        ('retirer_qr', 'Retrait partiel QR'),
-        ('separer_qr', 'Separation QR expire/non expire'),
-        ('blocage_qr', 'Blocage QR'),
+        ('emission_qr', 'Émission d’un QR de retrait'),
+        ('retirer_qr', 'Extraction de tickets vers un nouveau QR'),
+        ('separer_qr', 'Séparation d’un QR partiellement expiré'),
+        ('blocage_qr', 'Blocage d’un QR de retrait'),
         ('consommation_station', 'Consommation station'),
         ('expiration_faces', 'Expiration de tickets'),
-        ('expiration_qr', 'Expiration QR'),
+        ('expiration_qr', 'Expiration d’un QR de retrait'),
         ('transfert_carnet', 'Transfert de carnets'),
         ('transfert_ticket', 'Transfert de tickets'),
     ], string='Type', required=True, index=True)
@@ -108,7 +108,7 @@ class AcpecFuelTransaction(models.Model):
         store=True,
         readonly=True,
     )
-    qr_id = fields.Many2one('acpec.fuel.qr', string='QR', index=True)
+    qr_id = fields.Many2one('acpec.fuel.qr', string='QR de retrait', index=True)
     parent_qr_id = fields.Many2one('acpec.fuel.qr', string='QR parent', index=True)
     station_id = fields.Many2one('acpec.fuel.station', string='Station', index=True)
     transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert carnet', index=True)
@@ -578,8 +578,8 @@ class AcpecFuelTransactionLine(models.Model):
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d’achat', index=True)
     purchase_line_id = fields.Many2one('acpec.fuel.purchase.line', string='Ligne d’achat', index=True)
     face_line_id = fields.Many2one('acpec.fuel.face.line', string='Carnet', index=True)
-    qr_id = fields.Many2one('acpec.fuel.qr', string='QR', index=True)
-    qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne QR', index=True)
+    qr_id = fields.Many2one('acpec.fuel.qr', string='QR de retrait', index=True)
+    qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne du QR de retrait', index=True)
     transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert carnet', index=True)
     ticket_transfer_id = fields.Many2one('acpec.fuel.ticket.transfer', string='Transfert ticket', index=True)
     face_value = fields.Monetary(string='Valeur du ticket', required=True)

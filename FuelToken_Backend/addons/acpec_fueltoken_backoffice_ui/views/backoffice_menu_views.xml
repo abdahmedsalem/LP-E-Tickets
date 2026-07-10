@@ -141,7 +141,7 @@
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_today_qr_watch"
-              name="Bons de retrait à surveiller"
+              name="QR à surveiller"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations"
               action="action_today_qr_watch"
               sequence="40"
@@ -175,7 +175,7 @@
     </record>
 
     <record id="acpec_fueltoken_core.menu_fuel_qr" model="ir.ui.menu">
-        <field name="name">Bons de retrait</field>
+        <field name="name">QR de retrait</field>
         <field name="parent_id" ref="menu_fueltoken_clients_balances"/>
         <field name="sequence">30</field>
     </record>
@@ -259,7 +259,7 @@
               groups="acpec_fueltoken_base.group_fuel_admin"/>
 
     <menuitem id="menu_report_qr_all"
-              name="Analyse des bons de retrait"
+              name="Analyse des QR de retrait"
               parent="acpec_fueltoken_base.menu_acpec_fueltoken_audit"
               action="action_report_qr_all"
               sequence="50"
