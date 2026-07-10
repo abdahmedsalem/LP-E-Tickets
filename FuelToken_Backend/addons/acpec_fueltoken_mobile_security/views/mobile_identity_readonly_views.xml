@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Patch43M23-B:
+        protection BO/UX conditionnelle des identités mobiles.
+
+        Les guards ORM restent la source de vérité pour la sécurité runtime.
+        Les partenaires et utilisateurs ordinaires restent modifiables.
+    -->
+
+    <record id="view_partner_form_mobile_identity_readonly_m23b"
+            model="ir.ui.view">
+        <field name="name">res.partner.form.mobile.identity.readonly.m23b</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="acpec_is_mobile_partner"
+                       invisible="1"
+                       readonly="acpec_is_mobile_partner"/>
+            </xpath>
+
+            <xpath expr="//sheet/div[hasclass('mb8')]/div/div/h1/field[@name='name' and @invisible='not is_company']"
+                   position="attributes">
+                <attribute name="readonly">acpec_is_mobile_partner</attribute>
+            </xpath>
+
+            <xpath expr="//sheet/div[hasclass('mb8')]/div/div/h1/field[@name='name' and @invisible='is_company']"
+                   position="attributes">
+                <attribute name="readonly">acpec_is_mobile_partner</attribute>
+            </xpath>
+
+            <xpath expr="//sheet/notebook/page[@name='sales_purchases']/group/group[@name='misc']/field[@name='ref']"
+                   position="attributes">
+                <attribute name="readonly">acpec_is_mobile_partner</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_simple_form_mobile_identity_readonly_m23b"
+            model="ir.ui.view">
+        <field name="name">res.partner.simple.form.mobile.identity.readonly.m23b</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_simple_form"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <field name="acpec_is_mobile_partner"
+                       invisible="1"
+                       readonly="acpec_is_mobile_partner"/>
+            </xpath>
+
+            <xpath expr="//field[@name='name' and @id='company']"
+                   position="attributes">
+                <attribute name="readonly">acpec_is_mobile_partner</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='name' and @id='individual']"
+                   position="attributes">
+                <attribute name="readonly">acpec_is_mobile_partner</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_form_mobile_identity_readonly_m23b"
+            model="ir.ui.view">
+        <field name="name">res.users.form.mobile.identity.readonly.m23b</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/field[@name='acpec_mobile_only']"
+                   position="attributes">
+                <attribute name="readonly">acpec_mobile_only</attribute>
+            </xpath>
+
+            <xpath expr="//sheet/div[hasclass('gap-3')]/div[hasclass('oe_title')]/h1/field[@name='name']"
+                   position="attributes">
+                <attribute name="readonly">acpec_mobile_only</attribute>
+            </xpath>
+
+            <xpath expr="//h5[@name='h5_email']//field[@name='login']"
+                   position="attributes">
+                <attribute name="readonly">acpec_mobile_only</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_simple_form_mobile_identity_readonly_m23b"
+            model="ir.ui.view">
+        <field name="name">res.users.simple.form.mobile.identity.readonly.m23b</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_simple_form"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="acpec_mobile_only"
+                       invisible="1"
+                       readonly="acpec_mobile_only"/>
+            </xpath>
+
+            <xpath expr="//sheet/div/div/h1/field[@name='name']"
+                   position="attributes">
+                <attribute name="readonly">acpec_mobile_only</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='login']"
+                   position="attributes">
+                <attribute name="readonly">acpec_mobile_only</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_preferences_form_mobile_identity_readonly_m23b"
+            model="ir.ui.view">
+        <field name="name">res.users.preferences.form.mobile.identity.readonly.m23b</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="acpec_mobile_only"
+                       invisible="1"
+                       readonly="acpec_mobile_only"/>
+            </xpath>
+
+            <xpath expr="//sheet/div/div[hasclass('oe_title')]/h1/field[@name='name']"
+                   position="attributes">
+                <attribute name="readonly">acpec_mobile_only</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

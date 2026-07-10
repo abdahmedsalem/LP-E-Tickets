@@ -12,6 +12,7 @@
         'views/res_partner_contacts_domain_views.xml',
         'views/mobile_phone_change_views.xml',
         'views/mobile_user_blocking_views.xml',
+        'views/mobile_identity_readonly_views.xml',
         'views/res_company_views.xml',
     ],
     'installable': True,
