@@ -1,4 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_carnet_type_user,acpec.fuel.carnet.type user,model_acpec_fuel_carnet_type,acpec_fueltoken_base.group_fuel_user,1,0,0,0
 access_carnet_type_manager,acpec.fuel.carnet.type manager,model_acpec_fuel_carnet_type,acpec_fueltoken_base.group_fuel_manager,1,0,0,0
-access_carnet_type_admin,acpec.fuel.carnet.type admin,model_acpec_fuel_carnet_type,acpec_fueltoken_base.group_fuel_admin,1,1,1,1
+access_carnet_type_admin,acpec.fuel.carnet.type admin,model_acpec_fuel_carnet_type,acpec_fueltoken_base.group_fuel_admin,1,1,1,0

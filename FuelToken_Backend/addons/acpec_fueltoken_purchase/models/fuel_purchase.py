@@ -411,8 +411,8 @@ class AcpecFuelPurchaseLine(models.Model):
     currency_id = fields.Many2one('res.currency', related='purchase_id.currency_id', store=True, readonly=True)
     carnet_type_id = fields.Many2one('acpec.fuel.carnet.type', string='Type de carnet', required=True)
     carnet_qty = fields.Integer(string='Nombre de carnets', required=True, default=1)
-    face_count = fields.Integer(string='Taille carnet', related='carnet_type_id.face_count', store=True, readonly=True)
-    face_value = fields.Monetary(string='Valeur de face', related='carnet_type_id.face_value', store=True, readonly=True)
+    face_count = fields.Integer(string='Taille carnet', readonly=True)
+    face_value = fields.Monetary(string='Valeur de face', readonly=True)
     generated_face_qty = fields.Integer(string='Faces generees', compute='_compute_amounts', store=True)
     amount_total = fields.Monetary(string='Montant total', compute='_compute_amounts', store=True)
 
@@ -447,6 +447,22 @@ class AcpecFuelPurchaseLine(models.Model):
         purchases = self.env['acpec.fuel.purchase'].browse(list(purchase_ids)).exists()
         if purchases.filtered(lambda purchase: purchase.state != 'draft'):
             raise UserError(_('Impossible d ajouter une ligne sur un lot achat soumis, valide ou rejete.'))
+
+        carnet_type_ids = {
+            vals.get('carnet_type_id')
+            for vals in vals_list
+            if vals.get('carnet_type_id')
+        }
+        carnet_types = {
+            carnet.id: carnet
+            for carnet in self.env['acpec.fuel.carnet.type'].sudo().browse(list(carnet_type_ids)).exists()
+        }
+        for vals in vals_list:
+            carnet_type = carnet_types.get(vals.get('carnet_type_id'))
+            if carnet_type:
+                vals['face_count'] = int(carnet_type.face_count or 0)
+                vals['face_value'] = carnet_type.face_value or 0.0
+
         return super().create(vals_list)
 
     def write(self, vals):

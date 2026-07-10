@@ -11,6 +11,7 @@
         'security/ir.model.access.csv',
         'security/fueltoken_core_rules.xml',
         'data/ir_cron_data.xml',
+        'data/purchase_line_snapshot_repair_m21e.xml',
         'data/ir_sequence_ticket_transfer_data.xml',
         'views/fuel_wallet_views.xml',
         'views/fuel_face_line_views.xml',

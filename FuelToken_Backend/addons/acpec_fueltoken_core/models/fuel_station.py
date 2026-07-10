@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class AcpecFuelStation(models.Model):
@@ -139,6 +139,12 @@ class AcpecFuelStation(models.Model):
         if {'user_id', 'company_id', 'active'} & set(vals):
             self._sync_primary_agents()
         return res
+
+    def unlink(self):
+        raise UserError(_(
+            'Les stations ne doivent pas être supprimées. '
+            'Archivez la station pour conserver la traçabilité.'
+        ))
 
     def _sync_primary_agents(self):
         Agent = self.env['acpec.fuel.station.agent'].sudo()
