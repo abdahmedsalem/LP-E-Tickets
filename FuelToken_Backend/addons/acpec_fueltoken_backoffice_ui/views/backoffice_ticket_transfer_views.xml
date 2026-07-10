@@ -1,0 +1,138 @@
+<odoo>
+
+    <!-- Consultation BO des transferts de tickets créés par les flux contrôlés. -->
+
+    <record id="view_backoffice_fuel_ticket_transfer_list" model="ir.ui.view">
+        <field name="name">acpec.fuel.ticket.transfer.backoffice.list</field>
+        <field name="model">acpec.fuel.ticket.transfer</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false">
+                <field name="name"/>
+                <field name="source_partner_id"/>
+                <field name="dest_partner_id"/>
+                <field name="state"/>
+                <field name="face_qty_total" string="Tickets transférés"/>
+                <field name="amount_total"/>
+                <field name="confirmed_at"/>
+                <field name="confirmed_by" optional="hide"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_ticket_transfer_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.ticket.transfer.backoffice.form</field>
+        <field name="model">acpec.fuel.ticket.transfer</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <header>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,confirmed,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Source">
+                            <field name="source_wallet_id" readonly="1"/>
+                            <field name="source_partner_id" readonly="1"/>
+                        </group>
+                        <group string="Destinataire">
+                            <field name="dest_wallet_id" readonly="1"/>
+                            <field name="dest_partner_id" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Totaux">
+                            <field name="face_qty_total"
+                                   string="Tickets transférés"
+                                   readonly="1"/>
+                            <field name="amount_total" readonly="1"/>
+                        </group>
+                        <group string="Confirmation">
+                            <field name="confirmed_at" readonly="1"/>
+                            <field name="confirmed_by" readonly="1"/>
+                            <field name="company_id"
+                                   readonly="1"
+                                   groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Tickets transférés">
+                            <field name="line_ids" readonly="1">
+                                <list create="false"
+                                      edit="false"
+                                      delete="false">
+                                    <field name="source_face_line_id"
+                                           string="Carnet source"/>
+                                    <field name="dest_face_line_id"
+                                           string="Carnet destination"/>
+                                    <field name="carnet_type_id"/>
+                                    <field name="face_value"
+                                           string="Valeur du ticket"
+                                           optional="hide"/>
+                                    <field name="qty_faces"
+                                           string="Tickets transférés"/>
+                                    <field name="amount_total"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Note">
+                            <field name="note" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_backoffice_fuel_ticket_transfer_search" model="ir.ui.view">
+        <field name="name">acpec.fuel.ticket.transfer.backoffice.search</field>
+        <field name="model">acpec.fuel.ticket.transfer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="source_partner_id"/>
+                <field name="dest_partner_id"/>
+                <field name="source_wallet_id"/>
+                <field name="dest_wallet_id"/>
+
+                <filter name="state_draft"
+                        string="Brouillons"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="state_confirmed"
+                        string="Confirmés"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <filter name="state_cancelled"
+                        string="Annulés"
+                        domain="[('state', '=', 'cancelled')]"/>
+
+                <group>
+                    <filter name="group_state"
+                            string="État"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_source"
+                            string="Source"
+                            context="{'group_by': 'source_partner_id'}"/>
+                    <filter name="group_dest"
+                            string="Destinataire"
+                            context="{'group_by': 'dest_partner_id'}"/>
+                    <filter name="group_company"
+                            string="Société Odoo"
+                            context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>
