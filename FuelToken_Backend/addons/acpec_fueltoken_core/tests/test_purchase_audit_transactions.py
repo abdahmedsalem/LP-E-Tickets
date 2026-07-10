@@ -58,7 +58,7 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
         return purchase
 
     def _transactions(self, purchase, transaction_type):
@@ -163,7 +163,7 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
         submitted_tx_id = submitted_tx.id
         submitted_tx_name = submitted_tx.name
 
-        purchase.write({'rejection_reason': 'Preuve non conforme'})
+        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'rejection_reason': 'Preuve non conforme'})
         purchase.action_reject()
         purchase.invalidate_recordset(['state', 'rejected_at', 'rejected_by', 'rejection_reason'])
         submitted_tx.invalidate_recordset(['transaction_type', 'purchase_state', 'purchase_rejected_at', 'purchase_rejection_reason'])

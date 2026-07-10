@@ -145,7 +145,7 @@ class _ConsumeFixtureMixin:
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
 
         purchase.action_submit()
         purchase.action_approve()
