@@ -1270,30 +1270,9 @@ class _TxLineRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _titleStyle(context, fontSize: 14),
                 ),
-                if (subtitle != null || ticketCountLabel != null) ...[
+                if (subtitle != null) ...[
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (subtitle != null)
-                        Expanded(child: Text(subtitle, style: _dateStyle()))
-                      else
-                        const Expanded(child: SizedBox()),
-                      if (ticketCountLabel != null)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            ticketCountLabel,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
-                              height: 1.15,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  Text(subtitle, style: _dateStyle()),
                 ],
               ],
             ),
@@ -1318,6 +1297,19 @@ class _TxLineRow extends StatelessWidget {
                   height: 1.1,
                 ),
               ),
+              if (ticketCountLabel != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  ticketCountLabel,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                    height: 1.15,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -1348,30 +1340,9 @@ class _TxLineRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _titleStyle(context, fontSize: 14),
                 ),
-                if (subtitle != null || ticketCountLabel != null) ...[
+                if (subtitle != null) ...[
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (subtitle != null)
-                        Expanded(child: Text(subtitle, style: _dateStyle()))
-                      else
-                        const Expanded(child: SizedBox()),
-                      if (ticketCountLabel != null)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            ticketCountLabel,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
-                              height: 1.15,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  Text(subtitle, style: _dateStyle()),
                 ],
               ],
             ),
@@ -1396,6 +1367,19 @@ class _TxLineRow extends StatelessWidget {
                   height: 1.1,
                 ),
               ),
+              if (ticketCountLabel != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  ticketCountLabel,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                    height: 1.15,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
