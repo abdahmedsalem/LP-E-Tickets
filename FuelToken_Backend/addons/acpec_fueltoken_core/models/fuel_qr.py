@@ -474,7 +474,7 @@ class AcpecFuelQr(models.Model):
             if qr_line_id <= 0:
                 raise ValidationError(_("Parametre 'qr_line_id' invalide ou manquant."))
             if qty <= 0:
-                raise ValidationError(_('La quantite a retirer doit etre positive.'))
+                raise ValidationError(_('Le nombre de tickets à retirer doit être positif.'))
             requested[qr_line_id] = requested.get(qr_line_id, 0) + qty
 
         with self.env.cr.savepoint():
@@ -517,7 +517,7 @@ class AcpecFuelQr(models.Model):
                 if src.state != 'active':
                     raise ValidationError(_('Seules les lignes actives peuvent etre retirees.'))
                 if qty > src.qty:
-                    raise ValidationError(_('Quantite insuffisante sur la ligne QR source.'))
+                    raise ValidationError(_('Nombre de tickets insuffisant sur la ligne QR source.'))
 
                 if qty == src.qty:
                     src.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'qr_id': qr_child.id})
@@ -745,9 +745,9 @@ class AcpecFuelQrLine(models.Model):
     def _check_values(self):
         for rec in self:
             if rec.qty <= 0:
-                raise ValidationError(_('La quantité d’une ligne QR doit être positive.'))
+                raise ValidationError(_('Le nombre de tickets d’une ligne QR doit être positif.'))
             if rec.face_value <= 0:
-                raise ValidationError(_('La valeur de face doit être positive.'))
+                raise ValidationError(_('La valeur du ticket doit être positive.'))
 
     _economic_identity_fields = frozenset((
         'source_qr_line_id',

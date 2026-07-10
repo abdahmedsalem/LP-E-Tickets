@@ -774,7 +774,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
             if carnet_type_id not in allowed_type_ids:
                 raise ValidationError(_('Type de carnet indisponible.'))
             if carnet_qty <= 0:
-                raise ValidationError(_('La quantité doit être positive pour chaque ligne renseignée.'))
+                raise ValidationError(_('Le nombre de carnets doit être positif pour chaque ligne renseignée.'))
             selected_by_type[carnet_type_id] = selected_by_type.get(carnet_type_id, 0) + carnet_qty
 
         if not selected_by_type:

@@ -179,7 +179,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                 ):
                     raise ValidationError(_(
                         "Le transfert de '%s' n'est autorisé que pour un carnet intact "
-                        "(%d disponibles sur %d initiaux)."
+                        "(%d tickets disponibles sur %d tickets initiaux)."
                     ) % (
                         src_face_line.carnet_type_id.code,
                         src_face_line.qty_available,
@@ -189,7 +189,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                 # 3. Vérifier disponibilité (qty_available garantit que les faces ne sont pas en QR actif/bloqué)
                 if src_face_line.qty_available < qty_to_transfer:
                     raise ValidationError(_(
-                        "Faces insuffisantes pour '%s' : %d disponibles, %d demandées."
+                        "Tickets disponibles insuffisants pour '%s' : %d disponibles, %d demandés."
                     ) % (
                         src_face_line.carnet_type_id.code,
                         src_face_line.qty_available,
@@ -200,7 +200,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                 if face_count and qty_to_transfer % face_count != 0:
                     raise ValidationError(_(
                         "Le transfert doit porter sur des carnets complets "
-                        "(type '%s' : %d faces/carnet, %d faces demandées — non multiple)."
+                        "(type '%s' : %d tickets par carnet, %d tickets demandés — le nombre de tickets demandé n’est pas un multiple)."
                     ) % (src_face_line.carnet_type_id.code, face_count, qty_to_transfer))
 
                 # 5. Patch34C : transfert intact par deplacement du detenteur courant.
@@ -211,7 +211,7 @@ class AcpecFuelCarnetTransfer(models.Model):
                 if qty_to_transfer != src_face_line.qty_initial:
                     raise ValidationError(_(
                         "Le transfert de '%s' doit porter sur la totalite du carnet "
-                        "(%d faces demandees, %d faces attendues)."
+                        "(%d tickets demandés, %d tickets attendus)."
                     ) % (
                         src_face_line.carnet_type_id.code,
                         qty_to_transfer,

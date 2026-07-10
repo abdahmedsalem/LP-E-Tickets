@@ -26,11 +26,11 @@ class AcpecFuelCarnetType(models.Model):
     )
     _positive_face_count = models.Constraint(
         'CHECK(face_count > 0)',
-        'La taille du carnet doit être positive.',
+        'Le nombre de tickets par carnet doit être positif.',
     )
     _positive_face_value = models.Constraint(
         'CHECK(face_value > 0)',
-        'La valeur de face doit être positive.',
+        'La valeur du ticket doit être positive.',
     )
     _validity_days = models.Constraint(
         'CHECK(validity_days >= 0)',
