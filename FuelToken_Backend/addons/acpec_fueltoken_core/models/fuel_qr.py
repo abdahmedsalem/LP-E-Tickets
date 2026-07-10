@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 
 class AcpecFuelQr(models.Model):
     _name = 'acpec.fuel.qr'
-    _description = 'Bon de retrait'
+    _description = 'QR de retrait'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'acpec.fuel.public.code.mixin']
     _order = 'id desc'
 
@@ -28,7 +28,7 @@ class AcpecFuelQr(models.Model):
         ('consumed', 'Consommé'),
         ('expired', 'Expiré'),
     ], string='État', default='active', required=True, index=True, tracking=True)
-    line_ids = fields.One2many('acpec.fuel.qr.line', 'qr_id', string='Lignes QR')
+    line_ids = fields.One2many('acpec.fuel.qr.line', 'qr_id', string='Lignes du QR de retrait')
     parent_id = fields.Many2one('acpec.fuel.qr', string='QR parent', index=True, copy=False)
     child_ids = fields.One2many('acpec.fuel.qr', 'parent_id', string='QR enfants')
     consumed_station_id = fields.Many2one('acpec.fuel.station', string='Station de consommation', readonly=True)
@@ -706,10 +706,10 @@ class AcpecFuelQr(models.Model):
 
 class AcpecFuelQrLine(models.Model):
     _name = 'acpec.fuel.qr.line'
-    _description = 'Ligne Bon de retrait'
+    _description = 'Ligne de QR de retrait'
     _order = 'qr_id, id'
 
-    qr_id = fields.Many2one('acpec.fuel.qr', string='QR', required=True, ondelete='cascade', index=True)
+    qr_id = fields.Many2one('acpec.fuel.qr', string='QR de retrait', required=True, ondelete='cascade', index=True)
     source_qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne source split', index=True)
     face_line_id = fields.Many2one('acpec.fuel.face.line', string='Carnet', required=True, index=True, ondelete='restrict')
     purchase_id = fields.Many2one('acpec.fuel.purchase', string='Lot d’achat', required=True, index=True)

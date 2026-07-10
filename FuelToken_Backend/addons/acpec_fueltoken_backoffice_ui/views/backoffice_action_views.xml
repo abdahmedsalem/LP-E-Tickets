@@ -51,7 +51,7 @@
     </record>
 
     <record id="action_today_qr_watch" model="ir.actions.act_window">
-        <field name="name">Bons de retrait à surveiller</field>
+        <field name="name">QR à surveiller</field>
         <field name="res_model">acpec.fuel.qr</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_backoffice_fuel_qr_search"/>
@@ -59,7 +59,7 @@
     </record>
 
     <record id="action_report_qr_all" model="ir.actions.act_window">
-        <field name="name">Analyse des bons de retrait</field>
+        <field name="name">Analyse des QR de retrait</field>
         <field name="res_model">acpec.fuel.qr</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_backoffice_fuel_qr_search"/>
@@ -89,7 +89,7 @@
     </record>
 
     <record id="acpec_fueltoken_core.action_fuel_qr" model="ir.actions.act_window">
-        <field name="name">Bons de retrait</field>
+        <field name="name">QR de retrait</field>
         <field name="search_view_id" ref="view_backoffice_fuel_qr_search"/>
         <field name="context">{'create': False, 'delete': False}</field>
     </record>
