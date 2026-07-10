@@ -11,8 +11,8 @@ class AcpecFuelCarnetType(models.Model):
     name = fields.Char(string='Nom', compute='_compute_name', store=True, readonly=True)
     code = fields.Char(string='Code', compute='_compute_code', store=True, readonly=True, index=True)
     
-    face_count = fields.Integer(string='Taille du carnet', required=True, default=10, tracking=True)
-    face_value = fields.Monetary(string='Valeur de ticket', required=True, tracking=True)
+    face_count = fields.Integer(string='Nombre de tickets par carnet', required=True, default=10, tracking=True)
+    face_value = fields.Monetary(string='Valeur du ticket', required=True, tracking=True)
     carnet_amount = fields.Monetary(string='Montant du carnet', compute='_compute_carnet_amount', store=True)
     validity_days = fields.Integer(string='Validité en jours', default=365)
     active = fields.Boolean(default=True)
