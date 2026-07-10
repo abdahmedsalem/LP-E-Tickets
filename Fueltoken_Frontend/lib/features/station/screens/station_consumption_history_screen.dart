@@ -17,6 +17,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -334,44 +335,13 @@ class _StationConsumptionHistoryScreenState
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Flexible(
-                      flex: 43,
-                      child: _DateFilterChip(
-                        label: 'Du',
-                        value: _compactDate(_draftFrom),
-                        onTap: _pickFrom,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      flex: 43,
-                      child: _DateFilterChip(
-                        label: 'Au',
-                        value: _compactDate(_draftTo),
-                        onTap: _pickTo,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Material(
-                      color: _cOrange,
-                      borderRadius: BorderRadius.circular(14),
-                      child: InkWell(
-                        onTap: _applyFilter,
-                        borderRadius: BorderRadius.circular(14),
-                        child: const SizedBox(
-                          width: 44,
-                          height: 46,
-                          child: Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                child: DateRangeFilterBar(
+                  fromLabel: _compactDate(_draftFrom),
+                  toLabel: _compactDate(_draftTo),
+                  onPickFrom: _pickFrom,
+                  onPickTo: _pickTo,
+                  onApply: _applyFilter,
+                  applyColor: _cOrange,
                 ),
               ),
               const SizedBox(height: 12),
@@ -474,59 +444,6 @@ class _StationConsumptionHistoryScreenState
     return DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
   }
 }
-
-class _DateFilterChip extends StatelessWidget {
-  const _DateFilterChip({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFF374151), width: 1.3),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.calendar_today_outlined,
-              size: 17,
-              color: Color(0xFF374151),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '$label $value',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF374151),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
 
 class _StationRegularizationFilterSelector extends StatelessWidget {
   const _StationRegularizationFilterSelector({

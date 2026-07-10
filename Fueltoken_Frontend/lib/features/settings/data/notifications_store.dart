@@ -232,7 +232,7 @@ class NotificationsStore extends ChangeNotifier {
     }
     return NotificationItem(
       id: item.id,
-      title: 'Réception',
+      title: item.title,
       body: item.body,
       timeLabel: item.timeLabel,
       notificationDateLabel: item.notificationDateLabel,

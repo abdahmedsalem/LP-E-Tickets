@@ -220,12 +220,69 @@ class BusinessTransaction extends Equatable {
     return '—';
   }
 
+  bool get isTicketTransfer {
+    if (type != TxType.carnetTransfer && type != TxType.carnetReceived) {
+      return false;
+    }
+    if (lines.isEmpty) return false;
+    return lines.every((line) => line.carnetSize <= 1);
+  }
+
+  String get transferKindLabel => isTicketTransfer ? 'tickets' : 'carnets';
+
+  bool _matchesViewerAsCounterparty(String? viewerUserId) {
+    final viewer = (viewerUserId ?? '').trim();
+    if (viewer.isEmpty) return false;
+    return (counterpartyUserId ?? '').trim() == viewer ||
+        (counterpartyUserName ?? '').trim() == viewer;
+  }
+
+  bool _matchesViewerAsActor(String? viewerUserId) {
+    final viewer = (viewerUserId ?? '').trim();
+    if (viewer.isEmpty) return false;
+    return (actorUserId ?? '').trim() == viewer ||
+        (actorUserName ?? '').trim() == viewer;
+  }
+
+  bool isIncomingTransferForViewer(String? viewerUserId) {
+    if (type != TxType.carnetTransfer && type != TxType.carnetReceived) {
+      return false;
+    }
+    if (_matchesViewerAsCounterparty(viewerUserId)) return true;
+    if (_matchesViewerAsActor(viewerUserId)) return false;
+    return transferIsIncoming;
+  }
+
+  String transferPartyRoleLabelForViewer(String? viewerUserId) {
+    return isIncomingTransferForViewer(viewerUserId)
+        ? 'Expéditeur'
+        : 'Bénéficiaire';
+  }
+
+  String get transferDisplayTitle {
+    if (type != TxType.carnetTransfer && type != TxType.carnetReceived) {
+      return type.label;
+    }
+    return transferIsIncoming
+        ? 'Réception de $transferKindLabel'
+        : 'Transfert de $transferKindLabel';
+  }
+
+  String transferDisplayTitleForViewer(String? viewerUserId) {
+    if (type != TxType.carnetTransfer && type != TxType.carnetReceived) {
+      return type.label;
+    }
+    return isIncomingTransferForViewer(viewerUserId)
+        ? 'Réception de $transferKindLabel'
+        : 'Transfert de $transferKindLabel';
+  }
+
   String get displayTitle {
     if (type == TxType.carnetTransfer) {
-      return transferIsIncoming ? 'Réception' : 'Transfert';
+      return transferDisplayTitle;
     }
     if (type == TxType.carnetReceived) {
-      return 'Réception';
+      return transferDisplayTitle;
     }
     return type.label;
   }
@@ -237,13 +294,7 @@ class BusinessTransaction extends Equatable {
     }
 
     if (type == TxType.carnetTransfer || type == TxType.carnetReceived) {
-      if ((counterpartyUserId ?? '').trim() == viewer) {
-        return 'Réception';
-      }
-      if ((actorUserId ?? '').trim() == viewer) {
-        return 'Transfert';
-      }
-      return transferIsIncoming ? 'Réception' : 'Transfert';
+      return transferDisplayTitleForViewer(viewer);
     }
 
     return displayTitle;

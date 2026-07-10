@@ -183,7 +183,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,

@@ -502,7 +502,7 @@ class PurchaseValidationNotificationService {
           (line) => NotificationPurchaseLineItem(
             label: _txLineLabel(line),
             quantityLabel:
-                '${Formatters.numberFr(line.qty)} carnet${line.qty > 1 ? 's' : ''}',
+                '${Formatters.numberFr(line.qty)} ${tx.isTicketTransfer ? 'ticket' : 'carnet'}${line.qty > 1 ? 's' : ''}',
             amountLabel: Formatters.money(line.amount),
             faceValue: line.faceValue,
             carnetSize: line.carnetSize,
@@ -510,8 +510,8 @@ class PurchaseValidationNotificationService {
           ),
         )
         .toList(growable: false);
-    final title = tx.displayTitle;
-    final roleLabel = tx.transferIsIncoming ? 'Expéditeur' : 'Bénéficiaire';
+    final title = tx.transferDisplayTitle;
+    final roleLabel = tx.transferPartyRoleLabelForViewer(tx.userId);
     final body = party.isNotEmpty ? '$roleLabel : $party' : roleLabel;
 
     return NotificationItem(

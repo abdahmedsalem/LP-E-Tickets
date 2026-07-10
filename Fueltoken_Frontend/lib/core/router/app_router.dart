@@ -228,18 +228,18 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/transactions',
+                  path: '/wallet',
                   pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: TransactionsScreen()),
+                      const NoTransitionPage<void>(child: WalletScreen()),
                 ),
               ],
             ),
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/wallet',
+                  path: '/transactions',
                   pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: WalletScreen()),
+                      const NoTransitionPage<void>(child: TransactionsScreen()),
                 ),
               ],
             ),

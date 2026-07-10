@@ -31,14 +31,14 @@ class ClientShellScaffold extends StatelessWidget {
       selectedIcon: Icons.qr_code_2,
     ),
     _ClientTabDestination(
-      label: 'Historique',
-      icon: Icons.receipt_long_outlined,
-      selectedIcon: Icons.receipt_long,
-    ),
-    _ClientTabDestination(
       label: 'Portefeuille',
       icon: Icons.account_balance_wallet_outlined,
       selectedIcon: Icons.account_balance_wallet,
+    ),
+    _ClientTabDestination(
+      label: 'Historique',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long,
     ),
   ];
 
@@ -61,11 +61,11 @@ class ClientShellScaffold extends StatelessWidget {
       case 2: // QR
         QrRefreshBus.instance.bump();
         break;
-      case 3: // Historique
-        ClientHistoryRefreshBus.instance.bump();
-        break;
-      case 4: // Portefeuille
+      case 3: // Portefeuille
         WalletRefreshBus.instance.bump();
+        break;
+      case 4: // Historique
+        ClientHistoryRefreshBus.instance.bump();
         break;
     }
   }

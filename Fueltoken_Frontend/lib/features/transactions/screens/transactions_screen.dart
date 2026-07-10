@@ -20,6 +20,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -515,11 +516,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   static String _titleForRole(UserRole role, TransactionsScreenMode mode) {
     if (mode == TransactionsScreenMode.wallet) {
-      return 'Portefeuille';
+      return 'Mouvements du portefeuille';
     }
     switch (role) {
       case UserRole.user:
-        return 'Historique';
+        return 'Historique des opérations';
       case UserRole.station:
         return 'Historique station';
       case UserRole.admin:
@@ -733,7 +734,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _ClientHistoryDateFilters(
+                    child: DateRangeFilterBar(
                       fromLabel: _compactDate(_draftFrom),
                       toLabel: _compactDate(_draftTo),
                       onPickFrom: _pickFrom,
@@ -1344,14 +1345,13 @@ List<_TxDetailRow> _transactionDetailRows(
   BusinessTransaction tx,
   String currentUserId,
 ) {
-  final qr = tx.qrPublicCode ?? tx.qrId;
+  final qrReference = tx.qrName ?? tx.qrPublicCode ?? tx.qrId ?? '';
   final lotRef = tx.lotInternalRef ?? tx.lotId;
   final station = tx.stationName ?? tx.stationId;
   final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
-  final transferPartyLabel =
-      tx.displayTitleForViewer(currentUserId) == 'Réception'
-          ? 'Expéditeur'
-          : 'Bénéficiaire';
+  final transferPartyLabel = tx.transferPartyRoleLabelForViewer(
+    currentUserId,
+  );
   final baseRows = <_TxDetailRow>[
     _TxDetailRow(
       label: 'Référence publique',
@@ -1382,17 +1382,23 @@ List<_TxDetailRow> _transactionDetailRows(
     case TxType.qrEmission:
       return [
         ...baseRows,
+        if (qrReference.trim().isNotEmpty)
+          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
         if (lotRef != null && lotRef.isNotEmpty)
           _TxDetailRow(label: 'Carnet', value: lotRef),
       ];
     case TxType.qrSeparer:
       return [
         ...baseRows,
+        if (qrReference.trim().isNotEmpty)
+          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
         _TxDetailRow(label: 'Tickets', value: '$totalQty'),
       ];
     case TxType.qrRetirer:
       return [
         ...baseRows,
+        if (qrReference.trim().isNotEmpty)
+          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
         _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
       ];
     case TxType.carnetTransfer: {
@@ -1418,6 +1424,8 @@ List<_TxDetailRow> _transactionDetailRows(
     case TxType.stationConsumption:
       return [
         ...baseRows,
+        if (qrReference.trim().isNotEmpty)
+          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
         if (station != null && station.isNotEmpty)
           _TxDetailRow(label: 'Station', value: station),
         if ((tx.actorUserName ?? '').trim().isNotEmpty)
@@ -1429,13 +1437,15 @@ List<_TxDetailRow> _transactionDetailRows(
     case TxType.expiration:
       return [
         ...baseRows,
-        if (qr != null && qr.trim().isNotEmpty)
-          _TxDetailRow(label: 'Code de référence QR', value: qr.trim()),
+        if (qrReference.trim().isNotEmpty)
+          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
       ];
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return [
         ...baseRows,
+        if (qrReference.trim().isNotEmpty && tx.type == TxType.qrBlocked)
+          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
         if (tx.type == TxType.qrBlocked)
           const _TxDetailRow(
             label: 'Message',
@@ -1507,7 +1517,7 @@ Color _amountColorFor(
   }
   switch (tx.type) {
     case TxType.purchaseValidated:
-      return AppColors.danger;
+      return AppColors.leaderGreen;
     case TxType.carnetTransfer:
       return tx.transferIsIncoming ? AppColors.leaderGreen : AppColors.danger;
     case TxType.carnetReceived:
@@ -1526,7 +1536,7 @@ String _historyAmountPrefix(
   if (mode != TransactionsScreenMode.wallet) return '';
   switch (tx.type) {
     case TxType.purchaseValidated:
-      return '- ';
+      return '+ ';
     case TxType.carnetTransfer:
       return tx.transferIsIncoming
           ? '+ '
@@ -1537,117 +1547,6 @@ String _historyAmountPrefix(
       return '- ';
     default:
       return '';
-  }
-}
-
-
-class _ClientHistoryDateFilters extends StatelessWidget {
-  const _ClientHistoryDateFilters({
-    required this.fromLabel,
-    required this.toLabel,
-    required this.onPickFrom,
-    required this.onPickTo,
-    required this.onApply,
-  });
-
-  final String fromLabel;
-  final String toLabel;
-  final VoidCallback onPickFrom;
-  final VoidCallback onPickTo;
-  final VoidCallback onApply;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Flexible(
-          flex: 43,
-          child: _HistoryDateFilterChip(
-            label: 'Du',
-            value: fromLabel,
-            onTap: onPickFrom,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Flexible(
-          flex: 43,
-          child: _HistoryDateFilterChip(
-            label: 'Au',
-            value: toLabel,
-            onTap: onPickTo,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Material(
-          color: AppColors.leaderGreen,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: onApply,
-            borderRadius: BorderRadius.circular(14),
-            child: const SizedBox(
-              width: 44,
-              height: 46,
-              child: Icon(
-                Icons.arrow_forward_rounded,
-                size: 24,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HistoryDateFilterChip extends StatelessWidget {
-  const _HistoryDateFilterChip({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFF374151), width: 1.3),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.calendar_today_outlined,
-              size: 17,
-              color: Color(0xFF374151),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '$label $value',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF374151),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
