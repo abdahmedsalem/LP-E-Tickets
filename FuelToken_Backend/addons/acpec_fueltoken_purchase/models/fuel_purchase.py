@@ -27,7 +27,7 @@ class AcpecFuelPurchase(models.Model):
     purchase_line_count = fields.Integer(string='Détail', compute='_compute_purchase_line_count')
 
     amount_total = fields.Monetary(string='Montant total', compute='_compute_totals', store=True)
-    face_qty_total = fields.Integer(string='Nombre de faces', compute='_compute_totals', store=True)
+    face_qty_total = fields.Integer(string='Nombre total de tickets', compute='_compute_totals', store=True)
     proof_attachment_ids = fields.Many2many(
         'ir.attachment',
         'acpec_fuel_purchase_attachment_rel',
@@ -411,9 +411,9 @@ class AcpecFuelPurchaseLine(models.Model):
     currency_id = fields.Many2one('res.currency', related='purchase_id.currency_id', store=True, readonly=True)
     carnet_type_id = fields.Many2one('acpec.fuel.carnet.type', string='Type de carnet', required=True)
     carnet_qty = fields.Integer(string='Nombre de carnets', required=True, default=1)
-    face_count = fields.Integer(string='Taille carnet', readonly=True)
-    face_value = fields.Monetary(string='Valeur de face', readonly=True)
-    generated_face_qty = fields.Integer(string='Faces generees', compute='_compute_amounts', store=True)
+    face_count = fields.Integer(string='Nombre de tickets par carnet', readonly=True)
+    face_value = fields.Monetary(string='Valeur du ticket', readonly=True)
+    generated_face_qty = fields.Integer(string='Tickets générés', compute='_compute_amounts', store=True)
     amount_total = fields.Monetary(string='Montant total', compute='_compute_amounts', store=True)
 
     _positive_carnet_qty = models.Constraint(

@@ -52,7 +52,7 @@ class AcpecFuelCarnetTransfer(models.Model):
         string='Montant total', compute='_compute_totals', store=True,
     )
     face_qty_total = fields.Integer(
-        string='Faces totales', compute='_compute_totals', store=True,
+        string='Nombre total de tickets', compute='_compute_totals', store=True,
     )
 
     _idempotency_source_wallet_unique = models.Constraint(
@@ -324,7 +324,7 @@ class AcpecFuelCarnetTransferLine(models.Model):
     )
     carnet_qty = fields.Integer(string='Nombre de carnets', required=True)
     qty_faces = fields.Integer(
-        string='Faces transférées', compute='_compute_qty', store=True,
+        string='Tickets transférés', compute='_compute_qty', store=True,
     )
     amount_total = fields.Monetary(
         string='Montant', compute='_compute_qty', store=True,

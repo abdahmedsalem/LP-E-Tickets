@@ -130,7 +130,7 @@ class AcpecFuelTransaction(models.Model):
         copy=False,
         help="Montant signé selon l'effet économique : entrant positif, sortant négatif, sans effet à zéro.",
     )
-    qty_total = fields.Integer(string='Quantité', compute='_compute_totals', store=True)
+    qty_total = fields.Integer(string='Nombre total de tickets', compute='_compute_totals', store=True)
     note = fields.Text(string='Note')
     regularization_state = fields.Selection([
         ('pending', 'À régulariser'),
@@ -582,8 +582,8 @@ class AcpecFuelTransactionLine(models.Model):
     qr_line_id = fields.Many2one('acpec.fuel.qr.line', string='Ligne QR', index=True)
     transfer_id = fields.Many2one('acpec.fuel.carnet.transfer', string='Transfert carnet', index=True)
     ticket_transfer_id = fields.Many2one('acpec.fuel.ticket.transfer', string='Transfert ticket', index=True)
-    face_value = fields.Monetary(string='Valeur de face', required=True)
-    qty = fields.Integer(string='Quantité', required=True)
+    face_value = fields.Monetary(string='Valeur du ticket', required=True)
+    qty = fields.Integer(string='Nombre de tickets', required=True)
     amount = fields.Monetary(string='Montant', compute='_compute_amount', store=True)
 
     @api.model_create_multi

@@ -44,7 +44,7 @@ class AcpecFuelQr(models.Model):
     consumed_at = fields.Datetime(string='Date consommation', readonly=True)
     expires_at = fields.Datetime(string='Expiration', compute='_compute_totals', store=True)
     amount_total = fields.Monetary(string='Montant', compute='_compute_totals', store=True)
-    face_qty_total = fields.Integer(string='Faces', compute='_compute_totals', store=True)
+    face_qty_total = fields.Integer(string='Nombre total de tickets', compute='_compute_totals', store=True)
     idempotency_key = fields.Char(string='Clé idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     qr_numeric_code_hash = fields.Char(
@@ -716,7 +716,7 @@ class AcpecFuelQrLine(models.Model):
     purchase_line_id = fields.Many2one('acpec.fuel.purchase.line', string='Ligne d’achat', required=True, index=True)
     company_id = fields.Many2one('res.company', related='qr_id.company_id', store=True, readonly=True)
     currency_id = fields.Many2one('res.currency', related='qr_id.currency_id', store=True, readonly=True)
-    face_value = fields.Monetary(string='Valeur de face', required=True)
+    face_value = fields.Monetary(string='Valeur du ticket', required=True)
     qty = fields.Integer(string='Tickets', required=True)
     amount = fields.Monetary(string='Montant', compute='_compute_amount', store=True)
     state = fields.Selection([
