@@ -1436,7 +1436,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             - Le destinataire existe, appartient à la même société, a le groupe FuelToken Client.
             - Le transfert ne peut pas être vers soi-même.
             - Chaque face_line appartient au wallet source.
-            - Les faces sont disponibles (non en QR actif/bloqué).
+            - Les tickets de chaque carnet sont disponibles (non en QR actif/bloqué).
             - La face_line n'est pas expirée.
             - Le transfert porte sur des carnets complets (carnet_qty × face_count).
             - L'expiration d'origine est conservée sur le wallet destinataire.

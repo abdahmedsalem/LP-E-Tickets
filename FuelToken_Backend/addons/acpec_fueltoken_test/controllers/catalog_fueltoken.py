@@ -228,7 +228,7 @@ API_CATALOG_FUELTOKEN = [
         'method': 'POST',
         'payload': {'purchase_id': 1},
         'requires_token': True,
-        'note': 'Valide le lot et déclenche la création des faces.',
+        'note': 'Valide le lot et déclenche la création des carnets et des tickets.',
     },
     {
         'group': 'FuelToken Admin',
