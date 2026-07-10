@@ -41,7 +41,7 @@ class AcpecFuelTransaction(models.Model):
         ('separer_qr', 'Separation QR expire/non expire'),
         ('blocage_qr', 'Blocage QR'),
         ('consommation_station', 'Consommation station'),
-        ('expiration_faces', 'Expiration faces'),
+        ('expiration_faces', 'Expiration de tickets'),
         ('expiration_qr', 'Expiration QR'),
         ('transfert_carnet', 'Transfert de carnets'),
         ('transfert_ticket', 'Transfert de tickets'),
