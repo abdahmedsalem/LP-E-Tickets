@@ -760,8 +760,8 @@ class _QrNumericCodePanel extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.visibility_outlined),
-                  ),
-                ),
+                    ),
+              ),
             ],
           ),
           const SizedBox(height: 6),

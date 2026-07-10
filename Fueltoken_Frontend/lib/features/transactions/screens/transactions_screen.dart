@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -941,6 +941,7 @@ class _TxCardState extends State<_TxCard> {
     final amountColor = _amountColorFor(
       tx,
       mode: widget.mode,
+      currentUserId: widget.currentUserId,
     );
     final title = tx.displayTitleForViewer(widget.currentUserId);
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
@@ -948,6 +949,7 @@ class _TxCardState extends State<_TxCard> {
     final amountPrefix = _historyAmountPrefix(
       tx,
       mode: widget.mode,
+      currentUserId: widget.currentUserId,
     );
 
     return Container(
@@ -1486,43 +1488,27 @@ String historyTxTitle(TxType type) {
   }
 }
 
-Color _historyAmountColor(TxType type) {
-  switch (type) {
-    case TxType.purchaseValidated:
-      return AppColors.leaderGreen;
-    case TxType.carnetReceived:
-      return AppColors.leaderGreen;
-    case TxType.purchaseSubmitted:
-    case TxType.purchaseRejected:
-      return AppColors.danger;
-    case TxType.carnetTransfer:
-    case TxType.stationConsumption:
-    case TxType.expiration:
-    case TxType.qrEmission:
-    case TxType.qrSeparer:
-    case TxType.qrRetirer:
-      return AppColors.danger;
-    case TxType.qrBlocked:
-    case TxType.walletLedger:
-      return AppColors.primary;
-  }
-}
+
 
 Color _amountColorFor(
   BusinessTransaction tx, {
   required TransactionsScreenMode mode,
+  String? currentUserId,
 }) {
-  if (mode != TransactionsScreenMode.wallet) {
-    return _historyAmountColor(tx.type);
-  }
   switch (tx.type) {
     case TxType.purchaseValidated:
       return AppColors.leaderGreen;
     case TxType.carnetTransfer:
-      return tx.transferIsIncoming ? AppColors.leaderGreen : AppColors.danger;
     case TxType.carnetReceived:
-      return AppColors.leaderGreen;
+      final isIncoming = tx.isIncomingTransferForViewer(currentUserId);
+      return isIncoming ? AppColors.leaderGreen : AppColors.danger;
+    case TxType.purchaseSubmitted:
+    case TxType.purchaseRejected:
     case TxType.expiration:
+    case TxType.stationConsumption:
+    case TxType.qrEmission:
+    case TxType.qrSeparer:
+    case TxType.qrRetirer:
       return AppColors.danger;
     default:
       return AppColors.primary;
@@ -1532,17 +1518,16 @@ Color _amountColorFor(
 String _historyAmountPrefix(
   BusinessTransaction tx, {
   required TransactionsScreenMode mode,
+  String? currentUserId,
 }) {
   if (mode != TransactionsScreenMode.wallet) return '';
   switch (tx.type) {
     case TxType.purchaseValidated:
       return '+ ';
     case TxType.carnetTransfer:
-      return tx.transferIsIncoming
-          ? '+ '
-          : '- ';
     case TxType.carnetReceived:
-      return '+ ';
+      final isIncoming = tx.isIncomingTransferForViewer(currentUserId);
+      return isIncoming ? '+ ' : '- ';
     case TxType.expiration:
       return '- ';
     default:

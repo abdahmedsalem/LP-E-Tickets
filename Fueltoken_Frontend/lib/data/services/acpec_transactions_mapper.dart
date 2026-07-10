@@ -589,6 +589,25 @@ class AcpecTransactionsMapper {
 
     var type = _resolveTxType(row);
     var transferIsIncoming = false;
+    final transferUsesTickets =
+        _hasAny(
+          row,
+          'qty_tickets',
+          'ticket_qty',
+          'ticket_transfer_direction',
+          'ticket_transfer_other_party',
+        ) ||
+        _blobMany([
+          row['type'],
+          row['transaction_type'],
+          row['kind'],
+          row['move_type'],
+          row['operation'],
+          row['tx_type'],
+          row['ticket_transfer_direction'],
+          row['ticket_transfer_other_party'],
+          row['ticket_transfer_other_party_name'],
+        ]).contains('ticket');
 
     // Affiner la direction du transfert depuis le champ backend
     if (type == TxType.carnetTransfer) {
@@ -818,6 +837,7 @@ class AcpecTransactionsMapper {
         row['regularization_date'] ?? row['regularisation_date'],
       ),
       transferIsIncoming: transferIsIncoming,
+      transferUsesTickets: transferUsesTickets,
       actorUserId: actorUserId?.isNotEmpty == true ? actorUserId : null,
       counterpartyUserId:
           counterpartyUserId?.isNotEmpty == true ? counterpartyUserId : null,

@@ -144,6 +144,7 @@ class BusinessTransaction extends Equatable {
   final String? regularizationReference;
   final DateTime? regularizationDate;
   final bool transferIsIncoming;
+  final bool transferUsesTickets;
   final String? actorUserId;
   final String? counterpartyUserId;
   final String? actorUserName;
@@ -175,6 +176,7 @@ class BusinessTransaction extends Equatable {
     this.regularizationReference,
     this.regularizationDate,
     this.transferIsIncoming = false,
+    this.transferUsesTickets = false,
     this.actorUserId,
     this.counterpartyUserId,
     this.actorUserName,
@@ -224,6 +226,7 @@ class BusinessTransaction extends Equatable {
     if (type != TxType.carnetTransfer && type != TxType.carnetReceived) {
       return false;
     }
+    if (transferUsesTickets) return true;
     if (lines.isEmpty) return false;
     return lines.every((line) => line.carnetSize <= 1);
   }
@@ -311,6 +314,7 @@ class BusinessTransaction extends Equatable {
     regularizationReference,
     regularizationDate,
     transferIsIncoming,
+    transferUsesTickets,
     actorUserId,
     counterpartyUserId,
     actorUserName,
