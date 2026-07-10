@@ -138,7 +138,7 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
             "res_id": purchase.id,
             "type": "binary",
         })
-        purchase.write({"proof_attachment_ids": [(4, attachment.id)]})
+        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({"proof_attachment_ids": [(4, attachment.id)]})
         return purchase
 
     def test_patch43m10_mobile_transactions_use_wallet_partner_not_actor_or_counterparty(self):
@@ -283,7 +283,7 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
             ("transaction_type", "=", "purchase_submitted"),
         ], limit=1)
         self.assertTrue(tx)
-        purchase.write({"rejection_reason": "Preuve non conforme M14"})
+        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({"rejection_reason": "Preuve non conforme M14"})
         purchase.action_reject()
         purchase.invalidate_recordset(["state", "rejected_at", "rejected_by", "rejection_reason"])
         tx.invalidate_recordset(["transaction_type", "purchase_state", "purchase_rejected_at", "purchase_rejection_reason"])

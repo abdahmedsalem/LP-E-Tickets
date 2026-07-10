@@ -203,5 +203,7 @@ class AcpecFuelPurchaseCore(models.Model):
                         request_hash=purchase.approval_request_hash or purchase.request_hash,
                         operation_ref=operation_ref,
                     )
-                purchase.sudo().write({'fuel_value_created': True})
+                purchase.with_context(allow_fuel_purchase_update=True).sudo().write({
+                    'fuel_value_created': True,
+                })
         return True
