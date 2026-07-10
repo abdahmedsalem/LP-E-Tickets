@@ -681,7 +681,7 @@ class AcpecTransactionsMapper {
         row['user_name']?.toString() ??
         row['partner_name']?.toString() ??
         userName;
-    bool _matchesSelf(String? value) {
+    bool matchesSelf(String? value) {
       final candidate = (value ?? '').trim();
       if (candidate.isEmpty) return false;
       final normalizedCandidate = candidate.toLowerCase();
@@ -697,11 +697,11 @@ class AcpecTransactionsMapper {
           normalizedCandidate == normalizedUname;
     }
 
-    String? _firstNonSelf(List<String?> values) {
+    String? firstNonSelf(List<String?> values) {
       for (final value in values) {
         final candidate = (value ?? '').trim();
         if (candidate.isEmpty || candidate == 'false') continue;
-        if (_matchesSelf(candidate)) continue;
+        if (matchesSelf(candidate)) continue;
         return candidate;
       }
       return null;
@@ -754,7 +754,7 @@ class AcpecTransactionsMapper {
 
       if ((transferParty ?? '').isEmpty) {
         if (type == TxType.carnetReceived) {
-          transferParty = _firstNonSelf([
+          transferParty = firstNonSelf([
             actorUserName,
             counterpartyUserName,
             row['transfer_other_party_name']?.toString(),
@@ -763,7 +763,7 @@ class AcpecTransactionsMapper {
             row['ticket_transfer_other_party']?.toString(),
           ]);
         } else {
-          transferParty = _firstNonSelf([
+          transferParty = firstNonSelf([
             counterpartyUserName,
             actorUserName,
             row['transfer_other_party_name']?.toString(),

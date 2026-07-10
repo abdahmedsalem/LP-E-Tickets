@@ -997,9 +997,9 @@ class _TxCardState extends State<_TxCard> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.ink,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
                               ),
                             ),
                           ),
@@ -1025,13 +1025,18 @@ class _TxCardState extends State<_TxCard> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '$dateLabel $hourLabel',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '$dateLabel $hourLabel',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1215,6 +1220,15 @@ class _TxLineRow extends StatelessWidget {
     return 'Date d\'expiration : ${DateFormat('dd-MM-yyyy').format(line.expirationDate!)}';
   }
 
+  bool get _showTicketCount =>
+      (txType == TxType.carnetTransfer || txType == TxType.carnetReceived) &&
+      line.qty > 0;
+
+  String? _ticketCountLabel() {
+    if (!_showTicketCount) return null;
+    return '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}';
+  }
+
   TextStyle _titleStyle(BuildContext context, {required double fontSize}) {
     return TextStyle(
       fontSize: fontSize,
@@ -1235,6 +1249,7 @@ class _TxLineRow extends StatelessWidget {
 
   Widget _purchaseBody(BuildContext context) {
     final subtitle = _subtitle();
+    final ticketCountLabel = _ticketCountLabel();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
@@ -1255,29 +1270,55 @@ class _TxLineRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _titleStyle(context, fontSize: 14),
                 ),
-                if (subtitle != null) ...[
+                if (subtitle != null || ticketCountLabel != null) ...[
                   const SizedBox(height: 8),
-                  Text(subtitle, style: _dateStyle()),
+                  Row(
+                    children: [
+                      if (subtitle != null)
+                        Expanded(child: Text(subtitle, style: _dateStyle()))
+                      else
+                        const Expanded(child: SizedBox()),
+                      if (ticketCountLabel != null)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            ticketCountLabel,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.muted,
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: 12),
-          _AmountInline(
-            amount: line.amount,
-            textAlign: TextAlign.right,
-            valueStyle: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-              height: 1.1,
-            ),
-            unitStyle: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: Colors.black.withValues(alpha: 0.82),
-              height: 1.1,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _AmountInline(
+                amount: line.amount,
+                textAlign: TextAlign.right,
+                valueStyle: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                  height: 1.1,
+                ),
+                unitStyle: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black.withValues(alpha: 0.82),
+                  height: 1.1,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1286,6 +1327,7 @@ class _TxLineRow extends StatelessWidget {
 
   Widget _qrBody(BuildContext context) {
     final subtitle = _subtitle();
+    final ticketCountLabel = _ticketCountLabel();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
@@ -1306,29 +1348,55 @@ class _TxLineRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _titleStyle(context, fontSize: 14),
                 ),
-                if (subtitle != null) ...[
+                if (subtitle != null || ticketCountLabel != null) ...[
                   const SizedBox(height: 8),
-                  Text(subtitle, style: _dateStyle()),
+                  Row(
+                    children: [
+                      if (subtitle != null)
+                        Expanded(child: Text(subtitle, style: _dateStyle()))
+                      else
+                        const Expanded(child: SizedBox()),
+                      if (ticketCountLabel != null)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            ticketCountLabel,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.muted,
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: 12),
-          _AmountInline(
-            amount: line.amount,
-            textAlign: TextAlign.right,
-            valueStyle: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-              height: 1.1,
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: Colors.black.withValues(alpha: 0.72),
-              height: 1.1,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _AmountInline(
+                amount: line.amount,
+                textAlign: TextAlign.right,
+                valueStyle: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                  height: 1.1,
+                ),
+                unitStyle: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black.withValues(alpha: 0.72),
+                  height: 1.1,
+                ),
+              ),
+            ],
           ),
         ],
       ),

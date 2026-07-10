@@ -43,7 +43,7 @@ void main() {
       final tx = page.items.single;
       expect(tx.type, TxType.carnetTransfer);
       expect(tx.transferIsIncoming, isFalse);
-      expect(tx.displayTitle, 'Transfert');
+      expect(tx.displayTitle, 'Transfert de tickets');
       expect(tx.transferParty, 'Client Destination');
     });
 
@@ -85,7 +85,7 @@ void main() {
       final tx = page.items.single;
       expect(tx.type, TxType.carnetReceived);
       expect(tx.transferIsIncoming, isTrue);
-      expect(tx.displayTitle, 'Réception');
+      expect(tx.displayTitle, 'Réception de tickets');
       expect(tx.transferParty, 'Client Source');
     });
   });

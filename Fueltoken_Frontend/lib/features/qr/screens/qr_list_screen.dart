@@ -357,6 +357,11 @@ class _QrCompactListTile extends StatelessWidget {
 
   bool get _hasPublicCode => qr.publicCode.trim().isNotEmpty;
 
+  String get _referenceLabel {
+    final ref = (qr.internalRef ?? '').trim();
+    return ref.isEmpty ? 'Référence QR indisponible' : ref;
+  }
+
   DateTime? get _effectiveExpiration {
     final direct = qr.expiresAt;
     if (direct != null && direct.year > 1970) {
@@ -466,6 +471,18 @@ class _QrCompactListTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    Text(
+                      _referenceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
