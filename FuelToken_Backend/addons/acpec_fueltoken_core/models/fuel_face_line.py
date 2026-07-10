@@ -250,9 +250,9 @@ class AcpecFuelFaceLine(models.Model):
                 rec.qty_transferred_out,
             ]
             if any(qty < 0 for qty in quantities):
-                raise ValidationError(_('Les quantites de faces ne peuvent pas etre negatives.'))
+                raise ValidationError(_('Les quantités de tickets ne peuvent pas être négatives.'))
             if rec.face_value <= 0:
-                raise ValidationError(_('La valeur de face doit etre positive.'))
+                raise ValidationError(_('La valeur du ticket doit être positive.'))
             if rec.qty_initial != (
                 rec.qty_available
                 + rec.qty_qr_active
@@ -261,7 +261,7 @@ class AcpecFuelFaceLine(models.Model):
                 + rec.qty_expired
                 + rec.qty_transferred_out
             ):
-                raise ValidationError(_('Invariant de conservation des faces non respecte.'))
+                raise ValidationError(_('Invariant de conservation des tickets non respecté.'))
 
     def is_transferable_carnet_line(self):
         """Return True when the face line can be transferred as intact carnet blocks."""
@@ -307,7 +307,7 @@ class AcpecFuelFaceLine(models.Model):
             requested_carnet_type_id = int(request.get('carnet_type_id') or 0)
             remaining = int(request['qty'])
             if remaining <= 0:
-                raise ValidationError(_('La quantite a emettre doit etre positive.'))
+                raise ValidationError(_('Le nombre de tickets à émettre doit être positif.'))
 
             if requested_face_line_id:
                 if requested_face_line_id in seen_explicit_face_line_ids:
@@ -338,7 +338,7 @@ class AcpecFuelFaceLine(models.Model):
                     raise ValidationError(_('Carnet expire.'))
                 if line.qty_available < remaining:
                     label = line.carnet_short_code or line.carnet_no or line.id
-                    raise ValidationError(_('Quantite disponible insuffisante pour %s.') % label)
+                    raise ValidationError(_('Tickets disponibles insuffisants pour %s.') % label)
 
                 line.with_context(allow_fuel_face_line_state_update=True).sudo().write({
                     'qty_available': line.qty_available - remaining,
@@ -382,7 +382,7 @@ class AcpecFuelFaceLine(models.Model):
             line_ids = [row[0] for row in self.env.cr.fetchall()]
             if not line_ids:
                 label = requested_carnet_type_id if requested_carnet_type_id else requested_face_value
-                raise ValidationError(_('Quantite disponible insuffisante pour %s.') % label)
+                raise ValidationError(_('Tickets disponibles insuffisants pour %s.') % label)
 
             lines = self.sudo().browse(line_ids)
             lines.invalidate_recordset(['qty_available', 'qty_qr_active'])
@@ -406,7 +406,7 @@ class AcpecFuelFaceLine(models.Model):
 
             if remaining:
                 label = requested_carnet_type_id if requested_carnet_type_id else requested_face_value
-                raise ValidationError(_('Quantite disponible insuffisante pour %s.') % label)
+                raise ValidationError(_('Tickets disponibles insuffisants pour %s.') % label)
         return allocations
 
     def move_available_to_expired(self):
