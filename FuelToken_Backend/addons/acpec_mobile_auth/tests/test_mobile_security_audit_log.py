@@ -59,13 +59,17 @@ class TestMobileSecurityAuditLog(TransactionCase):
         session = token_data['session'].sudo()
 
         if trusted:
-            session.write({
+            session.with_context(
+                acpec_mobile_session_internal_write=True,
+            ).write({
                 'device_trust_state': 'trusted',
                 'device_trusted_at': fields.Datetime.now(),
                 'device_blocked_at': False,
             })
         else:
-            session.write({
+            session.with_context(
+                acpec_mobile_session_internal_write=True,
+            ).write({
                 'device_trust_state': 'pending_trust',
                 'device_trusted_at': False,
                 'device_blocked_at': False,

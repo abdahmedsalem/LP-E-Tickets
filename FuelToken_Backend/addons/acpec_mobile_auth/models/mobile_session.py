@@ -104,6 +104,58 @@ class AcpecMobileSession(models.Model):
     # Patch43K6: throttle du touch presence sur acpec.mobile.device.
     DEVICE_LAST_SEEN_TOUCH_MIN_SECONDS = 60
 
+    INTERNAL_CREATE_CONTEXT = 'acpec_mobile_session_internal_create'
+    INTERNAL_WRITE_CONTEXT = 'acpec_mobile_session_internal_write'
+    INTERNAL_PURGE_CONTEXT = 'acpec_mobile_session_internal_purge'
+
+    @api.model
+    def _assert_internal_create_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_CREATE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La création d’une session mobile est réservée aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_write_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_WRITE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La modification d’une session mobile est réservée aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_purge_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_PURGE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La suppression d’une session mobile est réservée aux purges techniques internes."
+            ))
+        return True
+
+    @api.model
+    def _create_internal(self, vals):
+        sessions = self.sudo().with_context(
+            acpec_mobile_session_internal_create=True,
+        ).create(vals)
+
+        return self.sudo().with_context(
+            acpec_mobile_session_internal_create=False,
+            acpec_mobile_session_internal_write=False,
+            acpec_mobile_session_internal_purge=False,
+        ).browse(sessions.ids)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_mobile_session_internal_write=True,
+        ).write(vals)
+
     @api.depends(
         'user_id',
         'user_id.name',
@@ -213,17 +265,22 @@ class AcpecMobileSession(models.Model):
                 lambda session: session.is_device_approval_candidate and session != candidate
             )
             if to_clear:
-                to_clear.with_context(skip_device_approval_candidate_sync=True).write({
+                to_clear.with_context(
+                    skip_device_approval_candidate_sync=True,
+                )._write_internal({
                     'is_device_approval_candidate': False,
                 })
 
             if candidate and not candidate.is_device_approval_candidate:
-                candidate.with_context(skip_device_approval_candidate_sync=True).write({
+                candidate.with_context(
+                    skip_device_approval_candidate_sync=True,
+                )._write_internal({
                     'is_device_approval_candidate': True,
                 })
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._assert_internal_create_allowed()
         sequence = self.env['ir.sequence']
         now = fields.Datetime.now()
         for vals in vals_list:
@@ -252,6 +309,8 @@ class AcpecMobileSession(models.Model):
         return sessions
 
     def write(self, vals):
+        self._assert_internal_write_allowed()
+
         if 'device_uid' in vals:
             vals = dict(vals)
             vals['device_uid'] = self._normalize_stable_device_uid_or_raise(vals.get('device_uid'))
@@ -600,7 +659,9 @@ class AcpecMobileSession(models.Model):
         ])
 
         if prior_sessions:
-            prior_sessions.with_context(skip_device_approval_candidate_sync=True).write({
+            prior_sessions.with_context(
+                skip_device_approval_candidate_sync=True,
+            )._write_internal({
                 'state': 'rotated',
                 'rotated_at': now,
                 'rotated_to_session_id': new_session.id,
@@ -643,7 +704,7 @@ class AcpecMobileSession(models.Model):
         }
         vals.update(trust_vals)
 
-        session = self.sudo().create(vals)
+        session = self._create_internal(vals)
         self._rotate_prior_active_sessions_for_device_login(
             user.sudo(),
             session.device_uid,
@@ -679,7 +740,7 @@ class AcpecMobileSession(models.Model):
                 continue
             try:
                 with self.env.cr.savepoint():
-                    session.write({'last_seen_at': now})
+                    session._write_internal({'last_seen_at': now})
             except (pg_errors.SerializationFailure, pg_errors.DeadlockDetected) as exc:
                 _logger.info(
                     'mobile_session_last_seen_touch_skipped session_id=%s reason=%s',
@@ -702,7 +763,10 @@ class AcpecMobileSession(models.Model):
         try:
             self._check_mobile_only_user(session.user_id.sudo())
         except AccessError:
-            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            session._write_internal({
+                'state': 'revoked',
+                'revoked_at': now,
+            })
             return self.browse()
         session._touch_last_seen_at_best_effort(now=now)
         return session
@@ -758,7 +822,7 @@ class AcpecMobileSession(models.Model):
         vals['device_uid'] = device.stable_device_uid
         vals.update(self._device_trust_values_for_device(device))
 
-        new_session = self.sudo().create(vals)
+        new_session = self._create_internal(vals)
         return {
             'session': new_session,
             'access_token': access_token,
@@ -771,23 +835,35 @@ class AcpecMobileSession(models.Model):
     @api.model
     def _assert_refreshable_mobile_session(self, session, now):
         if session.refresh_expires_at and session.refresh_expires_at <= now:
-            session.sudo().write({'state': 'expired'})
+            session._write_internal({'state': 'expired'})
             raise AccessError(_('Refresh token expiré.'))
         if not self._is_stable_device_uid(session.device_uid):
-            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            session._write_internal({
+                'state': 'revoked',
+                'revoked_at': now,
+            })
             raise AccessError(_('Identifiant appareil mobile invalide.'))
         try:
             self._assert_device_uid_can_open_session(session.user_id.sudo(), session.device_uid)
         except AccessError as exc:
-            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            session._write_internal({
+                'state': 'revoked',
+                'revoked_at': now,
+            })
             raise exc
         if session.device_trust_state == 'blocked':
-            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            session._write_internal({
+                'state': 'revoked',
+                'revoked_at': now,
+            })
             raise AccessError(_('Appareil mobile bloqué.'))
         try:
             self._check_mobile_only_user(session.user_id.sudo())
         except AccessError as exc:
-            session.sudo().write({'state': 'revoked', 'revoked_at': now})
+            session._write_internal({
+                'state': 'revoked',
+                'revoked_at': now,
+            })
             raise exc
 
     @api.model
@@ -798,7 +874,7 @@ class AcpecMobileSession(models.Model):
         grace_seconds = self._refresh_token_grace_seconds()
         grace_until = now + relativedelta(seconds=grace_seconds) if grace_seconds else now
 
-        session.sudo().write({
+        session._write_internal({
             'state': 'rotated',
             'rotated_at': now,
             'refresh_grace_until': grace_until,
@@ -817,7 +893,7 @@ class AcpecMobileSession(models.Model):
 
         self._assert_refreshable_mobile_session(session, now)
 
-        session.sudo().write({
+        session._write_internal({
             'refresh_grace_used_at': now,
             'last_seen_at': now,
         })
@@ -850,10 +926,18 @@ class AcpecMobileSession(models.Model):
     def action_revoke(self):
         self._check_device_trust_admin()
         now = fields.Datetime.now()
+        actor_name = self.env.user.display_name
+
         for session in self:
             if session.state == 'active':
-                session.write({'state': 'revoked', 'revoked_at': now})
-                session.message_post(body='Session mobile révoquée par %s.' % (self.env.user.display_name,))
+                session._write_internal({
+                    'state': 'revoked',
+                    'revoked_at': now,
+                })
+                session.sudo().message_post(
+                    body='Session mobile révoquée par %s.'
+                    % actor_name,
+                )
         return True
 
     def _revoke_for_mobile_logout(self):
@@ -865,7 +949,10 @@ class AcpecMobileSession(models.Model):
         now = fields.Datetime.now()
         for session in self.sudo().exists():
             if session.state == 'active':
-                session.write({'state': 'revoked', 'revoked_at': now})
+                session._write_internal({
+                    'state': 'revoked',
+                    'revoked_at': now,
+                })
         return True
 
     def _check_single_trust_target_per_user(self):
@@ -955,7 +1042,7 @@ class AcpecMobileSession(models.Model):
             ('device_uid', '!=', device_uid),
         ])
         if previous_trusted:
-            previous_trusted.write({
+            previous_trusted._write_internal({
                 'device_trust_state': 'pending_trust',
                 'device_trusted_at': False,
                 'device_blocked_at': False,
@@ -1043,4 +1130,5 @@ class AcpecMobileSession(models.Model):
         return result
 
     def unlink(self):
-        raise UserError(_('Les sessions mobiles doivent être révoquées et non supprimées.'))
+        self._assert_internal_purge_allowed()
+        return super().unlink()
