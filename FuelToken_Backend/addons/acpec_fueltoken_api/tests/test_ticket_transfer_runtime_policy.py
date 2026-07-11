@@ -4,6 +4,7 @@ import base64
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
@@ -352,3 +353,45 @@ class TestTicketTransferRuntimePolicy(TransactionCase):
         payload["lines"] = [{"face_line_id": face_line.id, "carnet_qty": 1}]
         self._assert_error_contains(self._call_transfer_tickets(controller, payload), "qty_tickets")
         self.assertFalse(self._transfer_by_key(source_wallet, key))
+
+    def test_ticket_transfer_mobile_confirmation_requires_internal_helper(self):
+        (
+            _controller, source_user, _source_login, _recipient_user,
+            _recipient_login, session, _carnet_type, _purchase, face_line,
+            source_wallet, dest_wallet,
+        ) = self._controller_with_ticket_transfer_fixture(25008)
+
+        transfer = self.env[
+            'acpec.fuel.ticket.transfer'
+        ]._create_internal({
+            'source_wallet_id': source_wallet.id,
+            'dest_wallet_id': dest_wallet.id,
+            'company_id': self.company.id,
+            'idempotency_key': 'ticket-transfer-mobile-helper-i2',
+            'request_hash': 'ticket-transfer-mobile-helper-hash-i2',
+            'line_ids': [(0, 0, {
+                'source_face_line_id': face_line.id,
+                'qty_faces': 1,
+            })],
+        })
+
+        with self.assertRaises(AccessError):
+            transfer.action_confirm_mobile(
+                actor_user=source_user,
+                mobile_session=session,
+            )
+
+        transfer._confirm_mobile_internal(
+            actor_user=source_user,
+            mobile_session=session,
+        )
+        transfer.invalidate_recordset([
+            'state',
+            'confirmed_by',
+            'mobile_session_id',
+            'device_uid',
+        ])
+        self.assertEqual(transfer.state, 'confirmed')
+        self.assertEqual(transfer.confirmed_by, source_user)
+        self.assertEqual(transfer.mobile_session_id, session)
+        self.assertEqual(transfer.device_uid, session.device_uid)

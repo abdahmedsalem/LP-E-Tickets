@@ -21,3 +21,5 @@ from . import test_carnet_transfer_runtime_guards_m23c5
 from . import test_wallet_runtime_guards_m23c6a
 from . import test_face_line_runtime_guards_m23c6b
 from . import test_qr_runtime_guards_m23c6c
+from . import test_ticket_transfer
+from . import test_ticket_transfer_runtime_guards_m23c6e

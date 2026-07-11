@@ -651,13 +651,11 @@ class AcpecFuelDistributor(models.Model):
             ], limit=1)
             if existing:
                 if confirm and existing.state == 'draft':
-                    existing.action_confirm(actor_user=operator_user)
+                    existing._confirm_internal(operator_user)
                 return existing
 
         transfer_line_vals = self._prepare_ticket_transfer_line_vals(lines)
-        transfer = self.env['acpec.fuel.ticket.transfer'].sudo().with_context(
-            allow_fuel_ticket_transfer_create=True,
-        ).create({
+        transfer = self.env['acpec.fuel.ticket.transfer']._create_internal({
             'source_wallet_id': company_wallet.id,
             'dest_wallet_id': member_wallet.id,
             'company_id': self.company_id.id,
@@ -666,7 +664,7 @@ class AcpecFuelDistributor(models.Model):
             'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
         })
         if confirm:
-            transfer.action_confirm(actor_user=operator_user)
+            transfer._confirm_internal(operator_user)
 
         self.message_post(body=_(
             'Transfert de tickets société vers %(member)s: %(transfer)s, %(qty)s tickets.'
