@@ -47,10 +47,7 @@ class TestFaceLineRuntimeGuardsM23C6B(TransactionCase):
 
         cls.purchase = cls.env[
             'acpec.fuel.purchase'
-        ].sudo().with_context(
-            allow_fuel_purchase_create=True,
-            allow_fuel_purchase_line_create=True,
-        ).create({
+        ].sudo()._create_internal({
             'partner_id': cls.partner.id,
             'company_id': cls.company.id,
             'payment_reference': 'M23C6B-%s' % suffix,
@@ -58,9 +55,7 @@ class TestFaceLineRuntimeGuardsM23C6B(TransactionCase):
 
         cls.purchase_line = cls.env[
             'acpec.fuel.purchase.line'
-        ].sudo().with_context(
-            allow_fuel_purchase_line_create=True,
-        ).create({
+        ].sudo()._create_internal({
             'purchase_id': cls.purchase.id,
             'carnet_type_id': cls.carnet_type.id,
             'carnet_qty': 1,

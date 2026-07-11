@@ -94,12 +94,12 @@ class TestPurchaseLotPropagation(TransactionCase):
         return Station.create(vals), station_user
 
     def _create_purchase_with_two_carnets(self, partner, suffix):
-        purchase = self.Purchase.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).create({
+        purchase = self.Purchase._create_internal({
             'partner_id': partner.id,
             'company_id': self.company.id,
             'payment_reference': 'PAY-G6-%s' % suffix,
         })
-        purchase_line = self.env['acpec.fuel.purchase.line'].with_context(allow_fuel_purchase_line_create=True).sudo().create({
+        purchase_line = self.env['acpec.fuel.purchase.line']._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': self.carnet_type.id,
             'carnet_qty': 2,
@@ -112,7 +112,7 @@ class TestPurchaseLotPropagation(TransactionCase):
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase._write_proof_internal({'proof_attachment_ids': [(4, attachment.id)]})
 
         purchase.action_submit()
         purchase.action_approve()

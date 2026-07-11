@@ -36,12 +36,12 @@ class TestD2MechanicalInvariants(TransactionCase):
         self.fail('Impossible de créer un type de carnet isolé pour G3.')
 
     def _create_purchase_with_face_line(self):
-        purchase = self.Purchase.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).create({
+        purchase = self.Purchase._create_internal({
             'partner_id': self.partner.id,
             'company_id': self.company.id,
             'payment_reference': 'PAY-G3-D2',
         })
-        self.env['acpec.fuel.purchase.line'].with_context(allow_fuel_purchase_line_create=True).sudo().create({
+        self.env['acpec.fuel.purchase.line']._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': self.carnet_type.id,
             'carnet_qty': 1,
@@ -54,7 +54,7 @@ class TestD2MechanicalInvariants(TransactionCase):
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase._write_proof_internal({'proof_attachment_ids': [(4, attachment.id)]})
         purchase.action_submit()
         purchase.action_approve()
         purchase._create_face_lines_after_approval()

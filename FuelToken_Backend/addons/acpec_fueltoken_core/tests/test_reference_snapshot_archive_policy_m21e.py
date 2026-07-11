@@ -36,17 +36,12 @@ class TestReferenceSnapshotArchivePolicyM21E(TransactionCase):
             'phone': 'm21e-%s' % uuid4().hex[:8],
             'company_id': self.company.id,
         })
-        purchase = self.Purchase.with_context(
-            allow_fuel_purchase_create=True,
-            allow_fuel_purchase_line_create=True,
-        ).sudo().create({
+        purchase = self.Purchase._create_internal({
             'partner_id': partner.id,
             'company_id': self.company.id,
             'payment_reference': 'M21E-%s' % uuid4().hex[:8],
         })
-        line = self.PurchaseLine.with_context(
-            allow_fuel_purchase_line_create=True,
-        ).sudo().create({
+        line = self.PurchaseLine._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': carnet_type.id,
             'carnet_qty': 1,

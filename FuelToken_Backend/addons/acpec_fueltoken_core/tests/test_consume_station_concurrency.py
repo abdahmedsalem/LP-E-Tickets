@@ -127,12 +127,12 @@ class _ConsumeFixtureMixin:
         })
         carnet_type = self._unique_carnet_type(env, company)
 
-        purchase = env['acpec.fuel.purchase'].with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
+        purchase = env['acpec.fuel.purchase']._create_internal({
             'partner_id': partner.id,
             'company_id': company.id,
             'payment_reference': 'PAY-CONC-%s' % suffix,
         })
-        env['acpec.fuel.purchase.line'].with_context(allow_fuel_purchase_line_create=True).sudo().create({
+        env['acpec.fuel.purchase.line']._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': carnet_type.id,
             'carnet_qty': 1,  # 1 carnet * 10 tickets = 10 tickets disponibles
@@ -145,7 +145,7 @@ class _ConsumeFixtureMixin:
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase._write_proof_internal({'proof_attachment_ids': [(4, attachment.id)]})
 
         purchase.action_submit()
         purchase.action_approve()

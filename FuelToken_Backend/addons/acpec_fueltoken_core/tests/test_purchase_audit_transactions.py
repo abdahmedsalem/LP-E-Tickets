@@ -40,12 +40,12 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
         self.fail('Impossible de créer un type de carnet isolé pour le test.')
 
     def _create_purchase(self, carnet_qty=2):
-        purchase = self.Purchase.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).create({
+        purchase = self.Purchase._create_internal({
             'partner_id': self.partner.id,
             'company_id': self.company.id,
             'payment_reference': 'PAY-AUDIT-001',
         })
-        self.env['acpec.fuel.purchase.line'].with_context(allow_fuel_purchase_line_create=True).sudo().create({
+        self.env['acpec.fuel.purchase.line']._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': self.carnet_type.id,
             'carnet_qty': carnet_qty,
@@ -58,7 +58,7 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase._write_proof_internal({'proof_attachment_ids': [(4, attachment.id)]})
         return purchase
 
     def _transactions(self, purchase, transaction_type):
@@ -163,8 +163,9 @@ class TestAcpecFuelPurchaseAuditTransactions(TransactionCase):
         submitted_tx_id = submitted_tx.id
         submitted_tx_name = submitted_tx.name
 
-        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'rejection_reason': 'Preuve non conforme'})
-        purchase.action_reject()
+        purchase.action_reject(
+            reason='Preuve non conforme',
+        )
         purchase.invalidate_recordset(['state', 'rejected_at', 'rejected_by', 'rejection_reason'])
         submitted_tx.invalidate_recordset(['transaction_type', 'purchase_state', 'purchase_rejected_at', 'purchase_rejection_reason'])
 
