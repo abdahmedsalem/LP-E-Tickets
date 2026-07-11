@@ -96,9 +96,24 @@ class AcpecFuelTicketTransfer(models.Model):
         index=True,
     )
 
+    def _confirm_mobile_internal(self, actor_user=None, mobile_session=None):
+        return self.sudo().with_context(
+            acpec_fueltoken_ticket_transfer_internal_operation='mobile_confirm',
+        ).action_confirm_mobile(
+            actor_user=actor_user,
+            mobile_session=mobile_session,
+        )
+
     def action_confirm_mobile(self, actor_user=None, mobile_session=None):
         """Confirm ticket transfer from mobile API and append mobile audit data."""
         self.ensure_one()
+        if not self._ticket_transfer_internal_context_is_valid(
+            'mobile_confirm'
+        ):
+            raise AccessError(_(
+                "La confirmation mobile d’un transfert de tickets est "
+                "réservée au contrôleur API interne."
+            ))
         if not actor_user:
             raise UserError(_('Acteur mobile requis.'))
         if not mobile_session:
@@ -116,9 +131,10 @@ class AcpecFuelTicketTransfer(models.Model):
         if not actor_user:
             raise UserError(_('Acteur mobile invalide.'))
 
-        self.action_confirm(actor_user=actor_user)
+        self._confirm_internal(actor_user)
+        self.invalidate_recordset(['state'])
 
-        self.sudo().with_context(allow_fuel_ticket_transfer_update=True).write({
+        self._write_mobile_audit_internal({
             'mobile_session_id': mobile_session.id,
             'device_uid': mobile_session.device_uid,
         })

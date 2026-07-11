@@ -1296,7 +1296,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         )
                     if existing.state != 'confirmed':
                         mobile_session = self._get_mobile_session(required=True)
-                        existing.action_confirm_mobile(
+                        existing._confirm_mobile_internal(
                             actor_user=source_user,
                             mobile_session=mobile_session,
                         )
@@ -1325,9 +1325,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     })
 
                 with request.env.cr.savepoint():
-                    transfer = request.env['acpec.fuel.ticket.transfer'].sudo().with_context(
-                        allow_fuel_ticket_transfer_create=True,
-                    ).create({
+                    transfer = request.env['acpec.fuel.ticket.transfer']._create_internal({
                         'source_wallet_id': source_wallet.id,
                         'dest_wallet_id': dest_wallet.id,
                         'company_id': source_wallet.company_id.id,
@@ -1337,7 +1335,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
                     })
                     mobile_session = self._get_mobile_session(required=True)
-                    transfer.action_confirm_mobile(
+                    transfer._confirm_mobile_internal(
                         actor_user=source_user,
                         mobile_session=mobile_session,
                     )
