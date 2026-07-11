@@ -54,13 +54,78 @@ class AcpecMobileAuthOtp(models.Model):
         ('cancelled', 'Cancelled'),
     ], default='pending', required=True, tracking=True, index=True)
 
+    INTERNAL_CREATE_CONTEXT = 'acpec_mobile_otp_internal_create'
+    INTERNAL_WRITE_CONTEXT = 'acpec_mobile_otp_internal_write'
+    INTERNAL_PURGE_CONTEXT = 'acpec_mobile_otp_internal_purge'
+
+    @api.model
+    def _assert_internal_create_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_CREATE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La création d’un challenge OTP est réservée "
+                "aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_write_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_WRITE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La modification d’un challenge OTP est réservée "
+                "aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_purge_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_PURGE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La suppression d’un challenge OTP est réservée "
+                "aux purges techniques internes."
+            ))
+        return True
+
+    @api.model
+    def _create_internal(self, vals):
+        challenges = self.sudo().with_context(
+            acpec_mobile_otp_internal_create=True,
+        ).create(vals)
+
+        return self.sudo().with_context(
+            acpec_mobile_otp_internal_create=False,
+            acpec_mobile_otp_internal_write=False,
+            acpec_mobile_otp_internal_purge=False,
+        ).browse(challenges.ids)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_mobile_otp_internal_write=True,
+        ).write(vals)
+
     @api.model_create_multi
     def create(self, vals_list):
+        self._assert_internal_create_allowed()
         sequence = self.env['ir.sequence']
         for vals in vals_list:
             if vals.get('name', 'New') == 'New':
-                vals['name'] = sequence.next_by_code('acpec.mobile.auth.otp') or 'New'
+                vals['name'] = (
+                    sequence.next_by_code(
+                        'acpec.mobile.auth.otp'
+                    )
+                    or 'New'
+                )
         return super().create(vals_list)
+
+    def write(self, vals):
+        self._assert_internal_write_allowed()
+        return super().write(vals)
 
     @api.model
     def _hash_otp(self, code, salt):
@@ -296,10 +361,10 @@ class AcpecMobileAuthOtp(models.Model):
             ('identifier', '=', identifier),
             ('purpose', '=', purpose),
             ('state', '=', 'pending'),
-        ]).write({'state': 'cancelled'})
+        ])._write_internal({'state': 'cancelled'})
         code = self._new_code()
         salt = secrets.token_urlsafe(16)
-        challenge = self.sudo().create({
+        challenge = self._create_internal({
             'identifier': identifier,
             'mobile': user.acpec_mobile_phone or identifier,
             'email': user.email or False,
@@ -356,13 +421,13 @@ class AcpecMobileAuthOtp(models.Model):
         self.ensure_one()
         phone = self._sms_recipient_phone()
         if self._otp_dev_mode():
-            self.message_post(body=_('OTP dev prêt pour %s : aucun SMS réel envoyé.') % (phone or self.identifier,))
+            self.sudo().message_post(body=_('OTP dev prêt pour %s : aucun SMS réel envoyé.') % (phone or self.identifier,))
             return True
         if not self._sms_gateway_configured():
             raise ValidationError(_('La configuration SMS Chinguisoft est incomplete.'))
         sms_gateway = self.env['acpec.sms.gateway'].sudo()
         sms_gateway.send_validation_sms(phone, code=code, lang=self._sms_lang())
-        self.message_post(body=_('OTP envoye par SMS pour %s.') % (phone or self.identifier,))
+        self.sudo().message_post(body=_('OTP envoye par SMS pour %s.') % (phone or self.identifier,))
         return True
 
     def _verify_bucket_identifier_key(self):
@@ -400,7 +465,7 @@ class AcpecMobileAuthOtp(models.Model):
         if self.user_id and getattr(self.user_id.sudo(), 'acpec_mobile_state', False) == 'blocked':
             raise AccessError(_('Compte mobile bloqué.'))
         if self.expires_at and self.expires_at <= now:
-            self.write({'state': 'expired'})
+            self._write_internal({'state': 'expired'})
             raise ValidationError(_('Le code OTP a expiré.'))
 
         bucket_model.check_verify_allowed(
@@ -424,7 +489,7 @@ class AcpecMobileAuthOtp(models.Model):
                     'state': 'blocked',
                     'blocked_until': now + relativedelta(minutes=15),
                 })
-            self.write(vals)
+            self._write_internal(vals)
             bucket_model.record_verify_failure(
                 bucket_identifier,
                 purpose=self.purpose,
@@ -442,7 +507,7 @@ class AcpecMobileAuthOtp(models.Model):
                     'state': 'blocked',
                     'blocked_until': now + relativedelta(minutes=15),
                 })
-            self.write(vals)
+            self._write_internal(vals)
             bucket_model.record_verify_failure(
                 bucket_identifier,
                 purpose=self.purpose,
@@ -450,7 +515,7 @@ class AcpecMobileAuthOtp(models.Model):
             )
             raise AccessError(_('Code OTP invalide.'))
 
-        self.write({
+        self._write_internal({
             'state': 'verified',
             'verified_at': now,
         })
@@ -460,4 +525,8 @@ class AcpecMobileAuthOtp(models.Model):
             request_ip=request_ip,
         )
         return self.user_id
+
+    def unlink(self):
+        self._assert_internal_purge_allowed()
+        return super().unlink()
 

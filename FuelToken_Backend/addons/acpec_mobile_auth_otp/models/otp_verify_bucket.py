@@ -2,6 +2,7 @@ from dateutil.relativedelta import relativedelta
 from psycopg2 import IntegrityError
 
 from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 
 from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError
 
@@ -31,6 +32,80 @@ class AcpecMobileAuthOtpVerifyBucket(models.Model):
         'UNIQUE(scope, purpose, key)',
         'An OTP verify antiflood bucket already exists for this scope, purpose and key.',
     )
+
+    INTERNAL_CREATE_CONTEXT = (
+        'acpec_mobile_otp_bucket_internal_create'
+    )
+    INTERNAL_WRITE_CONTEXT = (
+        'acpec_mobile_otp_bucket_internal_write'
+    )
+    INTERNAL_PURGE_CONTEXT = (
+        'acpec_mobile_otp_bucket_internal_purge'
+    )
+
+    @api.model
+    def _assert_internal_create_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_CREATE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La création d’un compteur antiflood OTP est réservée "
+                "aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_write_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_WRITE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La modification d’un compteur antiflood OTP est "
+                "réservée aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_purge_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_PURGE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La suppression d’un compteur antiflood OTP est "
+                "réservée aux purges techniques internes."
+            ))
+        return True
+
+    @api.model
+    def _create_internal(self, vals):
+        buckets = self.sudo().with_context(
+            acpec_mobile_otp_bucket_internal_create=True,
+        ).create(vals)
+
+        return self.sudo().with_context(
+            acpec_mobile_otp_bucket_internal_create=False,
+            acpec_mobile_otp_bucket_internal_write=False,
+            acpec_mobile_otp_bucket_internal_purge=False,
+        ).browse(buckets.ids)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_mobile_otp_bucket_internal_write=True,
+        ).write(vals)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._assert_internal_create_allowed()
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._assert_internal_write_allowed()
+        return super().write(vals)
+
+    def unlink(self):
+        self._assert_internal_purge_allowed()
+        return super().unlink()
 
     @api.model
     def _rate_limit_message(self):
@@ -75,7 +150,7 @@ class AcpecMobileAuthOtpVerifyBucket(models.Model):
 
     def _reset_counts(self):
         self.ensure_one()
-        self.write({
+        self._write_internal({
             'failed_count': 0,
             'locked_until': False,
             'last_failed_at': False,
@@ -125,7 +200,7 @@ class AcpecMobileAuthOtpVerifyBucket(models.Model):
         if not bucket:
             try:
                 with self.env.cr.savepoint():
-                    bucket = self.sudo().create({
+                    bucket = self._create_internal({
                         'scope': scope,
                         'purpose': purpose,
                         'key': key,
@@ -190,7 +265,7 @@ class AcpecMobileAuthOtpVerifyBucket(models.Model):
         if max_attempts > 0 and failed_count >= max_attempts:
             vals['locked_until'] = now + self._failure_window_delta(scope)
 
-        bucket.write(vals)
+        bucket._write_internal(vals)
         return bucket
 
     @api.model
@@ -230,5 +305,7 @@ class AcpecMobileAuthOtpVerifyBucket(models.Model):
             '&', ('failed_count', '=', 0), ('write_date', '<', fields.Datetime.to_string(cutoff)),
             '&', ('last_failed_at', '!=', False), ('last_failed_at', '<', fields.Datetime.to_string(cutoff)),
         ], limit=5000)
-        stale.unlink()
+        stale.sudo().with_context(
+            acpec_mobile_otp_bucket_internal_purge=True,
+        ).unlink()
         return True

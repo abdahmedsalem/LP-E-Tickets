@@ -255,7 +255,9 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                                 email=email,
                                 note=note,
                             )
-                            challenge.sudo().write({'user_id': user.id})
+                            challenge._write_internal({
+                                'user_id': user.id,
+                            })
                     except MobileSignupNotAllowedError as exc:
                         return self._mobile_signup_not_allowed_response(
                             exc,
