@@ -146,7 +146,7 @@ class TestEconomicIdentityImmutability(TransactionCase):
                 'qty_consumed': face_line.qty_consumed + 1,
             })
 
-        transfer = self.Transfer.create({
+        transfer = self.Transfer._create_internal({
             'source_wallet_id': source_wallet.id,
             'dest_wallet_id': dest_wallet.id,
             'company_id': self.company.id,
@@ -156,7 +156,7 @@ class TestEconomicIdentityImmutability(TransactionCase):
                 'carnet_qty': 1,
             })],
         })
-        transfer.action_confirm(actor_user=self.env.user)
+        transfer._confirm_internal(self.env.user)
 
         transfer_face_line.invalidate_recordset(['wallet_id'])
         self.assertEqual(transfer_face_line.wallet_id.id, dest_wallet.id)

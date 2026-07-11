@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class AcpecFuelCarnetTransfer(models.Model):
@@ -60,6 +60,202 @@ class AcpecFuelCarnetTransfer(models.Model):
         "Cette operation de transfert a deja ete enregistree pour ce compte source.",
     )
 
+    INTERNAL_CREATE_CONTEXT = 'acpec_fuel_carnet_transfer_internal_create'
+    INTERNAL_WRITE_CONTEXT = 'acpec_fuel_carnet_transfer_internal_write'
+    INTERNAL_PURGE_CONTEXT = 'acpec_fuel_carnet_transfer_internal_purge'
+    INTERNAL_CONFIRM_CONTEXT = 'acpec_fuel_carnet_transfer_internal_confirm'
+    INTERNAL_CANCEL_CONTEXT = 'acpec_fuel_carnet_transfer_internal_cancel'
+    INTERNAL_ACTION_ACTOR_CONTEXT = 'acpec_fuel_carnet_transfer_action_actor_user_id'
+    CONFIRMED_APPEND_ONLY_FIELDS = frozenset((
+        'mobile_session_id',
+        'device_uid',
+    ))
+
+    @api.model
+    def _assert_internal_create_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_CREATE_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La création d’un transfert de carnets est réservée "
+                "aux flux internes contrôlés."
+            ))
+        return True
+
+    def _assert_internal_write_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_WRITE_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La modification d’un transfert de carnets est réservée "
+                "aux flux internes contrôlés."
+            ))
+        return True
+
+    def _assert_internal_purge_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_PURGE_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La suppression d’un transfert de carnets est réservée "
+                "aux purges techniques internes."
+            ))
+        return True
+
+    def _assert_carnet_transfer_action_allowed(self, context_key):
+        if self.env.su:
+            allowed = self.env.context.get(context_key) is True
+        else:
+            allowed = self.env.user.has_group(
+                'acpec_fueltoken_base.group_fuel_admin'
+            )
+        if not allowed:
+            raise AccessError(_(
+                "Seul un administrateur FuelToken ou un flux interne "
+                "autorisé peut traiter un transfert de carnets."
+            ))
+        return True
+
+    def _carnet_transfer_action_actor(self, actor_user=False):
+        explicit_actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+        if self.env.su:
+            actor_id = int(
+                self.env.context.get(self.INTERNAL_ACTION_ACTOR_CONTEXT) or 0
+            )
+            if explicit_actor_id and explicit_actor_id != actor_id:
+                raise AccessError(_(
+                    "L’acteur du transfert ne correspond pas au contexte interne."
+                ))
+        else:
+            actor_id = self.env.user.id
+            if explicit_actor_id and explicit_actor_id != actor_id:
+                raise AccessError(_(
+                    "L’acteur du transfert doit être l’utilisateur courant."
+                ))
+
+        actor = self.env['res.users'].sudo().browse(actor_id).exists()
+        if not actor:
+            raise AccessError(_('Acteur du transfert de carnets introuvable.'))
+        return actor
+
+    @api.model
+    def _create_internal(self, vals):
+        transfers = self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_create=True,
+            acpec_fuel_carnet_transfer_line_internal_create=True,
+        ).create(vals)
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_create=False,
+            acpec_fuel_carnet_transfer_internal_write=False,
+            acpec_fuel_carnet_transfer_internal_purge=False,
+            acpec_fuel_carnet_transfer_internal_confirm=False,
+            acpec_fuel_carnet_transfer_internal_cancel=False,
+            acpec_fuel_carnet_transfer_action_actor_user_id=False,
+            acpec_fuel_carnet_transfer_line_internal_create=False,
+            acpec_fuel_carnet_transfer_line_internal_write=False,
+            acpec_fuel_carnet_transfer_line_internal_purge=False,
+            acpec_fuel_carnet_transfer_internal_mobile_confirm=False,
+        ).browse(transfers.ids)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_write=True,
+        ).write(vals)
+
+    def _purge_internal(self):
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_purge=True,
+        ).unlink()
+
+    def _confirm_internal(self, actor_user):
+        actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+        actor = self.env['res.users'].sudo().browse(actor_id).exists()
+        if not actor:
+            raise AccessError(_('Acteur interne de confirmation introuvable.'))
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_confirm=True,
+            acpec_fuel_carnet_transfer_internal_cancel=False,
+            acpec_fuel_carnet_transfer_action_actor_user_id=actor.id,
+        ).action_confirm(actor_user=actor)
+
+    def _cancel_internal(self, actor_user):
+        actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+        actor = self.env['res.users'].sudo().browse(actor_id).exists()
+        if not actor:
+            raise AccessError(_('Acteur interne d’annulation introuvable.'))
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_confirm=False,
+            acpec_fuel_carnet_transfer_internal_cancel=True,
+            acpec_fuel_carnet_transfer_action_actor_user_id=actor.id,
+        ).action_cancel(actor_user=actor)
+
+    def _assert_state_transition_write_allowed(self, vals):
+        protected = {'state', 'confirmed_at', 'confirmed_by'}
+        if not protected.intersection(vals):
+            return True
+
+        if (
+            vals.get('state') == 'confirmed'
+            and set(vals) == protected
+            and self.env.context.get(self.INTERNAL_CONFIRM_CONTEXT) is True
+        ):
+            return True
+
+        if (
+            vals.get('state') == 'cancelled'
+            and set(vals) == {'state'}
+            and self.env.context.get(self.INTERNAL_CANCEL_CONTEXT) is True
+        ):
+            return True
+
+        raise AccessError(_(
+            "Les transitions d’état d’un transfert de carnets doivent passer "
+            "par les actions contrôlées."
+        ))
+
+    def _assert_append_only_write_allowed(self, vals):
+        keys = set(vals)
+        for record in self:
+            if record.state == 'cancelled':
+                raise AccessError(_(
+                    "Un transfert de carnets annulé ne peut plus être modifié."
+                ))
+            if record.state != 'confirmed':
+                continue
+
+            if keys - self.CONFIRMED_APPEND_ONLY_FIELDS:
+                raise AccessError(_(
+                    "Un transfert de carnets confirmé est immuable."
+                ))
+
+            for field_name in keys:
+                if field_name not in record._fields:
+                    continue
+                current = record[field_name]
+                if record._fields[field_name].type == 'many2one':
+                    current = current.id
+                incoming = vals.get(field_name) or False
+                if current not in (False, None, '') and current != incoming:
+                    raise AccessError(_(
+                        "Les données d’audit d’un transfert confirmé "
+                        "ne peuvent pas être remplacées."
+                    ))
+        return True
 
     def init(self):
         self.env.cr.execute(
@@ -69,7 +265,17 @@ class AcpecFuelCarnetTransfer(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._assert_internal_create_allowed()
         for vals in vals_list:
+            if (
+                vals.get('state', 'draft') != 'draft'
+                or vals.get('confirmed_at')
+                or vals.get('confirmed_by')
+            ):
+                raise AccessError(_(
+                    "Un transfert de carnets doit être créé en brouillon "
+                    "sans audit de confirmation prérempli."
+                ))
             if vals.get('name', 'New') == 'New':
                 vals['name'] = (
                     self.env['ir.sequence'].next_by_code('acpec.fuel.carnet.transfer') or 'New'
@@ -77,6 +283,20 @@ class AcpecFuelCarnetTransfer(models.Model):
             if not vals.get('public_code'):
                 vals['public_code'] = self._create_unique_public_code(prefix='TRF', size=18)
         return super().create(vals_list)
+
+    def write(self, vals):
+        self._assert_internal_write_allowed()
+        self._assert_state_transition_write_allowed(vals)
+        self._assert_append_only_write_allowed(vals)
+        return super().write(vals)
+
+    def unlink(self):
+        self._assert_internal_purge_allowed()
+        if any(record.state == 'confirmed' for record in self):
+            raise AccessError(_(
+                "Un transfert de carnets confirmé ne peut jamais être supprimé."
+            ))
+        return super().unlink()
 
     @api.depends('line_ids.qty_faces', 'line_ids.amount_total')
     def _compute_totals(self):
@@ -114,15 +334,10 @@ class AcpecFuelCarnetTransfer(models.Model):
         - Deux transactions sont enregistrées : une par wallet source et destination.
         """
         self.ensure_one()
-        if not actor_user:
-            if getattr(self.env, 'su', False):
-                raise UserError(_('Acteur de confirmation requis.'))
-            actor_user = self.env.user
-        actor_user = self.env['res.users'].sudo().browse(
-            actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
-        ).exists()
-        if not actor_user:
-            raise UserError(_('Acteur de confirmation invalide.'))
+        self._assert_carnet_transfer_action_allowed(
+            self.INTERNAL_CONFIRM_CONTEXT
+        )
+        actor_user = self._carnet_transfer_action_actor(actor_user)
 
         if self.state != 'draft':
             raise UserError(_('Seul un transfert en brouillon peut être confirmé.'))
@@ -233,7 +448,7 @@ class AcpecFuelCarnetTransfer(models.Model):
 
                 # Compatibilite historique : dest_face_line_id reste renseigne, mais pointe
                 # desormais vers la meme face_line deplacee, pas vers une copie.
-                trf_line.sudo().write({'dest_face_line_id': src_face_line.id})
+                trf_line._write_internal({'dest_face_line_id': src_face_line.id})
 
                 dst_tx_lines.append({
                     'face_line_id': src_face_line.id,
@@ -272,21 +487,31 @@ class AcpecFuelCarnetTransfer(models.Model):
                 counterparty_user=counterparty_user,
             )
 
-            self.write({
+            self.sudo().with_context(
+                acpec_fuel_carnet_transfer_internal_confirm=True,
+                acpec_fuel_carnet_transfer_action_actor_user_id=actor_user.id,
+            )._write_internal({
                 'state': 'confirmed',
                 'confirmed_at': now,
                 'confirmed_by': actor_user.id,
             })
         return True
 
-    def action_cancel(self):
+    def action_cancel(self, actor_user=None):
         self.ensure_one()
+        self._assert_carnet_transfer_action_allowed(
+            self.INTERNAL_CANCEL_CONTEXT
+        )
+        actor_user = self._carnet_transfer_action_actor(actor_user)
         if self.state == 'confirmed':
             raise UserError(_(
                 "Un transfert déjà confirmé ne peut pas être annulé. "
                 "Créez un transfert inverse si nécessaire."
             ))
-        self.write({'state': 'cancelled'})
+        self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_cancel=True,
+            acpec_fuel_carnet_transfer_action_actor_user_id=actor_user.id,
+        )._write_internal({'state': 'cancelled'})
         return True
 
 
@@ -333,6 +558,103 @@ class AcpecFuelCarnetTransferLine(models.Model):
         'acpec.fuel.face.line', string='Carnet destination',
         readonly=True, copy=False, index=True,
     )
+
+    INTERNAL_CREATE_CONTEXT = 'acpec_fuel_carnet_transfer_line_internal_create'
+    INTERNAL_WRITE_CONTEXT = 'acpec_fuel_carnet_transfer_line_internal_write'
+    INTERNAL_PURGE_CONTEXT = 'acpec_fuel_carnet_transfer_line_internal_purge'
+
+    @api.model
+    def _assert_internal_create_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_CREATE_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La création d’une ligne de transfert de carnets est "
+                "réservée aux flux internes contrôlés."
+            ))
+        return True
+
+    def _assert_internal_write_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_WRITE_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La modification d’une ligne de transfert de carnets est "
+                "réservée aux flux internes contrôlés."
+            ))
+        return True
+
+    def _assert_internal_purge_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_PURGE_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La suppression d’une ligne de transfert de carnets est "
+                "réservée aux purges techniques internes."
+            ))
+        return True
+
+    @api.model
+    def _create_internal(self, vals):
+        lines = self.sudo().with_context(
+            acpec_fuel_carnet_transfer_line_internal_create=True,
+        ).create(vals)
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_line_internal_create=False,
+            acpec_fuel_carnet_transfer_line_internal_write=False,
+            acpec_fuel_carnet_transfer_line_internal_purge=False,
+        ).browse(lines.ids)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_line_internal_write=True,
+        ).write(vals)
+
+    def _purge_internal(self):
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_line_internal_purge=True,
+        ).unlink()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._assert_internal_create_allowed()
+        transfer_ids = {
+            vals.get('transfer_id')
+            for vals in vals_list
+            if vals.get('transfer_id')
+        }
+        transfers = self.env['acpec.fuel.carnet.transfer'].sudo().browse(
+            list(transfer_ids)
+        ).exists()
+        if len(transfers) != len(transfer_ids) or any(
+            transfer.state != 'draft' for transfer in transfers
+        ):
+            raise AccessError(_(
+                "Les lignes ne peuvent être ajoutées qu’à un transfert "
+                "de carnets en brouillon."
+            ))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._assert_internal_write_allowed()
+        if any(line.transfer_id.state != 'draft' for line in self):
+            raise AccessError(_(
+                "Une ligne de transfert de carnets n’est modifiable "
+                "que tant que son transfert est en brouillon."
+            ))
+        return super().write(vals)
+
+    def unlink(self):
+        self._assert_internal_purge_allowed()
+        if any(line.transfer_id.state == 'confirmed' for line in self):
+            raise AccessError(_(
+                "Une ligne d’un transfert de carnets confirmé ne peut "
+                "jamais être supprimée."
+            ))
+        return super().unlink()
 
     @api.depends('carnet_qty', 'face_count', 'face_value')
     def _compute_qty(self):

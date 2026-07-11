@@ -157,6 +157,9 @@ class AcpecFuelCarnetTransferCompanyGuard(models.Model):
         self._check_company_distribution_rules_records()
 
     def action_confirm(self, actor_user=None):
+        self._assert_carnet_transfer_action_allowed(
+            self.INTERNAL_CONFIRM_CONTEXT
+        )
         self._check_company_distribution_rules_records()
         return super().action_confirm(actor_user=actor_user)
 

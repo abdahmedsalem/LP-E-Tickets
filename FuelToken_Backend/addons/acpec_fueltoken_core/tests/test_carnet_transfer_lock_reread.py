@@ -77,7 +77,7 @@ class TestCarnetTransferLockReread(TransactionCase):
         face_line = self._create_source_face_line(source_partner)
         self.assertEqual(face_line.wallet_id.id, source_wallet.id)
 
-        transfer = self.Transfer.create({
+        transfer = self.Transfer._create_internal({
             'source_wallet_id': source_wallet.id,
             'dest_wallet_id': dest_wallet.id,
             'company_id': self.company.id,
@@ -101,7 +101,7 @@ class TestCarnetTransferLockReread(TransactionCase):
         )
 
         with self.assertRaises(ValidationError):
-            transfer.action_confirm(actor_user=self.env.user)
+            transfer._confirm_internal(self.env.user)
 
         face_line.invalidate_recordset(['wallet_id'])
         transfer.invalidate_recordset(['state'])
