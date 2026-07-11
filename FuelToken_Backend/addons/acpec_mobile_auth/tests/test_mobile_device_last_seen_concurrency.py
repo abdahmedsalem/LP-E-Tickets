@@ -25,7 +25,9 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
             'name': 'Test 43K6 Mobile User',
             'login': 'test_43k6_mobile_user',
         })
-        cls.device = cls.env['acpec.mobile.device'].sudo().create({
+        cls.device = cls.env['acpec.mobile.device'].sudo().with_context(
+            acpec_mobile_device_internal_create=True,
+        ).create({
             'user_id': cls.user.id,
             'stable_device_uid': 'ft-test-43k6-device',
         })
@@ -42,7 +44,7 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
     def test_serialization_failure_on_device_touch_is_swallowed(self):
         # device_name change => update_vals non vide => write appele.
         with patch.object(
-            self._device_class(), 'write',
+            self._device_class(), '_write_internal',
             side_effect=pg_errors.SerializationFailure('concurrent update'),
         ) as mocked_write:
             self.Session._touch_device_metadata_best_effort(
@@ -55,7 +57,7 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
         # Sans metadata changee et avec last_seen_at recent, le helper
         # early-return et le test serait vacueux : on force une metadata.
         with patch.object(
-            self._device_class(), 'write',
+            self._device_class(), '_write_internal',
             side_effect=pg_errors.DeadlockDetected('deadlock'),
         ) as mocked_write:
             self.Session._touch_device_metadata_best_effort(
@@ -67,7 +69,7 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
     def test_get_or_create_survives_concurrent_device_touch(self):
         """Le chemin refresh/login retourne le device malgre le conflit."""
         with patch.object(
-            self._device_class(), 'write',
+            self._device_class(), '_write_internal',
             side_effect=pg_errors.SerializationFailure('concurrent update'),
         ):
             device = self.Session._get_or_create_device_for_session(
@@ -85,7 +87,7 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
             [fields.Datetime.now(), self.device.id],
         )
         self.device.invalidate_recordset(['last_seen_at'])
-        with patch.object(self._device_class(), 'write') as mocked_write:
+        with patch.object(self._device_class(), '_write_internal') as mocked_write:
             self.Session._touch_device_metadata_best_effort(self.device.sudo())
         mocked_write.assert_not_called()
 
@@ -96,7 +98,7 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
             [fields.Datetime.now(), self.device.id],
         )
         self.device.invalidate_recordset(['last_seen_at'])
-        with patch.object(self._device_class(), 'write') as mocked_write:
+        with patch.object(self._device_class(), '_write_internal') as mocked_write:
             self.Session._touch_device_metadata_best_effort(
                 self.device.sudo(),
                 {'device_name': 'Pixel 43K6 renomme'},
@@ -113,14 +115,14 @@ class TestMobileDeviceLastSeenConcurrency(TransactionCase):
             [fields.Datetime.now(), self.device.id],
         )
         self.device.invalidate_recordset(['last_seen_at'])
-        with patch.object(self._device_class(), 'write') as mocked_write:
+        with patch.object(self._device_class(), '_write_internal') as mocked_write:
             self.Session._touch_device_metadata_best_effort(self.device.sudo())
         mocked_write.assert_called_once()
 
     # ---- comportement : pas de silence total --------------------------
 
     def test_other_exceptions_still_propagate(self):
-        with patch.object(self._device_class(), 'write', side_effect=ValueError('boom')):
+        with patch.object(self._device_class(), '_write_internal', side_effect=ValueError('boom')):
             with self.assertRaises(ValueError):
                 self.Session._touch_device_metadata_best_effort(
                     self.device.sudo(),

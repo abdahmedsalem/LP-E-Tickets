@@ -64,6 +64,60 @@ class AcpecMobileDevice(models.Model):
         'Un utilisateur ne peut pas avoir deux fois le même device stable.',
     )
 
+
+    INTERNAL_CREATE_CONTEXT = 'acpec_mobile_device_internal_create'
+    INTERNAL_WRITE_CONTEXT = 'acpec_mobile_device_internal_write'
+    INTERNAL_PURGE_CONTEXT = 'acpec_mobile_device_internal_purge'
+
+    @api.model
+    def _assert_internal_create_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_CREATE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La création d’un device mobile est réservée aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_write_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_WRITE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La modification d’un device mobile est réservée aux flux internes."
+            ))
+        return True
+
+    def _assert_internal_purge_allowed(self):
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_PURGE_CONTEXT)
+        ):
+            raise AccessError(_(
+                "La suppression d’un device mobile est réservée "
+                "aux purges techniques internes."
+            ))
+        return True
+
+    @api.model
+    def _create_internal(self, vals):
+        devices = self.sudo().with_context(
+            acpec_mobile_device_internal_create=True,
+        ).create(vals)
+
+        return self.sudo().with_context(
+            acpec_mobile_device_internal_create=False,
+            acpec_mobile_device_internal_write=False,
+            acpec_mobile_device_internal_purge=False,
+        ).browse(devices.ids)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_mobile_device_internal_write=True,
+        ).write(vals)
+
     @api.depends('user_id', 'user_id.name', 'stable_device_uid', 'device_name')
     def _compute_name(self):
         for device in self:
@@ -97,6 +151,7 @@ class AcpecMobileDevice(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._assert_internal_create_allowed()
         now = fields.Datetime.now()
         for vals in vals_list:
             vals['stable_device_uid'] = self._normalize_stable_device_uid_or_raise(
@@ -109,6 +164,7 @@ class AcpecMobileDevice(models.Model):
         return devices
 
     def write(self, vals):
+        self._assert_internal_write_allowed()
         vals = dict(vals)
         if 'stable_device_uid' in vals:
             vals['stable_device_uid'] = self._normalize_stable_device_uid_or_raise(
@@ -186,7 +242,7 @@ class AcpecMobileDevice(models.Model):
             ('stable_device_uid', '!=', stable_device_uid),
         ])
         if previous_trusted:
-            previous_trusted.write({
+            previous_trusted._write_internal({
                 'trust_state': 'pending_trust',
                 'trusted_at': False,
                 'trusted_by': False,
@@ -321,7 +377,7 @@ class AcpecMobileDevice(models.Model):
         for device in self:
             stable_device_uid = device._normalize_stable_device_uid_or_raise(device.stable_device_uid)
             device._reset_other_trusted_devices_for_user(device.user_id.sudo(), stable_device_uid)
-            device.write({
+            device._write_internal({
                 'trust_state': 'trusted',
                 'trusted_at': now,
                 'trusted_by': self.env.uid,
@@ -331,7 +387,7 @@ class AcpecMobileDevice(models.Model):
             })
             device._sync_sessions_from_device()
             device._assert_single_trusted_device_per_user(device.user_id.sudo())
-            device.message_post(
+            device.sudo().message_post(
                 body='Device mobile approuvé par %s. Device UID: %s%s'
                 % (self.env.user.display_name, stable_device_uid, device._source_session_chatter_suffix())
             )
@@ -341,7 +397,7 @@ class AcpecMobileDevice(models.Model):
         self._check_device_trust_admin()
         now = fields.Datetime.now()
         for device in self:
-            device.write({
+            device._write_internal({
                 'trust_state': 'blocked',
                 'trusted_at': False,
                 'trusted_by': False,
@@ -350,7 +406,7 @@ class AcpecMobileDevice(models.Model):
                 'blocked_reason': (reason or '').strip() or False,
             })
             device._sync_sessions_from_device()
-            device.message_post(
+            device.sudo().message_post(
                 body='Device mobile bloqué par %s. Device UID: %s%s%s'
                 % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix(), device._device_trust_reason_suffix(reason))
             )
@@ -362,7 +418,7 @@ class AcpecMobileDevice(models.Model):
         for device in self:
             if device.trust_state == 'blocked' and not reason:
                 raise UserError(_("Le motif est obligatoire pour remettre en attente un device bloqué."))
-            device.write({
+            device._write_internal({
                 'trust_state': 'pending_trust',
                 'trusted_at': False,
                 'trusted_by': False,
@@ -371,11 +427,12 @@ class AcpecMobileDevice(models.Model):
                 'blocked_reason': False,
             })
             device._sync_sessions_from_device()
-            device.message_post(
+            device.sudo().message_post(
                 body='Confiance device remise en attente par %s. Device UID: %s%s%s'
                 % (self.env.user.display_name, device.stable_device_uid or 'n/a', device._source_session_chatter_suffix(), device._device_trust_reason_suffix(reason))
             )
         return True
 
     def unlink(self):
-        raise UserError(_('Les devices mobiles doivent être archivés, bloqués ou réinitialisés, non supprimés.'))
+        self._assert_internal_purge_allowed()
+        return super().unlink()

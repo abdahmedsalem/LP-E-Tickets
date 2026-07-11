@@ -56,7 +56,9 @@ class TestMobileDeviceModel(TransactionCase):
             'app_version': extra.pop('app_version', 'test'),
         }
         vals.update(extra)
-        return self.env['acpec.mobile.device'].sudo().create(vals)
+        return self.env['acpec.mobile.device'].sudo().with_context(
+            acpec_mobile_device_internal_create=True,
+        ).create(vals)
 
     def test_f2d_mobile_device_can_be_created_for_mobile_user(self):
         user = self._create_mobile_user('f2d-device-create@example.com')
