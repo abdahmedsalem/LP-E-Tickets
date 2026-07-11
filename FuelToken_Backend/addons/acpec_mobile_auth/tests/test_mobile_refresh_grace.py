@@ -111,7 +111,9 @@ class TestMobileRefreshGrace(TransactionCase):
         old_refresh_token = first['refresh_token']
 
         self.env['acpec.mobile.session'].sudo().refresh_with_token(old_refresh_token)
-        old_session.sudo().write({
+        old_session.sudo().with_context(
+            acpec_mobile_session_internal_write=True,
+        ).write({
             'refresh_grace_until': fields.Datetime.now() - relativedelta(seconds=1),
         })
 

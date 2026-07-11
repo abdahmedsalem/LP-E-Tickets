@@ -231,16 +231,22 @@ class AcpecMobileDevice(models.Model):
                 active_sessions = sessions.filtered(lambda session: session.state == 'active')
                 inactive_sessions = sessions - active_sessions
                 if inactive_sessions:
-                    inactive_sessions.with_context(skip_device_approval_candidate_sync=True).write(vals)
+                    inactive_sessions.with_context(
+                        skip_device_approval_candidate_sync=True,
+                    )._write_internal(vals)
                 if active_sessions:
                     block_vals = dict(vals)
                     block_vals.update({
                         'state': 'revoked',
                         'revoked_at': device.blocked_at or fields.Datetime.now(),
                     })
-                    active_sessions.with_context(skip_device_approval_candidate_sync=True).write(block_vals)
+                    active_sessions.with_context(
+                        skip_device_approval_candidate_sync=True,
+                    )._write_internal(block_vals)
             else:
-                sessions.with_context(skip_device_approval_candidate_sync=True).write(vals)
+                sessions.with_context(
+                    skip_device_approval_candidate_sync=True,
+                )._write_internal(vals)
             impacted_keys.add((device.user_id.id, device.stable_device_uid))
 
         if impacted_keys:

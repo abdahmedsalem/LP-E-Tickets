@@ -922,7 +922,7 @@ class ResUsers(models.Model):
             ('state', '=', 'active'),
         ])
         if sessions:
-            sessions.write({
+            sessions._write_internal({
                 'state': 'revoked',
                 'revoked_at': fields.Datetime.now(),
             })

@@ -378,7 +378,9 @@ class TestMobileDeviceTrustBackoffice(TransactionCase):
             'platform': 'android',
         })['session']
 
-        latest.write({
+        latest.sudo().with_context(
+            acpec_mobile_session_internal_write=True,
+        ).write({
             'device_trust_state': 'trusted',
             'device_trusted_at': fields.Datetime.now(),
         })
