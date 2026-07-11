@@ -117,7 +117,7 @@
         <field name="name">acpec.mobile.device.list</field>
         <field name="model">acpec.mobile.device</field>
         <field name="arch" type="xml">
-            <list>
+            <list create="0" edit="0" delete="0">
                 <field name="name"/>
                 <field name="user_id"/>
                 <field name="partner_id"/>
@@ -138,7 +138,7 @@
         <field name="name">acpec.mobile.device.form</field>
         <field name="model">acpec.mobile.device</field>
         <field name="arch" type="xml">
-            <form>
+            <form create="0" edit="0" delete="0">
                 <header>
                     <button name="action_trust_device" type="object" string="Trust Device"
                             invisible="trust_state != 'pending_trust'"

@@ -534,7 +534,7 @@ class AcpecMobileSession(models.Model):
             # trusted status from legacy session history.  A copied device_uid
             # must still go through BO/manager approval.  Legacy blocked remains
             # fail-closed in _assert_device_uid_can_open_session above.
-            return Device.create(create_vals)
+            return Device._create_internal(create_vals)
 
         if not device.active:
             raise AccessError(_('Appareil mobile archivé.'))
@@ -587,7 +587,7 @@ class AcpecMobileSession(models.Model):
 
         try:
             with self.env.cr.savepoint():
-                device.write(update_vals)
+                device._write_internal(update_vals)
         except (pg_errors.SerializationFailure, pg_errors.DeadlockDetected) as exc:
             _logger.info(
                 'mobile_device_last_seen_touch_skipped device_id=%s reason=%s',

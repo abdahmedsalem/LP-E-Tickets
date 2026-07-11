@@ -89,9 +89,9 @@ class AcpecMobileDevice(models.Model):
 
         if manager_user:
             devices = self.sudo()
-            devices.write({'trusted_by': manager_user.id})
+            devices._write_internal({'trusted_by': manager_user.id})
             for device in devices:
-                device.message_post(body=(
+                device.sudo().message_post(body=(
                     'Device mobile approuvé via API manager mobile par %s.'
                     % manager_user.display_name
                 ))
