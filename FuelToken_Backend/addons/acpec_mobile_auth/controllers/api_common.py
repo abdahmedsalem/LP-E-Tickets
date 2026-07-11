@@ -1569,7 +1569,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         if 'note' in request_model._fields and note:
             request_vals['note'] = note
 
-        account_request = request_model.create(request_vals)
+        account_request = request_model._create_internal(request_vals)
         return partner, user, account_request
 
     def _get_signup_companies(self):

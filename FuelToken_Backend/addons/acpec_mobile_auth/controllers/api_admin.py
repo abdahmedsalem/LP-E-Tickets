@@ -58,7 +58,10 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
             self._check_record_company_allowed(user, rec)
 
             with request.env.cr.savepoint():
-                rec.action_approve()
+                rec.with_context(
+                    acpec_mobile_auth_account_request_internal_action=True,
+                    acpec_mobile_auth_account_request_action_actor_user_id=user.id,
+                ).action_approve()
 
             return self._json_response({
                 'id': rec.id,
@@ -86,7 +89,10 @@ class AcpecMobileAuthApiAdmin(AcpecMobileAuthApiCommon):
             self._check_record_company_allowed(user, rec)
 
             with request.env.cr.savepoint():
-                rec.action_reject(reason=reason)
+                rec.with_context(
+                    acpec_mobile_auth_account_request_internal_action=True,
+                    acpec_mobile_auth_account_request_action_actor_user_id=user.id,
+                ).action_reject(reason=reason)
 
             return self._json_response({
                 'id': rec.id,

@@ -4,7 +4,7 @@
         <field name="name">acpec.mobile.auth.account.request.list</field>
         <field name="model">acpec.mobile.auth.account.request</field>
         <field name="arch" type="xml">
-            <list>
+            <list create="0" edit="0" delete="0">
                 <field name="name"/>
                 <field name="name_display"/>
                 <field name="signup_identifier"/>
@@ -21,7 +21,7 @@
         <field name="name">acpec.mobile.auth.account.request.form</field>
         <field name="model">acpec.mobile.auth.account.request</field>
         <field name="arch" type="xml">
-            <form>
+            <form create="0" edit="0" delete="0">
                 <header>
                     <button name="action_approve" type="object" string="Approve" invisible="state != 'pending'" class="oe_highlight"/>
                     <button name="action_reject" type="object" string="Reject" invisible="state != 'pending'"/>
