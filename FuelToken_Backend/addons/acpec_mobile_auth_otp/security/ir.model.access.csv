@@ -1,3 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_acpec_mobile_auth_otp_admin,access.acpec.mobile.auth.otp.admin,model_acpec_mobile_auth_otp,acpec_mobile_auth.group_mobile_auth_admin,1,1,1,0
+access_acpec_mobile_auth_otp_admin,access.acpec.mobile.auth.otp.admin,model_acpec_mobile_auth_otp,acpec_mobile_auth.group_mobile_auth_admin,1,0,0,0
 access_acpec_mobile_auth_otp_verify_bucket_admin,access.acpec.mobile.auth.otp.verify.bucket.admin,model_acpec_mobile_auth_otp_verify_bucket,acpec_mobile_auth.group_mobile_auth_admin,1,0,0,0

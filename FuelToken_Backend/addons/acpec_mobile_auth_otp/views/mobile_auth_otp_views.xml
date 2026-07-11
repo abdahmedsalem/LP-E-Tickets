@@ -4,7 +4,7 @@
         <field name="name">acpec.mobile.auth.otp.list</field>
         <field name="model">acpec.mobile.auth.otp</field>
         <field name="arch" type="xml">
-            <list>
+            <list create="0" edit="0" delete="0">
                 <field name="name"/>
                 <field name="identifier"/>
                 <field name="purpose"/>
@@ -20,7 +20,7 @@
         <field name="name">acpec.mobile.auth.otp.form</field>
         <field name="model">acpec.mobile.auth.otp</field>
         <field name="arch" type="xml">
-            <form>
+            <form create="0" edit="0" delete="0">
                 <header>
                     <field name="state" widget="statusbar" statusbar_visible="pending,verified,expired,blocked,cancelled"/>
                 </header>
