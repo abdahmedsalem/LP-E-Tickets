@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 
 class AcpecFuelCarnetTransfer(models.Model):
@@ -20,14 +20,29 @@ class AcpecFuelCarnetTransfer(models.Model):
         index=True,
     )
 
-    def action_confirm_mobile(self, actor_user=None, mobile_session=None):
-        """Confirm from mobile API and append mobile audit data.
+    INTERNAL_MOBILE_CONFIRM_CONTEXT = (
+        'acpec_fuel_carnet_transfer_internal_mobile_confirm'
+    )
 
-        Core remains mobile-agnostic and only receives actor_user.
-        Session/device audit belongs to this API module because it depends on
-        both acpec_mobile_auth and acpec_fueltoken_core.
-        """
+    def _confirm_mobile_internal(self, actor_user=None, mobile_session=None):
+        return self.sudo().with_context(
+            acpec_fuel_carnet_transfer_internal_mobile_confirm=True,
+        ).action_confirm_mobile(
+            actor_user=actor_user,
+            mobile_session=mobile_session,
+        )
+
+    def action_confirm_mobile(self, actor_user=None, mobile_session=None):
+        """Confirm from mobile API and append mobile audit data."""
         self.ensure_one()
+        if not (
+            self.env.su
+            and self.env.context.get(self.INTERNAL_MOBILE_CONFIRM_CONTEXT) is True
+        ):
+            raise AccessError(_(
+                "La confirmation mobile d’un transfert de carnets est "
+                "réservée au contrôleur API interne."
+            ))
         if not actor_user:
             raise UserError(_('Acteur mobile requis.'))
         if not mobile_session:
@@ -45,9 +60,9 @@ class AcpecFuelCarnetTransfer(models.Model):
         if not actor_user:
             raise UserError(_('Acteur mobile invalide.'))
 
-        self.action_confirm(actor_user=actor_user)
+        self._confirm_internal(actor_user)
 
-        self.sudo().write({
+        self._write_internal({
             'mobile_session_id': mobile_session.id,
             'device_uid': mobile_session.device_uid,
         })

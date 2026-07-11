@@ -226,7 +226,7 @@ class TestPurchaseLotPropagation(TransactionCase):
         )
 
         # 4) transfert : même face_line intacte déplacée, origine achat conservée.
-        transfer = self.Transfer.create({
+        transfer = self.Transfer._create_internal({
             'source_wallet_id': source_wallet.id,
             'dest_wallet_id': dest_wallet.id,
             'company_id': self.company.id,
@@ -236,7 +236,7 @@ class TestPurchaseLotPropagation(TransactionCase):
                 'carnet_qty': 1,
             })],
         })
-        transfer.action_confirm(actor_user=self.env.user)
+        transfer._confirm_internal(self.env.user)
 
         transfer.invalidate_recordset(['state'])
         transfer_face_line.invalidate_recordset(['wallet_id', 'purchase_id', 'purchase_line_id'])

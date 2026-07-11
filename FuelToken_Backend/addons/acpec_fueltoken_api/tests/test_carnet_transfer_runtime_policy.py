@@ -455,7 +455,7 @@ class TestCarnetTransferRuntimePolicy(TransactionCase):
             other_company,
         )
         foreign_note = "foreign-company-transfer-must-not-leak-27b"
-        foreign_transfer = self.env["acpec.fuel.carnet.transfer"].sudo().create({
+        foreign_transfer = self.env["acpec.fuel.carnet.transfer"]._create_internal({
             "source_wallet_id": source_wallet_other_company.id,
             "dest_wallet_id": dest_wallet_other_company.id,
             "company_id": other_company.id,

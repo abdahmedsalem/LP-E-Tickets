@@ -1538,7 +1538,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
                 # ── 5. Créer et confirmer le transfert ───────────────────────────
                 with request.env.cr.savepoint():
-                    transfer = request.env['acpec.fuel.carnet.transfer'].sudo().create({
+                    transfer = request.env['acpec.fuel.carnet.transfer']._create_internal({
                         'source_wallet_id': wallet.id,
                         'dest_wallet_id': dest_wallet.id,
                         'company_id': wallet.company_id.id,
@@ -1548,7 +1548,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
                     })
                     mobile_session = self._get_mobile_session(required=True)
-                    transfer.action_confirm_mobile(
+                    transfer._confirm_mobile_internal(
                         actor_user=source_user,
                         mobile_session=mobile_session,
                     )

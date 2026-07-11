@@ -552,7 +552,7 @@ class AcpecFuelDistributor(models.Model):
             ], limit=1)
             if existing:
                 if confirm and existing.state == 'draft':
-                    existing.action_confirm(actor_user=operator_user)
+                    existing._confirm_internal(operator_user)
                 return existing
 
         transfer_line_vals = self._prepare_distribution_line_vals(lines)
@@ -567,9 +567,9 @@ class AcpecFuelDistributor(models.Model):
             'idempotency_key': idempotency_key or False,
             'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
         }
-        transfer = self.env['acpec.fuel.carnet.transfer'].sudo().create(transfer_vals)
+        transfer = self.env['acpec.fuel.carnet.transfer']._create_internal(transfer_vals)
         if confirm:
-            transfer.action_confirm(actor_user=operator_user)
+            transfer._confirm_internal(operator_user)
 
         self.message_post(body=_(
             'Distribution société vers %(member)s: %(transfer)s, %(qty)s tickets.'
