@@ -116,14 +116,14 @@ class TestD2MechanicalInvariants(TransactionCase):
             + face_line.qty_transferred_out,
         )
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'qty_available': face_line.qty_available - 1})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'qty_transferred_out': face_line.qty_transferred_out + 1})
 
         transfer_qty = 2
-        face_line.with_context(allow_fuel_face_line_state_update=True).write({
+        face_line._write_state_internal({
             'qty_available': face_line.qty_available - transfer_qty,
             'qty_transferred_out': face_line.qty_transferred_out + transfer_qty,
         })

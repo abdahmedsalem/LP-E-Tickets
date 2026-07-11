@@ -83,6 +83,7 @@ class AcpecFuelFaceLine(models.Model):
         'carnet_type_id',
         'face_value',
         'qty_initial',
+        'expires_at',
         'carnet_no',
         'lot_short_code',
         'carnet_short_code',
@@ -101,22 +102,40 @@ class AcpecFuelFaceLine(models.Model):
         'qty_transferred_out',
     ))
 
-    def _check_protected_write_vals(self, vals):
-        protected = set(vals or {}) & (self._economic_identity_fields | self._controlled_state_fields)
-        if not protected:
-            return
-        if self.env.context.get('allow_fuel_face_line_economic_update'):
-            return
-        if self.env.context.get('allow_fuel_face_line_state_update') and not (protected & self._economic_identity_fields):
-            return
-        raise ValidationError(
-            _('Modification directe interdite sur les champs économiques du carnet : %s')
-            % ', '.join(sorted(protected))
+    @api.model
+    def _face_line_internal_context_is_valid(self, operation):
+        return (
+            self.env.su
+            and self.env.context.get(
+                'acpec_fueltoken_face_line_internal_operation'
+            ) == operation
         )
 
     @api.model_create_multi
+    def _create_internal(self, vals_list):
+        return self.sudo().with_context(
+            acpec_fueltoken_face_line_internal_operation='create',
+        ).create(vals_list)
+
+    def _write_state_internal(self, vals):
+        self._check_controlled_state_write_vals(vals)
+        return self.sudo().with_context(
+            acpec_fueltoken_face_line_internal_operation='state_write',
+        ).write(vals)
+
+    def _check_controlled_state_write_vals(self, vals):
+        unsupported = set(vals or {}) - self._controlled_state_fields
+        if not unsupported:
+            return
+        raise ValidationError(_(
+            "Le flux interne d'état du carnet ne peut modifier que "
+            "le détenteur courant et les compteurs contrôlés. "
+            "Champs interdits : %s"
+        ) % ', '.join(sorted(unsupported)))
+
+    @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_face_line_create'):
+        if not self._face_line_internal_context_is_valid('create'):
             raise UserError(_(
                 'La création de carnets économiques est réservée aux flux métier internes contrôlés.'
             ))
@@ -136,7 +155,12 @@ class AcpecFuelFaceLine(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        self._check_protected_write_vals(vals)
+        if not self._face_line_internal_context_is_valid('state_write'):
+            raise UserError(_(
+                'La modification des carnets économiques est réservée '
+                'aux flux métier internes contrôlés.'
+            ))
+        self._check_controlled_state_write_vals(vals)
         return super().write(vals)
 
     def unlink(self):
@@ -340,7 +364,7 @@ class AcpecFuelFaceLine(models.Model):
                     label = line.carnet_short_code or line.carnet_no or line.id
                     raise ValidationError(_('Tickets disponibles insuffisants pour %s.') % label)
 
-                line.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line._write_state_internal({
                     'qty_available': line.qty_available - remaining,
                     'qty_qr_active': line.qty_qr_active + remaining,
                 })
@@ -397,7 +421,7 @@ class AcpecFuelFaceLine(models.Model):
                 ) != 0:
                     continue
                 qty = min(remaining, line.qty_available)
-                line.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line._write_state_internal({
                     'qty_available': line.qty_available - qty,
                     'qty_qr_active': line.qty_qr_active + qty,
                 })
@@ -413,4 +437,4 @@ class AcpecFuelFaceLine(models.Model):
         for rec in self:
             qty = rec.qty_available
             if qty > 0:
-                rec.with_context(allow_fuel_face_line_state_update=True).sudo().write({'qty_available': 0, 'qty_expired': rec.qty_expired + qty})
+                rec._write_state_internal({'qty_available': 0, 'qty_expired': rec.qty_expired + qty})

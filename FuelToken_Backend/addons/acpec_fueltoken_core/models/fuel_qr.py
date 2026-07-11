@@ -340,19 +340,19 @@ class AcpecFuelQr(models.Model):
         tx_lines = []
         for line in expired_lines:
             if line.state == 'active':
-                line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line.face_line_id._write_state_internal({
                     'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                     'qty_expired': line.face_line_id.qty_expired + line.qty,
                 })
             elif line.state == 'blocked':
-                line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line.face_line_id._write_state_internal({
                     'qty_qr_blocked': line.face_line_id.qty_qr_blocked - line.qty,
                     'qty_expired': line.face_line_id.qty_expired + line.qty,
                 })
             line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'expired'})
             tx_lines.append(line._transaction_line_vals())
         for line in valid_lines.filtered(lambda l: l.state == 'active'):
-            line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+            line.face_line_id._write_state_internal({
                 'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                 'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
             })
@@ -364,12 +364,12 @@ class AcpecFuelQr(models.Model):
         tx_lines = []
         for line in expired_lines:
             if line.state == 'active':
-                line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line.face_line_id._write_state_internal({
                     'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                     'qty_expired': line.face_line_id.qty_expired + line.qty,
                 })
             elif line.state == 'blocked':
-                line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line.face_line_id._write_state_internal({
                     'qty_qr_blocked': line.face_line_id.qty_qr_blocked - line.qty,
                     'qty_expired': line.face_line_id.qty_expired + line.qty,
                 })
@@ -428,7 +428,7 @@ class AcpecFuelQr(models.Model):
             counterparty_user = Tx._single_user_for_partner(counterparty_partner)
             tx_lines = []
             for line in self.line_ids.filtered(lambda l: l.state == 'active'):
-                line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                line.face_line_id._write_state_internal({
                     'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                     'qty_consumed': line.face_line_id.qty_consumed + line.qty,
                 })
@@ -618,7 +618,7 @@ class AcpecFuelQr(models.Model):
             tx_lines = []
             for line in valid_lines:
                 if line.state == 'blocked':
-                    line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                    line.face_line_id._write_state_internal({
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked - line.qty,
                         'qty_qr_active': line.face_line_id.qty_qr_active + line.qty,
                     })
@@ -659,7 +659,7 @@ class AcpecFuelQr(models.Model):
                 qr.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'blocked'})
                 for line in qr.line_ids.filtered(lambda l: l.state == 'active'):
                     line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'blocked'})
-                    line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                    line.face_line_id._write_state_internal({
                         'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
                     })
@@ -668,7 +668,7 @@ class AcpecFuelQr(models.Model):
                 # Ne traiter QUE les lignes active pour éviter le double-comptage des blocked
                 for line in qr.line_ids.filtered(lambda l: l.state == 'active'):
                     line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'blocked'})
-                    line.face_line_id.with_context(allow_fuel_face_line_state_update=True).sudo().write({
+                    line.face_line_id._write_state_internal({
                         'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
                     })
