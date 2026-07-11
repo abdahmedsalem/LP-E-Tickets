@@ -19,3 +19,4 @@ from . import test_reference_snapshot_archive_policy_m21e
 from . import test_business_identity_views_readonly_m23a
 from . import test_carnet_transfer_runtime_guards_m23c5
 from . import test_wallet_runtime_guards_m23c6a
+from . import test_face_line_runtime_guards_m23c6b

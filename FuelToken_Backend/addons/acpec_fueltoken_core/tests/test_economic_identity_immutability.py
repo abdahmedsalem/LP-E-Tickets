@@ -2,7 +2,7 @@
 import base64
 import uuid
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -117,30 +117,30 @@ class TestEconomicIdentityImmutability(TransactionCase):
         face_line = face_lines[0]
         transfer_face_line = face_lines[1]
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'face_value': face_line.face_value + 1})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'qty_initial': face_line.qty_initial + 1})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'lot_short_code': 'BADG8'})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'is_transfer_fragment': True})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'origin_face_line_id': transfer_face_line.id})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'origin_ticket_transfer_line_id': 1})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({'wallet_id': dest_wallet.id})
 
         # Cette mutation respecte la somme C2, mais contournerait les flux métier.
         # Elle doit donc être refusée par VAL1/G8.
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             face_line.write({
                 'qty_available': face_line.qty_available - 1,
                 'qty_consumed': face_line.qty_consumed + 1,

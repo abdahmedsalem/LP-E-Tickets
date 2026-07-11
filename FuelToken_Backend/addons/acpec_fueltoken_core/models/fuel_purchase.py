@@ -125,7 +125,7 @@ class AcpecFuelPurchaseCore(models.Model):
                         carnet_no = '%s-L%02d-%s' % (purchase_ref, line_index, carnet_suffix)
                         carnet_short_code = face_model._generate_carnet_short_code(purchase.company_id)
 
-                        face_line = face_model.with_context(allow_fuel_face_line_create=True).sudo().create({
+                        face_line = face_model._create_internal({
                             'wallet_id': wallet.id,
                             'purchase_id': purchase.id,
                             'purchase_line_id': line.id,
