@@ -203,7 +203,7 @@ class AcpecFuelPurchaseCore(models.Model):
                         request_hash=purchase.approval_request_hash or purchase.request_hash,
                         operation_ref=operation_ref,
                     )
-                purchase.with_context(allow_fuel_purchase_update=True).sudo().write({
+                purchase._write_fuel_value_internal({
                     'fuel_value_created': True,
                 })
         return True
@@ -241,7 +241,7 @@ class AcpecFuelPurchaseLineSnapshotRepairM21E(models.Model):
                 'face_value': row['min_face_value'] or 0.0,
             }
             if line.face_count != vals['face_count'] or line.face_value != vals['face_value']:
-                line.with_context(allow_fuel_purchase_line_update=True).sudo().write(vals)
+                line._write_snapshot_internal(vals)
                 if line.purchase_id:
                     purchase_ids.add(line.purchase_id.id)
                 repaired += 1

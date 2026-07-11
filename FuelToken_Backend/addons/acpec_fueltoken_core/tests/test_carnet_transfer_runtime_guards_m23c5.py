@@ -71,17 +71,12 @@ class TestCarnetTransferRuntimeGuardsM23C5(TransactionCase):
     def _create_source_face_line(self, source_partner):
         carnet_type = self._create_unique_carnet_type()
         suffix = uuid.uuid4().hex[:8]
-        purchase = self.Purchase.with_context(
-            allow_fuel_purchase_create=True,
-            allow_fuel_purchase_line_create=True,
-        ).create({
+        purchase = self.Purchase._create_internal({
             'partner_id': source_partner.id,
             'company_id': self.company.id,
             'payment_reference': 'PAY-M23C5-%s' % suffix,
         })
-        self.env['acpec.fuel.purchase.line'].sudo().with_context(
-            allow_fuel_purchase_line_create=True,
-        ).create({
+        self.env['acpec.fuel.purchase.line'].sudo()._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': carnet_type.id,
             'carnet_qty': 1,
@@ -96,9 +91,7 @@ class TestCarnetTransferRuntimeGuardsM23C5(TransactionCase):
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.sudo().with_context(
-            allow_fuel_purchase_update=True,
-        ).write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase.sudo()._write_proof_internal({'proof_attachment_ids': [(4, attachment.id)]})
         purchase.action_submit()
         purchase.action_approve()
         purchase._create_face_lines_after_approval()

@@ -59,9 +59,28 @@ class AcpecFuelPurchase(models.Model):
         "Cette demande d'achat existe deja pour ce client.",
     )
 
+    _purchase_internal_context_key = (
+        'acpec_fueltoken_purchase_internal_operation'
+    )
+
+    @api.model
+    def _purchase_internal_context_is_valid(self, operation):
+        return bool(
+            self.env.su
+            and self.env.context.get(
+                self._purchase_internal_context_key
+            ) == operation
+        )
+
+    @api.model_create_multi
+    def _create_internal(self, vals_list):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='create',
+        ).create(vals_list)
+
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_purchase_create'):
+        if not self._purchase_internal_context_is_valid('create'):
             raise UserError(_(
                 'La création de lots d’achat est réservée aux flux métier internes contrôlés.'
             ))
@@ -244,7 +263,7 @@ class AcpecFuelPurchase(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 raise UserError(_('Seuls les lots en brouillon peuvent etre soumis.'))
-            rec.with_context(allow_fuel_purchase_workflow_update=True).sudo().write({
+            rec._write_submission_internal({
                 'state': 'submitted',
                 'submitted_at': fields.Datetime.now(),
             })
@@ -255,10 +274,7 @@ class AcpecFuelPurchase(models.Model):
             for rec in self:
                 if rec.state not in ('draft', 'submitted'):
                     raise UserError(_('Seuls les lots brouillon ou soumis peuvent etre valides.'))
-                rec.with_context(
-                    allow_fuel_purchase_workflow_update=True,
-                    allow_fuel_purchase_update=True,
-                ).sudo().write({
+                rec._write_approval_internal({
                     'state': 'approved',
                     'approved_at': fields.Datetime.now(),
                     'approved_by': self.env.user.id,
@@ -266,14 +282,20 @@ class AcpecFuelPurchase(models.Model):
                 })
             self._create_face_lines_after_approval()
 
-    def action_reject(self):
+    def action_reject(self, reason=False):
         for rec in self:
             if rec.state == 'approved':
                 raise UserError(_('Un lot valide ne peut pas etre rejete.'))
-            rec.with_context(allow_fuel_purchase_workflow_update=True).sudo().write({
+            rejection_reason = (
+                reason
+                if reason not in (False, None)
+                else rec.rejection_reason or False
+            )
+            rec._write_rejection_internal({
                 'state': 'rejected',
                 'rejected_at': fields.Datetime.now(),
                 'rejected_by': self.env.user.id,
+                'rejection_reason': rejection_reason,
             })
 
     def _create_face_lines_after_approval(self):
@@ -290,49 +312,141 @@ class AcpecFuelPurchase(models.Model):
         """
         return True
 
-    _immutable_after_submission_fields = {
-        'line_ids',
-        'partner_id',
-        'company_id',
-        'proof_attachment_ids',
-        'payment_reference',
-        'name',
-        'public_code',
-        'idempotency_key',
-        'request_hash',
-        'approval_idempotency_key',
-        'approval_request_hash',
-        'amount_total',
-        'face_qty_total',
+    _purchase_write_fields_by_operation = {
+        'submission_write': frozenset({
+            'state',
+            'submitted_at',
+        }),
+        'approval_write': frozenset({
+            'state',
+            'approved_at',
+            'approved_by',
+            'rejection_reason',
+        }),
+        'rejection_write': frozenset({
+            'state',
+            'rejected_at',
+            'rejected_by',
+            'rejection_reason',
+        }),
+        'proof_write': frozenset({
+            'proof_attachment_ids',
+        }),
+        'approval_idempotency_write': frozenset({
+            'approval_idempotency_key',
+            'approval_request_hash',
+        }),
+        'fuel_value_write': frozenset({
+            'fuel_value_created',
+        }),
     }
 
-    _workflow_fields = {
-        'state',
-        'submitted_at',
-        'approved_at',
-        'approved_by',
-        'rejected_at',
-        'rejected_by',
-    }
+    def _write_submission_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='submission_write',
+        ).write(vals)
 
-    def _assert_purchase_mutation_allowed(self, vals):
-        if not vals:
-            return
+    def _write_approval_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='approval_write',
+        ).write(vals)
 
-        keys = set(vals)
-        workflow = self._workflow_fields.intersection(keys)
-        protected = keys - workflow
+    def _write_rejection_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='rejection_write',
+        ).write(vals)
 
-        if workflow and not self.env.context.get('allow_fuel_purchase_workflow_update'):
-            raise UserError(_('Le statut du lot achat ne peut etre modifie que par les actions Soumettre, Valider ou Rejeter.'))
+    def _write_proof_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='proof_write',
+        ).write(vals)
 
-        if protected and not self.env.context.get('allow_fuel_purchase_update'):
+    def _write_approval_idempotency_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='approval_idempotency_write',
+        ).write(vals)
+
+    def _write_fuel_value_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_internal_operation='fuel_value_write',
+        ).write(vals)
+
+    def _check_purchase_write_vals(self, operation, vals):
+        expected_fields = self._purchase_write_fields_by_operation.get(operation)
+        if (
+            not expected_fields
+            or not self._purchase_internal_context_is_valid(operation)
+            or set(vals) != expected_fields
+        ):
             raise UserError(_(
                 'Les modifications du lot achat sont reservees aux flux metier internes controles.'
             ))
 
+        if operation == 'submission_write':
+            if vals.get('state') != 'submitted' or not vals.get('submitted_at'):
+                raise ValidationError(_('La soumission du lot achat est incomplete.'))
+            if self.filtered(lambda purchase: purchase.state != 'draft'):
+                raise UserError(_('Seuls les lots en brouillon peuvent etre soumis.'))
+
+        elif operation == 'approval_write':
+            if (
+                vals.get('state') != 'approved'
+                or not vals.get('approved_at')
+                or not vals.get('approved_by')
+                or vals.get('rejection_reason') not in (False, None, '')
+            ):
+                raise ValidationError(_('La validation du lot achat est incomplete.'))
+            if self.filtered(lambda purchase: purchase.state not in ('draft', 'submitted')):
+                raise UserError(_('Seuls les lots brouillon ou soumis peuvent etre valides.'))
+
+        elif operation == 'rejection_write':
+            if (
+                vals.get('state') != 'rejected'
+                or not vals.get('rejected_at')
+                or not vals.get('rejected_by')
+            ):
+                raise ValidationError(_('Le rejet du lot achat est incomplet.'))
+            if self.filtered(lambda purchase: purchase.state == 'approved'):
+                raise UserError(_('Un lot valide ne peut pas etre rejete.'))
+
+        elif operation == 'proof_write':
+            if not vals.get('proof_attachment_ids'):
+                raise ValidationError(_('La preuve de paiement est obligatoire.'))
+            if self.filtered(lambda purchase: purchase.state != 'draft'):
+                raise UserError(_('La preuve de paiement ne peut etre modifiee que sur un lot en brouillon.'))
+
+        elif operation == 'approval_idempotency_write':
+            idempotency_key = vals.get('approval_idempotency_key')
+            request_hash = vals.get('approval_request_hash')
+            if not idempotency_key or not request_hash:
+                raise ValidationError(_('Les references techniques d idempotence de validation sont obligatoires.'))
+            for purchase in self:
+                current_key = purchase.approval_idempotency_key
+                current_hash = purchase.approval_request_hash
+                if bool(current_key) != bool(current_hash):
+                    raise ValidationError(_('Les references techniques d idempotence de validation sont incoherentes.'))
+                if (
+                    current_key
+                    and (
+                        current_key != idempotency_key
+                        or current_hash != request_hash
+                    )
+                ):
+                    raise ValidationError(_('Les references techniques d idempotence de validation sont deja initialisees.'))
+
+        elif operation == 'fuel_value_write':
+            if vals.get('fuel_value_created') is not True:
+                raise ValidationError(_('La valeur carburant creee ne peut etre que confirmee.'))
+            if self.filtered(lambda purchase: purchase.state != 'approved'):
+                raise UserError(_('La valeur carburant ne peut etre confirmee que sur un lot valide.'))
+
     def write(self, vals):
-        self._assert_purchase_mutation_allowed(vals)
+        if not vals:
+            return True
+        operation = self.env.context.get(
+            self._purchase_internal_context_key
+        )
+        self._check_purchase_write_vals(operation, vals)
         return super().write(vals)
 
     def unlink(self):
@@ -342,9 +456,7 @@ class AcpecFuelPurchase(models.Model):
 
     def _set_approval_idempotency(self, idempotency_key, request_hash):
         self.ensure_one()
-        if not idempotency_key or not request_hash:
-            raise ValidationError(_('Les references techniques d idempotence de validation sont obligatoires.'))
-        return self.with_context(allow_fuel_purchase_update=True).sudo().write({
+        return self._write_approval_idempotency_internal({
             'approval_idempotency_key': idempotency_key,
             'approval_request_hash': request_hash,
         })
@@ -362,7 +474,7 @@ class AcpecFuelPurchase(models.Model):
                 return existing
         proof_filename, proof_data, proof_mimetype = self._validate_purchase_proof(proof_filename, proof_data)
         with self.env.cr.savepoint():
-            purchase = self.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).sudo().create({
+            purchase = self._create_internal({
                 'partner_id': partner.id,
                 'company_id': company.id,
                 'payment_reference': payment_reference or False,
@@ -377,9 +489,7 @@ class AcpecFuelPurchase(models.Model):
                     raise ValidationError(_("Type de carnet '%s' desactive.") % carnet_type.display_name)
                 if carnet_type.company_id and carnet_type.company_id != company:
                     raise ValidationError(_("Type de carnet '%s' indisponible pour cette societe.") % carnet_type.display_name)
-                self.env['acpec.fuel.purchase.line'].with_context(
-                    allow_fuel_purchase_line_create=True,
-                ).sudo().create({
+                self.env['acpec.fuel.purchase.line']._create_internal({
                     'purchase_id': purchase.id,
                     'carnet_type_id': carnet_type.id,
                     'carnet_qty': int(item.get('carnet_qty') or 0),
@@ -392,7 +502,7 @@ class AcpecFuelPurchase(models.Model):
                 'res_id': purchase.id,
                 'type': 'binary',
             })
-            purchase.with_context(allow_fuel_purchase_update=True).sudo().write({
+            purchase._write_proof_internal({
                 'proof_attachment_ids': [(4, attachment.id)],
             })
             purchase.action_submit()
@@ -433,9 +543,37 @@ class AcpecFuelPurchaseLine(models.Model):
         'amount_total',
     }
 
+    _purchase_line_internal_context_key = (
+        'acpec_fueltoken_purchase_line_internal_operation'
+    )
+    _snapshot_write_fields = frozenset({
+        'face_count',
+        'face_value',
+    })
+
+    @api.model
+    def _purchase_line_internal_context_is_valid(self, operation):
+        return bool(
+            self.env.su
+            and self.env.context.get(
+                self._purchase_line_internal_context_key
+            ) == operation
+        )
+
+    @api.model_create_multi
+    def _create_internal(self, vals_list):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_line_internal_operation='create',
+        ).create(vals_list)
+
+    def _write_snapshot_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_line_internal_operation='snapshot_write',
+        ).write(vals)
+
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_purchase_line_create'):
+        if not self._purchase_line_internal_context_is_valid('create'):
             raise UserError(_(
                 'La creation de lignes achat est reservee aux flux metier internes controles.'
             ))
@@ -466,18 +604,28 @@ class AcpecFuelPurchaseLine(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        if vals and not self.env.context.get('allow_fuel_purchase_line_update'):
+        if not vals:
+            return True
+        if (
+            not self._purchase_line_internal_context_is_valid('snapshot_write')
+            or set(vals) != self._snapshot_write_fields
+        ):
             raise UserError(_(
                 'Les modifications de lignes achat sont reservees aux flux metier internes controles.'
+            ))
+        if (
+            int(vals.get('face_count') or 0) <= 0
+            or float(vals.get('face_value') or 0.0) <= 0.0
+        ):
+            raise ValidationError(_(
+                'Les snapshots de ligne achat doivent avoir des valeurs positives.'
             ))
         return super().write(vals)
 
     def unlink(self):
-        if not self.env.context.get('allow_fuel_purchase_line_unlink'):
-            raise UserError(_(
-                'Les lignes d’achat ne doivent pas être supprimées directement.'
-            ))
-        return super().unlink()
+        raise UserError(_(
+            'Les lignes d’achat ne doivent pas être supprimées directement.'
+        ))
 
     @api.depends('purchase_id.name', 'carnet_qty', 'face_count', 'face_value', 'currency_id')
     def _compute_name(self):

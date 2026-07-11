@@ -36,12 +36,12 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
 
     def _submitted_purchase(self):
         partner = self.Partner.create({'name': 'H13 Client'})
-        purchase = self.Purchase.with_context(allow_fuel_purchase_create=True, allow_fuel_purchase_line_create=True).create({
+        purchase = self.Purchase._create_internal({
             'partner_id': partner.id,
             'company_id': self.env.company.id,
             'payment_reference': 'PAY-H13-001',
         })
-        self.PurchaseLine.with_context(allow_fuel_purchase_line_create=True).create({
+        self.PurchaseLine._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': self._carnet_type().id,
             'carnet_qty': 1,
@@ -54,7 +54,7 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
             'res_id': purchase.id,
             'type': 'binary',
         })
-        purchase.with_context(allow_fuel_purchase_update=True).sudo().write({'proof_attachment_ids': [(4, attachment.id)]})
+        purchase._write_proof_internal({'proof_attachment_ids': [(4, attachment.id)]})
         purchase.action_submit()
         self.assertEqual(purchase.state, 'submitted')
         return purchase
@@ -94,7 +94,7 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
             line.write({'carnet_qty': line.carnet_qty + 1})
 
         with self.assertRaises(UserError):
-            self.PurchaseLine.with_context(allow_fuel_purchase_line_create=True).create({
+            self.PurchaseLine._create_internal({
                 'purchase_id': purchase.id,
                 'carnet_type_id': self._carnet_type().id,
                 'carnet_qty': 1,

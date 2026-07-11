@@ -22,19 +22,14 @@ class TestPurchaseRuntimeGuardsM21C(TransactionCase):
         })
 
     def _purchase(self):
-        return self.Purchase.with_context(
-            allow_fuel_purchase_create=True,
-            allow_fuel_purchase_line_create=True,
-        ).create({
+        return self.Purchase._create_internal({
             'partner_id': self.partner.id,
             'company_id': self.env.company.id,
             'payment_reference': 'PAY-M21C',
         })
 
     def _line(self, purchase):
-        return self.PurchaseLine.with_context(
-            allow_fuel_purchase_line_create=True,
-        ).create({
+        return self.PurchaseLine._create_internal({
             'purchase_id': purchase.id,
             'carnet_type_id': self.carnet_type.id,
             'carnet_qty': 1,
