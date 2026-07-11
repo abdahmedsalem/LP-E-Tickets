@@ -281,31 +281,25 @@ Résultat attendu :
 - `partner.phone` et `partner.email` restent vides au signup.
 - L'email éventuel reste porté par la demande d'inscription, pas par le partenaire.
 
-### Patch43F2G — changement téléphone mobile FuelToken contrôlé BO
+### Patch43F2G — ancien workflow de changement de téléphone mobile
 
-Statut : implémenté et testé.
+Statut : obsolète et retiré par Patch43M23-C0.
 
-Couverture doctrine :
-- INV-I7 : changement de numéro exclusivement via back-office contrôlé.
-- Même `res.users.id` conservé.
-- Même `partner_id` conservé.
-- `login` et `mobile_phone` changent ensemble vers le nouveau numéro canonique.
-- Écriture directe de `login` / `mobile_phone` refusée pour une identité FuelToken établie.
-- Doublon `login` / `mobile_phone` refusé.
-- `partner.ref` automatique `MOB:<old_phone>` remplacée par `MOB:<new_phone>`.
-- Référence partenaire manuelle conservée.
-- Audit créé dans `acpec.fueltoken.mobile.phone.change.log`.
-- Log d'audit en lecture seule pour l'admin mobile.
-- Sessions actives révoquées systématiquement.
-- Trust device conservé : la révocation porte sur les sessions, pas sur le device.
-- Wizard back-office disponible depuis la fiche utilisateur.
-- Historique disponible dans Configuration > Historique changements téléphone mobile.
-- Menu Utilisateurs mobiles — audit filtré par `mobile_only=True`.
+Doctrine actuelle :
+- Le téléphone est l’identité mobile FuelToken canonique.
+- Une identité mobile établie est immuable.
+- Aucun changement de téléphone n’est autorisé par le BO, le mobile, une API, un wizard ou une action serveur.
+- L’écriture directe de `login` ou `acpec_mobile_phone` reste refusée.
+- La méthode historique `action_fueltoken_change_mobile_phone()` est conservée uniquement pour refuser explicitement toute tentative.
+- Le nettoyage défensif des anciennes actions Odoo dangereuses reste actif.
+- Le modèle `acpec.fueltoken.mobile.phone.change.log`, son ACL, ses vues, son action et son menu sont retirés du code.
+- Patch43M23-C0 n’exécute aucune migration ni conversion des anciennes données.
+- Un nouveau numéro implique le blocage de l’ancienne identité puis la création contrôlée d’une nouvelle identité distincte.
 
 Tests :
-- `test_mobile_phone_change_lifecycle.py`
-- Run complet : 284 tests, 0 failed, 0 error.
-- Run ciblé après ACL : 122 tests, 0 failed, 0 error.
+- `test_mobile_partner_technical_identity.py` vérifie que le changement de téléphone est refusé.
+- `test_mobile_phone_change_action_cleanup.py` vérifie la suppression des anciennes actions dangereuses.
+- `test_mobile_phone_change_removed_c0.py` vérifie que le modèle obsolète n’est plus enregistré et que la méthode de refus reste disponible.
 
 ### Patch43F2H0 — alignement doctrine device durable et user blocked
 
@@ -355,29 +349,24 @@ Décisions confirmées :
 - Les sessions actives sont déjà révoquées quand le user passe hors `approved/self_registered`.
 - La réactivation user ne modifie pas automatiquement les états devices : trusted reste trusted, pending reste pending_trust, blocked reste blocked.
 - F2I ne crée pas de gel wallet séparé.
-- F2I ne traite pas changement téléphone + device ni ancien device retrouvé.
+- F2I ne traite ni la création d’une nouvelle identité après changement réel de numéro, ni le retour vers un ancien device.
 
 Tests :
 - `test_mobile_user_blocked_otp.py`
 - `test_mobile_user_blocking_lifecycle.py`
 - Run ciblé : `TestMobileUserBlockedOtp` + `TestMobileUserBlockingLifecycle`, 0 failed, 0 error.
 
-### Patch43F2J — composition changement téléphone + remplacement device
+### Patch43F2J — ancienne composition téléphone et device
 
-Statut : composition F2G + F2H validée par tests, sans changement runtime.
+Statut : scénario obsolète, non présent dans le runtime actuel.
 
-Décisions confirmées :
-- F2J n'introduit aucun mécanisme parallèle.
-- Si téléphone puis device : F2G change `login/mobile_phone`, conserve `user_id/partner_id`, révoque les sessions ; F2H ajoute ensuite le nouveau device `pending_trust` puis `trusted` après approbation BO.
-- Si device puis téléphone : F2H approuve le nouveau device et repasse l'ancien en `pending_trust` ; F2G change ensuite le numéro et révoque les sessions sans modifier le trust durable du device.
-- L'ancien numéro ne résout plus aucun utilisateur mobile après changement téléphone.
-- Le user reste le même, le partner reste le même, le wallet/carnets restent attachés au partner.
-- F2J ne traite pas perte/vol/SIM-swap/user blocked ; ces cas restent couverts par F2I.
-- F2J ne traite pas ancien device retrouvé ; ce sera F2K si nécessaire.
-
-Tests :
-- `test_mobile_phone_device_composition_lifecycle.py`
-- Run ciblé : `TestMobilePhoneDeviceCompositionLifecycle`, 0 failed, 0 error.
+Doctrine actuelle :
+- Une identité mobile FuelToken établie est immuable.
+- Le remplacement normal d’un device ne modifie jamais `login`, `acpec_mobile_phone`, `user_id` ou `partner_id`.
+- Un changement réel de numéro implique le blocage de l’ancienne identité puis la création contrôlée d’une nouvelle identité distincte.
+- Il n’existe aucun workflow combinant mutation du téléphone et remplacement du device.
+- Aucun test runtime F2J n’est conservé, car ce scénario n’est plus autorisé.
+- Les tests de remplacement de device restent applicables uniquement à identité mobile inchangée.
 
 ### Patch43F2K — ancien device retrouvé / retour vers ancien device
 
