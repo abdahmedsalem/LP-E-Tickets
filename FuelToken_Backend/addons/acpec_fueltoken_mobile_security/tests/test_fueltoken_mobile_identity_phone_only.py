@@ -83,7 +83,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
 
     def test_generic_mobile_auth_account_request_still_accepts_email(self):
         """acpec_mobile_auth remains generic outside the FuelToken company."""
-        rec = self.Request.create({
+        rec = self.Request._create_internal({
             'name_display': 'Generic Email Signup',
             'signup_identifier': 'generic.email.f2a@example.com',
             'signup_identifier_type': 'email',
@@ -96,7 +96,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
     def test_inv_i1_fueltoken_account_request_requires_phone_identifier(self):
         """INV-I1: FuelToken signup identifier must be the canonical phone."""
         with self.assertRaises(ValidationError):
-            self.Request.create({
+            self.Request._create_internal({
                 'name_display': 'FuelToken Email Signup',
                 'signup_identifier': 'fuel.email.f2a@example.com',
                 'signup_identifier_type': 'email',
@@ -105,7 +105,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
                 'company_id': self.fuel_company.id,
             })
 
-        rec = self.Request.create({
+        rec = self.Request._create_internal({
             'name_display': 'FuelToken Phone Signup',
             'signup_identifier': '32345006',
             'signup_identifier_type': 'phone',
@@ -120,7 +120,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
     def test_inv_i1_fueltoken_account_request_rejects_phone_login_drift(self):
         """INV-I1: signup_identifier, phone and login cannot drift for FuelToken."""
         with self.assertRaises(ValidationError):
-            self.Request.create({
+            self.Request._create_internal({
                 'name_display': 'FuelToken Phone Drift Signup',
                 'signup_identifier': '32345007',
                 'signup_identifier_type': 'phone',
@@ -170,7 +170,7 @@ class TestFuelTokenMobileIdentityPhoneOnly(TransactionCase):
         for phone in invalid_values:
             with self.subTest(phone=phone):
                 with self.assertRaises(ValidationError):
-                    self.Request.create({
+                    self.Request._create_internal({
                         'name_display': 'FuelToken Bad Phone %s' % phone,
                         'signup_identifier': phone,
                         'signup_identifier_type': 'phone',

@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Mobile Security',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
     'category': 'ACPEC/FuelToken',
     'summary': 'Contraintes de sécurité mobile spécifiques à FuelToken',
     'author': 'ACPEC SARL',

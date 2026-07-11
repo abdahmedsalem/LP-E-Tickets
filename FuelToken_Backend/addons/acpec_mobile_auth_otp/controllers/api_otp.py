@@ -291,7 +291,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     # Patch42C closes the account request because OTP registration
                     # finalized the account creation. Do not call action_approve():
                     # device trust and business access remain pending separately.
-                    account_request.write({
+                    account_request._write_internal({
                         'state': 'approved',
                         'reviewed_at': fields.Datetime.now(),
                     })

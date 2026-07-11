@@ -51,6 +51,7 @@ class AcpecMobileAuthAccountRequest(models.Model):
         return result
 
     def action_approve(self):
+        self._assert_account_request_action_allowed()
         self._check_acpec_fueltoken_signup_identifier()
         records = self.with_context(acpec_fueltoken_allow_mobile_identity_initialization=True)
         return super(AcpecMobileAuthAccountRequest, records).action_approve()
