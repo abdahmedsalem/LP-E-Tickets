@@ -175,20 +175,20 @@ class TestEconomicIdentityImmutability(TransactionCase):
         )
         qr_line = qr.line_ids[0]
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             qr_line.write({'face_value': qr_line.face_value + 1})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             qr_line.write({'purchase_id': False})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             qr_line.write({'qty': qr_line.qty - 1})
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             qr_line.write({'state': 'consumed'})
 
-        empty_qr = self.Qr.with_context(allow_fuel_qr_create=True).create({'wallet_id': source_wallet.id})
-        with self.assertRaises(ValidationError):
+        empty_qr = self.Qr._create_internal({'wallet_id': source_wallet.id})
+        with self.assertRaises(UserError):
             qr_line.write({'qr_id': empty_qr.id})
 
         child = qr.action_retirer_to_child(

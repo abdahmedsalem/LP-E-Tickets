@@ -91,6 +91,71 @@ class AcpecFuelQr(models.Model):
         'consumed_partner_id',
         'consumed_at',
     ))
+    _qr_numeric_hash_fields = frozenset((
+        'qr_numeric_code_hash',
+        'qr_numeric_code_nonce',
+    ))
+
+    @api.model
+    def _qr_internal_context_is_valid(self, operation):
+        return (
+            self.env.su
+            and self.env.context.get(
+                'acpec_fueltoken_qr_internal_operation'
+            ) == operation
+        )
+
+    @api.model_create_multi
+    def _create_internal(self, vals_list):
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_internal_operation='create',
+        ).create(vals_list)
+
+    def _write_state_internal(self, vals):
+        self._check_qr_state_write_vals(vals)
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_internal_operation='state_write',
+        ).write(vals)
+
+    def _write_numeric_hash_internal(self, vals):
+        self._check_qr_numeric_hash_write_vals(vals)
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_internal_operation='numeric_hash_write',
+        ).write(vals)
+
+    def _check_qr_state_write_vals(self, vals):
+        unsupported = set(vals or {}) - self._qr_controlled_state_fields
+        if not unsupported:
+            return
+        raise ValidationError(_(
+            "Le flux interne d'état du QR ne peut modifier que "
+            "les champs d'état contrôlés. Champs interdits : %s"
+        ) % ', '.join(sorted(unsupported)))
+
+    def _check_qr_numeric_hash_write_vals(self, vals):
+        requested = set(vals or {})
+        if requested != self._qr_numeric_hash_fields:
+            raise ValidationError(_(
+                "Le backfill interne du Code QR numérique doit écrire "
+                "exactement l'empreinte et le paramètre interne."
+            ))
+        if (
+            not vals.get('qr_numeric_code_hash')
+            or not vals.get('qr_numeric_code_nonce')
+        ):
+            raise ValidationError(_(
+                "L'empreinte et le paramètre interne du Code QR numérique "
+                "sont obligatoires."
+            ))
+        for qr in self:
+            if (
+                qr.qr_numeric_code_hash
+                and qr.qr_numeric_code_nonce
+            ):
+                raise ValidationError(_(
+                    "L'identité numérique du QR est déjà initialisée "
+                    "et ne peut pas être remplacée."
+                ))
 
 
     def _is_qr_manual_code_label(self, value):
@@ -191,7 +256,7 @@ class AcpecFuelQr(models.Model):
                 continue
             nonce, code_hash = qr._build_unique_qr_numeric_code_values(qr.public_code, exclude_id=qr.id)
             if code_hash:
-                qr.with_context(allow_fuel_qr_economic_update=True).sudo().write({
+                qr._write_numeric_hash_internal({
                     'qr_numeric_code_nonce': nonce,
                     'qr_numeric_code_hash': code_hash,
                 })
@@ -218,7 +283,7 @@ class AcpecFuelQr(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_qr_create'):
+        if not self._qr_internal_context_is_valid('create'):
             raise UserError(_(
                 'La création de QR est réservée aux flux métier internes contrôlés.'
             ))
@@ -234,29 +299,22 @@ class AcpecFuelQr(models.Model):
                 vals['name'] = Sequence.next_by_code('acpec.fuel.qr') or 'New'
         return super().create(vals_list)
 
-    def _check_qr_protected_write_vals(self, vals):
-        protected = set(vals or {}) & (self._qr_economic_identity_fields | self._qr_controlled_state_fields)
-        if not protected:
-            return
-        if self.env.context.get('allow_fuel_qr_economic_update'):
-            return
-        if self.env.context.get('allow_fuel_qr_state_update') and not (protected & self._qr_economic_identity_fields):
-            return
-        raise ValidationError(
-            _('Modification directe interdite sur les champs contrôlés du QR : %s')
-            % ', '.join(sorted(protected))
-        )
-
     def write(self, vals):
-        self._check_qr_protected_write_vals(vals)
+        if self._qr_internal_context_is_valid('state_write'):
+            self._check_qr_state_write_vals(vals)
+        elif self._qr_internal_context_is_valid('numeric_hash_write'):
+            self._check_qr_numeric_hash_write_vals(vals)
+        else:
+            raise UserError(_(
+                'La modification des QR est réservée '
+                'aux flux métier internes contrôlés.'
+            ))
         return super().write(vals)
 
     def unlink(self):
-        if not self.env.context.get('allow_fuel_qr_unlink'):
-            raise UserError(_(
-                'Les QR ne peuvent pas être supprimés hors flux interne contrôlé.'
-            ))
-        return super().unlink()
+        raise UserError(_(
+            'Les QR ne doivent pas être supprimés.'
+        ))
 
     @api.depends('line_ids.qty', 'line_ids.face_value', 'line_ids.expires_at')
     def _compute_totals(self):
@@ -285,13 +343,13 @@ class AcpecFuelQr(models.Model):
                 (wallet.id,),
             )
             wallet.invalidate_recordset()
-            qr = self.sudo().with_context(allow_fuel_qr_create=True).create({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False, 'request_hash': request_hash or False})
+            qr = self._create_internal({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False, 'request_hash': request_hash or False})
             allocations = self.env['acpec.fuel.face.line'].sudo().reserve_available(wallet, requests)
             tx_lines = []
             for allocation in allocations:
                 face_line = allocation['face_line']
                 qty = allocation['qty']
-                qr_line = self.env['acpec.fuel.qr.line'].sudo().with_context(allow_fuel_qr_line_create=True).create({
+                qr_line = self.env['acpec.fuel.qr.line']._create_internal({
                     'qr_id': qr.id,
                     'face_line_id': face_line.id,
                     'purchase_id': face_line.purchase_id.id,
@@ -349,15 +407,15 @@ class AcpecFuelQr(models.Model):
                     'qty_qr_blocked': line.face_line_id.qty_qr_blocked - line.qty,
                     'qty_expired': line.face_line_id.qty_expired + line.qty,
                 })
-            line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'expired'})
+            line._write_state_internal({'state': 'expired'})
             tx_lines.append(line._transaction_line_vals())
         for line in valid_lines.filtered(lambda l: l.state == 'active'):
             line.face_line_id._write_state_internal({
                 'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                 'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
             })
-            line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'blocked'})
-        self.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'blocked'})
+            line._write_state_internal({'state': 'blocked'})
+        self._write_state_internal({'state': 'blocked'})
         self.env['acpec.fuel.transaction'].log('blocage_qr', self.company_id, wallet=self.wallet_id, qr=self, lines=tx_lines, note=_('QR bloqué par expiration partielle.'))
 
     def _expire_all_lines(self, expired_lines):
@@ -373,9 +431,9 @@ class AcpecFuelQr(models.Model):
                     'qty_qr_blocked': line.face_line_id.qty_qr_blocked - line.qty,
                     'qty_expired': line.face_line_id.qty_expired + line.qty,
                 })
-            line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'expired'})
+            line._write_state_internal({'state': 'expired'})
             tx_lines.append(line._transaction_line_vals())
-        self.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'expired'})
+        self._write_state_internal({'state': 'expired'})
         self.env['acpec.fuel.transaction'].log('expiration_qr', self.company_id, wallet=self.wallet_id, qr=self, lines=tx_lines, note=_('QR entièrement expiré.'))
 
     def action_consume_by_station(self, station, user=False, idempotency_key=False, request_hash=False):
@@ -432,9 +490,9 @@ class AcpecFuelQr(models.Model):
                     'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                     'qty_consumed': line.face_line_id.qty_consumed + line.qty,
                 })
-                line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'consumed'})
+                line._write_state_internal({'state': 'consumed'})
                 tx_lines.append(line._transaction_line_vals())
-            self.with_context(allow_fuel_qr_state_update=True).sudo().write({
+            self._write_state_internal({
                 'state': 'consumed',
                 'consumed_station_id': station.id,
                 'consumed_user_id': actor_user.id,
@@ -504,7 +562,7 @@ class AcpecFuelQr(models.Model):
             source_lines = self.env['acpec.fuel.qr.line'].sudo().browse(list(requested.keys())).exists()
             source_by_id = {line.id: line for line in source_lines}
 
-            qr_child = self.sudo().with_context(allow_fuel_qr_create=True).create({
+            qr_child = self._create_internal({
                 'wallet_id': self.wallet_id.id,
                 'parent_id': self.id,
             })
@@ -520,11 +578,11 @@ class AcpecFuelQr(models.Model):
                     raise ValidationError(_('Nombre de tickets insuffisant sur la ligne QR source.'))
 
                 if qty == src.qty:
-                    src.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'qr_id': qr_child.id})
+                    src._write_state_internal({'qr_id': qr_child.id})
                     moved_line = src
                 else:
-                    src.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'qty': src.qty - qty})
-                    moved_line = self.env['acpec.fuel.qr.line'].sudo().with_context(allow_fuel_qr_line_create=True).create({
+                    src._write_state_internal({'qty': src.qty - qty})
+                    moved_line = self.env['acpec.fuel.qr.line']._create_internal({
                         'qr_id': qr_child.id,
                         'source_qr_line_id': src.id,
                         'face_line_id': src.face_line_id.id,
@@ -611,7 +669,7 @@ class AcpecFuelQr(models.Model):
                 [tuple(valid_lines.ids)],
             )
 
-            qr_child = self.sudo().with_context(allow_fuel_qr_create=True).create({
+            qr_child = self._create_internal({
                 'wallet_id': self.wallet_id.id,
                 'parent_id': self.id,
             })
@@ -622,7 +680,7 @@ class AcpecFuelQr(models.Model):
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked - line.qty,
                         'qty_qr_active': line.face_line_id.qty_qr_active + line.qty,
                     })
-                line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({
+                line._write_state_internal({
                     'qr_id': qr_child.id,
                     'state': 'active',
                 })
@@ -654,28 +712,28 @@ class AcpecFuelQr(models.Model):
         for qr in self:
             states = set(qr.line_ids.mapped('state'))
             if states == {'expired'}:
-                qr.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'expired'})
+                qr._write_state_internal({'state': 'expired'})
             elif 'expired' in states and (states - {'expired'}):
-                qr.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'blocked'})
+                qr._write_state_internal({'state': 'blocked'})
                 for line in qr.line_ids.filtered(lambda l: l.state == 'active'):
-                    line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'blocked'})
+                    line._write_state_internal({'state': 'blocked'})
                     line.face_line_id._write_state_internal({
                         'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
                     })
             elif 'blocked' in states and 'active' in states:
-                qr.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'blocked'})
+                qr._write_state_internal({'state': 'blocked'})
                 # Ne traiter QUE les lignes active pour éviter le double-comptage des blocked
                 for line in qr.line_ids.filtered(lambda l: l.state == 'active'):
-                    line.with_context(allow_fuel_qr_line_state_update=True).sudo().write({'state': 'blocked'})
+                    line._write_state_internal({'state': 'blocked'})
                     line.face_line_id._write_state_internal({
                         'qty_qr_active': line.face_line_id.qty_qr_active - line.qty,
                         'qty_qr_blocked': line.face_line_id.qty_qr_blocked + line.qty,
                     })
             elif 'blocked' in states:
-                qr.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'blocked'})
+                qr._write_state_internal({'state': 'blocked'})
             else:
-                qr.with_context(allow_fuel_qr_state_update=True).sudo().write({'state': 'active'})
+                qr._write_state_internal({'state': 'active'})
 
 
     @api.model
@@ -728,9 +786,24 @@ class AcpecFuelQrLine(models.Model):
     ], string='État', default='active', index=True)
     expires_at = fields.Datetime(string='Expiration')
 
+    @api.model
+    def _qr_line_internal_context_is_valid(self, operation):
+        return (
+            self.env.su
+            and self.env.context.get(
+                'acpec_fueltoken_qr_line_internal_operation'
+            ) == operation
+        )
+
+    @api.model_create_multi
+    def _create_internal(self, vals_list):
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_line_internal_operation='create',
+        ).create(vals_list)
+
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_qr_line_create'):
+        if not self._qr_line_internal_context_is_valid('create'):
             raise UserError(_(
                 'La création de lignes QR est réservée aux flux métier internes contrôlés.'
             ))
@@ -763,27 +836,34 @@ class AcpecFuelQrLine(models.Model):
         'state',
     ))
 
-    def _check_protected_write_vals(self, vals):
-        protected = set(vals or {}) & (self._economic_identity_fields | self._controlled_state_fields)
-        if not protected:
+    def _write_state_internal(self, vals):
+        self._check_controlled_state_write_vals(vals)
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_line_internal_operation='state_write',
+        ).write(vals)
+
+    def _check_controlled_state_write_vals(self, vals):
+        unsupported = set(vals or {}) - self._controlled_state_fields
+        if not unsupported:
             return
-        if self.env.context.get('allow_fuel_qr_line_economic_update'):
-            return
-        if self.env.context.get('allow_fuel_qr_line_state_update') and not (protected & self._economic_identity_fields):
-            return
-        raise ValidationError(
-            _('Modification directe interdite sur les champs économiques de la ligne QR : %s')
-            % ', '.join(sorted(protected))
-        )
+        raise ValidationError(_(
+            "Le flux interne d'état de la ligne QR ne peut modifier que "
+            "le QR courant, la quantité et l'état. Champs interdits : %s"
+        ) % ', '.join(sorted(unsupported)))
 
     def write(self, vals):
-        self._check_protected_write_vals(vals)
+        if not self._qr_line_internal_context_is_valid('state_write'):
+            raise UserError(_(
+                'La modification des lignes QR est réservée '
+                'aux flux métier internes contrôlés.'
+            ))
+        self._check_controlled_state_write_vals(vals)
         return super().write(vals)
 
     def unlink(self):
-        if not self.env.context.get('allow_fuel_qr_line_unlink'):
-            raise ValidationError(_('Les lignes QR ne doivent pas être supprimées directement.'))
-        return super().unlink()
+        raise UserError(_(
+            'Les lignes QR ne doivent pas être supprimées.'
+        ))
 
     def _transaction_line_vals(self):
         self.ensure_one()

@@ -141,9 +141,7 @@ class TestWalletRuntimeGuardsM23C6A(TransactionCase):
     def test_m23c6a_purge_rejects_wallet_with_qr(self):
         wallet = self._wallet()
 
-        qr = self.env['acpec.fuel.qr'].sudo().with_context(
-            allow_fuel_qr_create=True,
-        ).create({
+        qr = self.env['acpec.fuel.qr']._create_internal({
             'wallet_id': wallet.id,
         })
 
