@@ -33,19 +33,63 @@ class AcpecFuelWallet(models.Model):
         'Un client ne peut avoir qu’un compte Tickets Carburant par société.',
     )
 
+    @api.model
+    def _wallet_internal_context_is_valid(self, operation):
+        return (
+            self.env.su
+            and self.env.context.get(
+                'acpec_fueltoken_wallet_internal_operation'
+            ) == operation
+        )
+
+    @api.model
+    def _create_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_wallet_internal_operation='create',
+        ).create(vals)
+
+    def _write_internal(self, vals):
+        return self.sudo().with_context(
+            acpec_fueltoken_wallet_internal_operation='write',
+        ).write(vals)
+
+    def _purge_internal(self):
+        return self.sudo().with_context(
+            acpec_fueltoken_wallet_internal_operation='purge',
+        ).unlink()
+
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get('allow_fuel_wallet_create'):
+        if not self._wallet_internal_context_is_valid('create'):
             raise UserError(_(
-                'La création de comptes Tickets Carburant est réservée aux flux métier internes contrôlés.'
+                'La création de comptes Tickets Carburant est réservée '
+                'aux flux métier internes contrôlés.'
             ))
         return super().create(vals_list)
 
     def unlink(self):
-        if not self.env.context.get('allow_fuel_wallet_unlink'):
+        if not self._wallet_internal_context_is_valid('purge'):
             raise UserError(_(
-                'Les comptes Tickets Carburant ne peuvent pas être supprimés hors flux interne contrôlé.'
+                'Les comptes Tickets Carburant ne peuvent pas être supprimés '
+                'hors flux interne contrôlé.'
             ))
+
+        wallet_ids = self.ids
+        if wallet_ids:
+            has_face_lines = self.env[
+                'acpec.fuel.face.line'
+            ].sudo().search_count([
+                ('wallet_id', 'in', wallet_ids),
+            ])
+            has_qrs = self.env['acpec.fuel.qr'].sudo().search_count([
+                ('wallet_id', 'in', wallet_ids),
+            ])
+            if has_face_lines or has_qrs:
+                raise UserError(_(
+                    'Un compte Tickets Carburant contenant des carnets '
+                    'ou des QR ne peut pas être purgé.'
+                ))
+
         return super().unlink()
 
     @api.depends('partner_id', 'company_id')
@@ -135,7 +179,7 @@ class AcpecFuelWallet(models.Model):
         if len(company) != 1:
             raise ValidationError(_('Une seule société est requise pour créer le compte Tickets Carburant.'))
 
-        Wallet = self.sudo().with_context(allow_fuel_wallet_create=True)
+        Wallet = self.sudo()
         domain = [
             ('partner_id', '=', partner.id),
             ('company_id', '=', company.id),
@@ -147,7 +191,7 @@ class AcpecFuelWallet(models.Model):
 
         try:
             with self.env.cr.savepoint():
-                return Wallet.create({
+                return Wallet._create_internal({
                     'partner_id': partner.id,
                     'company_id': company.id,
                 })
@@ -255,7 +299,15 @@ class AcpecFuelWallet(models.Model):
         return True
 
     def write(self, vals):
+        if not self._wallet_internal_context_is_valid('write'):
+            raise UserError(_(
+                'La modification des comptes Tickets Carburant est réservée '
+                'aux flux métier internes contrôlés.'
+            ))
         if 'balance' in vals:
-            raise UserError(_('Le solde Tickets Carburant est calculé et ne peut pas être modifié directement.'))
+            raise UserError(_(
+                'Le solde Tickets Carburant est calculé '
+                'et ne peut pas être modifié directement.'
+            ))
         self._check_wallet_economic_identity_write_allowed(vals)
         return super().write(vals)

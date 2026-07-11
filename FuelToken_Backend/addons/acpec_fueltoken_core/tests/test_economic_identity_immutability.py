@@ -87,7 +87,7 @@ class TestEconomicIdentityImmutability(TransactionCase):
         old_company = wallet.company_id
 
         # Idempotent writes are harmless and must not break normal ORM/form flows.
-        wallet.write({
+        wallet._write_internal({
             'partner_id': old_partner.id,
             'company_id': old_company.id,
         })
@@ -102,7 +102,7 @@ class TestEconomicIdentityImmutability(TransactionCase):
 
         for vals in forbidden_writes:
             with self.assertRaises(ValidationError):
-                wallet.write(vals)
+                wallet._write_internal(vals)
 
             wallet.invalidate_recordset(['partner_id', 'company_id'])
             self.assertEqual(wallet.partner_id.id, old_partner.id)

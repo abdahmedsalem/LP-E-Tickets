@@ -1,7 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_fuel_wallet_user,acpec.fuel.wallet user,model_acpec_fuel_wallet,acpec_fueltoken_base.group_fuel_user,1,0,0,0
-access_fuel_wallet_manager,acpec.fuel.wallet manager,model_acpec_fuel_wallet,acpec_fueltoken_base.group_fuel_manager,1,1,1,0
-access_fuel_wallet_admin,acpec.fuel.wallet admin,model_acpec_fuel_wallet,acpec_fueltoken_base.group_fuel_admin,1,1,1,1
+access_fuel_wallet_manager,acpec.fuel.wallet manager,model_acpec_fuel_wallet,acpec_fueltoken_base.group_fuel_manager,1,0,0,0
+access_fuel_wallet_admin,acpec.fuel.wallet admin,model_acpec_fuel_wallet,acpec_fueltoken_base.group_fuel_admin,1,0,0,0
 access_fuel_face_line_user,acpec.fuel.face.line user,model_acpec_fuel_face_line,acpec_fueltoken_base.group_fuel_user,1,0,0,0
 access_fuel_face_line_manager,acpec.fuel.face.line manager,model_acpec_fuel_face_line,acpec_fueltoken_base.group_fuel_manager,1,1,0,0
 access_fuel_face_line_admin,acpec.fuel.face.line admin,model_acpec_fuel_face_line,acpec_fueltoken_base.group_fuel_admin,1,1,1,1

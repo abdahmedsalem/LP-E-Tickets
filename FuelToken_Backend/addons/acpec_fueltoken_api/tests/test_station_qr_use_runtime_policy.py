@@ -188,7 +188,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         partner = self.env['res.partner'].sudo().create({
             'name': 'Foreign QR Partner %s' % suffix,
         })
-        wallet = self.env['acpec.fuel.wallet'].sudo().with_context(allow_fuel_wallet_create=True).create({
+        wallet = self.env['acpec.fuel.wallet']._create_internal({
             'partner_id': partner.id,
             'company_id': other_company.id,
         })
