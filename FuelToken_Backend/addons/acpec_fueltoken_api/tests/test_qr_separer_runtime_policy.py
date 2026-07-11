@@ -155,8 +155,16 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         self.assertTrue(valid_line)
 
         now = fields.Datetime.now()
-        expired_line.with_context(allow_fuel_qr_line_economic_update=True).write({"expires_at": now - timedelta(days=1)})
-        valid_line.with_context(allow_fuel_qr_line_economic_update=True).write({"expires_at": now + timedelta(days=30)})
+        self.env.cr.execute(
+            'UPDATE acpec_fuel_qr_line SET expires_at = %s WHERE id = %s',
+            (now - timedelta(days=1), expired_line.id),
+        )
+        self.env.cr.execute(
+            'UPDATE acpec_fuel_qr_line SET expires_at = %s WHERE id = %s',
+            (now + timedelta(days=30), valid_line.id),
+        )
+        expired_line.invalidate_recordset(['expires_at'])
+        valid_line.invalidate_recordset(['expires_at'])
 
         source_qr.action_refresh_expiration_state()
         source_qr.invalidate_recordset(["state"])

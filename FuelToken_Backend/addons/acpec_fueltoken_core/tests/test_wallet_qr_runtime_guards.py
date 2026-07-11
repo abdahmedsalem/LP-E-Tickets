@@ -25,7 +25,7 @@ class TestWalletQrRuntimeGuards(TransactionCase):
         return self.Wallet.get_or_create(self._partner(), self.company)
 
     def _qr(self):
-        return self.Qr.with_context(allow_fuel_qr_create=True).create({
+        return self.Qr._create_internal({
             'wallet_id': self._wallet().id,
         })
 
@@ -64,7 +64,7 @@ class TestWalletQrRuntimeGuards(TransactionCase):
                 'wallet_id': wallet.id,
             })
 
-        qr = self.Qr.with_context(allow_fuel_qr_create=True).create({
+        qr = self.Qr._create_internal({
             'wallet_id': wallet.id,
         })
         self.assertTrue(qr)
@@ -81,53 +81,53 @@ class TestWalletQrRuntimeGuards(TransactionCase):
         with self.assertRaises(UserError):
             self.QrLine.create(vals)
 
-        # This intentionally uses incomplete QR line values. The purpose of
-        # this test is only to prove that the M21-B runtime guard is bypassed
-        # by the explicit internal context. A real QR line is created by
-        # issue_from_available(), where face_line/purchase lineage is present.
         with self.assertRaises(Exception) as caught:
             with self.env.cr.savepoint():
-                self.QrLine.with_context(allow_fuel_qr_line_create=True).create(vals)
+                self.QrLine._create_internal(vals)
         self.assertNotIsInstance(caught.exception, UserError)
 
-    def test_m21b_qr_unlink_requires_internal_context(self):
+    def test_m21b_qr_unlink_is_forbidden(self):
         qr = self._qr()
 
         with self.assertRaises(UserError):
             qr.unlink()
 
-        qr.with_context(allow_fuel_qr_unlink=True).unlink()
-        self.assertFalse(qr.exists())
+        with self.assertRaises(UserError):
+            qr.sudo().unlink()
 
-    def test_m21b2_qr_write_state_requires_internal_context(self):
+        self.assertTrue(qr.exists())
+
+    def test_m21b2_qr_write_state_requires_internal_helper(self):
         qr = self._qr()
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             qr.write({'state': 'blocked'})
 
-        qr.with_context(allow_fuel_qr_state_update=True).write({'state': 'blocked'})
+        qr._write_state_internal({'state': 'blocked'})
         self.assertEqual(qr.state, 'blocked')
 
-    def test_m21b2_qr_write_economic_fields_rejects_state_context(self):
+    def test_m21b2_qr_state_helper_rejects_economic_fields(self):
         parent = self._qr()
-        child = self.Qr.with_context(allow_fuel_qr_create=True).create({
+        child = self.Qr._create_internal({
             'wallet_id': self._wallet().id,
             'parent_id': parent.id,
         })
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             child.write({'parent_id': False})
 
         with self.assertRaises(ValidationError):
-            child.with_context(allow_fuel_qr_state_update=True).write({'parent_id': False})
+            child._write_state_internal({'parent_id': False})
 
-    def test_m21b2_qr_write_economic_context_is_internal_only(self):
+    def test_m21b2_qr_numeric_hash_helper_is_narrow(self):
         qr = self._qr()
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(UserError):
             qr.write({'request_hash': 'm21b2-direct'})
 
-        qr.with_context(allow_fuel_qr_economic_update=True).write({
-            'request_hash': 'm21b2-internal',
-        })
-        self.assertEqual(qr.request_hash, 'm21b2-internal')
+        with self.assertRaises(ValidationError):
+            qr._write_numeric_hash_internal({
+                'request_hash': 'm21b2-internal',
+            })
+
+        self.assertFalse(qr.request_hash)

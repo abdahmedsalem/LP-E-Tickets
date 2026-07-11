@@ -192,7 +192,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             'partner_id': partner.id,
             'company_id': other_company.id,
         })
-        qr = self.env['acpec.fuel.qr'].sudo().with_context(allow_fuel_qr_create=True).create({
+        qr = self.env['acpec.fuel.qr']._create_internal({
             'wallet_id': wallet.id,
         })
         self.assertNotEqual(qr.company_id, self.company)
