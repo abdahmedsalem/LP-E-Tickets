@@ -78,7 +78,7 @@ class TestD2MechanicalInvariants(TransactionCase):
         with mute_logger('odoo.sql_db'):
             with self.assertRaises(Exception):
                 with self.env.cr.savepoint():
-                    self.Wallet.with_context(allow_fuel_wallet_create=True).create({
+                    self.Wallet._create_internal({
                         'partner_id': self.partner.id,
                         'company_id': self.company.id,
                     })

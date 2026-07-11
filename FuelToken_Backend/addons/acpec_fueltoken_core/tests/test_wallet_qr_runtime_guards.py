@@ -48,7 +48,12 @@ class TestWalletQrRuntimeGuards(TransactionCase):
         with self.assertRaises(UserError):
             wallet.unlink()
 
-        wallet.with_context(allow_fuel_wallet_unlink=True).unlink()
+        with self.assertRaises(UserError):
+            wallet.sudo().with_context(
+                allow_fuel_wallet_unlink=True,
+            ).unlink()
+
+        wallet._purge_internal()
         self.assertFalse(wallet.exists())
 
     def test_m21b_qr_create_requires_internal_context(self):
