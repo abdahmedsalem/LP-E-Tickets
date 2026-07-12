@@ -133,7 +133,8 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         controller, user, session = self._controller_for_user(login, trusted=trusted)
         expired_carnet, valid_carnet, purchase, wallet = self._create_purchase_with_two_carnet_types(user)
 
-        source_qr = self.env["acpec.fuel.qr"].sudo().issue_from_available(
+        source_qr = self.env["acpec.fuel.qr"]._issue_from_available_internal(
+            user,
             wallet,
             [
                 {"carnet_type_id": expired_carnet.id, "qty": self.LINE_QTY},
@@ -166,7 +167,7 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         expired_line.invalidate_recordset(['expires_at'])
         valid_line.invalidate_recordset(['expires_at'])
 
-        source_qr.action_refresh_expiration_state()
+        source_qr._refresh_expiration_state_internal()
         source_qr.invalidate_recordset(["state"])
         source_qr.line_ids.invalidate_recordset(["state", "expires_at"])
         self.assertEqual(source_qr.state, "blocked")

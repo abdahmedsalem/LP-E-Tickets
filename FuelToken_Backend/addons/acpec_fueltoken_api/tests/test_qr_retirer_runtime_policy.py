@@ -134,7 +134,8 @@ class TestQrRetirerRuntimePolicy(TransactionCase):
     def _controller_with_source_qr(self, login, trusted=True):
         controller, user, session = self._controller_for_user(login, trusted=trusted)
         carnet_type, purchase, face_line, wallet = self._create_available_stock(user)
-        source_qr = self.env["acpec.fuel.qr"].sudo().issue_from_available(
+        source_qr = self.env["acpec.fuel.qr"]._issue_from_available_internal(
+            user,
             wallet,
             [{"carnet_type_id": carnet_type.id, "qty": self.SOURCE_QTY}],
             idempotency_key="source-%s" % login,

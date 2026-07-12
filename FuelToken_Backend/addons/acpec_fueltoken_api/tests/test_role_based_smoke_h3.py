@@ -238,7 +238,8 @@ class TestRoleBasedSmokeH3(TransactionCase):
 
     def _issue_qr_direct(self, client_user, suffix):
         carnet_type, _purchase, wallet = self._create_available_stock(client_user, suffix)
-        qr = self.env["acpec.fuel.qr"].sudo().issue_from_available(
+        qr = self.env["acpec.fuel.qr"]._issue_from_available_internal(
+            client_user,
             wallet,
             [{"carnet_type_id": carnet_type.id, "qty": self.QR_QTY}],
             idempotency_key="h3-direct-qr-%s" % suffix,

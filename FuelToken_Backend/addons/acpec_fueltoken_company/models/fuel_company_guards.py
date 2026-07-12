@@ -98,14 +98,10 @@ class AcpecFuelQrCompanyGuard(models.Model):
         return super().create(vals_list)
 
     @api.model
-    def issue_from_available(self, wallet, requests, idempotency_key=False, request_hash=False):
+    def _check_qr_issue_wallet_allowed(self, wallet):
+        res = super()._check_qr_issue_wallet_allowed(wallet)
         self._check_company_wallet_can_issue_qr(wallet)
-        return super().issue_from_available(
-            wallet,
-            requests,
-            idempotency_key=idempotency_key,
-            request_hash=request_hash,
-        )
+        return res
 
 
 class AcpecFuelCarnetTransferCompanyGuard(models.Model):

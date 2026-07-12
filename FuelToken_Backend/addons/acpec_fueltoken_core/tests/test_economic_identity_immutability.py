@@ -5,6 +5,8 @@ import uuid
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
+from .qr_action_test_utils import create_mobile_test_user
+
 
 @tagged('-at_install', 'post_install')
 class TestEconomicIdentityImmutability(TransactionCase):
@@ -164,10 +166,18 @@ class TestEconomicIdentityImmutability(TransactionCase):
     def test_g8_qr_line_direct_economic_mutations_are_blocked_but_split_flow_works(self):
         suffix = uuid.uuid4().hex[:8]
         source_partner, source_wallet = self._create_partner_wallet('G8 QR Source %s' % suffix)
+        source_client_user = create_mobile_test_user(
+            self.env,
+            self.company,
+            'G8 QR Source %s' % suffix,
+            role='client',
+            partner=source_partner,
+        )
         _purchase, _purchase_line, face_lines = self._create_purchase_with_two_carnets(source_partner, suffix)
 
         face_line = face_lines[0]
-        qr = self.Qr.issue_from_available(
+        qr = self.Qr._issue_from_available_internal(
+            source_client_user,
             source_wallet,
             [{'face_line_id': face_line.id, 'qty': self.QR_FACE_QTY}],
             idempotency_key='G8-QR-%s' % suffix,
@@ -191,7 +201,8 @@ class TestEconomicIdentityImmutability(TransactionCase):
         with self.assertRaises(UserError):
             qr_line.write({'qr_id': empty_qr.id})
 
-        child = qr.action_retirer_to_child(
+        child = qr._retirer_to_child_internal(
+            source_client_user,
             [{'qr_line_id': qr_line.id, 'qty': 1}],
             idempotency_key='G8-RETIRER-%s' % suffix,
             request_hash='G8-RETIRER-HASH-%s' % suffix,

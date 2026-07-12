@@ -29,9 +29,11 @@ import uuid
 
 import odoo
 from odoo import SUPERUSER_ID, api, fields
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
+
+from .qr_action_test_utils import create_mobile_test_user
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +116,21 @@ class _ConsumeFixtureMixin:
         )
         return vals
 
+    def _consume_qr_internal(
+        self,
+        qr,
+        station,
+        station_user,
+        idempotency_key=False,
+        request_hash=False,
+    ):
+        return qr._consume_by_station_internal(
+            station_user,
+            station,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+
     def _build_consume_fixture(self, env):
         """Cree et renvoie les ids utiles : qr, station, user station, face_line.
 
@@ -125,6 +142,13 @@ class _ConsumeFixtureMixin:
         partner = env['res.partner'].sudo().create({
             'name': 'Client conso %s' % suffix,
         })
+        client_user = create_mobile_test_user(
+            env,
+            company,
+            'Client conso %s' % suffix,
+            role='client',
+            partner=partner,
+        )
         carnet_type = self._unique_carnet_type(env, company)
 
         purchase = env['acpec.fuel.purchase']._create_internal({
@@ -158,7 +182,8 @@ class _ConsumeFixtureMixin:
 
         wallet = env['acpec.fuel.wallet'].sudo().get_or_create(partner, company)
 
-        qr = env['acpec.fuel.qr'].sudo().issue_from_available(
+        qr = env['acpec.fuel.qr']._issue_from_available_internal(
+            client_user,
             wallet,
             [{'face_value': carnet_type.face_value, 'qty': self.QR_FACE_QTY}],
         )
@@ -183,6 +208,7 @@ class _ConsumeFixtureMixin:
             'qr_id': qr.id,
             'station_id': station.id,
             'station_user_id': station_user.id,
+            'client_user_id': client_user.id,
             'face_line_id': face_line.id,
             'partner_id': partner.id,
             'wallet_id': wallet.id,
@@ -211,7 +237,7 @@ class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
         consumed_before = self.face_line.qty_consumed
         active_before = self.face_line.qty_qr_active
 
-        tx = self.qr.action_consume_by_station(self.station, user=self.station_user)
+        tx = self._consume_qr_internal(self.qr, self.station, self.station_user)
         self.assertTrue(tx, "La premiere consommation doit reussir.")
         self.assertEqual(self.qr.state, 'consumed')
 
@@ -227,7 +253,7 @@ class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
 
         # 2e tentative -> refus, et aucun effet sur les quantites.
         with self.assertRaises(UserError):
-            self.qr.action_consume_by_station(self.station, user=self.station_user)
+            self._consume_qr_internal(self.qr, self.station, self.station_user)
 
         self.face_line.invalidate_recordset()
         self.assertEqual(
@@ -240,10 +266,18 @@ class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
         consumed_before = self.face_line.qty_consumed
         key = 'idem-%s' % uuid.uuid4().hex
 
-        tx1 = self.qr.action_consume_by_station(
-            self.station, user=self.station_user, idempotency_key=key)
-        tx2 = self.qr.action_consume_by_station(
-            self.station, user=self.station_user, idempotency_key=key)
+        tx1 = self._consume_qr_internal(
+            self.qr,
+            self.station,
+            self.station_user,
+            idempotency_key=key,
+        )
+        tx2 = self._consume_qr_internal(
+            self.qr,
+            self.station,
+            self.station_user,
+            idempotency_key=key,
+        )
 
         self.assertEqual(
             tx1.id, tx2.id,
@@ -279,8 +313,12 @@ class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
             'user_id': foreign_user.id,
             'company_id': other_company.id,
         })
-        with self.assertRaises(UserError):
-            self.qr.action_consume_by_station(foreign_station, user=foreign_user)
+        with self.assertRaises(AccessError):
+            self._consume_qr_internal(
+                self.qr,
+                foreign_station,
+                foreign_user,
+            )
         self.assertEqual(self.qr.state, 'active')
 
 
@@ -352,7 +390,7 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
             # On etouffe ce log precis pour ne pas polluer la sortie CI.
             with mute_logger('odoo.sql_db'):
                 try:
-                    qr_b.action_consume_by_station(station_b, user=user_b)
+                    self._consume_qr_internal(qr_b, station_b, user_b)
                     cr_b.commit()
                 except Exception:  # LockNotAvailable attendu (verrou indisponible)
                     blocked = True
@@ -367,13 +405,13 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
             qr_a = env_a['acpec.fuel.qr'].browse(qr_id)
             station_a = env_a['acpec.fuel.station'].browse(station_id)
             user_a = env_a['res.users'].browse(user_id)
-            tx_a = qr_a.action_consume_by_station(station_a, user=user_a)
+            tx_a = self._consume_qr_internal(qr_a, station_a, user_a)
             self.assertTrue(tx_a, "La conso A aurait du reussir.")
             cr_a.commit()
 
             # --- B : retente, le verrou est libre mais l'etat est 'consumed' --
             with self.assertRaises(UserError):
-                qr_b.action_consume_by_station(station_b, user=user_b)
+                self._consume_qr_internal(qr_b, station_b, user_b)
             cr_b.rollback()
 
             # --- Invariant en base, via une connexion fraiche -----------------
@@ -437,6 +475,7 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
                 ('acpec.fuel.purchase', [('id', '=', ids['purchase_id'])]),
                 ('acpec.fuel.wallet', [('id', '=', ids['wallet_id'])]),
                 ('res.users', [('id', '=', ids['station_user_id'])]),
+                ('res.users', [('id', '=', ids['client_user_id'])]),
                 ('res.partner', [('id', '=', ids['partner_id'])]),
                 ('acpec.fuel.carnet.type', [('id', '=', ids['carnet_type_id'])]),
                 ('ir.attachment', [('id', '=', ids['attachment_id'])]),

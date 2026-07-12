@@ -110,7 +110,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         }
 
     def _resolve_qr_from_payload(self, params):
-        qr = request.env['acpec.fuel.qr'].sudo().resolve_qr_reference(
+        qr = request.env['acpec.fuel.qr']._resolve_qr_reference_internal(
             public_code=(params or {}).get('public_code'),
             qr_numeric_code=(params or {}).get('qr_numeric_code'),
         )
@@ -193,7 +193,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
             with request.env.cr.savepoint():
                 qr._lock_records()
                 qr.invalidate_recordset()
-                qr.action_refresh_expiration_state()
+                qr._refresh_expiration_state_internal()
             payload = self._qr_check_payload(qr, station)
             if not payload.get('can_consume'):
                 return self._sensitive_refusal_response(
@@ -245,7 +245,12 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 request_hash_params['public_code'] = qr.public_code
                 request_hash_params.pop('qr_numeric_code', None)
                 request_hash = self._compute_idempotency_request_hash(request_hash_params, purpose='station_qr_use')
-                tx = qr.action_consume_by_station(station, user=user, idempotency_key=idempotency_key, request_hash=request_hash)
+                tx = qr._consume_by_station_internal(
+                    user,
+                    station,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                )
                 if tx and 'actor_user_id' in tx._fields and not tx.actor_user_id:
                     tx.with_context(allow_fuel_transaction_update=True).write({
                         'actor_user_id': user.id,

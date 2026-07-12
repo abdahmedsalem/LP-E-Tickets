@@ -4,6 +4,8 @@ import uuid
 
 from odoo.tests import TransactionCase, tagged
 
+from .qr_action_test_utils import create_mobile_test_user
+
 
 @tagged('-at_install', 'post_install')
 class TestPurchaseLotPropagation(TransactionCase):
@@ -147,6 +149,13 @@ class TestPurchaseLotPropagation(TransactionCase):
         dest_partner = self.env['res.partner'].sudo().create({
             'name': 'Client destination G6 %s' % suffix,
         })
+        source_client_user = create_mobile_test_user(
+            self.env,
+            self.company,
+            'Client source G6 %s' % suffix,
+            role='client',
+            partner=source_partner,
+        )
 
         source_wallet = self.Wallet.get_or_create(source_partner, self.company)
         dest_wallet = self.Wallet.get_or_create(dest_partner, self.company)
@@ -178,7 +187,8 @@ class TestPurchaseLotPropagation(TransactionCase):
             )
 
         # 2) face_line -> qr_line -> emission transaction
-        qr = self.Qr.issue_from_available(
+        qr = self.Qr._issue_from_available_internal(
+            source_client_user,
             source_wallet,
             [{'face_line_id': qr_face_line.id, 'qty': self.QR_FACE_QTY}],
             idempotency_key='G6-QR-%s' % suffix,
@@ -207,9 +217,13 @@ class TestPurchaseLotPropagation(TransactionCase):
 
         # 3) qr_line -> consommation station transaction
         station, station_user = self._create_station_record(suffix)
-        consume_tx = qr.action_consume_by_station(
+        self.assertNotEqual(
+            station_user.partner_id,
+            source_partner,
+        )
+        consume_tx = qr._consume_by_station_internal(
+            station_user,
             station,
-            user=station_user,
             idempotency_key='G6-CONSUME-%s' % suffix,
             request_hash='G6-CONSUME-HASH-%s' % suffix,
         )

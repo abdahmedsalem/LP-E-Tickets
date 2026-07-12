@@ -23,13 +23,13 @@ class TestStationQrContract(TransactionCase):
 
     def test_station_qr_resolver_accepts_only_scan_or_numeric_qr_code(self):
         source = self._source(AcpecFuelTokenStationApi._resolve_qr_from_payload)
-        self.assertIn("resolve_qr_reference", source)
+        self.assertIn("_resolve_qr_reference_internal", source)
         self.assertIn("public_code=(params or {}).get('public_code')", source)
         self.assertIn("qr_numeric_code=(params or {}).get('qr_numeric_code')", source)
         self.assertNotIn("acpec_human_code", source)
 
     def test_qr_reference_model_enforces_exactly_one_station_reference(self):
-        source = self._source(AcpecFuelQr.resolve_qr_reference)
+        source = self._source(AcpecFuelQr._resolve_qr_reference_internal)
         self.assertIn("bool(public_code) == bool(qr_numeric_code)", source)
         self.assertIn("Transmettre soit le QR graphique", source)
         self.assertIn("qr_numeric_code_hash", source)

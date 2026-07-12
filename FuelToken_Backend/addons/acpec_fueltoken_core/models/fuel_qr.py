@@ -5,7 +5,7 @@ import re
 import secrets
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import AccessError, ValidationError, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -95,6 +95,342 @@ class AcpecFuelQr(models.Model):
         'qr_numeric_code_hash',
         'qr_numeric_code_nonce',
     ))
+
+
+    _qr_action_operation_context_key = (
+        'acpec_fueltoken_qr_action_operation'
+    )
+    _qr_action_actor_context_key = (
+        'acpec_fueltoken_qr_action_actor_user_id'
+    )
+    _qr_action_operations = (
+        'issue',
+        'consume',
+        'retirer',
+        'separer',
+    )
+
+    def _qr_actor_has_group(self, actor, xmlid):
+        if not actor:
+            return False
+
+        group = self.env.ref(
+            xmlid,
+            raise_if_not_found=False,
+        )
+        if not group:
+            return False
+
+        self.env.cr.execute(
+            """
+            SELECT 1
+              FROM res_groups_users_rel
+             WHERE uid = %s
+               AND gid = %s
+             LIMIT 1
+            """,
+            (actor.id, group.id),
+        )
+        return bool(self.env.cr.fetchone())
+
+    def _qr_internal_actor(self, actor_user):
+        actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+
+        actor = self.env[
+            'res.users'
+        ].sudo().browse(actor_id).exists()
+
+        if not actor or not actor.active:
+            raise AccessError(_(
+                "Acteur QR interne introuvable ou inactif."
+            ))
+
+        return actor
+
+    def _qr_action_actor(self, actor_user):
+        if not self.env.su:
+            raise AccessError(_(
+                "Les opérations économiques QR sont réservées "
+                "aux flux internes autorisés."
+            ))
+
+        actor = self._qr_internal_actor(actor_user)
+
+        context_actor_id = int(
+            self.env.context.get(
+                self._qr_action_actor_context_key
+            ) or 0
+        )
+
+        if context_actor_id != actor.id:
+            raise AccessError(_(
+                "L'acteur QR ne correspond pas au contexte interne."
+            ))
+
+        return actor
+
+    def _qr_actor_is_exclusive_client(self, actor):
+        return bool(
+            self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_user',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_station',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_manager',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_admin',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'base.group_system',
+            )
+        )
+
+    def _qr_actor_is_exclusive_station(self, actor):
+        return bool(
+            self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_station',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_user',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_manager',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_admin',
+            )
+            and not self._qr_actor_has_group(
+                actor,
+                'base.group_system',
+            )
+        )
+
+    def _assert_qr_client_wallet_allowed(
+        self,
+        actor,
+        wallet,
+    ):
+        wallet_id = (
+            wallet.id
+            if hasattr(wallet, 'id')
+            else int(wallet or 0)
+        )
+
+        wallet = self.env[
+            'acpec.fuel.wallet'
+        ].sudo().browse(wallet_id).exists()
+
+        if (
+            not wallet
+            or not self._qr_actor_is_exclusive_client(actor)
+            or wallet.partner_id != actor.partner_id
+            or wallet.company_id not in actor.company_ids
+        ):
+            raise AccessError(_(
+                "Le client ne peut agir que sur son propre "
+                "Compte Tickets Carburant."
+            ))
+
+        return wallet
+
+    def _assert_qr_client_record_allowed(
+        self,
+        actor,
+    ):
+        self.ensure_one()
+        self._assert_qr_client_wallet_allowed(
+            actor,
+            self.wallet_id,
+        )
+        return True
+
+    def _assert_qr_station_allowed(
+        self,
+        actor,
+        station,
+    ):
+        self.ensure_one()
+
+        station_id = (
+            station.id
+            if hasattr(station, 'id')
+            else int(station or 0)
+        )
+
+        station = self.env[
+            'acpec.fuel.station'
+        ].sudo().browse(station_id).exists()
+
+        if (
+            not station
+            or not self._qr_actor_is_exclusive_station(actor)
+        ):
+            raise AccessError(_(
+                "L'acteur n'est pas un agent station autorisé."
+            ))
+
+        try:
+            assigned_station = self.env[
+                'acpec.fuel.station'
+            ].sudo().station_for_user(actor)
+        except ValidationError:
+            raise AccessError(_(
+                "Aucune station active n'est liée à cet agent."
+            ))
+
+        if (
+            assigned_station != station
+            or station.company_id not in actor.company_ids
+            or self.company_id != station.company_id
+        ):
+            raise AccessError(_(
+                "L'agent ne peut consommer un QR que dans sa "
+                "station autorisée et dans la même société."
+            ))
+
+        # Doctrine au porteur :
+        # l'agent station peut consommer le QR d'un autre user.
+        # Aucune égalité entre actor.partner_id et le propriétaire
+        # du wallet QR n'est exigée.
+        return station
+
+    def _assert_qr_action_allowed(
+        self,
+        operation,
+        actor,
+        wallet=False,
+        station=False,
+    ):
+        if operation not in self._qr_action_operations:
+            raise AccessError(_(
+                "Opération économique QR inconnue."
+            ))
+
+        if (
+            not self.env.su
+            or self.env.context.get(
+                self._qr_action_operation_context_key
+            ) != operation
+            or int(
+                self.env.context.get(
+                    self._qr_action_actor_context_key
+                ) or 0
+            ) != actor.id
+        ):
+            raise AccessError(_(
+                "L'opération QR ne correspond pas au flux "
+                "interne autorisé."
+            ))
+
+        if operation == 'issue':
+            self._assert_qr_client_wallet_allowed(
+                actor,
+                wallet,
+            )
+        elif operation in ('retirer', 'separer'):
+            self._assert_qr_client_record_allowed(actor)
+        else:
+            self._assert_qr_station_allowed(
+                actor,
+                station,
+            )
+
+        return True
+
+    def _check_qr_issue_wallet_allowed(self, wallet):
+        return True
+
+    def _issue_from_available_internal(
+        self,
+        actor_user,
+        wallet,
+        requests,
+        idempotency_key=False,
+        request_hash=False,
+    ):
+        actor = self._qr_internal_actor(actor_user)
+
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_action_operation='issue',
+            acpec_fueltoken_qr_action_actor_user_id=actor.id,
+        ).issue_from_available(
+            wallet,
+            requests,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            actor_user=actor,
+        )
+
+    def _consume_by_station_internal(
+        self,
+        actor_user,
+        station,
+        idempotency_key=False,
+        request_hash=False,
+    ):
+        actor = self._qr_internal_actor(actor_user)
+
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_action_operation='consume',
+            acpec_fueltoken_qr_action_actor_user_id=actor.id,
+        ).action_consume_by_station(
+            station,
+            user=actor,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+
+    def _retirer_to_child_internal(
+        self,
+        actor_user,
+        lines,
+        idempotency_key=False,
+        request_hash=False,
+    ):
+        actor = self._qr_internal_actor(actor_user)
+
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_action_operation='retirer',
+            acpec_fueltoken_qr_action_actor_user_id=actor.id,
+        ).action_retirer_to_child(
+            lines,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            actor_user=actor,
+        )
+
+    def _separer_valid_to_child_internal(
+        self,
+        actor_user,
+        idempotency_key=False,
+        request_hash=False,
+    ):
+        actor = self._qr_internal_actor(actor_user)
+
+        return self.sudo().with_context(
+            acpec_fueltoken_qr_action_operation='separer',
+            acpec_fueltoken_qr_action_actor_user_id=actor.id,
+        ).action_separer_valid_to_child(
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            actor_user=actor,
+        )
 
     @api.model
     def _qr_internal_context_is_valid(self, operation):
@@ -263,7 +599,7 @@ class AcpecFuelQr(models.Model):
         return True
 
     @api.model
-    def resolve_qr_reference(self, public_code=False, qr_numeric_code=False):
+    def _resolve_qr_reference_internal(self, public_code=False, qr_numeric_code=False):
         public_code = str(public_code or '').strip()
         qr_numeric_code = str(qr_numeric_code or '').strip()
 
@@ -329,7 +665,26 @@ class AcpecFuelQr(models.Model):
             self.env.cr.execute('SELECT id FROM acpec_fuel_qr WHERE id IN %s FOR UPDATE', [tuple(self.ids)])
 
     @api.model
-    def issue_from_available(self, wallet, requests, idempotency_key=False, request_hash=False):
+    def issue_from_available(
+        self,
+        wallet,
+        requests,
+        idempotency_key=False,
+        request_hash=False,
+        actor_user=False,
+    ):
+        actor = self._qr_action_actor(actor_user)
+        wallet = self._assert_qr_client_wallet_allowed(
+            actor,
+            wallet,
+        )
+        self._assert_qr_action_allowed(
+            'issue',
+            actor,
+            wallet=wallet,
+        )
+        self._check_qr_issue_wallet_allowed(wallet)
+
         if idempotency_key:
             existing = self.sudo().search([('wallet_id', '=', wallet.id), ('idempotency_key', '=', idempotency_key)], limit=1)
             if existing:
@@ -344,7 +699,7 @@ class AcpecFuelQr(models.Model):
             )
             wallet.invalidate_recordset()
             qr = self._create_internal({'wallet_id': wallet.id, 'idempotency_key': idempotency_key or False, 'request_hash': request_hash or False})
-            allocations = self.env['acpec.fuel.face.line'].sudo().reserve_available(wallet, requests)
+            allocations = self.env['acpec.fuel.face.line'].sudo()._reserve_available_internal(wallet, requests)
             tx_lines = []
             for allocation in allocations:
                 face_line = allocation['face_line']
@@ -377,7 +732,7 @@ class AcpecFuelQr(models.Model):
         now = fields.Datetime.now()
         return any(line.expires_at and line.expires_at <= now for line in self.line_ids if line.state in ('active', 'blocked'))
 
-    def action_refresh_expiration_state(self):
+    def _refresh_expiration_state_internal(self):
         now = fields.Datetime.now()
         for qr in self:
             if qr.state not in ('active', 'blocked'):
@@ -436,8 +791,20 @@ class AcpecFuelQr(models.Model):
         self._write_state_internal({'state': 'expired'})
         self.env['acpec.fuel.transaction'].log('expiration_qr', self.company_id, wallet=self.wallet_id, qr=self, lines=tx_lines, note=_('QR entièrement expiré.'))
 
-    def action_consume_by_station(self, station, user=False, idempotency_key=False, request_hash=False):
+    def action_consume_by_station(
+        self,
+        station,
+        user=False,
+        idempotency_key=False,
+        request_hash=False,
+    ):
         self.ensure_one()
+        actor_user = self._qr_action_actor(user)
+        self._assert_qr_action_allowed(
+            'consume',
+            actor_user,
+            station=station,
+        )
         Tx = self.env['acpec.fuel.transaction'].sudo()
         # Check idempotency before locking
         if idempotency_key:
@@ -468,19 +835,13 @@ class AcpecFuelQr(models.Model):
                 raise UserError(_('Le QR n’est pas actif et ne peut pas être consommé.'))
             if self.company_id != station.company_id:
                 raise UserError(_('La station et le QR n’appartiennent pas à la même société.'))
-            self.action_refresh_expiration_state()
+            self._refresh_expiration_state_internal()
             self.invalidate_recordset()
             if self.state == 'blocked':
                 raise UserError(_('QR bloqué : séparation requise.'))
             if self.state == 'expired':
                 raise UserError(_('Le QR est expiré.'))
             # Process consumption
-            actor_user = user or self.env.user
-            actor_user = self.env['res.users'].sudo().browse(
-                actor_user.id if hasattr(actor_user, 'id') else int(actor_user or 0)
-            ).exists()
-            if not actor_user:
-                raise UserError(_('Acteur station requis pour consommer le QR.'))
             actor_partner = actor_user.partner_id
             counterparty_partner = self.wallet_id.partner_id
             counterparty_user = Tx._single_user_for_partner(counterparty_partner)
@@ -508,8 +869,19 @@ class AcpecFuelQr(models.Model):
                 counterparty_user=counterparty_user,
             )
 
-    def action_retirer_to_child(self, lines, idempotency_key=False, request_hash=False):
+    def action_retirer_to_child(
+        self,
+        lines,
+        idempotency_key=False,
+        request_hash=False,
+        actor_user=False,
+    ):
         self.ensure_one()
+        actor = self._qr_action_actor(actor_user)
+        self._assert_qr_action_allowed(
+            'retirer',
+            actor,
+        )
         Tx = self.env['acpec.fuel.transaction'].sudo()
         if idempotency_key:
             existing = Tx.search([
@@ -550,7 +922,7 @@ class AcpecFuelQr(models.Model):
             if self.state != 'active':
                 raise UserError(_('Seuls les QR actifs peuvent faire l objet d un retrait partiel.'))
 
-            self.action_refresh_expiration_state()
+            self._refresh_expiration_state_internal()
             self.invalidate_recordset(['state'])
             if self.state != 'active':
                 raise UserError(_('Le QR source doit rester actif pour retirer des tickets.'))
@@ -617,8 +989,18 @@ class AcpecFuelQr(models.Model):
             )
             return qr_child
 
-    def action_separer_valid_to_child(self, idempotency_key=False, request_hash=False):
+    def action_separer_valid_to_child(
+        self,
+        idempotency_key=False,
+        request_hash=False,
+        actor_user=False,
+    ):
         self.ensure_one()
+        actor = self._qr_action_actor(actor_user)
+        self._assert_qr_action_allowed(
+            'separer',
+            actor,
+        )
         Tx = self.env['acpec.fuel.transaction'].sudo()
         if idempotency_key:
             existing = Tx.search([
@@ -646,7 +1028,7 @@ class AcpecFuelQr(models.Model):
             if self.state != 'blocked':
                 raise UserError(_('Seuls les QR partiellement expires peuvent etre separes.'))
 
-            self.action_refresh_expiration_state()
+            self._refresh_expiration_state_internal()
             self.invalidate_recordset(['state'])
             if self.state != 'blocked':
                 raise UserError(_('Le QR source ne contient pas de partie non expiree separable.'))
@@ -742,7 +1124,7 @@ class AcpecFuelQr(models.Model):
         face_lines = self.env['acpec.fuel.face.line'].sudo().search([('qty_available', '>', 0), ('expires_at', '!=', False), ('expires_at', '<=', now)])
         for line in face_lines:
             qty = line.qty_available
-            line.move_available_to_expired()
+            line._move_available_to_expired_internal()
             self.env['acpec.fuel.transaction'].log('expiration_faces', line.company_id, wallet=line.wallet_id, purchase=line.purchase_id, lines=[{
                 'purchase_id': line.purchase_id.id,
                 'purchase_line_id': line.purchase_line_id.id,
@@ -756,7 +1138,7 @@ class AcpecFuelQr(models.Model):
                 with self.env.cr.savepoint():
                     qr._lock_records()
                     qr.invalidate_recordset()
-                    qr.action_refresh_expiration_state()
+                    qr._refresh_expiration_state_internal()
             except Exception:
                 _logger.exception("Expiration QR %s failed", qr.id)
                 continue
