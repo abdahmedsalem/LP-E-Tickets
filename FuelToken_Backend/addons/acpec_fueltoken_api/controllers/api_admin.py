@@ -32,8 +32,8 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
     def _require_purchase_partner_trusted_mobile_access_for_manager_api(self, purchase):
         # API-only H0D guard for mobile manager purchase approval.
         # FuelToken business objects remain economically owned by partner_id.
-        # This guard does not change purchase.action_approve() and must not
-        # block Odoo back-office/backend administrative approvals.
+        # This guard is additional to the model-level internal approval actor guard.
+        # It must not block Odoo back-office administrative approvals.
         error_message = (
             "Le partenaire de l'achat ne dispose d'aucun accès mobile trusted actif."
         )
@@ -333,7 +333,7 @@ class AcpecFuelTokenAdminApi(AcpecFuelTokenApiCommon):
 
                 with request.env.cr.savepoint():
                     purchase.sudo()._set_approval_idempotency(idempotency_key, request_hash)
-                    purchase.with_user(user).action_approve()
+                    purchase._approve_internal(user)
                 return self._json_response(self._purchase_payload(purchase.sudo(), detail=True))
         except Exception as exc:
             return self._handle_exception_response(exc)

@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class AcpecFuelDistributor(models.Model):
@@ -175,6 +175,37 @@ class AcpecFuelDistributor(models.Model):
             (user.id, list(group_ids)),
         )
         return bool(self.env.cr.fetchone())
+
+    def _assert_company_purchase_creation_allowed(self):
+        if self.env.su:
+            return True
+
+        user = self.env.user
+        allowed_group_xmlids = (
+            'acpec_fueltoken_base.group_fuel_manager',
+            'acpec_fueltoken_base.group_fuel_admin',
+            'base.group_system',
+        )
+
+        allowed = any(
+            group
+            and self._user_has_group_id(
+                user,
+                group.id,
+            )
+            for group in (
+                self._get_group(xmlid)
+                for xmlid in allowed_group_xmlids
+            )
+        )
+
+        if not allowed:
+            raise AccessError(_(
+                "Seul un gestionnaire ou administrateur FuelToken "
+                "peut créer un achat depuis un Compte Société."
+            ))
+
+        return True
 
     def _get_disallowed_company_partner_groups(self):
         """Groups that make a partner incompatible with Compte Société.
@@ -774,6 +805,7 @@ class AcpecFuelDistributor(models.Model):
         approval stay in the standard acpec.fuel.purchase workflow.
         """
         self.ensure_one()
+        self._assert_company_purchase_creation_allowed()
 
         if not self.active or self.state != 'active':
             raise UserError(_(
@@ -783,7 +815,9 @@ class AcpecFuelDistributor(models.Model):
         # Recheck the portal-only contract before creating an operational record.
         self._check_partner_is_company_portal_only()
 
-        purchase = self.env['acpec.fuel.purchase'].create({
+        purchase = self.env[
+            'acpec.fuel.purchase'
+        ]._create_internal({
             'partner_id': self.partner_id.id,
             'company_id': self.company_id.id,
         })
