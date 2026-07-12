@@ -316,7 +316,7 @@ class AcpecFuelFaceLine(models.Model):
         self.env.cr.execute('SELECT id FROM acpec_fuel_face_line WHERE id IN %s FOR UPDATE', [tuple(self.ids)])
 
     @api.model
-    def reserve_available(self, wallet, requests):
+    def _reserve_available_internal(self, wallet, requests):
         allocations = []
         now = fields.Datetime.now()
         has_explicit_requests = any(int(request.get('face_line_id') or 0) for request in requests)
@@ -433,7 +433,7 @@ class AcpecFuelFaceLine(models.Model):
                 raise ValidationError(_('Tickets disponibles insuffisants pour %s.') % label)
         return allocations
 
-    def move_available_to_expired(self):
+    def _move_available_to_expired_internal(self):
         for rec in self:
             qty = rec.qty_available
             if qty > 0:

@@ -5,6 +5,8 @@ import uuid
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
+from .qr_action_test_utils import create_mobile_test_user
+
 
 @tagged('post_install', '-at_install')
 class TestTicketTransfer(TransactionCase):
@@ -162,10 +164,18 @@ class TestTicketTransfer(TransactionCase):
     def test_i1_ticket_transfer_rejects_non_available_quantity_and_accepts_empty_note(self):
         suffix = uuid.uuid4().hex[:8]
         source_partner, source_wallet = self._create_partner_wallet('I1 Source guard %s' % suffix)
+        source_client_user = create_mobile_test_user(
+            self.env,
+            self.company,
+            'I1 Source guard %s' % suffix,
+            role='client',
+            partner=source_partner,
+        )
         _dest_partner, dest_wallet = self._create_partner_wallet('I1 Destination guard %s' % suffix)
         _purchase, _purchase_line, face_line = self._create_purchase_with_face_line(source_partner, suffix)
 
-        self.Qr.issue_from_available(
+        self.Qr._issue_from_available_internal(
+            source_client_user,
             source_wallet,
             [{'face_line_id': face_line.id, 'qty': 4}],
             idempotency_key='I1-QR-%s' % suffix,

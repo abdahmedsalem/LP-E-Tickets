@@ -168,7 +168,8 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
 
     def _issue_client_qr(self, client_user, key_suffix):
         carnet_type, purchase, wallet = self._create_available_stock(client_user)
-        qr = self.env["acpec.fuel.qr"].sudo().issue_from_available(
+        qr = self.env["acpec.fuel.qr"]._issue_from_available_internal(
+            client_user,
             wallet,
             [{"carnet_type_id": carnet_type.id, "qty": self.QR_QTY}],
             idempotency_key="source-station-qr-%s" % key_suffix,

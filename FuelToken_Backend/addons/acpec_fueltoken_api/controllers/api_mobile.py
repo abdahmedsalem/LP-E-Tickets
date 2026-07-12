@@ -999,7 +999,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 if has_explicit_lines and has_legacy_lines:
                     raise ValidationError('Un QR ne peut pas melanger selection explicite de carnets et allocation automatique.')
                 with request.env.cr.savepoint():
-                    qr = request.env['acpec.fuel.qr'].sudo().issue_from_available(
+                    qr = request.env['acpec.fuel.qr']._issue_from_available_internal(
+                        authorized_user,
                         wallet,
                         requests,
                         idempotency_key=idempotency_key,
@@ -1098,7 +1099,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 if not qr:
                     raise ValidationError(_('QR introuvable.'))
 
-                child = qr.action_retirer_to_child(
+                child = qr._retirer_to_child_internal(
+                    authorized_user,
                     kwargs.get('lines') or [],
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
@@ -1136,7 +1138,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 if not qr:
                     raise ValidationError(_('QR introuvable.'))
 
-                child = qr.action_separer_valid_to_child(
+                child = qr._separer_valid_to_child_internal(
+                    authorized_user,
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
                 )
