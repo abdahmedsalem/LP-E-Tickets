@@ -11,7 +11,7 @@
                 <field name="carnet_amount"/>
                 <field name="validity_days"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="active"/>
+                <field name="active" column_invisible="1"/>
             </list>
         </field>
     </record>
@@ -26,7 +26,7 @@
                             <field name="code"/>
                             <field name="name"/>
                             <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="active"/>
+                            <field name="active" invisible="1"/>
                         </group>
                         <group>
                             <field name="face_count"/>
