@@ -7,6 +7,7 @@ from psycopg2 import errors as pg_errors
 
 from odoo import _, SUPERUSER_ID, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+import uuid
 
 
 _logger = logging.getLogger(__name__)
@@ -52,6 +53,12 @@ class AcpecMobileSession(models.Model):
     )
     access_token_hash = fields.Char(required=True, index=True, copy=False)
     refresh_token_hash = fields.Char(required=True, index=True, copy=False)
+    refresh_family_ref = fields.Char(
+        required=True,
+        readonly=True,
+        copy=False,
+        index=True,
+    )
     device_uid = fields.Char(index=True)
     device_name = fields.Char()
     platform = fields.Selection([
@@ -310,6 +317,9 @@ class AcpecMobileSession(models.Model):
 
     def write(self, vals):
         self._assert_internal_write_allowed()
+
+        if 'refresh_family_ref' in vals:
+            raise AccessError(_("L'identité de famille refresh est immuable."))
 
         if 'device_uid' in vals:
             vals = dict(vals)
@@ -691,6 +701,7 @@ class AcpecMobileSession(models.Model):
             'device_id': device.id,
             'access_token_hash': self._hash_token(access_token),
             'refresh_token_hash': self._hash_token(refresh_token),
+            'refresh_family_ref': self._new_refresh_family_ref(),
             'expires_at': expires_at,
             'refresh_expires_at': refresh_expires_at,
             'last_seen_at': now,
@@ -813,6 +824,7 @@ class AcpecMobileSession(models.Model):
             'device_id': device.id,
             'access_token_hash': self._hash_token(access_token),
             'refresh_token_hash': self._hash_token(new_refresh_token),
+            'refresh_family_ref': session.refresh_family_ref,
             'expires_at': expires_at,
             'refresh_expires_at': refresh_expires_at,
             'last_seen_at': now,
@@ -831,6 +843,93 @@ class AcpecMobileSession(models.Model):
             'refresh_expires_at': fields.Datetime.to_string(refresh_expires_at),
             'token_type': 'Bearer',
         }
+
+    @api.model
+    def _new_refresh_family_ref(self):
+        return uuid.uuid4().hex
+
+    @api.model
+    def _lock_refresh_session_for_update(self, token_hash):
+        self.flush_model([
+            'refresh_token_hash',
+            'refresh_family_ref',
+        ])
+        self.env.cr.execute(
+            '''
+                SELECT refresh_family_ref
+                  FROM acpec_mobile_session
+                 WHERE refresh_token_hash = %s
+                 LIMIT 1
+            ''',
+            [token_hash],
+        )
+        family_row = self.env.cr.fetchone()
+        if not family_row or not family_row[0]:
+            return self.browse()
+
+        family_ref = family_row[0]
+        self.env.cr.execute(
+            'SELECT pg_advisory_xact_lock('
+            'hashtextextended(%s, 0))',
+            [family_ref],
+        )
+        self.env.cr.execute(
+            '''
+                SELECT id
+                  FROM acpec_mobile_session
+                 WHERE refresh_token_hash = %s
+                 FOR UPDATE
+            ''',
+            [token_hash],
+        )
+        session_row = self.env.cr.fetchone()
+        if not session_row:
+            return self.browse()
+
+        session = self.sudo().browse(session_row[0])
+        session.invalidate_recordset([
+            'refresh_family_ref',
+            'state',
+            'refresh_expires_at',
+            'device_uid',
+            'device_trust_state',
+            'user_id',
+            'refresh_grace_until',
+            'refresh_grace_used_at',
+        ])
+        return session.exists()
+
+    def _revoke_refresh_family(
+        self,
+        now=None,
+        reason='refresh_replay',
+    ):
+        self.ensure_one()
+        now = now or fields.Datetime.now()
+        self.flush_recordset(['refresh_family_ref'])
+        family_ref = self.refresh_family_ref
+        if not family_ref:
+            raise AccessError(_('Identité de famille refresh absente.'))
+
+        live_sessions = self.sudo().search([
+            ('refresh_family_ref', '=', family_ref),
+            ('state', 'in', ('active', 'rotated')),
+        ])
+        if not live_sessions:
+            return live_sessions
+
+        live_sessions._write_internal({
+            'state': 'revoked',
+            'revoked_at': now,
+        })
+        _logger.warning(
+            'mobile_session_family_revoked '
+            'trigger_session_id=%s revoked_count=%s reason=%s',
+            self.id,
+            len(live_sessions),
+            reason,
+        )
+        return live_sessions
 
     @api.model
     def _assert_refreshable_mobile_session(self, session, now):
@@ -885,10 +984,23 @@ class AcpecMobileSession(models.Model):
         return result
 
     @api.model
-    def _refresh_rotated_session_in_grace(self, session, now, device_vals=None):
+    def _refresh_rotated_session_in_grace(
+        self, session, now, device_vals=None
+    ):
         if session.refresh_grace_used_at:
+            session._revoke_refresh_family(
+                now=now,
+                reason='refresh_replay_grace_consumed',
+            )
             raise AccessError(_('Refresh token déjà consommé.'))
-        if not session.refresh_grace_until or session.refresh_grace_until <= now:
+        if (
+            not session.refresh_grace_until
+            or session.refresh_grace_until <= now
+        ):
+            session._revoke_refresh_family(
+                now=now,
+                reason='refresh_replay_grace_expired',
+            )
             raise AccessError(_('Refresh token invalide.'))
 
         self._assert_refreshable_mobile_session(session, now)
@@ -897,24 +1009,42 @@ class AcpecMobileSession(models.Model):
             'refresh_grace_used_at': now,
             'last_seen_at': now,
         })
-        return self._create_refresh_successor_session(session, now, device_vals=device_vals)
+        return self._create_refresh_successor_session(
+            session,
+            now,
+            device_vals=device_vals,
+        )
 
     @api.model
     def refresh_with_token(self, refresh_token, device_vals=None):
         token_hash = self._hash_token(refresh_token)
-        session = self.sudo().search([('refresh_token_hash', '=', token_hash)], limit=1)
+        session = self.sudo()._lock_refresh_session_for_update(
+            token_hash,
+        )
         if not session:
             raise AccessError(_('Refresh token invalide.'))
 
         now = fields.Datetime.now()
 
         if session.state == 'active':
-            return self._refresh_active_session(session, now, device_vals=device_vals)
+            return self._refresh_active_session(
+                session,
+                now,
+                device_vals=device_vals,
+            )
 
         if session.state == 'rotated':
-            return self._refresh_rotated_session_in_grace(session, now, device_vals=device_vals)
+            return self._refresh_rotated_session_in_grace(
+                session,
+                now,
+                device_vals=device_vals,
+            )
 
-        raise AccessError(_('La session mobile n’est plus active.'))
+        session._revoke_refresh_family(
+            now=now,
+            reason='refresh_replay_dead_state',
+        )
+        raise AccessError(_("La session mobile n'est plus active."))
 
     def _check_device_trust_admin(self):
         if self.env.uid == SUPERUSER_ID:

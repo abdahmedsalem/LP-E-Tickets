@@ -61,6 +61,9 @@ class TestMobileSessionRuntimeGuardsM23C1(TransactionCase):
             'refresh_token_hash': self.Session._hash_token(
                 'm23c1-refresh-%s' % suffix
             ),
+            'refresh_family_ref': self.Session._hash_token(
+                'm23c1-family-%s' % suffix
+            )[:32],
             'device_uid': 'ft-m23c1-%s' % suffix,
             'platform': 'android',
             'expires_at': now + relativedelta(minutes=5),
@@ -107,6 +110,10 @@ class TestMobileSessionRuntimeGuardsM23C1(TransactionCase):
         )
 
         self.assertTrue(session)
+        self.assertRegex(
+            session.refresh_family_ref,
+            r'^[0-9a-f]{32}$',
+        )
 
     def test_m23c1_runtime_create_does_not_leak_internal_context(self):
         session = self._create_runtime_session('context-leak')
