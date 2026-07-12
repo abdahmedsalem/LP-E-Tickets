@@ -447,7 +447,15 @@ class TestTicketTransferRuntimeGuardsM23C6E(TransactionCase):
             "self.env['acpec.fuel.ticket.transfer']._create_internal({",
             distributor_block,
         )
+        self.assertIn(
+            'actor = self._company_distribution_action_actor(',
+            distributor_block,
+        )
         self.assertEqual(
-            distributor_block.count('._confirm_internal(operator_user)'),
+            distributor_block.count('._confirm_internal(actor)'),
             2,
+        )
+        self.assertNotIn(
+            'operator_user = operator_user or self.env.user',
+            distributor_block,
         )

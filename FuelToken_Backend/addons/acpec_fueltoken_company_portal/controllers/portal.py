@@ -95,6 +95,23 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
         # in the async counter mechanism that may leave a residual spinner.
         return super()._prepare_home_portal_values(counters or [])
 
+    def _require_exact_company_portal_actor(
+        self,
+        context,
+    ):
+        user = context.get('user')
+        distributor = context.get('distributor')
+
+        if (
+            not user
+            or not distributor
+            or user.partner_id.id
+            != distributor.partner_id.id
+        ):
+            raise NotFound()
+
+        return user
+
     def _get_company_wallet(self, distributor):
         wallet = distributor._get_company_wallet(create=False)
         return wallet.sudo() if wallet else request.env['acpec.fuel.wallet'].sudo().browse()
@@ -945,6 +962,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
     def portal_fueltoken_company_distribution_submit(self, **post):
         context = self._get_portal_context(require_distributor=True)
         distributor = context['distributor']
+        operator_user = self._require_exact_company_portal_actor(
+            context
+        )
         wallet = self._get_company_wallet(distributor)
         try:
             member_id = int(post.get('member_partner_id') or 0)
@@ -963,7 +983,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
                 note=(post.get('note') or '').strip() or False,
                 idempotency_key=(post.get('idempotency_key') or '').strip() or False,
                 confirm=True,
-                operator_user=request.env.user,
+                operator_user=operator_user,
             )
         except (ValidationError, UserError) as exc:
             values = self._build_distribution_form_values(context, error=exc.args[0], form_data=post)
@@ -1022,6 +1042,9 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
     def portal_fueltoken_company_ticket_transfer_submit(self, **post):
         context = self._get_portal_context(require_distributor=True)
         distributor = context['distributor']
+        operator_user = self._require_exact_company_portal_actor(
+            context
+        )
         wallet = self._get_company_wallet(distributor)
         try:
             member_id = int(post.get('member_partner_id') or 0)
@@ -1040,7 +1063,7 @@ class AcpecFuelTokenCompanyPortal(CustomerPortal):
                 note=(post.get('note') or '').strip() or False,
                 idempotency_key=(post.get('idempotency_key') or '').strip() or False,
                 confirm=True,
-                operator_user=request.env.user,
+                operator_user=operator_user,
             )
         except (ValidationError, UserError) as exc:
             values = self._build_ticket_transfer_form_values(context, error=exc.args[0], form_data=post)

@@ -325,6 +325,17 @@ class TestCarnetTransferRuntimeGuardsM23C5(TransactionCase):
             distributor_model.index('    def _prepare_ticket_transfer_line_vals(')
         ]
         self.assertIn('._create_internal(transfer_vals)', distribution_block)
-        self.assertIn('._confirm_internal(operator_user)', distribution_block)
+        self.assertIn(
+            'actor = self._company_distribution_action_actor(',
+            distribution_block,
+        )
+        self.assertIn(
+            '._confirm_internal(actor)',
+            distribution_block,
+        )
+        self.assertNotIn(
+            'operator_user = operator_user or self.env.user',
+            distribution_block,
+        )
         self.assertNotIn(".sudo().create(transfer_vals)", distribution_block)
         self.assertNotIn('.action_confirm(actor_user=operator_user)', distribution_block)
