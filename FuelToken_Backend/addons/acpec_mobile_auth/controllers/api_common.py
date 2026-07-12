@@ -826,13 +826,19 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return False
 
     def _request_ip(self):
+        """Return the client IP, or an empty string without HTTP context.
+
+        The explicit test override is evaluated first so controller
+        methods remain testable outside Odoo request-local context.
+        """
         test_ip = getattr(self, '_test_request_ip', False)
         if test_ip:
             return test_ip
         try:
-            return request.httprequest.remote_addr or False
-        except Exception:
-            return False
+            httprequest = getattr(request, 'httprequest', None)
+        except RuntimeError:
+            return ''
+        return (getattr(httprequest, 'remote_addr', '') or '').strip()
 
     def _request_user_agent(self):
         test_user_agent = getattr(self, '_test_user_agent', False)
@@ -1169,19 +1175,6 @@ class AcpecMobileAuthApiCommon(http.Controller):
             return value
         return str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'oui')
 
-    def _request_ip(self):
-        """Return the client IP when an HTTP request is bound.
-
-        Unit tests may call controller methods directly, outside Odoo's
-        request-local context.  In that case werkzeug raises RuntimeError
-        when resolving the request proxy; returning an empty IP keeps the
-        public API helpers testable without weakening runtime behaviour.
-        """
-        try:
-            httprequest = getattr(request, 'httprequest', None)
-        except RuntimeError:
-            return ''
-        return (getattr(httprequest, 'remote_addr', '') or '').strip()
 
     def _get_config_bool(self, key, default=False):
         return request.env["acpec.mobile.security.policy"].sudo().get_bool(key, default=default)
