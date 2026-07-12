@@ -984,6 +984,70 @@ class AcpecMobileSession(models.Model):
         return result
 
     @api.model
+    def _assert_refresh_grace_device_binding(
+        self,
+        session,
+        device_vals=None,
+        now=None,
+    ):
+        session.ensure_one()
+        now = now or fields.Datetime.now()
+        session.invalidate_recordset([
+            'rotated_to_session_id',
+            'refresh_family_ref',
+        ])
+        successor = session.rotated_to_session_id.sudo()
+        presented_device_uid = (
+            device_vals.get('device_uid')
+            if device_vals
+            else False
+        )
+
+        failure_reason = False
+        if not successor:
+            failure_reason = (
+                'refresh_replay_grace_device_successor_missing'
+            )
+        else:
+            successor.invalidate_recordset([
+                'state',
+                'refresh_family_ref',
+                'device_uid',
+            ])
+            if successor.state != 'active':
+                failure_reason = (
+                    'refresh_replay_grace_device_successor_inactive'
+                )
+            elif (
+                successor.refresh_family_ref
+                != session.refresh_family_ref
+            ):
+                failure_reason = (
+                    'refresh_replay_grace_device_family_mismatch'
+                )
+            elif not presented_device_uid:
+                failure_reason = (
+                    'refresh_replay_grace_device_missing'
+                )
+            elif (
+                presented_device_uid
+                != successor.device_uid
+            ):
+                failure_reason = (
+                    'refresh_replay_grace_device_mismatch'
+                )
+
+        if failure_reason:
+            session._revoke_refresh_family(
+                now=now,
+                reason=failure_reason,
+            )
+            raise AccessError(
+                _('Appareil mobile du refresh invalide.')
+            )
+
+        return successor
+
     def _refresh_rotated_session_in_grace(
         self, session, now, device_vals=None
     ):
@@ -1004,6 +1068,11 @@ class AcpecMobileSession(models.Model):
             raise AccessError(_('Refresh token invalide.'))
 
         self._assert_refreshable_mobile_session(session, now)
+        self._assert_refresh_grace_device_binding(
+            session,
+            device_vals=device_vals,
+            now=now,
+        )
 
         session._write_internal({
             'refresh_grace_used_at': now,

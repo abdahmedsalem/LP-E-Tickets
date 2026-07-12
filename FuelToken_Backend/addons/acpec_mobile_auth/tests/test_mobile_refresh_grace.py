@@ -83,7 +83,13 @@ class TestMobileRefreshGrace(TransactionCase):
         self.assertEqual(second['session'].state, 'active')
         self.assertNotEqual(second['session'], old_session)
 
-        retry = self.env['acpec.mobile.session'].sudo().refresh_with_token(old_refresh_token)
+        retry = self.env['acpec.mobile.session'].sudo().refresh_with_token(
+            old_refresh_token,
+            {
+                'device_uid': second['session'].device_uid,
+                'platform': 'android',
+            },
+        )
         old_session.invalidate_recordset(['refresh_grace_used_at'])
         self.assertTrue(old_session.refresh_grace_used_at)
         self.assertEqual(retry['session'].state, 'active')

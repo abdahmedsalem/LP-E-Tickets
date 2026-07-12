@@ -129,7 +129,13 @@ class TestRefreshFamilyReplayM23C8B(TransactionCase):
 
         retry = self.env[
             "acpec.mobile.session"
-        ].sudo().refresh_with_token(first["refresh_token"])
+        ].sudo().refresh_with_token(
+            first["refresh_token"],
+            {
+                "device_uid": second["session"].device_uid,
+                "platform": "android",
+            },
+        )
 
         old_session.invalidate_recordset([
             "refresh_family_ref",
@@ -195,7 +201,13 @@ class TestRefreshFamilyReplayM23C8B(TransactionCase):
 
         retry = self.env[
             "acpec.mobile.session"
-        ].sudo().refresh_with_token(first["refresh_token"])
+        ].sudo().refresh_with_token(
+            first["refresh_token"],
+            {
+                "device_uid": second["session"].device_uid,
+                "platform": "android",
+            },
+        )
 
         with patch.object(
             mobile_session_module._logger,
