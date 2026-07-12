@@ -207,6 +207,101 @@ class AcpecFuelDistributor(models.Model):
 
         return True
 
+    def _company_distribution_action_actor(
+        self,
+        operator_user=None,
+    ):
+        self.ensure_one()
+
+        if operator_user:
+            actor_id = (
+                operator_user.id
+                if hasattr(operator_user, 'id')
+                else int(operator_user or 0)
+            )
+        elif self.env.su:
+            raise AccessError(_(
+                "Un acteur explicite est obligatoire pour une "
+                "distribution société exécutée en sudo."
+            ))
+        else:
+            actor_id = self.env.user.id
+
+        actor = self.env[
+            'res.users'
+        ].sudo().browse(actor_id).exists()
+
+        if not actor or not actor.active:
+            raise AccessError(_(
+                "L'acteur de la distribution société est "
+                "introuvable ou inactif."
+            ))
+
+        if (
+            not self.env.su
+            and actor.id != self.env.user.id
+        ):
+            raise AccessError(_(
+                "L'acteur transmis doit être l'utilisateur "
+                "qui exécute réellement l'action."
+            ))
+
+        if self.company_id not in actor.company_ids:
+            raise AccessError(_(
+                "L'acteur n'est pas autorisé pour la société "
+                "Odoo du Compte Société."
+            ))
+
+        portal_group = self._get_group(
+            'base.group_portal'
+        )
+        disallowed_groups = (
+            self._get_disallowed_company_partner_groups()
+        )
+
+        portal_allowed = bool(
+            portal_group
+            and self._user_has_group_id(
+                actor,
+                portal_group.id,
+            )
+            and not self._user_has_any_group_ids(
+                actor,
+                disallowed_groups.ids,
+            )
+            and actor.partner_id == self.partner_id
+        )
+
+        backoffice_group_xmlids = (
+            'acpec_fueltoken_base.group_fuel_manager',
+            'acpec_fueltoken_base.group_fuel_admin',
+        )
+
+        backoffice_allowed = any(
+            group
+            and self._user_has_group_id(
+                actor,
+                group.id,
+            )
+            for group in (
+                self._get_group(xmlid)
+                for xmlid in backoffice_group_xmlids
+            )
+        )
+
+        if not (
+            portal_allowed
+            or backoffice_allowed
+        ):
+            raise AccessError(_(
+                "Seul le portail directement lié au partenaire "
+                "du Compte Société, ou un gestionnaire ou "
+                "administrateur FuelToken autorisé, peut "
+                "exécuter cette opération."
+            ))
+
+        return actor
+
     def _get_disallowed_company_partner_groups(self):
         """Groups that make a partner incompatible with Compte Société.
 
@@ -565,7 +660,9 @@ class AcpecFuelDistributor(models.Model):
         duplicate transfer accounting logic.
         """
         self.ensure_one()
-        operator_user = operator_user or self.env.user
+        actor = self._company_distribution_action_actor(
+            operator_user
+        )
         member_partner = self.env['res.partner'].sudo().browse(
             member_partner.id if hasattr(member_partner, 'id') else int(member_partner or 0)
         ).exists()
@@ -583,7 +680,7 @@ class AcpecFuelDistributor(models.Model):
             ], limit=1)
             if existing:
                 if confirm and existing.state == 'draft':
-                    existing._confirm_internal(operator_user)
+                    existing._confirm_internal(actor)
                 return existing
 
         transfer_line_vals = self._prepare_distribution_line_vals(lines)
@@ -600,7 +697,7 @@ class AcpecFuelDistributor(models.Model):
         }
         transfer = self.env['acpec.fuel.carnet.transfer']._create_internal(transfer_vals)
         if confirm:
-            transfer._confirm_internal(operator_user)
+            transfer._confirm_internal(actor)
 
         self.message_post(body=_(
             'Distribution société vers %(member)s: %(transfer)s, %(qty)s tickets.'
@@ -664,7 +761,9 @@ class AcpecFuelDistributor(models.Model):
 
     def action_transfer_tickets_to_member(self, member_partner, lines, note=False, idempotency_key=False, confirm=True, operator_user=None):
         self.ensure_one()
-        operator_user = operator_user or self.env.user
+        actor = self._company_distribution_action_actor(
+            operator_user
+        )
         member_partner = self.env['res.partner'].sudo().browse(
             member_partner.id if hasattr(member_partner, 'id') else int(member_partner or 0)
         ).exists()
@@ -682,7 +781,7 @@ class AcpecFuelDistributor(models.Model):
             ], limit=1)
             if existing:
                 if confirm and existing.state == 'draft':
-                    existing._confirm_internal(operator_user)
+                    existing._confirm_internal(actor)
                 return existing
 
         transfer_line_vals = self._prepare_ticket_transfer_line_vals(lines)
@@ -695,7 +794,7 @@ class AcpecFuelDistributor(models.Model):
             'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
         })
         if confirm:
-            transfer._confirm_internal(operator_user)
+            transfer._confirm_internal(actor)
 
         self.message_post(body=_(
             'Transfert de tickets société vers %(member)s: %(transfer)s, %(qty)s tickets.'
@@ -716,6 +815,9 @@ class AcpecFuelDistributor(models.Model):
         ]
         """
         self.ensure_one()
+        actor = self._company_distribution_action_actor(
+            operator_user
+        )
         if not distribution_lines:
             raise ValidationError(_('Au moins une distribution est requise.'))
 
@@ -735,7 +837,7 @@ class AcpecFuelDistributor(models.Model):
                     note=item.get('note') or False,
                     idempotency_key=line_key,
                     confirm=True,
-                    operator_user=operator_user,
+                    operator_user=actor,
                 )
                 transfers |= transfer
         return transfers
