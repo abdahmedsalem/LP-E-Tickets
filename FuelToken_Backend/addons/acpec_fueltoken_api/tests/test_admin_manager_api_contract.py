@@ -116,7 +116,7 @@ class TestAdminManagerApiContract(TransactionCase):
         self.assertIn("purchase.approval_request_hash and purchase.approval_request_hash != request_hash", source)
         self.assertIn("purchase.state == 'approved'", source)
         self.assertIn("_require_purchase_partner_trusted_mobile_access_for_manager_api(purchase)", source)
-        self.assertIn("purchase.with_user(user).action_approve()", source)
+        self.assertIn("purchase._approve_internal(user)", source)
 
     def test_h2_device_approve_keeps_positive_validator_and_audit_context_contract(self):
         source = self._source(AcpecFuelTokenAdminApi.device_approve_pending_trust)

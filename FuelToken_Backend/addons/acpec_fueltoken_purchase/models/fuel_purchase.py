@@ -3,8 +3,8 @@ import binascii
 import os
 import re
 
-from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError, UserError
+from odoo import SUPERUSER_ID, api, fields, models, _
+from odoo.exceptions import AccessError, ValidationError, UserError
 
 
 class AcpecFuelPurchase(models.Model):
@@ -62,6 +62,12 @@ class AcpecFuelPurchase(models.Model):
     _purchase_internal_context_key = (
         'acpec_fueltoken_purchase_internal_operation'
     )
+    _purchase_action_operation_context_key = (
+        'acpec_fueltoken_purchase_action_operation'
+    )
+    _purchase_action_actor_context_key = (
+        'acpec_fueltoken_purchase_action_actor_user_id'
+    )
 
     @api.model
     def _purchase_internal_context_is_valid(self, operation):
@@ -70,6 +76,231 @@ class AcpecFuelPurchase(models.Model):
             and self.env.context.get(
                 self._purchase_internal_context_key
             ) == operation
+        )
+
+    @api.model
+    def _purchase_actor_has_group(self, actor, xmlid):
+        if not actor:
+            return False
+        if actor.id == SUPERUSER_ID:
+            return True
+
+        group = self.env.ref(
+            xmlid,
+            raise_if_not_found=False,
+        )
+        if not group:
+            return False
+
+        self.env.cr.execute(
+            """
+            SELECT 1
+              FROM res_groups_users_rel
+             WHERE uid = %s
+               AND gid = %s
+             LIMIT 1
+            """,
+            (actor.id, group.id),
+        )
+        return bool(self.env.cr.fetchone())
+
+    def _purchase_actor_can_admin_action(self, actor):
+        return bool(
+            self._purchase_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_admin',
+            )
+            or self._purchase_actor_has_group(
+                actor,
+                'base.group_system',
+            )
+        )
+
+    def _purchase_actor_can_approve_internal(self, actor):
+        return bool(
+            self._purchase_actor_can_admin_action(actor)
+            or self._purchase_actor_has_group(
+                actor,
+                'acpec_fueltoken_base.group_fuel_manager',
+            )
+        )
+
+    def _purchase_action_actor(self, actor_user=False):
+        explicit_actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+
+        if self.env.su:
+            actor_id = int(
+                self.env.context.get(
+                    self._purchase_action_actor_context_key
+                ) or 0
+            )
+
+            if (
+                not actor_id
+                and self.env.uid == SUPERUSER_ID
+            ):
+                actor_id = SUPERUSER_ID
+
+            if (
+                explicit_actor_id
+                and explicit_actor_id != actor_id
+            ):
+                raise AccessError(_(
+                    "L'acteur de la décision d'achat ne correspond "
+                    "pas au contexte interne."
+                ))
+        else:
+            actor_id = self.env.user.id
+            if (
+                explicit_actor_id
+                and explicit_actor_id != actor_id
+            ):
+                raise AccessError(_(
+                    "L'acteur de la décision d'achat doit être "
+                    "l'utilisateur courant."
+                ))
+
+        actor = self.env[
+            'res.users'
+        ].sudo().browse(actor_id).exists()
+
+        if not actor:
+            raise AccessError(_(
+                "Acteur de la décision d'achat introuvable."
+            ))
+
+        return actor
+
+    def _assert_purchase_action_allowed(
+        self,
+        operation,
+        actor,
+    ):
+        if operation not in ('approve', 'reject'):
+            raise AccessError(_(
+                "Opération de décision d'achat inconnue."
+            ))
+
+        if (
+            self.env.su
+            and self.env.uid == SUPERUSER_ID
+            and actor.id == SUPERUSER_ID
+            and not self.env.context.get(
+                self._purchase_action_operation_context_key
+            )
+        ):
+            return True
+
+        if self.env.su:
+            allowed = bool(
+                self.env.context.get(
+                    self._purchase_action_operation_context_key
+                ) == operation
+                and int(
+                    self.env.context.get(
+                        self._purchase_action_actor_context_key
+                    ) or 0
+                ) == actor.id
+            )
+
+            if allowed and operation == 'approve':
+                allowed = (
+                    self._purchase_actor_can_approve_internal(
+                        actor
+                    )
+                )
+            elif allowed:
+                allowed = (
+                    self._purchase_actor_can_admin_action(
+                        actor
+                    )
+                )
+        else:
+            allowed = bool(
+                actor.id == self.env.user.id
+                and self._purchase_actor_can_admin_action(
+                    actor
+                )
+            )
+
+        if not allowed:
+            raise AccessError(_(
+                "Seul un administrateur FuelToken ou un flux "
+                "interne autorisé peut valider ou rejeter "
+                "un achat."
+            ))
+
+        return True
+
+    def _approve_internal(self, actor_user):
+        actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+        actor = self.env[
+            'res.users'
+        ].sudo().browse(actor_id).exists()
+
+        if (
+            not actor
+            or not self._purchase_actor_can_approve_internal(
+                actor
+            )
+        ):
+            raise AccessError(_(
+                "L'acteur interne n'est pas autorisé à valider "
+                "un achat."
+            ))
+
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_action_operation=(
+                'approve'
+            ),
+            acpec_fueltoken_purchase_action_actor_user_id=(
+                actor.id
+            ),
+        ).action_approve(actor_user=actor)
+
+    def _reject_internal(
+        self,
+        actor_user,
+        reason=False,
+    ):
+        actor_id = (
+            actor_user.id
+            if hasattr(actor_user, 'id')
+            else int(actor_user or 0)
+        )
+        actor = self.env[
+            'res.users'
+        ].sudo().browse(actor_id).exists()
+
+        if (
+            not actor
+            or not self._purchase_actor_can_admin_action(
+                actor
+            )
+        ):
+            raise AccessError(_(
+                "L'acteur interne n'est pas autorisé à rejeter "
+                "un achat."
+            ))
+
+        return self.sudo().with_context(
+            acpec_fueltoken_purchase_action_operation=(
+                'reject'
+            ),
+            acpec_fueltoken_purchase_action_actor_user_id=(
+                actor.id
+            ),
+        ).action_reject(
+            reason=reason,
+            actor_user=actor,
         )
 
     @api.model_create_multi
@@ -268,24 +499,50 @@ class AcpecFuelPurchase(models.Model):
                 'submitted_at': fields.Datetime.now(),
             })
 
-    def action_approve(self):
+    def action_approve(self, actor_user=False):
+        actor = self._purchase_action_actor(actor_user)
+        self._assert_purchase_action_allowed(
+            'approve',
+            actor,
+        )
+
         with self.env.cr.savepoint():
             self._check_before_submit()
             for rec in self:
-                if rec.state not in ('draft', 'submitted'):
-                    raise UserError(_('Seuls les lots brouillon ou soumis peuvent etre valides.'))
+                if rec.state not in (
+                    'draft',
+                    'submitted',
+                ):
+                    raise UserError(_(
+                        'Seuls les lots brouillon ou soumis '
+                        'peuvent etre valides.'
+                    ))
                 rec._write_approval_internal({
                     'state': 'approved',
                     'approved_at': fields.Datetime.now(),
-                    'approved_by': self.env.user.id,
+                    'approved_by': actor.id,
                     'rejection_reason': False,
                 })
             self._create_face_lines_after_approval()
 
-    def action_reject(self, reason=False):
+        return True
+
+    def action_reject(
+        self,
+        reason=False,
+        actor_user=False,
+    ):
+        actor = self._purchase_action_actor(actor_user)
+        self._assert_purchase_action_allowed(
+            'reject',
+            actor,
+        )
+
         for rec in self:
             if rec.state == 'approved':
-                raise UserError(_('Un lot valide ne peut pas etre rejete.'))
+                raise UserError(_(
+                    'Un lot valide ne peut pas etre rejete.'
+                ))
             rejection_reason = (
                 reason
                 if reason not in (False, None)
@@ -294,9 +551,11 @@ class AcpecFuelPurchase(models.Model):
             rec._write_rejection_internal({
                 'state': 'rejected',
                 'rejected_at': fields.Datetime.now(),
-                'rejected_by': self.env.user.id,
+                'rejected_by': actor.id,
                 'rejection_reason': rejection_reason,
             })
+
+        return True
 
     def _create_face_lines_after_approval(self):
         """Extension hook called after a purchase is approved.

@@ -29,7 +29,7 @@ class TestMobileSecurityRuntimeDocs(TransactionCase):
         # It keeps purchase ownership on partner_id and only adds an API-only
         # guard requiring the partner to have at least one trusted mobile access.
         self.assertIn("_require_purchase_partner_trusted_mobile_access_for_manager_api", source)
-        self.assertIn("purchase.with_user(user).action_approve()", source)
+        self.assertIn("purchase._approve_internal(user)", source)
 
         for forbidden in (
             "purpose='purchase_reject'",
