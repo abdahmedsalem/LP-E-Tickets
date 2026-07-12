@@ -1,3 +1,5 @@
+from psycopg2 import errors as pg_errors
+
 from odoo import http, _
 from odoo.exceptions import AccessError
 from odoo.http import request
@@ -66,6 +68,11 @@ class AcpecMobileAuthApiSession(AcpecMobileAuthApiCommon):
                 raise MobileSessionClosedError(debug_reason='refresh_session_closed') from exc
             session = token_data.pop('session')
             return self._json_response(self._session_payload(session, tokens=token_data))
+        except (
+            pg_errors.SerializationFailure,
+            pg_errors.DeadlockDetected,
+        ):
+            raise
         except Exception as exc:
             return self._handle_exception_response(exc)
 
