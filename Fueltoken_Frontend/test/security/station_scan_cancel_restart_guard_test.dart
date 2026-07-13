@@ -142,12 +142,18 @@ void main() {
       expect(returnIndex, greaterThan(restartIndex));
     });
 
-    test('scan consume handles expired auth user without null assertion', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+    test('scan consume handles expired auth user through central host', () {
+      final scanSource = _read('lib/features/station/screens/scan_screen.dart');
+      final appSource = _read('lib/main.dart');
 
-      expect(source, isNot(contains('state.user!')));
-      expect(source, contains("title: 'Session expirée'"));
-      expect(source, contains('AuthSessionExpiredRequested'));
+      expect(scanSource, isNot(contains('state.user!')));
+      expect(
+        scanSource,
+        contains('AuthSessionHost.instance.notifySessionExpired();'),
+      );
+      expect(scanSource, isNot(contains('AuthSessionExpiredRequested')));
+      expect(scanSource, isNot(contains("context.go('/login')")));
+      expect(appSource, contains('const AuthSessionExpiredRequested()'));
     });
 
     test('consumption failure is blocking dialog and returns to scan', () {
