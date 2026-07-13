@@ -7,13 +7,23 @@ from datetime import datetime
 import re
 from contextlib import contextmanager
 
+from psycopg2 import errors as pg_errors
+
 from odoo import http, _, fields, api, SUPERUSER_ID
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, ConcurrencyError, ValidationError
 
 from odoo.addons.acpec_mobile_auth.exceptions import MobileAuthRateLimitError, MobileSensitivePinBusy
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
+
+
+ODOO_RETRYABLE_CONCURRENCY_EXCEPTIONS = (
+    pg_errors.LockNotAvailable,
+    pg_errors.SerializationFailure,
+    pg_errors.DeadlockDetected,
+    ConcurrencyError,
+)
 
 
 class MobileSensitiveActionError(AccessError):
@@ -714,7 +724,26 @@ class AcpecMobileAuthApiCommon(http.Controller):
         self._log_mobile_api_error_marker_committed(marker_vals)
         return reference
 
-    def _handle_exception_response(self, exc, params=False, operation=False, started_at=False, endpoint=False):
+    def _handle_exception_response(
+        self,
+        exc,
+        params=False,
+        operation=False,
+        started_at=False,
+        endpoint=False,
+        allow_odoo_concurrency_retry=True,
+    ):
+        # PostgreSQL and Odoo already provide transaction rollback and bounded
+        # request retry for these low-level concurrency failures.  Do not turn
+        # them into a successful JSON-RPC response before service.model.retrying
+        # can see them.  Routes with a non-idempotent external effect must opt
+        # out explicitly.
+        if (
+            allow_odoo_concurrency_retry
+            and isinstance(exc, ODOO_RETRYABLE_CONCURRENCY_EXCEPTIONS)
+        ):
+            raise exc
+
         if isinstance(exc, MobileSensitiveActionError):
             self._log_api_refusal_marker(
                 getattr(exc, 'acpec_sensitive_code', 'ACTION_REFUSED'),

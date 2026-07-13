@@ -97,6 +97,7 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                 params=kwargs,
                 operation='request_otp',
                 started_at=started_at,
+                allow_odoo_concurrency_retry=False,
             )
 
     @http.route('/api/acpec/mobile_auth/v1/verify-otp', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
