@@ -12,6 +12,65 @@ class IrHttp(models.AbstractModel):
     _inherit = "ir.http"
 
     @classmethod
+    def _acpec_mark_mobile_api_route(cls, endpoint):
+        """Remember a matched ACPEC JSON-RPC route on the current request.
+
+        The final error boundary must never guess from the URL alone: a JSON
+        request to an unknown /api/acpec/... path is still a normal Odoo 404.
+        Marking happens only after routing and authentication succeeded.
+        """
+        path = getattr(getattr(request, "httprequest", None), "path", "") or ""
+        routing = getattr(endpoint, "routing", {}) or {}
+        matched = (
+            path.startswith("/api/acpec/")
+            and routing.get("type") == "jsonrpc"
+        )
+        request._acpec_mobile_api_route_matched = bool(matched)
+        request._acpec_mobile_api_operation = (
+            getattr(endpoint, "__name__", False) if matched else False
+        )
+        return bool(matched)
+
+    @classmethod
+    def _acpec_should_handle_final_mobile_api_error(cls):
+        dispatcher = getattr(request, "dispatcher", None)
+        return bool(
+            getattr(request, "_acpec_mobile_api_route_matched", False)
+            and getattr(dispatcher, "routing_type", None) == "jsonrpc"
+        )
+
+    @classmethod
+    def _acpec_handle_final_mobile_api_error(cls, exception):
+        """Return the standard ACPEC payload for an uncaught API exception.
+
+        This runs after Odoo's request retry layer. Retryable concurrency
+        exceptions must therefore be converted here instead of being raised
+        again. The shared controller helper keeps the public payload, log
+        redaction and committed ERR marker identical to controller wrappers.
+        """
+        from odoo.addons.acpec_mobile_auth.controllers.api_common import (
+            AcpecMobileAuthApiCommon,
+        )
+
+        controller = AcpecMobileAuthApiCommon()
+        payload = controller._handle_exception_response(
+            exception,
+            params=getattr(request, "params", {}) or {},
+            operation=getattr(
+                request,
+                "_acpec_mobile_api_operation",
+                False,
+            ),
+            endpoint=getattr(
+                getattr(request, "httprequest", None),
+                "path",
+                False,
+            ),
+            allow_odoo_concurrency_retry=False,
+        )
+        return request.dispatcher._response(result=payload)
+
+    @classmethod
     def _acpec_is_mobile_only_web_session(cls):
         """Return True only for a positive mobile_only web-session match.
 
@@ -66,4 +125,19 @@ class IrHttp(models.AbstractModel):
     def _authenticate(cls, endpoint):
         result = super()._authenticate(endpoint)
         cls._acpec_enforce_no_mobile_only_web_session()
+        cls._acpec_mark_mobile_api_route(endpoint)
         return result
+
+    @classmethod
+    def _handle_error(cls, exception):
+        if not cls._acpec_should_handle_final_mobile_api_error():
+            return super()._handle_error(exception)
+
+        try:
+            return cls._acpec_handle_final_mobile_api_error(exception)
+        except Exception:
+            _logger.exception(
+                "ACPEC mobile API final error boundary failed path=%s",
+                getattr(getattr(request, "httprequest", None), "path", "?"),
+            )
+            return super()._handle_error(exception)
