@@ -259,6 +259,10 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'transaction_id': tx.id,
                     'transaction_name': tx.operation_ref or tx.name,
                     'transaction_operation_ref': tx.operation_ref or tx.name,
+                    **self._transaction_economic_payload(
+                        tx.transaction_effect,
+                        tx.signed_amount,
+                    ),
                     'qr_id': qr.id,
                     'qr_public_code': qr.public_code,
                     'qr_state': qr.state,
@@ -350,8 +354,10 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     'name': tx.operation_ref or tx.name,
                     'operation_ref': tx.operation_ref or tx.name,
                     'transaction_type': tx.transaction_type,
-                    'transaction_effect': tx.transaction_effect,
-                    'signed_amount': tx.signed_amount,
+                    **self._transaction_economic_payload(
+                        tx.transaction_effect,
+                        tx.signed_amount,
+                    ),
                     'amount_total': tx.amount_total,
                     'qty_total': tx.qty_total,
                     'created_at': fields.Datetime.to_string(tx.create_date) if tx.create_date else False,

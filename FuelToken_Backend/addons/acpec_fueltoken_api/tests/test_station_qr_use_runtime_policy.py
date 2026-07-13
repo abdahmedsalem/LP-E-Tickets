@@ -387,7 +387,15 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         txs = self._tx_by_key(qr, key)
         self.assertEqual(len(txs), 1)
         tx = txs
+        response_data = self._response_data(response)
         self.assertIn(str(tx.id), repr(response))
+        self.assertEqual(response_data["transaction_sign"], "no_effect")
+        self.assertEqual(response_data["transaction_effect"], "no_effect")
+        self.assertEqual(
+            response_data["transaction_sign"],
+            response_data["transaction_effect"],
+        )
+        self.assertEqual(response_data["signed_amount"], 0.0)
         self.assertEqual(tx.station_id.id, station.id)
 
         qr.invalidate_recordset([
@@ -679,6 +687,14 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             "regularization_state": "all",
             "limit": 20,
         })
+        data = self._response_data(response)
+        items = [item for item in data.get("items", []) if item.get("qr_id") == qr.id]
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["transaction_sign"], "no_effect")
+        self.assertEqual(item["transaction_effect"], "no_effect")
+        self.assertEqual(item["transaction_sign"], item["transaction_effect"])
+        self.assertEqual(item["signed_amount"], 0.0)
 
         self.assertNotIn("qr_numeric_code", repr(response))
         self.assertNotIn("qr_numeric_code_hash", repr(response))
