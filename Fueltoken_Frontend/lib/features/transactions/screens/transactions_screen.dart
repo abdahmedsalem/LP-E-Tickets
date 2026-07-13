@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/auth/auth_session_host.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/theme/app_colors.dart';
@@ -405,6 +406,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       });
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
+      if (e.requiresReLogin) {
+        AuthSessionHost.instance.notifySessionExpired();
+        return;
+      }
       setState(() {
         _acpecLoading = false;
         _acpecLoadingMore = false;
@@ -488,6 +493,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       });
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
+      if (e.requiresReLogin) {
+        AuthSessionHost.instance.notifySessionExpired();
+        return;
+      }
       setState(() {
         _acpecLoading = false;
         _acpecError = e.isOdooSessionExpired

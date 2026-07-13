@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../../core/auth/auth_session_host.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
@@ -19,6 +20,7 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/sensitive_action_intent.dart';
+import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/mini_qr.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
@@ -304,6 +306,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       }
     } catch (e) {
       if (mounted) {
+        if (e is OdooJsonRpcException && e.requiresReLogin) {
+          _dismissQrCheckLoadingSheet();
+          AuthSessionHost.instance.notifySessionExpired();
+          return;
+        }
         _dismissQrCheckLoadingSheet();
         await Future<void>.delayed(const Duration(milliseconds: 70));
         if (!mounted) return;
@@ -340,15 +347,8 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
-      await _showFailureDialog(
-        title: 'Session expirée',
-        message: 'Votre session station a expiré. Reconnectez-vous.',
-        actionLabel: 'Se reconnecter',
-      );
-      if (mounted) {
-        setState(() => _consuming = false);
-        context.read<AuthBloc>().add(const AuthSessionExpiredRequested());
-      }
+      if (mounted) setState(() => _consuming = false);
+      AuthSessionHost.instance.notifySessionExpired();
       return;
     }
     try {
@@ -1169,3 +1169,4 @@ class _InfoLine extends StatelessWidget {
     );
   }
 }
+

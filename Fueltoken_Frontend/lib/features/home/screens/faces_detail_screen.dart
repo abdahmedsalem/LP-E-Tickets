@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/auth/auth_session_host.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
@@ -150,11 +151,13 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       });
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
+      if (e.requiresReLogin) {
+        AuthSessionHost.instance.notifySessionExpired();
+        return;
+      }
       setState(() {
         _liveLoading = false;
-        _liveError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+        _liveError = ErrorPresenter.message(e);
       });
     } catch (e) {
       if (!mounted) return;

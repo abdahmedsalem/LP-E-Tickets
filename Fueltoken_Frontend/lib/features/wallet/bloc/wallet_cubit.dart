@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/auth/auth_session_host.dart';
 import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/utils/error_presenter.dart';
@@ -102,6 +103,7 @@ class WalletCubit extends Cubit<WalletState> {
       } on OdooJsonRpcException catch (e) {
         if (e.requiresReLogin) {
           if (isClosed) return;
+          AuthSessionHost.instance.notifySessionExpired();
           emit(state.copyWith(loading: false, clearError: true));
           return;
         }

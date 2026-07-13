@@ -282,14 +282,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSessionExpiredRequested e,
     Emitter<AuthState> emit,
   ) async {
-    emit(
-      const AuthState(
-        status: AuthStatus.unauthenticated,
-        loginInfoMessage:
-            'Pour des raisons de sécurité, votre session s’est terminée. '
-            'Reconnectez-vous pour continuer.',
-      ),
-    );
+    emit(const AuthState(status: AuthStatus.unauthenticated));
     try {
       await _repo.logout();
     } catch (_) {}
