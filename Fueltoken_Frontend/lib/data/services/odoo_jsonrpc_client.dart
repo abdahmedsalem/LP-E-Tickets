@@ -11,7 +11,7 @@ import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/debug/acpec_rpc_debug.dart';
 import '../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 
-/// Erreur JSON-RPC (`error` dans la réponse) ou réseau.
+/// Erreur JSON-RPC, HTTP ou réseau.
 class OdooJsonRpcException implements Exception {
   OdooJsonRpcException(
     this.message, {
@@ -272,6 +272,94 @@ String? _normalizeReference(dynamic value) {
   return raw;
 }
 
+@visibleForTesting
+OdooJsonRpcException? odooJsonRpcHttpFailure(int? statusCode) {
+  if (statusCode == null || (statusCode >= 200 && statusCode < 300)) {
+    return null;
+  }
+
+  String message;
+  switch (statusCode) {
+    case 400:
+      message = 'La requête envoyée au serveur est invalide.';
+      break;
+    case 401:
+      return OdooJsonRpcException('AUTH_REQUIRED', code: 401);
+    case 403:
+      message = 'Vous n’êtes pas autorisé à effectuer cette action.';
+      break;
+    case 404:
+      message = 'Le service demandé est introuvable.';
+      break;
+    case 405:
+      message = 'Cette opération n’est pas autorisée par le serveur.';
+      break;
+    case 408:
+      message = 'Serveur momentanément indisponible. Réessayez plus tard.';
+      break;
+    case 413:
+      message = 'La requête envoyée est trop volumineuse.';
+      break;
+    case 415:
+      message = 'Le format de la requête n’est pas accepté par le serveur.';
+      break;
+    case 422:
+      message = 'La requête envoyée au serveur est invalide.';
+      break;
+    case 429:
+      message = 'Trop de requêtes. Réessayez plus tard.';
+      break;
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      message = 'Serveur momentanément indisponible. Réessayez plus tard.';
+      break;
+    default:
+      message = 'Le serveur a refusé la requête (HTTP $statusCode).';
+  }
+
+  return OdooJsonRpcException(message, code: statusCode);
+}
+
+@visibleForTesting
+OdooJsonRpcException odooJsonRpcExceptionFromDio(DioException error) {
+  final httpFailure = odooJsonRpcHttpFailure(error.response?.statusCode);
+  if (httpFailure != null) return httpFailure;
+
+  final message = (error.message ?? '').toLowerCase();
+  switch (error.type) {
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+    case DioExceptionType.receiveTimeout:
+      return OdooJsonRpcException(
+        'Serveur momentanément indisponible. Réessayez plus tard.',
+      );
+    case DioExceptionType.connectionError:
+      return OdooJsonRpcException(
+        'Impossible de joindre le serveur. Vérifiez votre connexion.',
+      );
+    case DioExceptionType.badCertificate:
+      return OdooJsonRpcException('Connexion sécurisée au serveur impossible.');
+    case DioExceptionType.cancel:
+      return OdooJsonRpcException('La requête a été annulée.');
+    case DioExceptionType.badResponse:
+      return OdooJsonRpcException(
+        'Le serveur a renvoyé une réponse invalide. Réessayez.',
+      );
+    case DioExceptionType.unknown:
+      if (message.contains('socketexception') ||
+          message.contains('connection refused') ||
+          message.contains('failed host lookup') ||
+          message.contains('network is unreachable')) {
+        return OdooJsonRpcException(
+          'Impossible de joindre le serveur. Vérifiez votre connexion.',
+        );
+      }
+      return OdooJsonRpcException('Une erreur réseau est survenue. Réessayez.');
+  }
+}
+
 String _sanitizeServerMessage(
   String raw, {
   String fallback = 'Une erreur est survenue. Réessayez.',
@@ -344,7 +432,7 @@ class OdooJsonRpcClient {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 60),
         sendTimeout: const Duration(seconds: 30),
-        validateStatus: (s) => s != null && s < 600,
+        validateStatus: (s) => s != null && s >= 200 && s < 300,
         headers: {
           Headers.contentTypeHeader: Headers.jsonContentType,
           Headers.acceptHeader: Headers.jsonContentType,
@@ -679,9 +767,8 @@ class OdooJsonRpcClient {
         httpStatus: r.statusCode,
         responseBody: r.data,
       );
-      if (r.statusCode == 401) {
-        throw OdooJsonRpcException('AUTH_REQUIRED', code: 401);
-      }
+      final httpFailure = odooJsonRpcHttpFailure(r.statusCode);
+      if (httpFailure != null) throw httpFailure;
       final map = _parseJsonRpcEnvelope(r.data, r, url);
       if (map['error'] != null) {
         final err = _asJsonMap(map['error']);
@@ -719,35 +806,7 @@ class OdooJsonRpcClient {
           note: 'Dio: ${e.type} ${e.message}',
         );
       }
-      if (e.response?.statusCode == 401) {
-        throw OdooJsonRpcException('AUTH_REQUIRED', code: 401);
-      }
-      final msgLower = (e.message ?? '').toLowerCase();
-      if (e.type == DioExceptionType.connectionError ||
-          msgLower.contains('connection refused') ||
-          msgLower.contains('failed host lookup')) {
-        throw OdooJsonRpcException(
-          'Impossible de joindre le serveur. Vérifiez votre connexion.',
-        );
-      }
-      final data = e.response?.data;
-      if (data is Map) {
-        final m = Map<String, dynamic>.from(data);
-        final err = m['error'];
-        if (err is Map) {
-          final em = Map<String, dynamic>.from(err);
-          throw OdooJsonRpcException(
-            _sanitizeServerMessage(
-              em['message']?.toString() ?? e.message ?? 'Erreur réseau',
-            ),
-            code: em['code'] is int ? em['code'] as int : null,
-            data: em['data'],
-          );
-        }
-      }
-      throw OdooJsonRpcException(
-        _sanitizeServerMessage(e.message ?? 'Erreur réseau'),
-      );
+      throw odooJsonRpcExceptionFromDio(e);
     }
   }
 
