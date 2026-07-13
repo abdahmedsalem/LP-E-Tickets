@@ -878,65 +878,21 @@ class _StationQrCheckLoadingSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.paddingOf(context).bottom;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: EdgeInsets.only(top: 8, bottom: bottom + 8),
-      child: Center(
-        child: Material(
-          borderRadius: BorderRadius.circular(24),
-          color: scheme.surface,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: scheme.outline.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Center(
-                    child: Container(
-                      width: 78,
-                      height: 78,
-                      decoration: BoxDecoration(
-                        color: AppColors.leaderGreen.withValues(alpha: 0.10),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.leaderGreen.withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.refresh_rounded,
-                        size: 38,
-                        color: AppColors.leaderGreen,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Chargement des informations du QR...',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 88,
+          height: 88,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            shape: BoxShape.circle,
+          ),
+          child: const SizedBox(
+            width: 34,
+            height: 34,
+            child: CircularProgressIndicator(strokeWidth: 3),
           ),
         ),
       ),
