@@ -35,6 +35,14 @@ D4  CONVENTIONS_DEVELOPPEMENT_ACPEC.md
     méthode de travail de l'agent. Préfixes : CONV-LIS/NOM/LANG/MOD/UI/VER/WORK.
 ```
 
+### Guide technique transversal — concurrence
+
+```text
+C0  concurrence/00_index.md
+    Portée : état de l'art, guide d'évaluation, cartographie des ressources et
+    writers, preuves et décisions de concurrence. C0 ne remplace pas D1/D2.
+```
+
 ### Références historiques d'implémentation (subordonnées, non obligatoires)
 
 ```text
@@ -71,6 +79,7 @@ Transfert de carnet                  => D2 (§3,§6), D1 (§5)
 Wallet / carnet / conservation       => D2 (§1,§2,§5,§6)
 Mode dev / configuration runtime     => D3 (§1), D5 si présent
 Sources settings sécurité mobile     => D3 (§6), traceability.md Patch43H5G
+Concurrence / verrous / idempotence  => C0, puis D1/D2 selon les ressources
 Tout patch, sans exception           => D4 (conventions) + AGENTS.md (protocole)
 ```
 
