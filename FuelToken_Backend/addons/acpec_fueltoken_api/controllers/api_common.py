@@ -168,6 +168,22 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
         tx_model = env['acpec.fuel.transaction'].sudo()
         return [value for value, _label in tx_model._fields['transaction_type'].selection]
 
+    def _transaction_economic_payload(self, transaction_sign, signed_amount):
+        """Return the additive V1 economic transaction contract.
+
+        ``transaction_sign`` is the canonical public name agreed for mobile
+        clients. ``transaction_effect`` remains exposed as a legacy alias so
+        existing clients keep working without an immediate frontend migration.
+        ``signed_amount`` keeps its existing public name.
+        """
+        sign = transaction_sign or 'no_effect'
+        amount = signed_amount if signed_amount is not None else 0.0
+        return {
+            'transaction_sign': sign,
+            'transaction_effect': sign,
+            'signed_amount': amount,
+        }
+
     def classify_transaction_type_filter(self, raw_value, allowed_values=None):
         """Classify a transaction_type filter before applying it.
 

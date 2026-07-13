@@ -191,6 +191,10 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
             idempotency_key="secret-idempotency-key",
             request_hash="secret-request-hash",
             note="payload check",
+            lines=[{
+                "face_value": 100.0,
+                "qty": 2,
+            }],
         )
         if "actor_user_id" in tx._fields:
             tx.with_context(allow_fuel_transaction_update=True).write({
@@ -212,6 +216,10 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
         self.assertEqual(item["wallet_id"], wallet.id)
         self.assertIn("date", item)
         self.assertIn("regularization_state", item)
+        self.assertEqual(item["transaction_sign"], "outgoing")
+        self.assertEqual(item["transaction_effect"], "outgoing")
+        self.assertEqual(item["transaction_sign"], item["transaction_effect"])
+        self.assertEqual(item["signed_amount"], -200.0)
 
         rendered = repr(item)
         self.assertNotIn("secret-idempotency-key", rendered)
@@ -220,6 +228,20 @@ class TestMobileTransactionReportRuntimePolicy(TransactionCase):
         self.assertNotIn("qr_numeric_code_hash", rendered)
         self.assertNotIn("device_uid", rendered)
         self.assertNotIn(session.device_uid, rendered)
+
+    def test_transaction_sign_alias_is_present_on_synthetic_purchase_submission(self):
+        controller, user, _session = self._controller_for_user(
+            "transaction-sign-submitted@example.com",
+        )
+        wallet = self._wallet_for(user)
+        purchase = self._create_purchase_for_mobile_report(user)
+
+        payload = controller._purchase_submission_payload(purchase, wallet)
+
+        self.assertEqual(payload["transaction_sign"], "no_effect")
+        self.assertEqual(payload["transaction_effect"], "no_effect")
+        self.assertEqual(payload["transaction_sign"], payload["transaction_effect"])
+        self.assertEqual(payload["signed_amount"], 0.0)
 
     def test_patch43m10_mobile_transactions_limit_is_capped_to_100(self):
         controller, user, _session = self._controller_for_user("m10-report-limit@example.com")
