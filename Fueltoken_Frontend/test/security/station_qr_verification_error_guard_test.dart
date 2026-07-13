@@ -32,13 +32,21 @@ void main() {
     });
 
     test(
-      'expired scan user goes through auth bloc, not direct login route',
+      'expired scan user uses central auth session host, not direct login',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final scanSource = _read(
+          'lib/features/station/screens/scan_screen.dart',
+        );
+        final appSource = _read('lib/main.dart');
 
-        expect(source, contains('AuthSessionExpiredRequested'));
-        expect(source, isNot(contains("context.go('/login')")));
-        expect(source, isNot(contains('state.user!')));
+        expect(
+          scanSource,
+          contains('AuthSessionHost.instance.notifySessionExpired();'),
+        );
+        expect(scanSource, isNot(contains('AuthSessionExpiredRequested')));
+        expect(scanSource, isNot(contains("context.go('/login')")));
+        expect(scanSource, isNot(contains('state.user!')));
+        expect(appSource, contains('const AuthSessionExpiredRequested()'));
       },
     );
   });
