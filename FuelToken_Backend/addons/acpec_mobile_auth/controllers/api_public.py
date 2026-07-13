@@ -133,6 +133,7 @@ class AcpecMobileAuthApiPublic(AcpecMobileAuthApiCommon):
                 params=kwargs,
                 operation='signup',
                 started_at=started_at,
+                allow_odoo_concurrency_retry=False,
             )
 
     @http.route([
