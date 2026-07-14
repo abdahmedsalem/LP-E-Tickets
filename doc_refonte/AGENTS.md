@@ -78,3 +78,25 @@ Un travail n'est terminé que si :
 ```
 
 Une affirmation de conformité sans test qui la prouve n'est pas une conformité.
+
+<!-- PATCH43M24D_RPC_REFACTOR_AGENTS_BEGIN -->
+## Refonte RPC ACPEC
+
+Toute tâche portant sur Flutter/Dio, JSON-RPC, contrôleurs API, payloads publics,
+`_acpec_rpc`, erreurs publiques, PIN ou OTP doit lire :
+
+```text
+doc_refonte/DOCTRINE_ARCHITECTURE_RPC_ACPEC_FUELTOKEN_V1.md
+doc_refonte/ROADMAP_REFONTE_RPC_ACPEC_FUELTOKEN_V1.md
+```
+
+Règles de travail :
+
+- citer les `INV-RPC-*` visés ;
+- annoncer le statut de route avant/après ;
+- ne pas mélanger documentation, backend runtime et Flutter dans un même commit sauf
+  décision explicite ;
+- conserver les payloads legacy tant que la route n’est pas déclarée canonique ;
+- traiter PIN et OTP dans des séries spécialisées ;
+- mettre à jour `doc_refonte/traceability.md` et le registre de migration.
+<!-- PATCH43M24D_RPC_REFACTOR_AGENTS_END -->

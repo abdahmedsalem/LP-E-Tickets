@@ -1391,3 +1391,53 @@ Doctrine confirmée :
 Tests :
 - `test_public_qr_carnet_short_code_format.py`.
 - Couvre le format `AANNNN`, l’absence de `C001`, et l’abandon de la séquence QR visible dans `qr.name`.
+
+<!-- PATCH43M24D_RPC_REFACTOR_TRACE_BEGIN -->
+---
+
+## Patch43M24-D — Doctrine et roadmap de refonte RPC ACPEC
+
+```text
+Statut          : doctrine définie — runtime non modifié
+Type            : documentation uniquement
+Baseline        : b827fc3
+Documents       : A1 + A1-R
+Patch suivant   : marqueur `_acpec_rpc` strictement additif
+```
+
+Objet :
+
+- fixer l’architecture `Flutter ↔ Dio ↔ wrapper ↔ contrôleur ↔ Odoo` ;
+- définir les responsabilités de chaque couche ;
+- définir le futur `AcpecRpcError` et `@acpec_rpc_endpoint` ;
+- préserver M24-C comme frontière terminale ;
+- définir le contrat `_acpec_rpc` version 1 ;
+- distinguer HTTP, JSON-RPC et payload ACPEC ;
+- isoler PIN, session et OTP ;
+- publier une roadmap route par route.
+
+État initial des invariants :
+
+| Invariant | Statut | Cible de preuve |
+|---|---|---|
+| INV-RPC-001 à INV-RPC-005 | doctrine_définie | primitives wrapper + contrôleur pilote |
+| INV-RPC-006 | partiellement_prouvé_M24-C | tests wrapper vers M24-C |
+| INV-RPC-007 | partiellement_prouvé_M24-B/M24-C | tests propagation concurrence wrapper |
+| INV-RPC-008 à INV-RPC-009 | doctrine_définie | tests savepoint / absence commit |
+| INV-RPC-010 à INV-RPC-013 | doctrine_définie | marker additif + Flutter fallback |
+| INV-RPC-014 | doctrine_définie | série actions sensibles PIN |
+| INV-RPC-015 | doctrine_définie | série OTP/SMS |
+| INV-RPC-016 | partiellement_prouvé_M24-C | tests logs/secrets élargis |
+| INV-RPC-017 | actif_par_roadmap | revue de chaque patch |
+| INV-RPC-018 | doctrine_existante_renforcée | serializers et gardes références publiques |
+
+Décision :
+
+```text
+Aucun changement runtime dans M24-D.
+Le patch marqueur devient M24-E.
+Le wrapper complet devient M24-F ou patch ultérieur dédié.
+Flutter ne devient pas strict avant émission backend du marqueur.
+OTP/SMS reste la dernière famille migrée.
+```
+<!-- PATCH43M24D_RPC_REFACTOR_TRACE_END -->

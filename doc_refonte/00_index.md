@@ -35,6 +35,33 @@ D4  CONVENTIONS_DEVELOPPEMENT_ACPEC.md
     méthode de travail de l'agent. Préfixes : CONV-LIS/NOM/LANG/MOD/UI/VER/WORK.
 ```
 
+
+<!-- PATCH43M24D_RPC_REFACTOR_INDEX_BEGIN -->
+### Doctrine d’architecture RPC transversale
+
+```text
+A1  DOCTRINE_ARCHITECTURE_RPC_ACPEC_FUELTOKEN_V1.md
+    Portée : Flutter, Dio, JSON-RPC, wrapper ACPEC, contrôleurs minces, modèles Odoo,
+    erreurs publiques, marqueur versionné, PIN/OTP et migration progressive.
+    Préfixes : INV-RPC, T-RPC, DEC-RPC, OPEN-RPC.
+    Subordination : sécurité, métier et concurrence priment en cas de conflit.
+
+A1-R  ROADMAP_REFONTE_RPC_ACPEC_FUELTOKEN_V1.md
+      Portée : phases de migration, critères d’entrée/sortie, registre de routes,
+      séquençage backend/Flutter/PIN/OTP et retrait du legacy.
+```
+
+Applicabilité :
+
+```text
+API mobile / JSON-RPC / contrôleurs  => A1 + A1-R, puis D1/D2/concurrence selon la route
+Flutter / Dio / OdooJsonRpcClient    => A1 §6-§8 + A1-R phases D4/D10
+Actions sensibles PIN                => A1 §12 + doctrine sécurité + concurrence
+OTP / SMS                            => A1 §13 + doctrine sécurité + A1-R phase D9
+```
+<!-- PATCH43M24D_RPC_REFACTOR_INDEX_END -->
+
+
 ### Guide technique transversal — concurrence
 
 ```text
