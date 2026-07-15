@@ -22,6 +22,8 @@ import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/mini_qr.dart';
+import '../../../shared/widgets/station_qr_failure_dialog.dart';
+import '../../../shared/widgets/station_qr_success_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 
@@ -49,6 +51,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   bool _leavingAfterSuccess = false;
   bool _startingScanner = false;
   bool _qrCheckLoadingVisible = false;
+  Future<void>? _qrCheckLoadingRoute;
   String? _cameraError;
   String? _lastHandledCode;
   DateTime? _lastHandledAt;
@@ -162,27 +165,35 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   void _showQrCheckLoadingSheet() {
     if (!mounted || _qrCheckLoadingVisible) return;
     _qrCheckLoadingVisible = true;
+    final route = showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (ctx) => const _StationQrCheckLoadingSheet(),
+    );
+    _qrCheckLoadingRoute = route;
     unawaited(
-      showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        isDismissible: false,
-        enableDrag: false,
-        builder: (ctx) => const _StationQrCheckLoadingSheet(),
-      ).whenComplete(() {
-        _qrCheckLoadingVisible = false;
+      route.whenComplete(() {
+        if (identical(_qrCheckLoadingRoute, route)) {
+          _qrCheckLoadingVisible = false;
+          _qrCheckLoadingRoute = null;
+        }
       }),
     );
   }
 
-  void _dismissQrCheckLoadingSheet() {
+  Future<void> _dismissQrCheckLoadingSheet() async {
     if (!mounted || !_qrCheckLoadingVisible) return;
-    final navigator = Navigator.maybeOf(context, rootNavigator: true);
+    final route = _qrCheckLoadingRoute;
+    final navigator = Navigator.maybeOf(context);
     if (navigator != null && navigator.canPop()) {
       navigator.pop();
+      if (route != null) await route;
     } else {
       _qrCheckLoadingVisible = false;
+      _qrCheckLoadingRoute = null;
     }
   }
 
@@ -261,10 +272,12 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       final raw = await OdooFueltokenFacade().stationQrCheck({
         'public_code': publicCode,
       });
-      _dismissQrCheckLoadingSheet();
-      await Future<void>.delayed(const Duration(milliseconds: 70));
       if (!mounted) return;
       final result = StationQrCheckResult.fromRpc(raw);
+      if (!mounted) return;
+      await Future<void>.delayed(const Duration(milliseconds: 70));
+      if (!mounted) return;
+      await _dismissQrCheckLoadingSheet();
       if (!mounted) return;
 
       if (!result.canConsume) {
@@ -301,17 +314,19 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 
       await Future<void>.delayed(const Duration(milliseconds: 80));
       if (mounted && !consumeRequested && !_consuming) {
+        _lastHandledCode = null;
+        _lastHandledAt = null;
         setState(() => _processing = false);
         await _restartScannerAfterModal();
       }
     } catch (e) {
       if (mounted) {
         if (e is OdooJsonRpcException && e.requiresReLogin) {
-          _dismissQrCheckLoadingSheet();
+          await _dismissQrCheckLoadingSheet();
           AuthSessionHost.instance.notifySessionExpired();
           return;
         }
-        _dismissQrCheckLoadingSheet();
+        await _dismissQrCheckLoadingSheet();
         await Future<void>.delayed(const Duration(milliseconds: 70));
         if (!mounted) return;
         // Une panne réseau/serveur ne signifie pas que le QR est non
@@ -484,10 +499,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   }
 
   String _formatStationDateTime(DateTime value) {
-    final local = value.toLocal();
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${two(local.day)}/${two(local.month)}/${local.year} '
-        '${two(local.hour)}:${two(local.minute)}';
+    return Formatters.dateTimeDash(value);
   }
 
   Future<void> _showSuccess(
@@ -498,43 +510,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: AppColors.ink.withValues(alpha: 0.58),
       builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: const Text(
-            'QR consommé avec succès',
-            textAlign: TextAlign.center,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _SuccessInfoLine(
-                label: 'Montant',
-                value: Formatters.money(qr.totalAmount),
-              ),
-              const SizedBox(height: 8),
-              _SuccessInfoLine(
-                label: 'Date/heure',
-                value: _formatStationDateTime(consumedAt),
-              ),
-              const SizedBox(height: 8),
-              _SuccessInfoLine(label: 'N° transaction', value: transactionName),
-            ],
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.primary,
-                foregroundColor: scheme.onPrimary,
-              ),
-              child: const Text('Terminer'),
-            ),
-          ],
+        return StationQrSuccessDialog(
+          amount: Formatters.money(qr.totalAmount),
+          consumedAt: _formatStationDateTime(consumedAt),
+          transactionName: transactionName,
+          onClose: () => Navigator.pop(ctx),
         );
       },
     );
@@ -548,20 +530,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: AppColors.ink.withValues(alpha: 0.58),
       builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: Text(title, textAlign: TextAlign.center),
-          content: Text(message, textAlign: TextAlign.center),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(actionLabel),
-            ),
-          ],
+        return StationQrFailureDialog(
+          title: title,
+          message: message,
+          actionLabel: actionLabel,
+          onClose: () => Navigator.pop(ctx),
         );
       },
     );
@@ -609,55 +584,6 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SuccessInfoLine extends StatelessWidget {
-  const _SuccessInfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 104,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1169,4 +1095,3 @@ class _InfoLine extends StatelessWidget {
     );
   }
 }
-

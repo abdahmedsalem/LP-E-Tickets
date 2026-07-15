@@ -73,6 +73,20 @@ void main() {
       expect(source, contains('consumeRequested = true;'));
     });
 
+    test('cancelled QR can be scanned again after loading closes', () {
+      final source = _read('lib/features/station/screens/scan_screen.dart');
+
+      expect(source, isNot(contains('_ignoredQrCodeAfterCancel')));
+      expect(source, contains('_lastHandledCode = null;'));
+      expect(source, contains('_lastHandledAt = null;'));
+      expect(source, contains('Future<void>? _qrCheckLoadingRoute;'));
+      expect(source, contains('await _dismissQrCheckLoadingSheet();'));
+      expect(
+        source,
+        isNot(contains('Navigator.maybeOf(context, rootNavigator: true)')),
+      );
+    });
+
     test(
       'non consumable QR uses only blocking dialog and never check sheet',
       () {
@@ -174,18 +188,22 @@ void main() {
       'successful consumption shows amount datetime transaction and returns home',
       () {
         final source = _read('lib/features/station/screens/scan_screen.dart');
+        final dialogSource = _read(
+          'lib/shared/widgets/station_qr_success_dialog.dart',
+        );
 
         expect(source, contains('bool _leavingAfterSuccess = false;'));
         expect(
           source,
           contains('setState(() => _leavingAfterSuccess = true);'),
         );
-        expect(source, contains('QR consommé avec succès'));
-        expect(source, contains('Montant'));
-        expect(source, contains('Date/heure'));
-        expect(source, contains('N° transaction'));
+        expect(source, contains('StationQrSuccessDialog('));
+        expect(dialogSource, contains('QR consommé avec succès'));
+        expect(dialogSource, contains('Montant'));
+        expect(dialogSource, contains('Date/heure'));
+        expect(dialogSource, contains('N° transaction'));
         expect(source, contains('transaction_name'));
-        expect(source, contains('Terminer'));
+        expect(dialogSource, contains('Terminer'));
 
         final successIndex = source.indexOf('await _showSuccess(');
         expect(successIndex, greaterThanOrEqualTo(0));

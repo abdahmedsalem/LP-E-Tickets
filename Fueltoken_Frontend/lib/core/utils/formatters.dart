@@ -6,9 +6,9 @@ class Formatters {
   Formatters._();
 
   static final _money = NumberFormat.decimalPattern('fr_FR');
-  static final _date = DateFormat('dd/MM/yyyy', 'fr_FR');
-  static final _dateTime = DateFormat('dd/MM/yyyy HH:mm', 'fr_FR');
-  static final _dateTimeDash = DateFormat('dd-MM-yyyy HH:mm', 'fr_FR');
+  static final _date = DateFormat('dd-MM-yyyy');
+  static final _dateTime = DateFormat('dd-MM-yyyy HH:mm:ss');
+  static final _dateTimeDash = DateFormat('dd-MM-yyyy HH:mm:ss');
 
   static DateTime _local(DateTime d) => d.isUtc ? d.toLocal() : d;
 

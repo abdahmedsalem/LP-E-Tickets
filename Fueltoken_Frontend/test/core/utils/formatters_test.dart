@@ -3,6 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fueltoken_app/core/utils/formatters.dart';
 
 void main() {
+  group('Formatters dates', () {
+    final value = DateTime(2026, 7, 15, 9, 8, 7);
+
+    test('uses dashes for a date without time', () {
+      expect(Formatters.date(value), '15-07-2026');
+    });
+
+    test('uses seconds for every date and time display', () {
+      expect(Formatters.dateTime(value), '15-07-2026 09:08:07');
+      expect(Formatters.dateTimeDash(value), '15-07-2026 09:08:07');
+    });
+  });
+
   group('Formatters.carnetTypeLabel', () {
     test('uses backend K4 human format with default currency', () {
       expect(

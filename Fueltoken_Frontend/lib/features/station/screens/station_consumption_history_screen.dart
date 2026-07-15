@@ -22,11 +22,7 @@ import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
-enum _StationRegularizationFilter {
-  all,
-  pending,
-  regularized,
-}
+enum _StationRegularizationFilter { all, pending, regularized }
 
 extension _StationRegularizationFilterX on _StationRegularizationFilter {
   String get apiValue {
@@ -62,7 +58,6 @@ extension _StationRegularizationFilterX on _StationRegularizationFilter {
     }
   }
 }
-
 
 class StationConsumptionHistoryScreen extends StatefulWidget {
   const StationConsumptionHistoryScreen({super.key});
@@ -493,9 +488,7 @@ class _StationRegularizationFilterChip extends StatelessWidget {
         : const Color(0xFFEA580C);
     final fg = selected ? selectedColor : const Color(0xFF374151);
     return Material(
-      color: selected
-          ? selectedColor.withValues(alpha: 0.11)
-          : Colors.white,
+      color: selected ? selectedColor.withValues(alpha: 0.11) : Colors.white,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -536,7 +529,6 @@ class _StationRegularizationFilterChip extends StatelessWidget {
     );
   }
 }
-
 
 class _StationHistoryTotalsCard extends StatelessWidget {
   const _StationHistoryTotalsCard({
@@ -693,7 +685,6 @@ class _StationHistoryTotalTile extends StatelessWidget {
     );
   }
 }
-
 
 class _StationHistoryRow extends StatefulWidget {
   const _StationHistoryRow({required this.transaction});
@@ -1062,7 +1053,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          DateFormat('dd-MM-yyyy HH:mm').format(tx.date),
+                          DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -1084,13 +1075,10 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                     amount: amount,
                     clientName: tx.userName,
                     stationName: tx.qrDisplayName,
-                    txType: DateFormat('dd-MM-yyyy HH:mm').format(tx.date),
+                    txType: DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
                   ),
                   const SizedBox(height: 14),
-                  _DetailFullWidthInfoCard(
-                    label: 'N° TX',
-                    value: tx.txNumber,
-                  ),
+                  _DetailFullWidthInfoCard(label: 'N° TX', value: tx.txNumber),
                   const SizedBox(height: 10),
                   _DetailInfoGrid(
                     items: [
@@ -1102,15 +1090,12 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                         DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
                       ),
                       ('État régularisation', tx.regularizationLabel),
-                      (
-                        'Réf régularisation',
-                        tx.regularizationReference ?? '—',
-                      ),
+                      ('Réf régularisation', tx.regularizationReference ?? '—'),
                       if (tx.regularizationDate != null)
                         (
                           'Date régularisation',
                           DateFormat(
-                            'dd-MM-yyyy HH:mm',
+                            'dd-MM-yyyy HH:mm:ss',
                           ).format(tx.regularizationDate!),
                         ),
                     ],
@@ -1179,12 +1164,8 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
   }
 }
 
-
 class _DetailFullWidthInfoCard extends StatelessWidget {
-  const _DetailFullWidthInfoCard({
-    required this.label,
-    required this.value,
-  });
+  const _DetailFullWidthInfoCard({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -1226,7 +1207,6 @@ class _DetailFullWidthInfoCard extends StatelessWidget {
     );
   }
 }
-
 
 class _DetailInfoGrid extends StatelessWidget {
   const _DetailInfoGrid({required this.items});

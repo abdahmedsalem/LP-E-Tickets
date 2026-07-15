@@ -18,14 +18,18 @@ void main() {
       final source = _read(
         'lib/features/station/screens/station_manual_qr_screen.dart',
       );
+      final dialogSource = _read(
+        'lib/shared/widgets/station_qr_success_dialog.dart',
+      );
 
       expect(source, contains('final guarded = acpecRpcMapOrThrow('));
-      expect(source, contains('QR consommé avec succès'));
-      expect(source, contains('Montant'));
-      expect(source, contains('Date/heure'));
-      expect(source, contains('N° transaction'));
+      expect(source, contains('StationQrSuccessDialog('));
+      expect(dialogSource, contains('QR consommé avec succès'));
+      expect(dialogSource, contains('Montant'));
+      expect(dialogSource, contains('Date/heure'));
+      expect(dialogSource, contains('N° transaction'));
       expect(source, contains('transaction_name'));
-      expect(source, contains('Terminer'));
+      expect(dialogSource, contains('Terminer'));
       expect(source, contains("context.go('/station/home')"));
 
       expect(source, isNot(contains("_showSnack('QR consommé avec succès.')")));

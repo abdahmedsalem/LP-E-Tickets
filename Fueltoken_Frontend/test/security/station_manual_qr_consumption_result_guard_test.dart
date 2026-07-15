@@ -12,6 +12,9 @@ void main() {
         final source = _read(
           'lib/features/station/screens/station_manual_qr_screen.dart',
         );
+        final dialogSource = _read(
+          'lib/shared/widgets/station_qr_success_dialog.dart',
+        );
 
         final useIndex = source.indexOf('OdooFueltokenFacade().stationQrUse(');
         final guardIndex = source.indexOf(
@@ -48,7 +51,8 @@ void main() {
         expect(source, contains('fallbackMessage:'));
         expect(source, contains('publicErrorMessage:'));
         expect(source, contains('transaction_name'));
-        expect(source, contains('N° transaction'));
+        expect(source, contains('StationQrSuccessDialog('));
+        expect(dialogSource, contains('N° transaction'));
 
         expect(
           source,

@@ -8,6 +8,7 @@ import '../../../core/config/odoo_fueltoken_rpc_config.dart';
 import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/station_qr_check_result.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
@@ -15,6 +16,8 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/station_qr_failure_dialog.dart';
+import '../../../shared/widgets/station_qr_success_dialog.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 /// Saisie station du code manuel affiché au client.
@@ -137,10 +140,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   }
 
   String _formatManualDateTime(DateTime value) {
-    final local = value.toLocal();
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${two(local.day)}/${two(local.month)}/${local.year} '
-        '${two(local.hour)}:${two(local.minute)}';
+    return Formatters.dateTimeDash(value);
   }
 
   String _formatManualAmount(Object? value) {
@@ -196,43 +196,13 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: AppColors.ink.withValues(alpha: 0.58),
       builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: const Text(
-            'QR consommé avec succès',
-            textAlign: TextAlign.center,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ManualSuccessInfoLine(label: 'Montant', value: amount),
-              const SizedBox(height: 8),
-              _ManualSuccessInfoLine(
-                label: 'Date/heure',
-                value: _formatManualDateTime(consumedAt),
-              ),
-              const SizedBox(height: 8),
-              _ManualSuccessInfoLine(
-                label: 'N° transaction',
-                value: transactionName,
-              ),
-            ],
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.primary,
-                foregroundColor: scheme.onPrimary,
-              ),
-              child: const Text('Terminer'),
-            ),
-          ],
+        return StationQrSuccessDialog(
+          amount: amount,
+          consumedAt: _formatManualDateTime(consumedAt),
+          transactionName: transactionName,
+          onClose: () => Navigator.pop(ctx),
         );
       },
     );
@@ -246,20 +216,13 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: AppColors.ink.withValues(alpha: 0.58),
       builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: Text(title, textAlign: TextAlign.center),
-          content: Text(message, textAlign: TextAlign.center),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(actionLabel),
-            ),
-          ],
+        return StationQrFailureDialog(
+          title: title,
+          message: message,
+          actionLabel: actionLabel,
+          onClose: () => Navigator.pop(ctx),
         );
       },
     );
@@ -498,55 +461,6 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ManualSuccessInfoLine extends StatelessWidget {
-  const _ManualSuccessInfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 104,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
