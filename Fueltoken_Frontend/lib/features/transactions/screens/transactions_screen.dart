@@ -88,6 +88,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   static const Set<TxType> _walletTypes = {
     TxType.purchaseValidated,
+    TxType.qrEmission,
     TxType.carnetTransfer,
     TxType.carnetReceived,
     TxType.expiration,
@@ -226,7 +227,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         case _HistoryQuickFilter.consumption:
           return false;
         case _HistoryQuickFilter.qr:
-          return false;
+          return t.type == TxType.qrEmission;
         case _HistoryQuickFilter.receipts:
           return t.type == TxType.carnetReceived ||
               (t.type == TxType.carnetTransfer && t.transferIsIncoming);
@@ -321,15 +322,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       final raw = await OdooFueltokenFacade().purchasesList(
         const <String, dynamic>{},
       );
-      final lots = AcpecPurchasesMapper.fromRpcResult(
-        raw,
-        clientId: user.id,
-        clientName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
-      ).where((lot) {
-        final d = lot.submittedAt ?? lot.createdAt;
-        return !d.isBefore(_activeFrom) && !d.isAfter(_activeTo);
-      }).toList();
+      final lots =
+          AcpecPurchasesMapper.fromRpcResult(
+            raw,
+            clientId: user.id,
+            clientName: user.name,
+            companyId: AppEnvironment.companyIdForUser(user),
+          ).where((lot) {
+            final d = lot.submittedAt ?? lot.createdAt;
+            return !d.isBefore(_activeFrom) && !d.isAfter(_activeTo);
+          }).toList();
       return AcpecTransactionsMapper.fromSubmittedPurchases(
         lots,
         userId: user.id,
@@ -553,7 +555,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   static String _emptyMessage(UserRole role, TransactionsScreenMode mode) {
     if (mode == TransactionsScreenMode.wallet) {
-      return 'Les commandes validées, transferts, réceptions et expirations apparaîtront ici.';
+      return 'Les commandes validées, générations de QR, transferts, réceptions et expirations apparaîtront ici.';
     }
     switch (role) {
       case UserRole.user:
@@ -761,14 +763,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(24),
                             children: [
-                              SizedBox(
-                                height:
-                                    MediaQuery.sizeOf(context).height * 0.25,
-                                child: EmptyState(
-                                  icon: Icons.fact_check_outlined,
-                                  title: _emptyTitle(user.role, widget.mode),
-                                  message: _emptyMessage(user.role, widget.mode),
-                                ),
+                              EmptyState(
+                                icon: Icons.fact_check_outlined,
+                                title: _emptyTitle(user.role, widget.mode),
+                                message: _emptyMessage(user.role, widget.mode),
                               ),
                             ],
                           ),
@@ -779,7 +777,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             controller: acpec ? _scroll : null,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
-                            itemCount: groups.length +
+                            itemCount:
+                                groups.length +
                                 (acpec && _acpecError != null ? 1 : 0) +
                                 (acpec ? 1 : 0),
                             itemBuilder: (ctx, i) {
@@ -1006,9 +1005,9 @@ class _TxCardState extends State<_TxCard> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
                               ),
                             ),
                           ),
@@ -1053,7 +1052,10 @@ class _TxCardState extends State<_TxCard> {
               },
               body: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-                child: _TxDetailBody(tx: tx, currentUserId: widget.currentUserId),
+                child: _TxDetailBody(
+                  tx: tx,
+                  currentUserId: widget.currentUserId,
+                ),
               ),
             ),
           ],
@@ -1412,9 +1414,7 @@ List<_TxDetailRow> _transactionDetailRows(
   final lotRef = tx.lotInternalRef ?? tx.lotId;
   final station = tx.stationName ?? tx.stationId;
   final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
-  final transferPartyLabel = tx.transferPartyRoleLabelForViewer(
-    currentUserId,
-  );
+  final transferPartyLabel = tx.transferPartyRoleLabelForViewer(currentUserId);
   final baseRows = <_TxDetailRow>[
     _TxDetailRow(
       label: 'Référence publique',
@@ -1464,18 +1464,19 @@ List<_TxDetailRow> _transactionDetailRows(
           _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
         _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
       ];
-    case TxType.carnetTransfer: {
-      return [
-        ...baseRows,
-        if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Carnet', value: lotRef),
-        if ((tx.transferParty ?? '').trim().isNotEmpty)
-          _TxDetailRow(
-            label: transferPartyLabel,
-            value: tx.transferParty!.trim(),
-          ),
-      ];
-    }
+    case TxType.carnetTransfer:
+      {
+        return [
+          ...baseRows,
+          if (lotRef != null && lotRef.isNotEmpty)
+            _TxDetailRow(label: 'Carnet', value: lotRef),
+          if ((tx.transferParty ?? '').trim().isNotEmpty)
+            _TxDetailRow(
+              label: transferPartyLabel,
+              value: tx.transferParty!.trim(),
+            ),
+        ];
+      }
     case TxType.carnetReceived:
       return [
         ...baseRows,
@@ -1492,10 +1493,7 @@ List<_TxDetailRow> _transactionDetailRows(
         if (station != null && station.isNotEmpty)
           _TxDetailRow(label: 'Station', value: station),
         if ((tx.actorUserName ?? '').trim().isNotEmpty)
-          _TxDetailRow(
-            label: 'Pompiste',
-            value: tx.actorUserName!.trim(),
-          ),
+          _TxDetailRow(label: 'Pompiste', value: tx.actorUserName!.trim()),
       ];
     case TxType.expiration:
       return [
@@ -1549,8 +1547,6 @@ String historyTxTitle(TxType type) {
   }
 }
 
-
-
 Color _amountColorFor(
   BusinessTransaction tx, {
   required TransactionsScreenMode mode,
@@ -1590,12 +1586,12 @@ String _historyAmountPrefix(
       final isIncoming = tx.isIncomingTransferForViewer(currentUserId);
       return isIncoming ? '+ ' : '- ';
     case TxType.expiration:
+    case TxType.qrEmission:
       return '- ';
     default:
       return '';
   }
 }
-
 
 class _HistoryFilterChips extends StatelessWidget {
   const _HistoryFilterChips({
@@ -1614,6 +1610,7 @@ class _HistoryFilterChips extends StatelessWidget {
         ? [
             (_HistoryQuickFilter.all, 'Tous'),
             (_HistoryQuickFilter.purchases, 'Achats'),
+            (_HistoryQuickFilter.qr, 'Générations QR'),
             (_HistoryQuickFilter.transfer, 'Transferts'),
             (_HistoryQuickFilter.receipts, 'Réceptions'),
             (_HistoryQuickFilter.expirations, 'Expirations'),
@@ -1727,7 +1724,10 @@ class _AmountInline extends StatelessWidget {
       child: Text.rich(
         TextSpan(
           children: [
-            TextSpan(text: '$prefix${Formatters.numberFr(amount)}', style: valueStyle),
+            TextSpan(
+              text: '$prefix${Formatters.numberFr(amount)}',
+              style: valueStyle,
+            ),
             TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
           ],
         ),
@@ -1986,14 +1986,3 @@ List<_TransactionFact> _transactionFacts(BusinessTransaction tx) {
       ];
   }
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -206,24 +206,44 @@ class _QrListScreenState extends State<QrListScreen> {
             child: _liveLoading
                 ? const _QrLoadingSkeleton()
                 : qrs.isEmpty
-                ? _QrEmptyState(
-                    icon: _liveError != null
-                        ? Icons.cloud_off_outlined
-                        : Icons.filter_alt_off_rounded,
-                    title: _liveError != null
-                        ? 'Erreur de chargement'
-                        : (_filterState == null
-                              ? 'Aucun QR'
-                              : 'Aucun résultat'),
-                    message: _liveError != null
-                        ? _liveError!
-                        : (_filterState == null
-                              ? 'Aucun QR n’est disponible pour le moment.'
-                              : 'Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.'),
-                    onRefresh: () => _refreshLive(force: true),
-                    onClearFilter: _filterState == null
-                        ? null
-                        : () => _onSelectTab(null),
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                    children: [
+                      EmptyState(
+                        icon: _liveError != null
+                            ? Icons.cloud_off_outlined
+                            : Icons.filter_alt_off_rounded,
+                        title: _liveError != null
+                            ? 'Erreur de chargement'
+                            : (_filterState == null
+                                  ? 'Aucun QR'
+                                  : 'Aucun résultat'),
+                        message: _liveError != null
+                            ? _liveError!
+                            : (_filterState == null
+                                  ? 'Aucun QR n’est disponible pour le moment.'
+                                  : 'Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.'),
+                        action: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: () => _refreshLive(force: true),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Actualiser'),
+                            ),
+                            if (_filterState != null) ...[
+                              const SizedBox(height: 10),
+                              TextButton.icon(
+                                onPressed: () => _onSelectTab(null),
+                                icon: const Icon(Icons.layers_clear_rounded),
+                                label: const Text('Voir tous les QR'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   )
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -289,58 +309,6 @@ class _QrLoadingSkeleton extends StatelessWidget {
         AppLoadingSkeleton(
           style: AppLoadingSkeletonStyle.qrCards,
           itemCount: 4,
-        ),
-      ],
-    );
-  }
-}
-
-class _QrEmptyState extends StatelessWidget {
-  const _QrEmptyState({
-    required this.message,
-    required this.onRefresh,
-    this.onClearFilter,
-    this.icon = Icons.qr_code_2,
-    this.title = 'Aucun QR',
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final Future<void> Function() onRefresh;
-  final VoidCallback? onClearFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      children: [
-        SizedBox(
-          height: MediaQuery.sizeOf(context).height * 0.26,
-          child: EmptyState(
-            icon: icon,
-            title: title,
-            message: message,
-            action: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Actualiser'),
-                ),
-                if (onClearFilter != null) ...[
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: onClearFilter,
-                    icon: const Icon(Icons.layers_clear_rounded),
-                    label: const Text('Voir tous les QR'),
-                  ),
-                ],
-              ],
-            ),
-          ),
         ),
       ],
     );

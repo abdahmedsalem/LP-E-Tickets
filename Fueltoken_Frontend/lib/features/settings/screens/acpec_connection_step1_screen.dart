@@ -11,6 +11,7 @@ import '../../../data/models/acpec_mobile_auth_bootstrap.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/empty_state.dart';
 
 /// Checks ACPEC `version-check` + `signup-companies`; presents a minimal,
 /// role-agnostic summary (no hosts, IDs, or RPC jargon).
@@ -385,9 +386,10 @@ class _AcpecConnectionStep1ScreenState
         ),
         const SizedBox(height: 10),
         if (_companies.isEmpty)
-          Text(
-            'Aucune organisation à afficher pour le moment.',
-            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+          const EmptyState(
+            icon: Icons.business_outlined,
+            title: 'Aucune organisation',
+            message: 'Aucune organisation à afficher pour le moment.',
           )
         else
           ..._companies.map((c) => _orgTile(context, scheme, borderColor, c)),

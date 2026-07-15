@@ -259,7 +259,6 @@ class _LotsList extends StatelessWidget {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: const [
-          SizedBox(height: 120),
           EmptyState(
             icon: Icons.assignment_outlined,
             title: 'Aucun lot',

@@ -189,9 +189,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       );
     }
 
-    final rawCode = line.carnetTypeCode
-        .trim()
-        .toUpperCase();
+    final rawCode = line.carnetTypeCode.trim().toUpperCase();
     if (rawCode.isNotEmpty) {
       if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
         return rawCode;
@@ -509,34 +507,24 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 22, 16, 132),
                 children: [
-                  Text(
-                    'Entrez le numéro du destinataire, puis sélectionnez les tickets à transférer.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.muted,
-                      height: 1.35,
-                      letterSpacing: -0.2,
+                  if (transferable.isNotEmpty) ...[
+                    Text(
+                      'Entrez le numéro du destinataire, puis sélectionnez les tickets à transférer.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
                   if (transferable.isEmpty) ...[
-                    SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.48,
-                      child: const EmptyState(
-                        icon: Icons.confirmation_number_outlined,
-                        title: 'Aucun ticket disponible',
-                        message: 'Vos tickets disponibles apparaîtront ici',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'Seuls les tickets disponibles et non expirés peuvent être transférés.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.body, height: 1.35),
-                      ),
+                    const EmptyState(
+                      icon: Icons.confirmation_number_outlined,
+                      title: 'Aucun ticket disponible',
+                      message: 'Vos tickets disponibles apparaîtront ici',
                     ),
                   ] else ...[
                     TextFormField(
@@ -761,7 +749,9 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
     final isSelected = widget.selected > 0;
     final availableQtyLabel = _ticketAvailabilityLabel(
       widget.line.availableQty,
-      widget.line.carnetFaceCount > 0 ? widget.line.carnetFaceCount : widget.line.availableQty,
+      widget.line.carnetFaceCount > 0
+          ? widget.line.carnetFaceCount
+          : widget.line.availableQty,
     );
     final subtitleParts = <String>[
       _ticketExpirationLabel(widget.line.expirationDate),
@@ -778,57 +768,57 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
           width: isSelected ? 1.5 : 1,
         ),
       ),
-          child: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.carnetTypeLabel,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                        height: 1.15,
-                      ),
-                    ),
+              Expanded(
+                child: Text(
+                  widget.carnetTypeLabel,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    height: 1.15,
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    availableQtyLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryDeep,
-                      height: 1,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                subtitleParts.join(' · '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF667085),
-                  height: 1.08,
                 ),
               ),
-              const SizedBox(height: 5),
-              Container(height: 1, color: const Color(0xFFEAECEF)),
-              const SizedBox(height: 1),
+              const SizedBox(width: 12),
+              Text(
+                availableQtyLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryDeep,
+                  height: 1,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            subtitleParts.join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF667085),
+              height: 1.08,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(height: 1, color: const Color(0xFFEAECEF)),
+          const SizedBox(height: 1),
           Row(
             children: [
               Text(
@@ -918,7 +908,9 @@ class _QtyButton extends StatelessWidget {
       icon: Icon(icon, size: 18),
       style: IconButton.styleFrom(
         backgroundColor: onTap != null
-            ? (icon == Icons.add ? const Color(0xFF43A047) : const Color(0xFFF2F4F7))
+            ? (icon == Icons.add
+                  ? const Color(0xFF43A047)
+                  : const Color(0xFFF2F4F7))
             : const Color(0xFFF3F4F6),
         foregroundColor: onTap != null
             ? (icon == Icons.add ? Colors.white : const Color(0xFF344054))

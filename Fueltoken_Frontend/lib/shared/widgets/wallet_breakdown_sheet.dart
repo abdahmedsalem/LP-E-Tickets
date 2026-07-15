@@ -6,6 +6,7 @@ import '../../core/utils/formatters.dart';
 
 import '../../data/models/wallet_breakdown_extras.dart';
 
+import 'empty_state.dart';
 import 'face_value_chip.dart';
 
 /// Corps défilable : héros solde + répartitions (écran détail portefeuille).
@@ -109,7 +110,12 @@ class WalletBreakdownBody extends StatelessWidget {
               final e = extras;
 
               if (e == null || e.isEmpty) {
-                return _WalletBreakdownEmptyState(scheme: scheme);
+                return const EmptyState(
+                  icon: Icons.insights_outlined,
+                  title: 'Pas encore de détail à afficher',
+                  message:
+                      'Lorsque votre portefeuille contiendra plusieurs répartitions, elles apparaîtront ici.',
+                );
               }
 
               return Column(
@@ -336,78 +342,6 @@ class _WalletBreakdownHero extends StatelessWidget {
                   ),
                 ],
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WalletBreakdownEmptyState extends StatelessWidget {
-  const _WalletBreakdownEmptyState({required this.scheme});
-
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 28, 8, 36),
-
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-
-            height: 72,
-
-            decoration: BoxDecoration(
-              color: AppColors.leaderGreen.withValues(alpha: 0.12),
-
-              shape: BoxShape.circle,
-            ),
-
-            child: Icon(
-              Icons.insights_outlined,
-
-              size: 34,
-
-              color: AppColors.leaderGreen.withValues(alpha: 0.9),
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          Text(
-            'Pas encore de détail à afficher',
-
-            textAlign: TextAlign.center,
-
-            style: TextStyle(
-              fontSize: 16,
-
-              fontWeight: FontWeight.w800,
-
-              color: scheme.onSurface,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'Lorsque votre portefeuille contiendra plusieurs répartitions, '
-            'elles apparaîtront ici de façon claire et structurée.',
-
-            textAlign: TextAlign.center,
-
-            style: TextStyle(
-              fontSize: 14,
-
-              height: 1.45,
-
-              fontWeight: FontWeight.w500,
-
-              color: scheme.onSurfaceVariant,
             ),
           ),
         ],

@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +14,7 @@ import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -108,7 +109,8 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
 
     setState(() {
       _loading = false;
-      _error = 'Connexion serveur ACPEC requise pour afficher vos commandes de carnets.';
+      _error =
+          'Connexion serveur ACPEC requise pour afficher vos commandes de carnets.';
       _lots = [];
     });
   }
@@ -255,18 +257,18 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                                   96,
                                 ),
                                 children: [
-                                  SizedBox(
-                                    height: minEmptyHeight,
-                                    child: _EmptyPanel(
-                                      icon: Icons.receipt_long_outlined,
-                                      title: 'Aucune commande',
-                                      message:
-                                          'Créez une nouvelle commande pour faire apparaître ici la commande, le montant et sa validation.',
-                                      actionLabel: 'Nouvelle commande',
-                                      onAction: () async {
+                                  EmptyState(
+                                    icon: Icons.receipt_long_outlined,
+                                    title: 'Aucune commande',
+                                    message:
+                                        'Créez une nouvelle commande pour faire apparaître ici la commande, le montant et sa validation.',
+                                    action: FilledButton.icon(
+                                      onPressed: () async {
                                         await context.push('/purchases/new');
                                         await _refresh();
                                       },
+                                      icon: const Icon(Icons.add_rounded),
+                                      label: const Text('Nouvelle commande'),
                                     ),
                                   ),
                                 ],
@@ -763,4 +765,3 @@ class _EmptyPanel extends StatelessWidget {
     );
   }
 }
-

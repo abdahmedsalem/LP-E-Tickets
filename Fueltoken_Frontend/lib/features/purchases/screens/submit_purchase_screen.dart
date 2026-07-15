@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -23,6 +23,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../shared/widgets/amount_inline.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
@@ -291,67 +292,69 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         return;
       }
       // Naviguer vers l'écran de confirmation
-      final result = await Navigator.of(
-        context,
-        rootNavigator: true,
-      ).push<AcpecPurchaseCreateResult>(
-        MaterialPageRoute(
-          builder: (_) => PurchaseConfirmationScreen(
-            args: PurchaseConfirmationArgs(
-              lines: confirmLines,
-              proofPath: proofPath,
-              proofBytes: proofBytes,
-              onConfirm: (actionCode) async {
-                // Appel API réel: les erreurs remontent au confirmation screen
-                if (!AppEnvironment.useAcpecLiveData) {
-                  throw Exception(
-                    'Connexion serveur ACPEC requise pour soumettre une commande de carnets.',
-                  );
-                }
-                if (kIsWeb) {
-                  throw Exception(
-                    "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
-                  );
-                }
-                final rpcLines = <Map<String, dynamic>>[];
-                for (final line in confirmLines) {
-                  final t = line.carnetType;
-                  final q = line.qty;
-                  if (q <= 0) continue;
-                  final idOdoo = int.tryParse(line.carnetType.id);
-                  if (idOdoo == null) {
-                    throw Exception(
-                      'Type « ${t.code} » : identifiant serveur inconnu. '
-                      'Rafraîchissez la liste des offres.',
-                    );
-                  }
-                  final cq = line.qty;
-                  if (cq <= 0) continue;
-                  rpcLines.add({'carnet_type_id': idOdoo, 'carnet_qty': cq});
-                }
-                if (rpcLines.isEmpty) {
-                  throw Exception('Aucune ligne valide à envoyer.');
-                }
-                final fileName = _proofFilename?.trim() ?? '';
-                if (fileName.isEmpty) {
-                  throw Exception('La preuve de paiement est obligatoire.');
-                }
-                final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
-                final idem = const Uuid().v4();
-                final raw = await OdooFueltokenFacade().purchasesCreate({
-                  'lines': rpcLines,
-                  'proof_filename': fileName,
-                  'proof_data': base64Encode(proofBytes),
-                  'payment_reference': payRef,
-                  'action_code': actionCode,
-                  'idempotency_key': idem,
-                });
-                return AcpecPurchasesMapper.parseCreateResult(raw);
-              },
+      final result = await Navigator.of(context, rootNavigator: true)
+          .push<AcpecPurchaseCreateResult>(
+            MaterialPageRoute(
+              builder: (_) => PurchaseConfirmationScreen(
+                args: PurchaseConfirmationArgs(
+                  lines: confirmLines,
+                  proofPath: proofPath,
+                  proofBytes: proofBytes,
+                  onConfirm: (actionCode) async {
+                    // Appel API réel: les erreurs remontent au confirmation screen
+                    if (!AppEnvironment.useAcpecLiveData) {
+                      throw Exception(
+                        'Connexion serveur ACPEC requise pour soumettre une commande de carnets.',
+                      );
+                    }
+                    if (kIsWeb) {
+                      throw Exception(
+                        "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
+                      );
+                    }
+                    final rpcLines = <Map<String, dynamic>>[];
+                    for (final line in confirmLines) {
+                      final t = line.carnetType;
+                      final q = line.qty;
+                      if (q <= 0) continue;
+                      final idOdoo = int.tryParse(line.carnetType.id);
+                      if (idOdoo == null) {
+                        throw Exception(
+                          'Type « ${t.code} » : identifiant serveur inconnu. '
+                          'Rafraîchissez la liste des offres.',
+                        );
+                      }
+                      final cq = line.qty;
+                      if (cq <= 0) continue;
+                      rpcLines.add({
+                        'carnet_type_id': idOdoo,
+                        'carnet_qty': cq,
+                      });
+                    }
+                    if (rpcLines.isEmpty) {
+                      throw Exception('Aucune ligne valide à envoyer.');
+                    }
+                    final fileName = _proofFilename?.trim() ?? '';
+                    if (fileName.isEmpty) {
+                      throw Exception('La preuve de paiement est obligatoire.');
+                    }
+                    final payRef =
+                        'MOBL-${DateTime.now().millisecondsSinceEpoch}';
+                    final idem = const Uuid().v4();
+                    final raw = await OdooFueltokenFacade().purchasesCreate({
+                      'lines': rpcLines,
+                      'proof_filename': fileName,
+                      'proof_data': base64Encode(proofBytes),
+                      'payment_reference': payRef,
+                      'action_code': actionCode,
+                      'idempotency_key': idem,
+                    });
+                    return AcpecPurchasesMapper.parseCreateResult(raw);
+                  },
+                ),
+              ),
             ),
-          ),
-        ),
-      );
+          );
 
       if (!mounted) return;
       if (result is AcpecPurchaseCreateResult) {
@@ -542,43 +545,52 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   @override
   Widget build(BuildContext context) {
     final amt = _totalAmount();
+    final showEmptyState =
+        !_loadingOffers && _offerLoadError == null && _offerTypes.isEmpty;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: _BottomBar(
-            totalAmount: amt,
-            currency: _selectedCurrency,
-            hasSelection: _hasSelection,
-            submitting: _submitting,
-            onSubmit: _submitting ? null : _openPaymentProofSheet,
-          ),
-        ),
-      ),
+      bottomNavigationBar: _offerTypes.isEmpty
+          ? null
+          : SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _BottomBar(
+                  totalAmount: amt,
+                  currency: _selectedCurrency,
+                  hasSelection: _hasSelection,
+                  submitting: _submitting,
+                  onSubmit: _submitting ? null : _openPaymentProofSheet,
+                ),
+              ),
+            ),
       body: SafeArea(
         top: true,
         child: Column(
           children: [
-            ScreenHeader(title: 'Commande de carnets', onBack: () => context.pop()),
+            ScreenHeader(
+              title: 'Commande de carnets',
+              onBack: () => context.pop(),
+            ),
             const SizedBox(height: 18),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
                 children: [
-                  Text(
-                    'Sélectionnez les carnets et indiquez la quantité.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.muted,
-                      height: 1.35,
-                      letterSpacing: -0.2,
+                  if (!showEmptyState) ...[
+                    Text(
+                      'Sélectionnez les carnets et indiquez la quantité.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
                   if (_loadingOffers)
                     const _PurchaseOffersSkeleton()
                   else if (_offerLoadError != null)
@@ -604,47 +616,14 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       ),
                     )
                   else if (_offerTypes.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 48,
-                            color: AppColors.muted,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppEnvironment.useAcpecLiveData
-                                ? 'Aucun type de ticket détecté pour le moment.'
-                                : "Aucun type de ticket unitaire n'est disponible pour votre société.",
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ink2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppEnvironment.useAcpecLiveData
-                                ? "Lorsque des offres seront disponibles pour votre compte, elles s'afficheront ici."
-                                : '',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.muted,
-                              height: 1.35,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          TextButton.icon(
-                            onPressed: _reloadOffers,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Actualiser'),
-                          ),
-                        ],
-                      ),
+                    EmptyState(
+                      icon: Icons.inventory_2_outlined,
+                      title: AppEnvironment.useAcpecLiveData
+                          ? 'Aucun type de ticket détecté pour le moment.'
+                          : "Aucun type de ticket unitaire n'est disponible pour votre société.",
+                      message: AppEnvironment.useAcpecLiveData
+                          ? "Lorsque des offres seront disponibles pour votre compte, elles s'afficheront ici."
+                          : null,
                     )
                   else ...[
                     GridView.builder(
@@ -1258,10 +1237,7 @@ class _PurchaseLinesSummaryRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Center(
-              child: QuantityCircleBadge(
-                quantity: qty,
-                size: rowHeight,
-              ),
+              child: QuantityCircleBadge(quantity: qty, size: rowHeight),
             ),
           ),
         ),

@@ -18,6 +18,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -381,7 +382,11 @@ class _StationConsumptionHistoryScreenState
               else if (_error != null && _items.isEmpty)
                 _ErrorPanel(message: _error!, onRetry: _load)
               else if (shown.isEmpty)
-                _EmptyHistoryCard(scheme: scheme)
+                const EmptyState(
+                  icon: Icons.history_toggle_off_rounded,
+                  title: "C'est tout pour le moment",
+                  message: 'Aucune consommation enregistrée',
+                )
               else
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -821,7 +826,6 @@ class _StationConsumptionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tx = transaction;
-    final titleCode = tx.qrDisplayName;
     final clientLabel = tx.userName.trim().isEmpty
         ? 'Client inconnu'
         : tx.userName.trim();
@@ -832,7 +836,6 @@ class _StationConsumptionPanel extends StatelessWidget {
       (label: 'N° transaction', value: tx.txNumber),
       (label: 'Client', value: clientLabel),
       (label: 'Station', value: stationLabel),
-      (label: 'Code QR', value: titleCode),
     ];
 
     return Column(
@@ -1299,46 +1302,6 @@ class _ErrorPanel extends StatelessWidget {
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Réessayer'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyHistoryCard extends StatelessWidget {
-  const _EmptyHistoryCard({required this.scheme});
-
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.history_toggle_off_rounded,
-            size: 46,
-            color: scheme.primary,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "C'est tout pour le moment",
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: scheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Aucune consommation enregistrée',
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ],
       ),

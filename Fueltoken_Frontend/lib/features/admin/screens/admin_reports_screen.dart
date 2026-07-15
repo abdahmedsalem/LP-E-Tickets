@@ -11,6 +11,7 @@ import '../../../shared/widgets/api_required_view.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/empty_state.dart';
 import 'admin_shell_scaffold.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -154,7 +155,11 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
 
     final s = _summary;
     if (s == null) {
-      return const Center(child: Text('Aucune donnée.'));
+      return const EmptyState(
+        icon: Icons.assessment_outlined,
+        title: 'Aucune donnée',
+        message: 'Les données des rapports apparaîtront ici.',
+      );
     }
 
     return RefreshIndicator(

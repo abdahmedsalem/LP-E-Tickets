@@ -5,6 +5,9 @@ import '../../core/theme/app_colors.dart';
 /// Empty state widget designed to be responsive on small heights/widths.
 /// Wraps content in a scroll view with width cap to avoid overflows.
 class EmptyState extends StatelessWidget {
+  static const double standardHeight = 360;
+  static const double illustrationWidth = 190;
+
   final IconData icon;
   final String title;
   final String? message;
@@ -20,77 +23,77 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double maxContentWidth = constraints.maxWidth.clamp(0.0, 480.0);
-        final bool compact =
-            constraints.maxHeight != double.infinity &&
-            constraints.maxHeight < 260;
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(20, compact ? 16 : 28, 20, 24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: constraints.maxHeight == double.infinity
-                  ? 0
-                  : constraints.maxHeight,
-            ),
-            child: Center(
+    final details = message?.trim();
+    final displayText = details == null || details.isEmpty
+        ? title
+        : '$title\n$details';
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        height: standardHeight,
+        width: double.infinity,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final contentWidth = constraints.maxWidth.clamp(0.0, 480.0);
+            final imageWidth = illustrationWidth
+                .clamp(0.0, contentWidth)
+                .toDouble();
+
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxContentWidth),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: AppColors.leaderGreen.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(icon, size: 34, color: AppColors.leaderGreen),
-                    ),
-                    SizedBox(height: compact ? 12 : 18),
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.ink,
-                        fontSize: compact ? 20 : 24,
-                        fontWeight: FontWeight.w700,
-                        height: 1.18,
-                        letterSpacing: -0.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (message != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        message!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.muted,
-                          fontSize: compact ? 14 : 16,
-                          fontWeight: FontWeight.w500,
-                          height: 1.35,
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 48,
+                ),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: contentWidth),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: imageWidth,
+                          height: imageWidth * 0.7,
+                          child: CustomPaint(
+                            painter: _EmptyFolderPainter(
+                              color: AppColors.leaderGreen,
+                              icon: icon,
+                            ),
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    if (action != null) ...[
-                      const SizedBox(height: 20),
-                      action!,
-                    ],
-                  ],
+                        const SizedBox(height: 14),
+                        Text(
+                          displayText,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
+                                color: AppColors.ink,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                height: 1.28,
+                                letterSpacing: -0.2,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (action != null) ...[
+                          const SizedBox(height: 20),
+                          action!,
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
-// ignore: unused_element
 class _EmptyFolderPainter extends CustomPainter {
   const _EmptyFolderPainter({required this.color, required this.icon});
 

@@ -517,34 +517,24 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 22, 16, 132),
                 children: [
-                  Text(
-                    'Entrez le numéro du destinataire, puis sélectionnez les carnets à transférer.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.muted,
-                      height: 1.35,
-                      letterSpacing: -0.2,
+                  if (transferable.isNotEmpty) ...[
+                    Text(
+                      'Entrez le numéro du destinataire, puis sélectionnez les carnets à transférer.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.35,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
                   if (transferable.isEmpty) ...[
-                    SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.48,
-                      child: const EmptyState(
-                        icon: Icons.send_rounded,
-                        title: 'Aucun carnet disponible',
-                        message: 'Vos carnets disponibles apparaîtront ici',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'Seuls les carnets complets, non expirés et non utilisés dans un QR peuvent être envoyés.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.body, height: 1.35),
-                      ),
+                    const EmptyState(
+                      icon: Icons.send_rounded,
+                      title: 'Aucun carnet disponible',
+                      message: 'Vos carnets disponibles apparaîtront ici',
                     ),
                   ] else ...[
                     TextFormField(
@@ -767,7 +757,9 @@ class _TransferLineCardState extends State<_TransferLineCard> {
   Widget build(BuildContext context) {
     final line = widget.line;
     final transferableValue =
-        (line.availableQty ~/ widget.carnetSize) * widget.carnetSize * line.faceValue;
+        (line.availableQty ~/ widget.carnetSize) *
+        widget.carnetSize *
+        line.faceValue;
     final isSelected = widget.selected > 0;
     return Material(
       color: Colors.transparent,
@@ -817,9 +809,7 @@ class _TransferLineCardState extends State<_TransferLineCard> {
                 children: [
                   Expanded(
                     child: Text.rich(
-                      TextSpan(
-                        text: _expirationLabel(line.expirationDate),
-                      ),
+                      TextSpan(text: _expirationLabel(line.expirationDate)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -851,12 +841,12 @@ class _TransferLineCardState extends State<_TransferLineCard> {
                     ? Padding(
                         padding: const EdgeInsets.only(top: 14),
                         child: OverviewInfoCard(
-                      items: [
-                        OverviewInfoItem(
-                          label: 'Identifiant de référence',
-                          value: _referenceCode(),
-                        ),
-                      ],
+                          items: [
+                            OverviewInfoItem(
+                              label: 'Identifiant de référence',
+                              value: _referenceCode(),
+                            ),
+                          ],
                         ),
                       )
                     : const SizedBox.shrink(),
@@ -868,7 +858,3 @@ class _TransferLineCardState extends State<_TransferLineCard> {
     );
   }
 }
-
-
-
-

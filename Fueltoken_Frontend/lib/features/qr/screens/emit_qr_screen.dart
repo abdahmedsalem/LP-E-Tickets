@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,6 +18,7 @@ import '../../../data/models/face_line.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -389,15 +390,17 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: SafeArea(
-        child: _BottomBar(
-          totalAmount: totalAmount,
-          emitting: _emitting,
-          onEmit: totalQty == 0 || _emitting
-              ? null
-              : () => _confirmEmit(context),
-        ),
-      ),
+      bottomNavigationBar: hasEntries
+          ? SafeArea(
+              child: _BottomBar(
+                totalAmount: totalAmount,
+                emitting: _emitting,
+                onEmit: totalQty == 0 || _emitting
+                    ? null
+                    : () => _confirmEmit(context),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -448,7 +451,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                         const SizedBox(height: 8),
                       ],
                     )
-                  : const _EmptyAvailable(),
+                  : const EmptyState(
+                      icon: Icons.layers_clear_outlined,
+                      title: 'Aucun ticket disponible',
+                      message:
+                          'Soumettez un achat de tickets et attendez la validation pour générer un QR.',
+                    ),
             ),
           ],
         ),
@@ -1265,55 +1273,6 @@ class _EmitConfirmationLineRow extends StatelessWidget {
   }
 }
 
-// --------------------------------------------------------------------------
-// Empty state
-// --------------------------------------------------------------------------
-
-class _EmptyAvailable extends StatelessWidget {
-  const _EmptyAvailable();
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: AppColors.primarySoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.layers_clear_outlined,
-                size: 36,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Aucun ticket disponible',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Soumettez un achat de tickets et attendez la validation pour générer un QR.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.body),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _AmountInline extends StatelessWidget {
   const _AmountInline({
     required this.amount,
@@ -1342,7 +1301,3 @@ class _AmountInline extends StatelessWidget {
     );
   }
 }
-
-
-
-
