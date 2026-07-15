@@ -410,11 +410,30 @@ class AcpecTransactionsMapper {
       itemsRaw.addAll(m['items'] as List);
     }
 
+    final stationRaw = data['station'] ?? m['station'];
+    final station = stationRaw is Map
+        ? Map<String, dynamic>.from(stationRaw)
+        : const <String, dynamic>{};
+    final stationId = _stringField(station, 'station_id', 'id');
+    final stationName = _stringField(
+      station,
+      'station_name',
+      'name',
+      'display_name',
+    );
+
     final items = <BusinessTransaction>[];
     for (final e in itemsRaw) {
       if (e is! Map) continue;
+      final row = Map<String, dynamic>.from(e);
+      if (_stringField(row, 'station_id') == null && stationId != null) {
+        row['station_id'] = stationId;
+      }
+      if (_stringField(row, 'station_name') == null && stationName != null) {
+        row['station_name'] = stationName;
+      }
       final tx = _mapTransaction(
-        Map<String, dynamic>.from(e),
+        row,
         userId: userId,
         userName: userName,
       );

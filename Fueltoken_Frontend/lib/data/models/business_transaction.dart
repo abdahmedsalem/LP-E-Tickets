@@ -68,7 +68,7 @@ extension TxTypeX on TxType {
       case TxType.qrBlocked:
         return 'QR bloqué';
       case TxType.stationConsumption:
-        return 'Consommation station';
+        return 'Consommation de carburant';
       case TxType.expiration:
         return 'Expiration QR';
       case TxType.walletLedger:

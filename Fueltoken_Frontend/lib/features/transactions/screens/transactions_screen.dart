@@ -1541,7 +1541,7 @@ String historyTxTitle(TxType type) {
     case TxType.qrBlocked:
       return 'QR bloqué';
     case TxType.stationConsumption:
-      return 'Utilisation en station';
+      return 'Consommation de carburant';
     case TxType.expiration:
       return 'Expiration QR';
     case TxType.walletLedger:

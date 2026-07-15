@@ -258,7 +258,7 @@ class StationHomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Historique de consommation',
+                              'Historique des consommations',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,

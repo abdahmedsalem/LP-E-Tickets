@@ -324,7 +324,7 @@ class _StationConsumptionHistoryScreenState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Relevé QR',
+                title: 'Historique des consommations',
                 subtitle: 'QR consommés par période',
                 onBack: () => context.go('/station/home'),
                 trailing: ScreenHeaderIconButton(
@@ -713,97 +713,110 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
     final amount = tx.totalAmount.abs();
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
-    final clientLabel = tx.userName.trim().isEmpty
-        ? 'Client inconnu'
-        : tx.userName.trim();
 
-    return AppCard(
-      onTap: () => setState(() => _expanded = !_expanded),
-      padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Consommation en station',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.ink,
-                    height: 1.15,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                Formatters.money(amount),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.danger,
-                  height: 1,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  clientLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.2,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w600,
-                    height: 1.15,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '$dateLabel $hourLabel',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w500,
-                  height: 1.15,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Icon(
-              Icons.expand_more_rounded,
-              size: 22,
-              color: AppColors.muted,
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: _expanded
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 14),
-                    child: _StationConsumptionPanel(transaction: tx),
-                  )
-                : const SizedBox.shrink(),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Consommation de carburant',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            Formatters.money(amount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.danger,
+                              height: 1,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '$dateLabel $hourLabel',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.left,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: AnimatedRotation(
+                          turns: _expanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          child: const Icon(
+                            Icons.expand_more_rounded,
+                            size: 22,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: _expanded
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                        child: _StationConsumptionPanel(transaction: tx),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -817,26 +830,29 @@ class _StationConsumptionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tx = transaction;
-    final totalQty = tx.lines.fold<int>(0, (sum, line) => sum + line.qty);
     final titleCode = tx.qrDisplayName;
+    final clientLabel = tx.userName.trim().isEmpty
+        ? 'Client inconnu'
+        : tx.userName.trim();
+    final stationLabel = (tx.stationName ?? '').trim().isEmpty
+        ? 'Station inconnue'
+        : tx.stationName!.trim();
+    final rows = <({String label, String value})>[
+      (label: 'N° transaction', value: tx.txNumber),
+      (label: 'Client', value: clientLabel),
+      (label: 'Station', value: stationLabel),
+      (label: 'Code QR', value: titleCode),
+    ];
 
-    return Container(
-      padding: EdgeInsets.zero,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8EAED)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _StationInfoRow(label: 'N° transaction', value: tx.txNumber),
-          const Divider(height: 1, thickness: 1, color: AppColors.line),
-          _StationInfoRow(label: 'Code QR', value: titleCode),
-          const Divider(height: 1, thickness: 1, color: AppColors.line),
-          _StationInfoRow(label: 'Nombre de tickets consommés', value: '$totalQty'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          _StationInfoRow(label: rows[i].label, value: rows[i].value),
+          if (i < rows.length - 1)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE8EAED)),
         ],
-      ),
+      ],
     );
   }
 }
@@ -849,41 +865,41 @@ class _StationInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 5,
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 7,
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 6,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
