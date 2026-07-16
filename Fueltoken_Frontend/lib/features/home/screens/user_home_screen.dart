@@ -311,7 +311,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
                                     child: _QuickActionCard(
-                                      title: 'Créer un bon de retrait',
+                                      title: 'Générer un QR',
                                       icon: Icons.qr_code_scanner_rounded,
                                       highlighted: true,
                                       onTap: () => context.push('/qr/emit'),
