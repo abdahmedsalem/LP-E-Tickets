@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
@@ -7,6 +7,7 @@ import '../../features/purchases/screens/purchase_confirmation_screen.dart';
 import '../../features/qr/screens/transfer_confirmation_screen.dart';
 import 'amount_inline.dart';
 import 'quantity_circle_badge.dart';
+import 'qr_generation_carnet_line.dart';
 import 'transfer_line_row.dart';
 
 Future<void> showPurchaseSubmitSuccessDialog(
@@ -533,41 +534,10 @@ class _GeneratedQrLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 8,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _title(),
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        AmountInline(amount: line.totalAmount),
-      ],
+    return QrGenerationCarnetLine(
+      title: _title(),
+      amount: line.totalAmount,
+      expirationDate: line.expirationDate,
     );
   }
 }
@@ -627,10 +597,7 @@ class _PurchasedLineRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Center(
-              child: QuantityCircleBadge(
-                quantity: line.qty,
-                size: rowHeight,
-              ),
+              child: QuantityCircleBadge(quantity: line.qty, size: rowHeight),
             ),
           ),
         ),

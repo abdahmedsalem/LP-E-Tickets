@@ -30,6 +30,7 @@ import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/overview_info_card.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
+import '../../../shared/widgets/qr_generation_carnet_line.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -508,8 +509,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             details: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _ConfirmationSectionHeader(title: 'Tickets à générer'),
-                const SizedBox(height: 14),
                 _EmitConfirmationLinesSection(
                   lines: selectedLines,
                   request: _request,
@@ -1116,7 +1115,17 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
         border: Border.all(color: AppColors.line),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Carnets utilisés',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
             _EmitConfirmationLineRow(
               label: _labelFor(lines[i]),
@@ -1180,25 +1189,6 @@ class _EmitConfirmationTotalRow extends StatelessWidget {
   }
 }
 
-class _ConfirmationSectionHeader extends StatelessWidget {
-  const _ConfirmationSectionHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16.5,
-        fontWeight: FontWeight.w800,
-        color: AppColors.ink,
-        height: 1.1,
-      ),
-    );
-  }
-}
-
 class _EmitConfirmationLineRow extends StatelessWidget {
   const _EmitConfirmationLineRow({
     required this.label,
@@ -1227,48 +1217,10 @@ class _EmitConfirmationLineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amount = selectedQty * faceValue;
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _title(),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Expire le ${Formatters.dateTimeDash(expirationDate)}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        _AmountInline(
-          amount: amount,
-          textAlign: TextAlign.right,
-          valueStyle: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF2E7D32),
-          ),
-          unitStyle: const TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2E7D32),
-          ),
-        ),
-      ],
+    return QrGenerationCarnetLine(
+      title: _title(),
+      amount: amount,
+      expirationDate: expirationDate,
     );
   }
 }
