@@ -13,6 +13,7 @@ import '../../../data/models/qr_token.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/amount_inline.dart';
@@ -35,12 +36,12 @@ class _QrListScreenState extends State<QrListScreen> {
   bool _liveLoading = false;
   String? _liveError;
 
-  static const _filters = <(String, QrState?)>[
-    ('Tous', null),
-    ('Actifs', QrState.active),
-    ('Bloqués', QrState.blocked),
-    ('Consommés', QrState.consumed),
-    ('Expirés', QrState.expired),
+  static const _filterStates = <QrState?>[
+    null,
+    QrState.active,
+    QrState.blocked,
+    QrState.consumed,
+    QrState.expired,
   ];
 
   late final VoidCallback _qrBusListener;
@@ -126,16 +127,14 @@ class _QrListScreenState extends State<QrListScreen> {
       setState(() {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? AppLocalizations.of(context).sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _liveLoading = false;
-        _liveError = ErrorPresenter.isBackendUnavailable(e)
-            ? ErrorPresenter.backendUnavailable()
-            : ErrorPresenter.message(e);
+        _liveError = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
@@ -156,6 +155,7 @@ class _QrListScreenState extends State<QrListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
       return Scaffold(
@@ -215,29 +215,29 @@ class _QrListScreenState extends State<QrListScreen> {
                             ? Icons.cloud_off_outlined
                             : Icons.filter_alt_off_rounded,
                         title: _liveError != null
-                            ? 'Erreur de chargement'
+                            ? l10n.qrsLoadError
                             : (_filterState == null
-                                  ? 'Aucun QR'
-                                  : 'Aucun résultat'),
+                                  ? l10n.qrsEmptyTitle
+                                  : l10n.qrsNoResults),
                         message: _liveError != null
                             ? _liveError!
                             : (_filterState == null
-                                  ? 'Aucun QR n’est disponible pour le moment.'
-                                  : 'Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.'),
+                                  ? l10n.qrsEmptyMessage
+                                  : l10n.qrsFilterEmptyMessage),
                         action: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             FilledButton.tonalIcon(
                               onPressed: () => _refreshLive(force: true),
                               icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Actualiser'),
+                              label: Text(l10n.commonRefresh),
                             ),
                             if (_filterState != null) ...[
                               const SizedBox(height: 10),
                               TextButton.icon(
                                 onPressed: () => _onSelectTab(null),
                                 icon: const Icon(Icons.layers_clear_rounded),
-                                label: const Text('Voir tous les QR'),
+                                label: Text(l10n.qrsViewAll),
                               ),
                             ],
                           ],
@@ -278,10 +278,11 @@ class _QrListShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const HistoryAlignedPageHeader(title: 'Mes QR'),
+        HistoryAlignedPageHeader(title: l10n.qrsTitle),
         const SizedBox(height: 18),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -344,28 +345,44 @@ class _QrCompactListTile extends StatelessWidget {
     return fallback;
   }
 
-  String get _expirationLabel {
+  String _expirationLabel(AppLocalizations l10n) {
     final exp = _effectiveExpiration;
-    if (exp == null) return 'Expiration non définie';
-    return 'Expire dès ${Formatters.dateTimeDash(exp)}';
+    if (exp == null) return l10n.qrExpirationUndefined;
+    return l10n.qrExpiresFrom(Formatters.dateTimeDash(exp));
   }
 
-  String get _stateDateLabel {
+  String _stateDateLabel(AppLocalizations l10n) {
     switch (_displayState) {
       case QrState.consumed:
         final consumed = qr.consumedAt;
         if (consumed != null) {
-          return 'Consommé le ${Formatters.dateTimeDash(consumed)}';
+          return l10n.qrConsumedOn(Formatters.dateTimeDash(consumed));
         }
-        return 'Consommé';
+        return l10n.qrStatusConsumed;
       case QrState.expired:
-        return _expirationLabel.replaceFirst('Expire dès', 'Expiré dès');
+        final expiration = _effectiveExpiration;
+        return expiration == null
+            ? l10n.qrStatusExpired
+            : l10n.qrExpiredFrom(Formatters.dateTimeDash(expiration));
       case QrState.blocked:
         return qr.hasMixedExpiration
-            ? 'Expiration partielle détectée'
-            : 'Bloqué';
+            ? l10n.qrPartialExpiration
+            : l10n.qrStatusBlocked;
       case QrState.active:
-        return _expirationLabel;
+        return _expirationLabel(l10n);
+    }
+  }
+
+  String _statusLabel(AppLocalizations l10n) {
+    switch (_displayState) {
+      case QrState.active:
+        return l10n.qrStatusActive;
+      case QrState.blocked:
+        return l10n.qrStatusBlocked;
+      case QrState.consumed:
+        return l10n.qrStatusConsumed;
+      case QrState.expired:
+        return l10n.qrStatusExpired;
     }
   }
 
@@ -381,7 +398,9 @@ class _QrCompactListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final canOpen = _hasPublicCode;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
 
     return Material(
       color: Colors.transparent,
@@ -415,11 +434,14 @@ class _QrCompactListTile extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        StatusBadge.qr(_displayState),
+                        StatusBadge.qr(
+                          _displayState,
+                          label: _statusLabel(l10n),
+                        ),
                         const Spacer(),
                         AmountInline(
                           amount: qr.totalAmount,
-                          textAlign: TextAlign.right,
+                          textAlign: TextAlign.end,
                           valueStyle: const TextStyle(
                             fontSize: 14.2,
                             fontWeight: FontWeight.w800,
@@ -435,9 +457,9 @@ class _QrCompactListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       child: Text(
-                        _stateDateLabel,
+                        _stateDateLabel(l10n),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -452,7 +474,12 @@ class _QrCompactListTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+              Icon(
+                isRtl
+                    ? Icons.chevron_left_rounded
+                    : Icons.chevron_right_rounded,
+                color: AppColors.muted,
+              ),
             ],
           ),
         ),
@@ -518,24 +545,38 @@ class _QrFilterRow extends StatelessWidget {
   final int totalCount;
   final ValueChanged<QrState?> onSelected;
 
+  String _labelFor(AppLocalizations l10n, QrState? state) {
+    switch (state) {
+      case null:
+        return l10n.filterAll;
+      case QrState.active:
+        return l10n.qrFilterActive;
+      case QrState.blocked:
+        return l10n.qrFilterBlocked;
+      case QrState.consumed:
+        return l10n.qrFilterConsumed;
+      case QrState.expired:
+        return l10n.filterExpired;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final states = _QrListScreenState._filterStates;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
-          for (var i = 0; i < _QrListScreenState._filters.length; i++) ...[
+          for (var i = 0; i < states.length; i++) ...[
             _QrFilterChip(
-              label: _QrListScreenState._filters[i].$1,
-              selected: selected == _QrListScreenState._filters[i].$2,
-              count: _QrListScreenState._filters[i].$2 == null
-                  ? totalCount
-                  : null,
-              onTap: () => onSelected(_QrListScreenState._filters[i].$2),
+              label: _labelFor(l10n, states[i]),
+              selected: selected == states[i],
+              count: states[i] == null ? totalCount : null,
+              onTap: () => onSelected(states[i]),
             ),
-            if (i != _QrListScreenState._filters.length - 1)
-              const SizedBox(width: 10),
+            if (i != states.length - 1) const SizedBox(width: 10),
           ],
         ],
       ),

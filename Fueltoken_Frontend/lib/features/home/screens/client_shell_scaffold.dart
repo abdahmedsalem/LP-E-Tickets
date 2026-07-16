@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +7,7 @@ import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/faces_refresh_bus.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Coquille client — barre tabs personnalisée.
 class ClientShellScaffold extends StatelessWidget {
@@ -14,29 +15,29 @@ class ClientShellScaffold extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  static const _destinations = <_ClientTabDestination>[
+  List<_ClientTabDestination> _destinations(AppLocalizations l10n) => [
     _ClientTabDestination(
-      label: 'Accueil',
+      label: l10n.navHome,
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
     ),
     _ClientTabDestination(
-      label: 'Carnets',
+      label: l10n.navCarnets,
       icon: Icons.confirmation_number_outlined,
       selectedIcon: Icons.confirmation_number,
     ),
     _ClientTabDestination(
-      label: 'QR',
+      label: l10n.navQr,
       icon: Icons.qr_code_2_outlined,
       selectedIcon: Icons.qr_code_2,
     ),
     _ClientTabDestination(
-      label: 'Portefeuille',
+      label: l10n.navWallet,
       icon: Icons.account_balance_wallet_outlined,
       selectedIcon: Icons.account_balance_wallet,
     ),
     _ClientTabDestination(
-      label: 'Historique',
+      label: l10n.navHistory,
       icon: Icons.receipt_long_outlined,
       selectedIcon: Icons.receipt_long,
     ),
@@ -74,6 +75,7 @@ class ClientShellScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final destinations = _destinations(AppLocalizations.of(context));
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -100,15 +102,15 @@ class ClientShellScaffold extends StatelessWidget {
         ),
         child: Row(
           children: [
-            for (var i = 0; i < _destinations.length; i++) ...[
+            for (var i = 0; i < destinations.length; i++) ...[
               Expanded(
                 child: _ClientTabButton(
-                  destination: _destinations[i],
+                  destination: destinations[i],
                   selected: i == navigationShell.currentIndex,
                   onTap: () => _onTabTap(i),
                 ),
               ),
-              if (i != _destinations.length - 1) const SizedBox(width: 6),
+              if (i != destinations.length - 1) const SizedBox(width: 6),
             ],
           ],
         ),

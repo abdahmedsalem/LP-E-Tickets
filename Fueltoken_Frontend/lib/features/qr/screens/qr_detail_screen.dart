@@ -21,6 +21,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
@@ -108,11 +109,12 @@ class _QrDetailScreenState extends State<QrDetailScreen>
   }
 
   Future<void> _refresh() async {
+    final l10n = AppLocalizations.of(context);
     if (!AppEnvironment.useAcpecLiveData) {
       setState(() {
         _qr = null;
         _loading = false;
-        _error = 'Connexion serveur ACPEC requise pour afficher ce QR.';
+        _error = l10n.qrServerRequiredForDetail;
       });
       return;
     }
@@ -154,41 +156,35 @@ class _QrDetailScreenState extends State<QrDetailScreen>
         _qr = null;
         _loading = false;
         _error = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _qr = null;
         _loading = false;
-        _error = ErrorPresenter.message(e);
+        _error = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
 
   Future<void> _revealQrManualCode(QrToken qr) async {
+    final l10n = AppLocalizations.of(context);
     if (_revealingManualCode) return;
     if (!AppEnvironment.useAcpecLiveData) {
-      AppMessage.error(
-        context,
-        'Connexion serveur ACPEC requise pour révéler le code manuel.',
-      );
+      AppMessage.error(context, l10n.qrServerRequiredForManualCode);
       return;
     }
     if (qr.state != QrState.active) {
-      AppMessage.error(
-        context,
-        'Le code manuel ne peut être révélé que pour un QR actif.',
-      );
+      AppMessage.error(context, l10n.qrManualCodeActiveOnly);
       return;
     }
 
     final actionCode = await showSensitiveActionCodeDialog(
       context,
-      title: 'Révéler le code manuel',
-      description:
-          'Saisissez votre PIN pour afficher temporairement le code manuel de consommation.',
+      title: l10n.qrRevealManualCode,
+      description: l10n.qrRevealManualCodeDescription,
     );
     if (actionCode == null || actionCode.isEmpty || !mounted) return;
 
@@ -203,8 +199,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Révélation du code manuel refusée par le serveur.',
-        publicErrorMessage:
-            'Le code manuel n’a pas pu être révélé. Réessayez ou contactez l’administrateur.',
+        publicErrorMessage: l10n.qrManualCodeRevealFailed,
       );
       final code =
           (payload['qr_numeric_code'] ?? payload['qrNumericCode'])
@@ -218,38 +213,36 @@ class _QrDetailScreenState extends State<QrDetailScreen>
       _manualCodeClearTimer?.cancel();
       setState(() => _revealedQrManualCode = code);
       _scheduleManualCodeAutoClear();
-      AppMessage.success(context, 'Code manuel révélé temporairement.');
+      AppMessage.success(context, l10n.qrManualCodeRevealed);
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
       AppMessage.error(
         context,
         e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e),
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, ErrorPresenter.message(e));
+      AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
     } finally {
       if (mounted) setState(() => _revealingManualCode = false);
     }
   }
 
   Future<void> _separateBlockedQr(QrToken qr) async {
+    final l10n = AppLocalizations.of(context);
     if (_separating) return;
     if (!AppEnvironment.useAcpecLiveData) {
-      AppMessage.error(
-        context,
-        'Connexion serveur ACPEC requise pour séparer un QR.',
-      );
+      AppMessage.error(context, l10n.qrServerRequiredForSeparation);
       return;
     }
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     final actionCode = await showSensitiveActionCodeDialog(
       context,
-      title: 'Vérification du PIN',
-      description: 'Saisissez votre PIN pour confirmer cette opération.',
+      title: l10n.commonPinVerification,
+      description: l10n.commonPinConfirmationDescription,
     );
     if (actionCode == null || actionCode.isEmpty || !mounted) return;
     final intent = SensitiveActionIntent.create('qr-separer');
@@ -263,8 +256,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Séparation QR refusée par le serveur.',
-        publicErrorMessage:
-            'La séparation du QR a échoué. Réessayez ou contactez l’administrateur.',
+        publicErrorMessage: l10n.qrSeparationFailed,
       );
       final newQrRaw = payload['new_qr'];
       final sourceRaw = payload['source'];
@@ -303,39 +295,40 @@ class _QrDetailScreenState extends State<QrDetailScreen>
       FacesRefreshBus.instance.bump();
       ClientHistoryRefreshBus.instance.bump();
       if (!mounted) return;
-      AppMessage.success(context, 'QR séparé avec succès.');
+      AppMessage.success(context, l10n.qrSeparationSuccess);
       await _refresh();
     } on OdooJsonRpcException catch (e) {
       if (!mounted) return;
       AppMessage.error(
         context,
         e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e),
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, ErrorPresenter.message(e));
+      AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
     } finally {
       if (mounted) setState(() => _separating = false);
     }
   }
 
-  ({String label, Color color}) _statePill(QrState s) {
+  ({String label, Color color}) _statePill(AppLocalizations l10n, QrState s) {
     switch (s) {
       case QrState.active:
-        return (label: 'Actif', color: AppColors.leaderGreen);
+        return (label: l10n.qrStatusActive, color: AppColors.leaderGreen);
       case QrState.blocked:
-        return (label: 'BLOQUÉ', color: const Color(0xFFF59E0B));
+        return (label: l10n.qrStatusBlocked, color: const Color(0xFFF59E0B));
       case QrState.consumed:
-        return (label: 'CONSOMMÉ', color: AppColors.muted);
+        return (label: l10n.qrStatusConsumed, color: AppColors.muted);
       case QrState.expired:
-        return (label: 'EXPIRÉ', color: AppColors.brandRed);
+        return (label: l10n.qrStatusExpired, color: AppColors.brandRed);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -343,7 +336,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
           child: Column(
             children: [
               ScreenHeader(
-                title: 'Détails du QR',
+                title: l10n.qrDetailTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const Expanded(
@@ -367,7 +360,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
           child: Column(
             children: [
               ScreenHeader(
-                title: 'Détails du QR',
+                title: l10n.qrDetailTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               Expanded(
@@ -395,7 +388,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
                       child: FilledButton.tonalIcon(
                         onPressed: _refresh,
                         icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Réessayer'),
+                        label: Text(l10n.commonRetry),
                       ),
                     ),
                   ],
@@ -408,7 +401,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
     }
     final qr = _qr;
     if (qr == null) {
-      return const Scaffold(body: Center(child: Text('QR introuvable.')));
+      return Scaffold(body: Center(child: Text(l10n.qrNotFound)));
     }
     final user = context.read<AuthBloc>().state.user!;
     final isOwner = user.id == qr.ownerId;
@@ -418,7 +411,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
         qr.lines.isNotEmpty &&
         qr.lines.length > 1;
     final canSeparer = isOwner && qr.state == QrState.blocked;
-    final pill = _statePill(qr.state);
+    final pill = _statePill(l10n, qr.state);
     final scheme = Theme.of(context).colorScheme;
     final qrSeg = AppEnvironment.useAcpecLiveData
         ? Uri.encodeComponent(qr.publicCode)
@@ -452,7 +445,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
                             ),
                           ),
                           icon: const Icon(Icons.call_split, size: 18),
-                          label: const Text('Retirer'),
+                          label: Text(l10n.qrWithdraw),
                           onPressed: () async {
                             final router = GoRouter.of(context);
                             final nextCode = await router.push<String>(
@@ -486,9 +479,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
                             ),
                           ),
                           icon: const Icon(Icons.call_split, size: 18),
-                          label: const Text(
-                            'Séparer la partie active dans un nouveau QR',
-                          ),
+                          label: Text(l10n.qrSeparateActiveButton),
                           onPressed: _separating
                               ? null
                               : () => _separateBlockedQr(qr),
@@ -503,7 +494,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
         child: Column(
           children: [
             ScreenHeader(
-              title: 'Détail QR Code',
+              title: l10n.qrDetailTitle,
               onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
@@ -517,7 +508,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
                   children: [
                     if (qr.state == QrState.blocked) ...[
                       Text(
-                        'Séparez les tickets utilisables des tickets expirés.',
+                        l10n.qrSeparateUsableHint,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w400,
@@ -537,7 +528,7 @@ class _QrDetailScreenState extends State<QrDetailScreen>
                       onRevealManualCode: () => _revealQrManualCode(qr),
                     ),
                     const SizedBox(height: 22),
-                    const SectionLabel('Contenu'),
+                    SectionLabel(l10n.qrContent),
                     const SizedBox(height: 8),
                     _CompositionCard(qr: qr),
                     const SizedBox(height: 24),
@@ -571,6 +562,7 @@ class _HeroQrCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isActive = qr.state == QrState.active;
     final showBadge = qr.state != QrState.active;
     final qrManualCode = manualCode?.trim() ?? '';
@@ -665,23 +657,23 @@ class _HeroQrCard extends StatelessWidget {
             child: Column(
               children: [
                 _DetailInfoRow(
-                  label: 'Code de référence',
+                  label: l10n.referenceCode,
                   value: qr.internalRef?.trim().isNotEmpty == true
                       ? qr.internalRef!.trim()
                       : qr.publicCode.trim().isNotEmpty
                       ? qr.publicCode.trim()
-                      : 'Non disponible',
+                      : l10n.notAvailable,
                 ),
                 const Divider(height: 1, thickness: 1, color: AppColors.line),
                 _DetailInfoRow(
-                  label: 'Date d\'expiration',
+                  label: l10n.expirationDate,
                   value: qr.expiresAt != null
                       ? Formatters.dateTimeDash(qr.expiresAt!)
-                      : 'Non disponible',
+                      : l10n.notAvailable,
                 ),
                 const Divider(height: 1, thickness: 1, color: AppColors.line),
                 _DetailInfoRow(
-                  label: 'Montant',
+                  label: l10n.amount,
                   value: Formatters.money(qr.totalAmount),
                 ),
               ],
@@ -708,14 +700,15 @@ class _QrNumericCodePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final revealed = code.trim().isNotEmpty;
     final codeColor = isActive && revealed ? AppColors.ink : AppColors.muted;
     final displayCode = revealed ? code.trim() : '••••-••••-••••';
     final helper = !isActive
-        ? 'Le code manuel ne peut être révélé que pour un QR actif.'
+        ? l10n.qrManualCodeActiveOnly
         : revealed
-        ? 'Présentez ce code uniquement à la station au moment de la consommation.'
-        : 'Code manuel masqué. Touchez l’œil et saisissez votre PIN pour l’afficher temporairement.';
+        ? l10n.qrManualCodeUsageHint
+        : l10n.qrManualCodeHiddenHint;
 
     return Container(
       width: double.infinity,
@@ -732,7 +725,7 @@ class _QrNumericCodePanel extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Code manuel',
+                l10n.qrManualCode,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
@@ -748,7 +741,7 @@ class _QrNumericCodePanel extends StatelessWidget {
                   height: 34,
                   child: IconButton(
                     padding: EdgeInsets.zero,
-                    tooltip: 'Révéler le code manuel',
+                    tooltip: l10n.qrRevealManualCode,
                     iconSize: 19,
                     color: AppColors.muted,
                     onPressed: revealing ? null : onReveal,
@@ -858,20 +851,20 @@ class _CompositionLineRow extends StatelessWidget {
   final String label;
   final QrLine line;
 
-  String _title() {
-    final qtyLabel =
-        '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}';
+  String _title(AppLocalizations l10n) {
     final cleanLabel = label.replaceFirst(
       RegExp(r'^\s*Carnet\s+', caseSensitive: false),
       '',
     );
-    return '$qtyLabel de carnet $cleanLabel';
+    final carnetLabel = cleanLabel.trim().isEmpty
+        ? l10n.carnet
+        : '${l10n.carnet} $cleanLabel';
+    return l10n.ticketsFromCarnet(line.qty, carnetLabel);
   }
-
-  String _dateLabel() => line.isExpired ? 'Expirée le' : 'Expire le';
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isExpired = line.isExpired;
     return Container(
       color: isExpired ? const Color(0xFFF3F4F6) : Colors.white,
@@ -886,9 +879,9 @@ class _CompositionLineRow extends StatelessWidget {
                 Expanded(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
+                    alignment: AlignmentDirectional.centerStart,
                     child: Text(
-                      _title(),
+                      _title(l10n),
                       maxLines: 1,
                       softWrap: false,
                       style: TextStyle(
@@ -903,7 +896,7 @@ class _CompositionLineRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 AmountInline(
                   amount: line.amount,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   valueStyle: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,
@@ -919,7 +912,13 @@ class _CompositionLineRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${_dateLabel()} ${Formatters.dateTimeDash(line.expirationDate)}',
+                    line.isExpired
+                        ? l10n.expiredOn(
+                            Formatters.dateTimeDash(line.expirationDate),
+                          )
+                        : l10n.expiresOn(
+                            Formatters.dateTimeDash(line.expirationDate),
+                          ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -970,7 +969,7 @@ class _DetailInfoRow extends StatelessWidget {
               flex: 7,
               child: Text(
                 value,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,

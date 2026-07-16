@@ -35,7 +35,7 @@ void main() {
 
         expect(source, contains('_ManualQrCodeInputFormatter'));
         expect(source, contains('1234-5678-9012'));
-        expect(source, contains('Format attendu : 1234-5678-9012'));
+        expect(source, contains('stationManualFormat'));
         expect(
           source,
           contains(r"newValue.text.replaceAll(RegExp(r'\D'), '')"),

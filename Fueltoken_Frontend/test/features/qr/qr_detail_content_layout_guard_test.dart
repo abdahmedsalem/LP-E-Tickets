@@ -13,7 +13,10 @@ void main() {
     final titleSource = rowSource.substring(0, titleEnd);
 
     expect(titleSource, contains('fit: BoxFit.scaleDown'));
-    expect(titleSource, contains('alignment: Alignment.centerLeft'));
+    expect(
+      titleSource,
+      contains('alignment: AlignmentDirectional.centerStart'),
+    );
     expect(titleSource, contains('maxLines: 1'));
     expect(titleSource, contains('softWrap: false'));
     expect(titleSource, isNot(contains('TextOverflow.ellipsis')));

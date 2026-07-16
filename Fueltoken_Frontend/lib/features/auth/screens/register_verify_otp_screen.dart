@@ -12,6 +12,7 @@ import '../../../data/models/user_role.dart';
 import '../../../data/services/odoo_auth_service.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../core/utils/error_presenter.dart';
+import '../../../l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
@@ -95,11 +96,12 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length != kOtpSmsCodeLength) {
       AppMessage.error(
         context,
-        'Saisissez un code à $kOtpSmsCodeLength chiffres.',
+        AppLocalizations.of(context).authOtpLength(kOtpSmsCodeLength),
       );
       return;
     }
@@ -107,13 +109,16 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     if (args == null) {
       AppMessage.error(
         context,
-        'Code SMS introuvable, expiré ou déjà utilisé. Recommencez l’inscription.',
+        AppLocalizations.of(context).authOtpMissingExpired,
       );
       return;
     }
     final pin = _pinForSubmit;
     if (validateFourDigitNumericPassword(pin) != null) {
-      AppMessage.error(context, 'Saisissez votre PIN à 4 chiffres.');
+      AppMessage.error(
+        context,
+        AppLocalizations.of(context).authEnterPinFourDigits,
+      );
       return;
     }
 
@@ -135,10 +140,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       final hasTokens = _hasSessionTokens(tokens);
 
       if (!hasTokens) {
-        throw Exception(
-          'Inscription incomplète : session mobile absente. '
-          'Réessayez ou contactez l’administrateur.',
-        );
+        throw Exception(l10n.authRegistrationIncomplete);
       }
 
       await PendingSignupStore.clear();
@@ -167,13 +169,12 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
           code == 'REQUEST_REFUSED' ||
           code == 'VALIDATION_ERROR') {
         final suffix = ref != null && ref.isNotEmpty
-            ? '\nRéférence support : $ref'
+            ? '\n${AppLocalizations.of(context).supportReference(ref)}'
             : '';
-        return 'Code SMS introuvable, expiré ou déjà utilisé. '
-            'Demandez un nouveau code puis réessayez.$suffix';
+        return '${AppLocalizations.of(context).authOtpMissingExpired}$suffix';
       }
     }
-    return ErrorPresenter.message(error);
+    return ErrorPresenter.localizedMessage(context, error);
   }
 
   bool _hasSessionTokens(Map<String, dynamic>? tokens) {
@@ -233,7 +234,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     if (args == null) {
       AppMessage.error(
         context,
-        'Recommencez l’inscription pour demander un nouveau code.',
+        AppLocalizations.of(context).authRestartToRequestCode,
       );
       return;
     }
@@ -261,14 +262,17 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         }
       }
       if (mounted) {
-        AppMessage.info(context, 'Un nouveau code a été demandé.');
+        AppMessage.info(
+          context,
+          AppLocalizations.of(context).authNewCodeRequested,
+        );
       }
     } catch (e, st) {
       if (kDebugMode) {
         debugPrint('OTP resend failed: ${e.runtimeType}\n$st');
       }
       if (mounted) {
-        AppMessage.error(context, ErrorPresenter.message(e));
+        AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _resendBusy = false);
@@ -290,6 +294,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     }
 
     final dest = localMrDigitsFromFull(args.phoneFull);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -299,7 +304,12 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
           listener: (ctx, state) {
             if (state.status == AuthStatus.failure &&
                 state.errorMessage != null) {
-              AppMessage.error(ctx, state.errorMessage!);
+              AppMessage.error(
+                ctx,
+                Localizations.localeOf(ctx).languageCode == 'ar'
+                    ? AppLocalizations.of(ctx).commonGenericError
+                    : state.errorMessage!,
+              );
             }
             if (state.status == AuthStatus.authenticated &&
                 state.user != null) {
@@ -344,11 +354,11 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                         const SizedBox(height: 16),
                         const _OtpWelcomeCopy(),
                         const SizedBox(height: 34),
-                        const _OtpSectionTitle(title: 'Vérification'),
+                        _OtpSectionTitle(title: l10n.authVerification),
                         const SizedBox(height: 16),
                         Text(
-                          'Code envoyé à $dest',
-                          textAlign: TextAlign.left,
+                          l10n.authCodeSentShort(dest),
+                          textAlign: TextAlign.start,
                           style: const TextStyle(
                             fontSize: 13.5,
                             color: Color(0xFF475569),
@@ -421,7 +431,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                             ],
                             decoration: InputDecoration(
                               counterText: '',
-                              hintText: 'PIN de confirmation',
+                              hintText: l10n.authConfirmPin,
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
@@ -462,9 +472,9 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Text(
-                                          'Vérifier',
-                                          style: TextStyle(
+                                      : Text(
+                                          l10n.authVerify,
+                                          style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 16,
                                             fontWeight: FontWeight.w800,
@@ -483,8 +493,8 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
                               foregroundColor: const Color(0xFF203A73),
                             ),
                             child: _resendBusy
-                                ? const Text('Demande en cours...')
-                                : const Text('Renvoyer le code'),
+                                ? Text(l10n.authRequestInProgress)
+                                : Text(l10n.authResendCode),
                           ),
                         ),
                       ],
@@ -505,6 +515,7 @@ class _MissingRegisterOtpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -517,8 +528,8 @@ class _MissingRegisterOtpScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Code SMS introuvable',
+                  Text(
+                    l10n.authOtpMissing,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
@@ -527,19 +538,19 @@ class _MissingRegisterOtpScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Recommencez l’inscription pour recevoir un nouveau code.',
+                  Text(
+                    l10n.authRestartRegistrationMessage,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Color(0xFF64748B), height: 1.4),
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: () => context.go('/register'),
-                    child: const Text('Recommencer l’inscription'),
+                    child: Text(l10n.authRestartRegistration),
                   ),
                   TextButton(
                     onPressed: () => context.go('/login'),
-                    child: const Text('Retour connexion'),
+                    child: Text(l10n.authBackToLogin),
                   ),
                 ],
               ),
@@ -556,13 +567,14 @@ class _OtpWelcomeCopy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    final l10n = AppLocalizations.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          'Confirmez votre',
+          l10n.authConfirmYour,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 28,
             height: 1.18,
             color: Color(0xFF1E293B),
@@ -570,11 +582,11 @@ class _OtpWelcomeCopy extends StatelessWidget {
             letterSpacing: -0.8,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
-          'numéro mobile',
+          l10n.authMobileNumber,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 28,
             height: 1.18,
             color: Color(0xFF1E293B),

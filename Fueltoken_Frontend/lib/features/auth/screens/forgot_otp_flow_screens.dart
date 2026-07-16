@@ -7,6 +7,7 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/services/odoo_auth_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 
 class ForgotOtpRouteArgs {
@@ -67,11 +68,11 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
         _challengeId = int.tryParse(data['otp_challenge_id']?.toString() ?? '');
       }
       if (mounted) {
-        AppMessage.info(context, 'Code renvoye par SMS.');
+        AppMessage.info(context, AppLocalizations.of(context).authCodeResent);
       }
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, ErrorPresenter.message(e));
+        AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -82,7 +83,10 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length != kOtpSmsCodeLength) {
       if (mounted) {
-        AppMessage.error(context, 'Saisissez le code SMS à 6 chiffres.');
+        AppMessage.error(
+          context,
+          AppLocalizations.of(context).authEnterSixDigitCode,
+        );
       }
       return;
     }
@@ -97,11 +101,11 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
         challengeId: _challengeId,
       );
       if (!mounted) return;
-      AppMessage.info(context, 'PIN mis a jour. Connectez-vous.');
+      AppMessage.info(context, AppLocalizations.of(context).authPinUpdated);
       context.go('/login');
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, ErrorPresenter.message(e));
+        AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -110,11 +114,11 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _ForgotFlowScaffold(
       onBack: () => context.pop(),
-      title: 'Verification et nouveau PIN',
-      subtitle:
-          'Saisissez le code recu par SMS puis choisissez votre nouveau PIN.',
+      title: l10n.authVerifyAndNewPin,
+      subtitle: l10n.authVerifyAndNewPinInstruction,
       child: Form(
         key: _formKey,
         child: Column(
@@ -129,8 +133,8 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
                   _PasswordField(
                     controller: _pin,
                     obscure: _obscurePin,
-                    label: 'Nouveau PIN',
-                    hint: '4 chiffres',
+                    label: l10n.authNewPin,
+                    hint: l10n.authFourDigits,
                     trailing: IconButton(
                       splashRadius: 20,
                       iconSize: 20,
@@ -143,33 +147,36 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
                       onPressed: () =>
                           setState(() => _obscurePin = !_obscurePin),
                     ),
-                    validator: validateFourDigitNumericPassword,
+                    validator: (value) =>
+                        validateFourDigitNumericPassword(value) == null
+                        ? null
+                        : l10n.authEnterPinFourDigits,
                   ),
                   const SizedBox(height: 14),
                   _PasswordField(
                     controller: _pinConfirm,
                     obscure: _obscurePin,
-                    label: 'Confirmer le PIN',
-                    hint: 'Ressaisir le PIN',
+                    label: l10n.authConfirmPin,
+                    hint: l10n.authReenterPin,
                     validator: (v) {
                       final err = validateFourDigitNumericPassword(v);
-                      if (err != null) return err;
+                      if (err != null) return l10n.authEnterPinFourDigits;
                       if (v != _pin.text) {
-                        return 'Les PIN ne correspondent pas.';
+                        return l10n.authPinsMismatch;
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 20),
                   _PrimaryActionButton(
-                    label: 'Enregistrer le PIN',
+                    label: l10n.authSavePin,
                     busy: _busy,
                     onTap: _submit,
                   ),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: _busy ? null : _resend,
-                    child: const Text('Renvoyer le code'),
+                    child: Text(l10n.authResendCode),
                   ),
                 ],
               ),
@@ -216,11 +223,11 @@ class _ResetPasswordAfterOtpScreenState
         newPin: _pass.text,
       );
       if (!mounted) return;
-      AppMessage.info(context, 'PIN mis a jour. Connectez-vous.');
+      AppMessage.info(context, AppLocalizations.of(context).authPinUpdated);
       context.go('/login');
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, ErrorPresenter.message(e));
+        AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -229,10 +236,11 @@ class _ResetPasswordAfterOtpScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _ForgotFlowScaffold(
       onBack: () => context.pop(),
-      title: 'Nouveau PIN',
-      subtitle: 'Choisissez un PIN numerique a 4 chiffres.',
+      title: l10n.authNewPin,
+      subtitle: l10n.authNewPinInstruction,
       child: Form(
         key: _formKey,
         child: Column(
@@ -245,8 +253,8 @@ class _ResetPasswordAfterOtpScreenState
                   _PasswordField(
                     controller: _pass,
                     obscure: _obscure,
-                    label: 'PIN',
-                    hint: '4 chiffres',
+                    label: l10n.authPin,
+                    hint: l10n.authFourDigits,
                     trailing: IconButton(
                       splashRadius: 20,
                       iconSize: 20,
@@ -258,26 +266,29 @@ class _ResetPasswordAfterOtpScreenState
                       ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
-                    validator: validateFourDigitNumericPassword,
+                    validator: (value) =>
+                        validateFourDigitNumericPassword(value) == null
+                        ? null
+                        : l10n.authEnterPinFourDigits,
                   ),
                   const SizedBox(height: 14),
                   _PasswordField(
                     controller: _pass2,
                     obscure: _obscure,
-                    label: 'Confirmer',
-                    hint: 'Ressaisir le PIN',
+                    label: l10n.authConfirm,
+                    hint: l10n.authReenterPin,
                     validator: (v) {
                       final err = validateFourDigitNumericPassword(v);
-                      if (err != null) return err;
+                      if (err != null) return l10n.authEnterPinFourDigits;
                       if (v != _pass.text) {
-                        return 'Les PIN ne correspondent pas.';
+                        return l10n.authPinsMismatch;
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 20),
                   _PrimaryActionButton(
-                    label: 'Enregistrer',
+                    label: l10n.authSave,
                     busy: _busy,
                     onTap: _submit,
                   ),
@@ -471,6 +482,7 @@ class _OtpField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
@@ -483,7 +495,7 @@ class _OtpField extends StatelessWidget {
         letterSpacing: 6,
       ),
       decoration: InputDecoration(
-        labelText: 'Code SMS',
+        labelText: l10n.authSmsCode,
         hintText: '------',
         counterText: '',
         filled: true,

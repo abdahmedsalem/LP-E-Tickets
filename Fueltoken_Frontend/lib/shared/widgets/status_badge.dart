@@ -17,32 +17,32 @@ class StatusBadge extends StatelessWidget {
     this.icon,
   });
 
-  factory StatusBadge.qr(QrState state) {
+  factory StatusBadge.qr(QrState state, {String? label}) {
     switch (state) {
       case QrState.active:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.successSurface,
           foreground: AppColors.success,
           icon: Icons.check_circle_outline,
         );
       case QrState.blocked:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.warningSurface,
           foreground: AppColors.warning,
           icon: Icons.block,
         );
       case QrState.consumed:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.surfaceAlt,
           foreground: AppColors.textSecondary,
           icon: Icons.local_gas_station_outlined,
         );
       case QrState.expired:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.dangerSurface,
           foreground: AppColors.danger,
           icon: Icons.schedule,
@@ -50,32 +50,32 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
-  factory StatusBadge.lot(PurchaseLotState state) {
+  factory StatusBadge.lot(PurchaseLotState state, {String? label}) {
     switch (state) {
       case PurchaseLotState.draft:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.surfaceAlt,
           foreground: AppColors.textSecondary,
           icon: Icons.edit_note,
         );
       case PurchaseLotState.submitted:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.infoSurface,
           foreground: AppColors.info,
           icon: Icons.hourglass_top,
         );
       case PurchaseLotState.approved:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.successSurface,
           foreground: AppColors.success,
           icon: Icons.verified_outlined,
         );
       case PurchaseLotState.rejected:
         return StatusBadge(
-          label: state.label,
+          label: label ?? state.label,
           background: AppColors.dangerSurface,
           foreground: AppColors.danger,
           icon: Icons.cancel_outlined,

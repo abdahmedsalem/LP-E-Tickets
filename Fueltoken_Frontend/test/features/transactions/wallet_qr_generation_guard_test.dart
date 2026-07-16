@@ -20,6 +20,9 @@ void main() {
     expect(walletTypes, contains('TxType.qrEmission'));
     expect(amountPrefix, contains('case TxType.qrEmission:'));
     expect(amountPrefix, contains("return '- ';"));
-    expect(source, contains("(_HistoryQuickFilter.qr, 'Générations QR')"));
+    expect(
+      source,
+      contains('(_HistoryQuickFilter.qr, l10n.filterQrGenerations)'),
+    );
   });
 }

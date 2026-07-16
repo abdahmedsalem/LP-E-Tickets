@@ -52,7 +52,7 @@ void main() {
         expect(source, contains('publicErrorMessage:'));
         expect(source, contains('transaction_name'));
         expect(source, contains('StationQrSuccessDialog('));
-        expect(dialogSource, contains('N° transaction'));
+        expect(dialogSource, contains('stationTransactionNumber'));
 
         expect(
           source,

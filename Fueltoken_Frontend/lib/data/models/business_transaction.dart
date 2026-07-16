@@ -1,4 +1,4 @@
-﻿import 'package:equatable/equatable.dart';
+import 'package:equatable/equatable.dart';
 
 enum TxType {
   purchaseSubmitted,
@@ -186,6 +186,27 @@ class BusinessTransaction extends Equatable {
   });
 
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
+
+  String? get pendingPurchaseDecisionLabel {
+    if (type != TxType.purchaseSubmitted) return null;
+
+    final value = (note ?? '').trim().toLowerCase();
+    if (value.isEmpty) return null;
+    if (value.contains('reject') ||
+        value.contains('rejet') ||
+        value.contains('refus') ||
+        value.contains('cancel') ||
+        value.contains('annul')) {
+      return 'Commande refusée';
+    }
+    if (value.contains('valid') ||
+        value.contains('approv') ||
+        value.contains('accept') ||
+        value.contains('achet')) {
+      return 'Commande validée';
+    }
+    return null;
+  }
 
   bool get hasTxReference => (txReference ?? '').trim().isNotEmpty;
 

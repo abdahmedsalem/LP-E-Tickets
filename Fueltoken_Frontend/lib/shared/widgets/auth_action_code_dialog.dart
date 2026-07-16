@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/validation/password_validators.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Demande le PIN du compte actuellement connecté et retourne le code à envoyer comme action_code.
 Future<String?> showSensitiveActionCodeDialog(
@@ -20,9 +21,11 @@ Future<String?> showSensitiveActionCodeDialog(
       if (context.mounted) {
         await showDialog<void>(
           context: context,
-          builder: (_) => const AlertDialog(
-            title: Text('Session introuvable'),
-            content: Text('Reconnectez-vous pour continuer.'),
+          builder: (dialogContext) => AlertDialog(
+            title: Text(AppLocalizations.of(dialogContext).authSessionNotFound),
+            content: Text(
+              AppLocalizations.of(dialogContext).authReconnectToContinue,
+            ),
           ),
         );
       }
@@ -173,9 +176,9 @@ Future<String?> showSensitiveActionCodeDialog(
                                   color: Color(0xFFE8EAED),
                                 ),
                               ),
-                              child: const Text(
-                                'Annuler',
-                                style: TextStyle(
+                              child: Text(
+                                AppLocalizations.of(context).commonCancel,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.ink,
@@ -209,9 +212,9 @@ Future<String?> showSensitiveActionCodeDialog(
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'Confirmer',
-                                      style: TextStyle(
+                                  : Text(
+                                      AppLocalizations.of(context).authConfirm,
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                         color: Colors.white,

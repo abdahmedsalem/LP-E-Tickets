@@ -10,6 +10,7 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/acpec_mobile_auth_bootstrap.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/empty_state.dart';
 
@@ -59,8 +60,7 @@ class _AcpecConnectionStep1ScreenState
       _installedVersion = info.version;
 
       if (!OdooApiConfig.isConfigured) {
-        const userMsg =
-            'Le service ne peut pas être vérifié sur cet appareil pour le moment.';
+        final userMsg = AppLocalizations.of(context).serviceCheckUnavailable;
         _debugErrorDetail =
             'ODOO_JSONRPC_BASE_URL manquant (build / dart-define).';
         throw AcpecBootstrapException(userMsg);
@@ -83,15 +83,14 @@ class _AcpecConnectionStep1ScreenState
     } on AcpecBootstrapException catch (e) {
       if (mounted) {
         setState(() {
-          _error = ErrorPresenter.message(e);
+          _error = ErrorPresenter.localizedMessage(context, e);
           _loading = false;
         });
       }
     } on OdooJsonRpcException catch (e) {
       if (mounted) {
         setState(() {
-          _error =
-              'Connexion au service impossible. Vérifiez votre réseau et réessayez.';
+          _error = AppLocalizations.of(context).serviceConnectionFailed;
           _debugErrorDetail = ErrorPresenter.message(e);
           _loading = false;
         });
@@ -99,7 +98,7 @@ class _AcpecConnectionStep1ScreenState
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Une erreur inattendue s?est produite. Réessayez plus tard.';
+          _error = AppLocalizations.of(context).commonUnexpectedError;
           _debugErrorDetail = ErrorPresenter.message(e);
           _loading = false;
         });
@@ -127,6 +126,7 @@ class _AcpecConnectionStep1ScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final pageBg = Colors.white;
     final borderColor = scheme.outline.withValues(
@@ -138,7 +138,7 @@ class _AcpecConnectionStep1ScreenState
       appBar: AppBar(
         backgroundColor: pageBg,
         title: Text(
-          'État du service',
+          l10n.serviceStatusTitle,
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         leading: IconButton(
@@ -171,7 +171,7 @@ class _AcpecConnectionStep1ScreenState
               if (_installedVersion.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Version installée : $_installedVersion',
+                  l10n.installedVersion(_installedVersion),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
@@ -199,6 +199,7 @@ class _AcpecConnectionStep1ScreenState
     ColorScheme scheme,
     Color borderColor,
   ) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         const SizedBox(height: 24),
@@ -222,7 +223,7 @@ class _AcpecConnectionStep1ScreenState
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           ),
           icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Réessayer'),
+          label: Text(l10n.commonRetry),
         ),
       ],
     );
@@ -234,6 +235,7 @@ class _AcpecConnectionStep1ScreenState
     ColorScheme scheme,
     Color borderColor,
   ) {
+    final l10n = AppLocalizations.of(context);
     final v = _version!;
     final statusOk = v.status.toLowerCase() == 'ok';
 
@@ -244,9 +246,8 @@ class _AcpecConnectionStep1ScreenState
         icon: Icons.system_update_alt_rounded,
         iconColor: AppColors.warning,
         surfaceTint: AppColors.warningSurface,
-        title: 'Mise à jour requise',
-        body:
-            'Installez la dernière version de FuelToken pour continuer à utiliser le service.',
+        title: l10n.updateRequiredTitle,
+        body: l10n.updateRequiredMessage,
       );
     }
 
@@ -257,9 +258,8 @@ class _AcpecConnectionStep1ScreenState
         icon: Icons.error_outline_rounded,
         iconColor: AppColors.danger,
         surfaceTint: AppColors.dangerSurface.withValues(alpha: 0.4),
-        title: 'Service indisponible',
-        body:
-            'Le service ne répond pas correctement. Réessayez dans quelques instants.',
+        title: l10n.serviceUnavailableTitle,
+        body: l10n.serviceUnavailableMessage,
       );
     }
 
@@ -272,8 +272,10 @@ class _AcpecConnectionStep1ScreenState
         icon: Icons.info_outline_rounded,
         iconColor: AppColors.primary,
         surfaceTint: AppColors.primarySoft.withValues(alpha: 0.5),
-        title: 'Mise à jour disponible',
-        body: v.messageRaw!,
+        title: l10n.updateAvailableTitle,
+        body: Localizations.localeOf(context).languageCode == 'ar'
+            ? l10n.updateAvailableMessage
+            : v.messageRaw!,
       );
     }
 
@@ -284,9 +286,8 @@ class _AcpecConnectionStep1ScreenState
         icon: Icons.new_releases_outlined,
         iconColor: AppColors.primary,
         surfaceTint: AppColors.primarySoft.withValues(alpha: 0.35),
-        title: 'Mise à jour disponible',
-        body:
-            'Une version plus récente existe. Nous vous recommandons de mettre à jour l?application lorsque vous le pourrez.',
+        title: l10n.updateAvailableTitle,
+        body: l10n.updateAvailableMessage,
       );
     }
 
@@ -296,8 +297,8 @@ class _AcpecConnectionStep1ScreenState
       icon: Icons.verified_rounded,
       iconColor: AppColors.success,
       surfaceTint: AppColors.successSurface.withValues(alpha: 0.45),
-      title: 'Tout est en ordre',
-      body: 'Votre application est à jour et le service répond normalement.',
+      title: l10n.serviceReadyTitle,
+      body: l10n.serviceReadyMessage,
     );
   }
 
@@ -372,11 +373,12 @@ class _AcpecConnectionStep1ScreenState
     ColorScheme scheme,
     Color borderColor,
   ) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Organisations disponibles',
+          l10n.organizationsAvailable,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
@@ -386,10 +388,10 @@ class _AcpecConnectionStep1ScreenState
         ),
         const SizedBox(height: 10),
         if (_companies.isEmpty)
-          const EmptyState(
+          EmptyState(
             icon: Icons.business_outlined,
-            title: 'Aucune organisation',
-            message: 'Aucune organisation à afficher pour le moment.',
+            title: l10n.organizationsEmptyTitle,
+            message: l10n.organizationsEmptyMessage,
           )
         else
           ..._companies.map((c) => _orgTile(context, scheme, borderColor, c)),
@@ -455,6 +457,7 @@ class _AcpecConnectionStep1ScreenState
   }
 
   Widget _debugPanel(BuildContext context, Color borderColor) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
@@ -468,7 +471,7 @@ class _AcpecConnectionStep1ScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Détail (mode développement)',
+            l10n.developmentDetails,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

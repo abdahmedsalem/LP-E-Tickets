@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AcpecSignupStep2Screen extends StatelessWidget {
   const AcpecSignupStep2Screen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -15,7 +17,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
-          'Créer un compte',
+          l10n.authCreateAnAccount,
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         leading: IconButton(
@@ -42,7 +44,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    "L'inscription se fait désormais avec le code reçu par SMS.",
+                    l10n.signupSmsIntro,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -51,7 +53,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Renseignez vos informations sur l'ecran d'inscription, puis validez le code recu pour creer le compte.",
+                    l10n.signupSmsInstructions,
                     style: TextStyle(
                       fontSize: 13.5,
                       height: 1.45,
@@ -68,7 +70,7 @@ class AcpecSignupStep2Screen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text("Ouvrir l'inscription"),
+                    child: Text(l10n.openRegistration),
                   ),
                 ],
               ),

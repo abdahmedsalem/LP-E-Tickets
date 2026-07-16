@@ -9,8 +9,11 @@ void main() {
     test('splash uses Tickets Carburant branding and larger logo', () {
       final source = _read('lib/features/auth/screens/splash_screen.dart');
 
-      expect(source, contains("'Tickets Carburant'"));
-      expect(source, contains("'Bons carburant traçables'"));
+      expect(source, contains('AppLocalizations.of(context).authBrandName'));
+      expect(
+        source,
+        contains('AppLocalizations.of(context).authSplashTagline'),
+      );
 
       expect(source, contains('width: 104,'));
       expect(source, contains('height: 104,'));
@@ -58,7 +61,7 @@ void main() {
           'lib/features/auth/screens/session_pin_lock_screen.dart',
         );
 
-        expect(source, contains('PIN oublié ?'));
+        expect(source, contains('l10n.authForgotPin'));
         expect(source, contains('_openForgotPasswordAfterLogout'));
         expect(source, contains("ctx.go('/forgot-password')"));
         expect(source, contains('AuthLogoutRequested'));

@@ -5,6 +5,7 @@ class AppPreferences {
   AppPreferences._();
 
   static const _kLocale = 'ft_app_locale';
+  static const _kHasSelectedLanguage = 'ft_has_selected_language';
   static const _kDark = 'ft_app_dark_mode';
   static const _kHasSeenOnboarding = 'ft_has_seen_onboarding';
 
@@ -15,7 +16,6 @@ class AppPreferences {
     final p = await SharedPreferences.getInstance();
     var stored = p.getString(_kLocale);
     if (stored == null || stored.isEmpty) {
-      await p.setString(_kLocale, defaultLocaleCode);
       return defaultLocaleCode;
     }
     if (stored == 'en') {
@@ -35,6 +35,17 @@ class AppPreferences {
   static Future<void> setLocaleCode(String code) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kLocale, code);
+    await p.setBool(_kHasSelectedLanguage, true);
+  }
+
+  static Future<bool> hasSelectedLanguage() async {
+    final p = await SharedPreferences.getInstance();
+    if (p.getBool(_kHasSelectedLanguage) == true) return true;
+
+    // Existing installations already containing a supported locale must not
+    // be sent through the first-installation flow after an app update.
+    final stored = p.getString(_kLocale);
+    return stored == 'fr' || stored == 'ar';
   }
 
   static Future<bool> darkMode() async {

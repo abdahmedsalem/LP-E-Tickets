@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/validation/password_validators.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -48,10 +49,16 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
 
         final msg = state.errorMessage;
         if (msg != null && msg.isNotEmpty) {
-          AppMessage.error(ctx, msg);
+          AppMessage.error(
+            ctx,
+            Localizations.localeOf(ctx).languageCode == 'ar'
+                ? AppLocalizations.of(ctx).commonGenericError
+                : msg,
+          );
         }
       },
       builder: (ctx, state) {
+        final l10n = AppLocalizations.of(ctx);
         final busy = state.status == AuthStatus.authenticating;
         final userName = state.user?.name.trim();
         return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -88,7 +95,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Déverrouiller l’application',
+                              l10n.authUnlockApp,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 20,
@@ -99,7 +106,9 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Session restaurée${userName == null || userName.isEmpty ? '' : ' pour $userName'}. Saisissez votre PIN serveur pour continuer.',
+                              userName == null || userName.isEmpty
+                                  ? l10n.authSessionRestored
+                                  : l10n.authSessionRestoredFor(userName),
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 13.5,
@@ -112,7 +121,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                             _PinField(
                               controller: _pin,
                               obscure: _obscure,
-                              hint: 'PIN à 4 chiffres',
+                              hint: l10n.authPinFourDigits,
                               trailing: IconButton(
                                 splashRadius: 20,
                                 iconSize: 20,
@@ -125,7 +134,11 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                                 onPressed: () =>
                                     setState(() => _obscure = !_obscure),
                               ),
-                              validator: validateFourDigitNumericPassword,
+                              validator: (value) =>
+                                  validateFourDigitNumericPassword(value) ==
+                                      null
+                                  ? null
+                                  : l10n.authEnterPinFourDigits,
                             ),
                             const SizedBox(height: 22),
                             SizedBox(
@@ -159,7 +172,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                                               ),
                                             )
                                           : Text(
-                                              'Déverrouiller',
+                                              l10n.authUnlock,
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 16,
@@ -181,9 +194,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
                                         const AuthLogoutRequested(),
                                       );
                                     },
-                              child: Text(
-                                'PIN oublié ?',
-                              ),
+                              child: Text(l10n.authForgotPin),
                             ),
                           ],
                         ),

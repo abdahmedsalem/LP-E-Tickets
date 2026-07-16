@@ -15,6 +15,7 @@ import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/sensitive_action_intent.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/station_qr_failure_dialog.dart';
 import '../../../shared/widgets/station_qr_success_dialog.dart';
@@ -38,9 +39,6 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   bool _consuming = false;
   Map<String, dynamic>? _checkData;
   String? _checkedNumericCode;
-  static const String _unconfirmedConsumptionMessage =
-      'Action non confirmée. Vérifiez l’historique avant de réessayer.';
-
   @override
   void dispose() {
     _codeController.dispose();
@@ -90,17 +88,21 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   }
 
   String _errorMessage(Object error) {
+    final l10n = AppLocalizations.of(context);
     final message = ErrorPresenter.message(error);
-    if (message.isEmpty) return 'Le code QR ne peut pas être vérifié.';
+    if (Localizations.localeOf(context).languageCode == 'ar') {
+      return l10n.stationQrNotConsumableMessage;
+    }
+    if (message.isEmpty) return l10n.stationQrNotConsumableMessage;
     if (message.contains('debug_reason') || message.contains('Traceback')) {
-      return 'Le code QR ne peut pas être vérifié.';
+      return l10n.stationQrNotConsumableMessage;
     }
     return message;
   }
 
   String _sensitiveActionErrorMessage(Object error) {
     if (ErrorPresenter.isBackendUnavailable(error)) {
-      return _unconfirmedConsumptionMessage;
+      return AppLocalizations.of(context).stationConsumptionUnconfirmedMessage;
     }
     return _errorMessage(error);
   }
@@ -144,7 +146,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   }
 
   String _formatManualAmount(Object? value) {
-    if (value == null || value == false) return 'Non renseigné';
+    final notProvided = AppLocalizations.of(context).commonNotProvided;
+    if (value == null || value == false) return notProvided;
     if (value is num) {
       final rounded = value.roundToDouble() == value
           ? value.toStringAsFixed(0)
@@ -152,7 +155,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       return '$rounded MRU';
     }
     final text = value.toString().trim();
-    return text.isEmpty ? 'Non renseigné' : text;
+    return text.isEmpty ? notProvided : text;
   }
 
   void _invalidateStationConsumptionCaches(String routeId) {
@@ -229,9 +232,10 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   }
 
   Future<void> _checkManualCode() async {
+    final l10n = AppLocalizations.of(context);
     final code = _numericCode;
     if (code.isEmpty) {
-      _showSnack('Saisissez le code manuel affiché au client.', error: true);
+      _showSnack(l10n.stationEnterManualCode, error: true);
       return;
     }
     if (_checking || _consuming) return;
@@ -249,11 +253,11 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
 
       if (!result.canConsume) {
         await _showManualFailureDialog(
-          title: 'QR non consommable',
-          message:
-              result.reason ??
-              'Le serveur indique que ce QR n’est pas consommable.',
-          actionLabel: 'Retour à l’accueil',
+          title: l10n.stationQrNotConsumable,
+          message: Localizations.localeOf(context).languageCode == 'ar'
+              ? l10n.stationQrNotConsumableMessage
+              : result.reason ?? l10n.stationQrNotConsumableMessage,
+          actionLabel: l10n.stationBackHome,
         );
         if (mounted) context.go('/station/home');
         return;
@@ -281,9 +285,11 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       // la saisie pour réessayer sans retaper les 12 chiffres.
       final technical = ErrorPresenter.isBackendUnavailable(e);
       await _showManualFailureDialog(
-        title: technical ? 'Vérification impossible' : 'QR non consommable',
+        title: technical
+            ? l10n.stationVerificationImpossible
+            : l10n.stationQrNotConsumable,
         message: _errorMessage(e),
-        actionLabel: technical ? 'Retour à la saisie' : 'Retour à l’accueil',
+        actionLabel: technical ? l10n.stationBackToEntry : l10n.stationBackHome,
       );
       if (mounted && !technical) context.go('/station/home');
     } finally {
@@ -292,19 +298,22 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
   }
 
   Future<void> _consumeManualCode() async {
+    final l10n = AppLocalizations.of(context);
     final code = _checkedNumericCode ?? _numericCode;
     if (code.trim().isEmpty || _checkData == null) {
-      _showSnack('Vérifiez le code manuel avant consommation.', error: true);
+      _showSnack(l10n.stationCheckCodeFirst, error: true);
       return;
     }
     if (!_boolAny(_checkData, const ['can_consume', 'canConsume'])) {
       final reason = _stringAny(_checkData, const ['reason', 'message']);
       await _showManualFailureDialog(
-        title: 'QR non consommable',
-        message: reason.isEmpty
-            ? 'Le serveur indique que ce QR n’est pas consommable.'
+        title: l10n.stationQrNotConsumable,
+        message: Localizations.localeOf(context).languageCode == 'ar'
+            ? l10n.stationQrNotConsumableMessage
+            : reason.isEmpty
+            ? l10n.stationQrNotConsumableMessage
             : reason,
-        actionLabel: 'Retour à l’accueil',
+        actionLabel: l10n.stationBackHome,
       );
       if (mounted) context.go('/station/home');
       return;
@@ -317,8 +326,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
-        title: 'Vérification du PIN',
-        description: 'Saisissez votre PIN station pour consommer ce code QR.',
+        title: l10n.stationPinVerification,
+        description: l10n.stationPinManualDescription,
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final intent = SensitiveActionIntent.create('station-qr-use');
@@ -327,9 +336,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       );
       final guarded = acpecRpcMapOrThrow(
         raw,
-        fallbackMessage: 'Consommation QR refusée par le serveur.',
-        publicErrorMessage:
-            'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
+        fallbackMessage: l10n.stationConsumptionRejected,
+        publicErrorMessage: l10n.stationConsumptionFailed,
       );
 
       final amount = _formatManualAmount(
@@ -340,7 +348,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
             'transaction_name',
             'transactionName',
           ]) ??
-          'Non renseigné';
+          l10n.commonNotProvided;
       final consumedAt =
           _payloadDateTime(guarded, const [
             'consumed_at',
@@ -385,11 +393,13 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       if (!mounted) return;
       final technical = ErrorPresenter.isBackendUnavailable(e);
       await _showManualFailureDialog(
-        title: technical ? 'Consommation non confirmée' : 'Opération refusée',
+        title: technical
+            ? l10n.stationConsumptionUnconfirmed
+            : l10n.stationOperationRejected,
         message: technical
-            ? _unconfirmedConsumptionMessage
+            ? l10n.stationConsumptionUnconfirmedMessage
             : _sensitiveActionErrorMessage(e),
-        actionLabel: 'Retour à la saisie',
+        actionLabel: l10n.stationBackToEntry,
       );
     } finally {
       if (mounted) setState(() => _consuming = false);
@@ -398,10 +408,11 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.watch<AuthBloc>().state.user;
     final stationName = (user?.stationName?.trim().isNotEmpty == true)
         ? user!.stationName!.trim()
-        : 'Station';
+        : l10n.station;
 
     final data = _checkData;
     final canConsume = _boolAny(data, const ['can_consume', 'canConsume']);
@@ -415,7 +426,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Saisie code manuel'),
+        title: Text(l10n.stationManualTitle),
         leading: IconButton(
           onPressed: _consuming ? null : () => context.go('/station/home'),
           icon: const Icon(Icons.arrow_back_rounded),
@@ -437,8 +448,8 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Saisissez le code numérique affiché par le client. Ce mode est équivalent au scan QR.',
+            Text(
+              l10n.stationManualInstruction,
               style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
@@ -479,6 +490,7 @@ class _ManualCodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
@@ -496,8 +508,8 @@ class _ManualCodeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Code manuel client',
+          Text(
+            l10n.stationManualClientCode,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -513,7 +525,7 @@ class _ManualCodeCard extends StatelessWidget {
             onSubmitted: (_) => checking ? null : onCheck(),
             decoration: InputDecoration(
               hintText: 'Ex. 1234-5678-9012',
-              helperText: 'Format attendu : 1234-5678-9012',
+              helperText: l10n.stationManualFormat,
               prefixIcon: const Icon(Icons.pin_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -532,7 +544,7 @@ class _ManualCodeCard extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.verified_outlined),
-              label: Text(checking ? 'Vérification…' : 'Vérifier'),
+              label: Text(checking ? l10n.stationChecking : l10n.stationCheck),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.leaderGreen,
                 foregroundColor: Colors.white,
@@ -592,7 +604,8 @@ class _CheckResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const statusText = 'Consommable';
+    final l10n = AppLocalizations.of(context);
+    final statusText = l10n.stationConsumable;
     final statusColor = AppColors.leaderGreen;
 
     return Container(
@@ -622,8 +635,11 @@ class _CheckResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _InfoRow(label: 'Client', value: owner.isEmpty ? '—' : owner),
-          _InfoRow(label: 'Montant', value: amount.isEmpty ? '—' : amount),
+          _InfoRow(
+            label: l10n.stationClient,
+            value: owner.isEmpty ? '—' : owner,
+          ),
+          _InfoRow(label: l10n.amount, value: amount.isEmpty ? '—' : amount),
           const SizedBox(height: 16),
           SizedBox(
             height: 54,
@@ -636,7 +652,9 @@ class _CheckResultCard extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.local_gas_station_outlined),
-              label: Text(consuming ? 'Consommation…' : 'Consommer'),
+              label: Text(
+                consuming ? l10n.stationConsuming : l10n.stationConsume,
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.leaderGreen,
                 foregroundColor: Colors.white,

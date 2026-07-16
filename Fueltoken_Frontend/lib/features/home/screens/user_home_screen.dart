@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/config/app_environment.dart';
@@ -135,6 +136,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         final user = authState.user;
@@ -225,7 +227,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Compte v\u00e9rifi\u00e9',
+                                        l10n.homeVerifiedAccount,
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
@@ -271,7 +273,10 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: _BackendUnavailableBanner(
-                            message: wallet.loadError!,
+                            message:
+                                Localizations.localeOf(ctx).languageCode == 'ar'
+                                ? l10n.commonServerUnavailable
+                                : wallet.loadError!,
                             onRetry: () => ctx.read<WalletCubit>().refresh(),
                           ),
                         ),
@@ -280,7 +285,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Actions rapides',
+                          l10n.homeQuickActions,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -299,7 +304,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
                                     child: _QuickActionCard(
-                                      title: 'Acheter des carnets',
+                                      title: l10n.homeBuyCarnets,
                                       icon: Icons.add_shopping_cart_outlined,
                                       onTap: () =>
                                           context.push('/purchases/new'),
@@ -311,7 +316,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
                                     child: _QuickActionCard(
-                                      title: 'Générer un QR',
+                                      title: l10n.homeGenerateQr,
                                       icon: Icons.qr_code_scanner_rounded,
                                       highlighted: true,
                                       onTap: () => context.push('/qr/emit'),
@@ -327,7 +332,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
                                     child: _QuickActionCard(
-                                      title: 'Transférer des carnets',
+                                      title: l10n.homeTransferCarnets,
                                       icon: Icons.account_tree_outlined,
                                       onTap: () =>
                                           context.push('/transfer-carnets'),
@@ -339,7 +344,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
                                     child: _QuickActionCard(
-                                      title: 'Transférer des tickets',
+                                      title: l10n.homeTransferTickets,
                                       icon: Icons.confirmation_number_outlined,
                                       onTap: () =>
                                           context.push('/transfer-tickets'),
@@ -383,18 +388,12 @@ class _BackendUnavailableBanner extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: scheme.error.withValues(alpha: 0.28),
-          ),
+          border: Border.all(color: scheme.error.withValues(alpha: 0.28)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              color: scheme.error,
-              size: 22,
-            ),
+            Icon(Icons.cloud_off_rounded, color: scheme.error, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -416,7 +415,7 @@ class _BackendUnavailableBanner extends StatelessWidget {
                 minimumSize: const Size(0, 34),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Réessayer'),
+              child: Text(AppLocalizations.of(context).commonRetry),
             ),
           ],
         ),

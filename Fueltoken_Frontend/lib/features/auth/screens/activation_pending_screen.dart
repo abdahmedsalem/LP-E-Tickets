@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 
 class ActivationPendingScreen extends StatelessWidget {
@@ -8,12 +9,13 @@ class ActivationPendingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PopScope(
       canPop: false,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('État appareil'),
+          title: Text(l10n.authDeviceStateTitle),
         ),
         body: SafeArea(
           child: BlocBuilder<AuthBloc, AuthState>(
@@ -22,21 +24,21 @@ class ActivationPendingScreen extends StatelessWidget {
               final refreshing = state.status == AuthStatus.authenticating;
               final trustState = user?.deviceTrustState?.trim();
               final stateLabel = trustState == null || trustState.isEmpty
-                  ? 'en attente'
+                  ? l10n.authDevicePendingState
                   : trustState;
               final deviceBlocked = user?.isDeviceBlocked == true;
               final headline = deviceBlocked
-                  ? 'Appareil bloqué'
-                  : 'Activation en attente';
+                  ? l10n.authDeviceBlocked
+                  : l10n.authActivationPending;
               final body = deviceBlocked
-                  ? 'Ce téléphone n’est pas autorisé à utiliser les tickets carburant. Contactez l’administrateur.'
-                  : 'Vous pourrez utiliser les tickets carburant après validation de cet appareil par l’administrateur.';
+                  ? l10n.authDeviceBlockedMessage
+                  : l10n.authActivationPendingMessage;
               final icon = deviceBlocked
                   ? Icons.block_outlined
                   : Icons.verified_user_outlined;
               final refreshLabel = deviceBlocked
-                  ? 'Vérifier à nouveau'
-                  : 'Rafraîchir';
+                  ? l10n.authCheckAgain
+                  : l10n.commonRefresh;
 
               return Center(
                 child: ConstrainedBox(
@@ -70,7 +72,7 @@ class ActivationPendingScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'État appareil : $stateLabel',
+                            l10n.authDeviceState(stateLabel),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
@@ -99,7 +101,7 @@ class ActivationPendingScreen extends StatelessWidget {
                             const AuthLogoutRequested(),
                           ),
                           icon: const Icon(Icons.logout),
-                          label: const Text('Se déconnecter'),
+                          label: Text(l10n.authLogout),
                         ),
                       ],
                     ),

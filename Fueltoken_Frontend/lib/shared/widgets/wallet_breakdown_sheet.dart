@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 
 import '../../data/models/wallet_breakdown_extras.dart';
+import '../../l10n/app_localizations.dart';
 
 import 'empty_state.dart';
 import 'face_value_chip.dart';
@@ -39,6 +40,7 @@ class WalletBreakdownBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     final bottom = MediaQuery.paddingOf(context).bottom;
 
@@ -78,7 +80,7 @@ class WalletBreakdownBody extends StatelessWidget {
               const SizedBox(width: 10),
 
               Text(
-                'Répartition et suivi',
+                l10n.walletBreakdownTitle,
 
                 style: TextStyle(
                   fontSize: 16,
@@ -110,11 +112,10 @@ class WalletBreakdownBody extends StatelessWidget {
               final e = extras;
 
               if (e == null || e.isEmpty) {
-                return const EmptyState(
+                return EmptyState(
                   icon: Icons.insights_outlined,
-                  title: 'Pas encore de détail à afficher',
-                  message:
-                      'Lorsque votre portefeuille contiendra plusieurs répartitions, elles apparaîtront ici.',
+                  title: l10n.walletBreakdownEmptyTitle,
+                  message: l10n.walletBreakdownEmptyMessage,
                 );
               }
 
@@ -125,9 +126,9 @@ class WalletBreakdownBody extends StatelessWidget {
 
                 children: [
                   _Section(
-                    title: 'Par valeur de face',
+                    title: l10n.walletByFaceValue,
 
-                    subtitle: 'Disponible, QR actif, bloqué, consommé, expiré',
+                    subtitle: l10n.walletByFaceValueSubtitle,
 
                     child: _BreakdownBlock(
                       value: e.breakdownByFaceValue,
@@ -137,9 +138,9 @@ class WalletBreakdownBody extends StatelessWidget {
                   ),
 
                   _Section(
-                    title: 'Par type de carnet',
+                    title: l10n.walletByCarnetType,
 
-                    subtitle: 'Répartition par carnet',
+                    subtitle: l10n.walletByCarnetTypeSubtitle,
 
                     child: _BreakdownBlock(
                       value: e.breakdownByCarnetType,
@@ -149,17 +150,17 @@ class WalletBreakdownBody extends StatelessWidget {
                   ),
 
                   _Section(
-                    title: 'Faces proches de l’expiration',
+                    title: l10n.walletNearExpiration,
 
-                    subtitle: 'À surveiller',
+                    subtitle: l10n.walletWatch,
 
                     child: _FaceExpiryList(items: e.nearExpirationFaces),
                   ),
 
                   _Section(
-                    title: 'Faces expirées',
+                    title: l10n.walletExpiredTickets,
 
-                    subtitle: 'Non utilisables',
+                    subtitle: l10n.walletUnusable,
 
                     child: _FaceExpiryList(items: e.expiredFaces),
                   ),
@@ -186,6 +187,7 @@ class _WalletBreakdownHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
 
@@ -233,7 +235,7 @@ class _WalletBreakdownHero extends StatelessWidget {
 
               children: [
                 Text(
-                  'Vue d’ensemble',
+                  l10n.walletOverview,
 
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.88),
@@ -251,7 +253,7 @@ class _WalletBreakdownHero extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
 
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
 
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -327,7 +329,7 @@ class _WalletBreakdownHero extends StatelessWidget {
                         const SizedBox(width: 8),
 
                         Text(
-                          '${Formatters.numberFr(totalTickets!)} carnets actifs',
+                          l10n.walletActiveCarnets(totalTickets!),
 
                           style: const TextStyle(
                             color: Colors.white,
@@ -689,6 +691,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final fv = _WalletBreakdownParsers._n(
       row['face_value'] ?? row['denomination'] ?? row['value'],
     );
@@ -719,7 +722,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
         AppColors.success,
 
-        'Disponible',
+        l10n.walletStatusAvailable,
 
         qAvail,
 
@@ -731,7 +734,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
         AppColors.primary,
 
-        'En QR actif',
+        l10n.walletStatusActiveQr,
 
         qQr,
 
@@ -743,7 +746,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
         AppColors.warning,
 
-        'Bloqué',
+        l10n.walletStatusBlocked,
 
         qBlk,
 
@@ -755,7 +758,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
         AppColors.body,
 
-        'Consommé',
+        l10n.walletStatusConsumed,
 
         qCons,
 
@@ -767,7 +770,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
         AppColors.muted,
 
-        'Expiré',
+        l10n.walletStatusExpired,
 
         qExp,
 
@@ -831,7 +834,7 @@ class _FaceBreakdownCard extends StatelessWidget {
 
                     children: [
                       Text(
-                        'Billets à ${Formatters.money(fv)}',
+                        l10n.walletTicketsAtValue(Formatters.money(fv)),
 
                         style: TextStyle(
                           fontSize: 15,
@@ -847,7 +850,10 @@ class _FaceBreakdownCard extends StatelessWidget {
                       const SizedBox(height: 2),
 
                       Text(
-                        '${Formatters.numberFr(qAvail + qQr)} utilisables · ${Formatters.money(aAvail + aQr)}',
+                        l10n.walletUsableSummary(
+                          Formatters.numberFr(qAvail + qQr),
+                          Formatters.money(aAvail + aQr),
+                        ),
 
                         style: TextStyle(
                           fontSize: 12,
@@ -989,7 +995,9 @@ class _StatTile extends StatelessWidget {
 
             children: [
               Text(
-                '${Formatters.numberFr(entry.qty)} u.',
+                AppLocalizations.of(
+                  context,
+                ).walletUnits(Formatters.numberFr(entry.qty)),
 
                 style: TextStyle(
                   fontFamily: 'monospace',
@@ -1094,7 +1102,9 @@ class _SimpleFaceQtyGrid extends StatelessWidget {
 
                 Expanded(
                   child: Text(
-                    '${Formatters.numberFr(entries[i].value)} ticket${entries[i].value > 1 ? 's' : ''} disponible${entries[i].value > 1 ? 's' : ''}',
+                    AppLocalizations.of(
+                      context,
+                    ).walletAvailableTicketsCount(entries[i].value),
 
                     style: const TextStyle(
                       fontSize: 13,
@@ -1152,6 +1162,7 @@ class _CarnetBreakdownCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final title = row['carnet_type_name']?.toString().trim().isNotEmpty == true
         ? row['carnet_type_name'].toString().trim()
         : (row['name']?.toString().trim().isNotEmpty == true
@@ -1232,7 +1243,7 @@ class _CarnetBreakdownCard extends StatelessWidget {
 
                     if (fv > 0)
                       Text(
-                        'Valeur de face ${Formatters.money(fv)}',
+                        l10n.walletFaceValue(Formatters.money(fv)),
 
                         style: const TextStyle(
                           fontSize: 12,
@@ -1256,13 +1267,16 @@ class _CarnetBreakdownCard extends StatelessWidget {
             runSpacing: 8,
 
             children: [
-              if (qAvail > 0) _MiniPill('Dispo', qAvail, AppColors.success),
+              if (qAvail > 0)
+                _MiniPill(l10n.filterAvailable, qAvail, AppColors.success),
 
               if (qQr > 0) _MiniPill('QR', qQr, AppColors.primary),
 
-              if (qCons > 0) _MiniPill('Consommé', qCons, AppColors.body),
+              if (qCons > 0)
+                _MiniPill(l10n.qrStatusConsumed, qCons, AppColors.body),
 
-              if (qExp > 0) _MiniPill('Expiré', qExp, AppColors.muted),
+              if (qExp > 0)
+                _MiniPill(l10n.qrStatusExpired, qExp, AppColors.muted),
             ],
           ),
         ],
@@ -1318,7 +1332,7 @@ class _FaceExpiryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return _emptyHint(context, 'Aucun élément');
+      return _emptyHint(context, AppLocalizations.of(context).commonNoItem);
     }
 
     return Column(
@@ -1341,6 +1355,7 @@ class _FaceExpiryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (item is! Map) {
       return _monoCard(context, item.toString());
     }
@@ -1395,7 +1410,7 @@ class _FaceExpiryTile extends StatelessWidget {
               children: [
                 if (qty > 0)
                   Text(
-                    '$qty ticket${qty > 1 ? 's' : ''}',
+                    l10n.walletTicketCountShort(qty),
 
                     style: const TextStyle(
                       fontSize: 13,
@@ -1408,14 +1423,14 @@ class _FaceExpiryTile extends StatelessWidget {
 
                 if (exp != null && exp.isNotEmpty)
                   Text(
-                    'Échéance : $exp',
+                    l10n.walletDueDate(exp),
 
                     style: const TextStyle(fontSize: 12, color: AppColors.body),
                   ),
 
                 if (lot != null && lot.isNotEmpty && lot != 'null')
                   Text(
-                    'Lot : $lot',
+                    l10n.walletLot(lot),
 
                     style: const TextStyle(
                       fontSize: 11,
@@ -1470,7 +1485,7 @@ class _GenericKeyValueCard extends StatelessWidget {
                     flex: 2,
 
                     child: Text(
-                      _humanKey(e.key.toString()),
+                      _humanKey(context, e.key.toString()),
 
                       style: const TextStyle(
                         fontSize: 12,
@@ -1486,7 +1501,7 @@ class _GenericKeyValueCard extends StatelessWidget {
                     flex: 3,
 
                     child: Text(
-                      _humanValue(e.value),
+                      _humanValue(context, e.value),
 
                       textAlign: TextAlign.end,
 
@@ -1509,20 +1524,40 @@ class _GenericKeyValueCard extends StatelessWidget {
     );
   }
 
-  static String _humanKey(String k) {
+  static String _humanKey(BuildContext context, String k) {
+    final l10n = AppLocalizations.of(context);
+    switch (k.trim().toLowerCase()) {
+      case 'face_value':
+      case 'denomination':
+      case 'value':
+        return l10n.faceValue;
+      case 'qty':
+      case 'qty_available':
+      case 'available_qty':
+      case 'quantity':
+        return l10n.quantity;
+      case 'expiration_date':
+      case 'expiry':
+      case 'expires_on':
+        return l10n.expirationDate;
+      case 'lot_ref':
+      case 'purchase_ref':
+      case 'lot_id':
+        return l10n.lotReference;
+    }
     return k
         .replaceAll('_', ' ')
         .replaceAllMapped(RegExp(r'\b\w'), (m) => m.group(0)!.toUpperCase());
   }
 
-  static String _humanValue(dynamic v) {
+  static String _humanValue(BuildContext context, dynamic v) {
     if (v == null) return '—';
 
     if (v is Map) {
       final parts = <String>[];
 
       for (final e in v.entries) {
-        parts.add('${_humanKey(e.key.toString())}: ${e.value}');
+        parts.add('${_humanKey(context, e.key.toString())}: ${e.value}');
       }
 
       return parts.join(', ');

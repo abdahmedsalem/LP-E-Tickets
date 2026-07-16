@@ -19,6 +19,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../main.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -164,6 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickLanguage() async {
+    final l10n = AppLocalizations.of(context);
     final choice = await showModalBottomSheet<String>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -186,14 +188,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               ListTile(
-                title: const Text('Français'),
+                title: Text(l10n.settingsFrench),
                 trailing: _localeCode == 'fr'
                     ? const Icon(Icons.check_rounded, color: AppColors.primary)
                     : null,
                 onTap: () => Navigator.pop(ctx, 'fr'),
               ),
               ListTile(
-                title: const Text('العربية'),
+                title: Text(l10n.settingsArabic),
                 trailing: _localeCode == 'ar'
                     ? const Icon(Icons.check_rounded, color: AppColors.primary)
                     : null,
@@ -216,6 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.watch<AuthBloc>().state.user;
     final scheme = Theme.of(context).colorScheme;
     final pageBg = Colors.white;
@@ -256,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppBarHeader(
-                title: 'Mon compte',
+                title: l10n.settingsTitle,
                 showBack: context.canPop(),
                 onBack: () => popOrGoClientHome(context),
                 largeTitle: true,
@@ -276,7 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         name: user.name,
                         initials: _initials(user.name),
                         verified: true,
-                        nifLabel: 'Compte vérifié',
+                        nifLabel: l10n.homeVerifiedAccount,
                       ),
                       const SizedBox(height: 16),
                       _StatsRow(
@@ -289,11 +292,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 22),
                     ],
-                    _sectionTitle('PRÉFÉRENCES', scheme),
+                    _sectionTitle(
+                      l10n.settingsPreferences.toUpperCase(),
+                      scheme,
+                    ),
                     _prefTile(
                       context,
                       icon: Icons.language_rounded,
-                      title: 'Langue',
+                      title: l10n.settingsLanguage,
                       subtitle: AppPreferences.labelForCode(_localeCode),
                       cardBg: cardBg,
                       borderColor: borderColor,
@@ -302,8 +308,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.fingerprint_rounded,
-                      title: 'Déverrouillage rapide',
-                      subtitle: 'Débloquez l’accès plus vite sur cet appareil.',
+                      title: l10n.settingsQuickUnlock,
+                      subtitle: l10n.settingsQuickUnlockSubtitle,
                       cardBg: cardBg,
                       borderColor: borderColor,
                       trailing: Switch.adaptive(
@@ -320,13 +326,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 if (!context.mounted) return;
                                 AppMessage.warning(
                                   context,
-                                  'La biométrie n’est pas disponible sur cet appareil.',
+                                  l10n.settingsBiometricUnavailable,
                                 );
                                 return;
                               }
                               final ok = await _localAuth.authenticate(
-                                localizedReason:
-                                    'Confirmez pour activer Face ID ou l’empreinte.',
+                                localizedReason: l10n.settingsBiometricReason,
                                 options: const AuthenticationOptions(
                                   biometricOnly: true,
                                   stickyAuth: true,
@@ -336,7 +341,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               if (!ok) return;
                             } on PlatformException {
                               if (!context.mounted) return;
-                              AppMessage.info(context, 'Activation annulée.');
+                              AppMessage.info(
+                                context,
+                                l10n.settingsActivationCancelled,
+                              );
                               return;
                             }
                           }
@@ -348,9 +356,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.dark_mode_outlined,
-                      title: 'Mode sombre',
-                      subtitle:
-                          'Interface adaptée aux environnements peu éclairés.',
+                      title: l10n.settingsDarkMode,
+                      subtitle: l10n.settingsDarkModeSubtitle,
                       cardBg: cardBg,
                       borderColor: borderColor,
                       trailing: Switch.adaptive(
@@ -361,12 +368,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    _sectionTitle('SERVICE', scheme),
+                    _sectionTitle(l10n.settingsService.toUpperCase(), scheme),
                     _prefTile(
                       context,
                       icon: Icons.verified_user_outlined,
-                      title: 'Connexion au service',
-                      subtitle: 'Vérifier si le service est disponible.',
+                      title: l10n.settingsServiceConnection,
+                      subtitle: l10n.settingsServiceConnectionSubtitle,
                       cardBg: cardBg,
                       borderColor: borderColor,
                       onTap: () => context.push('/settings/acpec-step1'),
@@ -374,8 +381,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _prefTile(
                       context,
                       icon: Icons.how_to_reg_outlined,
-                      title: 'Créer un compte',
-                      subtitle: 'Créer un compte avec le code reçu par SMS.',
+                      title: l10n.authCreateAnAccount,
+                      subtitle: l10n.settingsCreateAccountSubtitle,
                       cardBg: cardBg,
                       borderColor: borderColor,
                       onTap: () => context.push('/register'),
@@ -389,21 +396,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
-                            title: const Text('Déconnexion'),
-                            content: const Text(
-                              'Voulez-vous quitter FuelToken sur cet appareil ?',
-                            ),
+                            title: Text(l10n.settingsLogoutTitle),
+                            content: Text(l10n.settingsLogoutQuestion),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text('Annuler'),
+                                child: Text(l10n.commonCancel),
                               ),
                               FilledButton(
                                 onPressed: () => Navigator.pop(ctx, true),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.danger,
                                 ),
-                                child: const Text('Se déconnecter'),
+                                child: Text(l10n.authLogout),
                               ),
                             ],
                           ),
@@ -650,6 +655,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final valueColor = Theme.of(context).colorScheme.onSurface;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
@@ -660,11 +666,16 @@ class _StatsRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _statCell('Lots', lotsText, labelColor, valueColor),
+          _statCell(l10n.settingsCarnets, lotsText, labelColor, valueColor),
           _divider(labelColor),
-          _statCell('QR émis', qrsText, labelColor, valueColor),
+          _statCell(l10n.settingsQr, qrsText, labelColor, valueColor),
           _divider(labelColor),
-          _statCell('Consommés', consumedText, labelColor, valueColor),
+          _statCell(
+            l10n.settingsConsumptions,
+            consumedText,
+            labelColor,
+            valueColor,
+          ),
         ],
       ),
     );
@@ -721,6 +732,7 @@ class _LogoutTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -755,7 +767,7 @@ class _LogoutTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Se déconnecter',
+                        l10n.authLogout,
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
@@ -764,7 +776,7 @@ class _LogoutTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Fin de session sur cet appareil',
+                        l10n.settingsLogoutSubtitle,
                         style: TextStyle(
                           fontSize: 12,
                           color: cs.onSurfaceVariant,

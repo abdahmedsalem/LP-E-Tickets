@@ -16,6 +16,7 @@ import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -30,11 +31,11 @@ bool _isReasonableTicketExpirationDate(DateTime date) {
   return date.year > 1971 && date.year < 2100;
 }
 
-String _ticketExpirationLabel(DateTime date) {
+String _ticketExpirationLabel(DateTime date, AppLocalizations l10n) {
   if (!_isReasonableTicketExpirationDate(date)) {
-    return 'Expiration non renseignée';
+    return l10n.expirationUnknown;
   }
-  return 'Expire le ${Formatters.dateTimeDash(date)}';
+  return l10n.expiresOn(Formatters.dateTimeDash(date));
 }
 
 class TransferTicketsScreen extends StatefulWidget {
@@ -80,7 +81,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: ScreenHeader(
-        title: 'Transfert de tickets',
+        title: AppLocalizations.of(context).transferTicketsTitle,
         onBack: () {
           Navigator.of(context).maybePop();
         },
@@ -202,14 +203,14 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       return 'C${size}T-${line.faceValue}';
     }
 
-    return 'Carnet';
+    return AppLocalizations.of(context).carnet;
   }
 
   Future<void> _loadData() async {
     if (!AppEnvironment.useAcpecLiveData) {
       setState(() {
         _loading = false;
-        _error = 'Connexion serveur ACPEC requise pour transférer des tickets.';
+        _error = AppLocalizations.of(context).commonServerUnavailable;
       });
       return;
     }
@@ -256,41 +257,34 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+        _error = ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = ErrorPresenter.message(e);
+        _error = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
 
   Future<void> _submit() async {
     if (_submitting) return;
+    final l10n = AppLocalizations.of(context);
     final phone = _normalizeRecipientPhone(_phoneController.text.trim());
     final currentUser = context.read<AuthBloc>().state.user;
     final currentPhone = _normalizeRecipientPhone(currentUser?.phone ?? '');
 
     if (currentPhone.isNotEmpty && phone == currentPhone) {
-      AppMessage.warning(
-        context,
-        'Vous ne pouvez pas transférer des tickets vers votre propre compte.',
-      );
+      AppMessage.warning(context, l10n.transferOwnTicketsForbidden);
       return;
     }
     if (phone.isEmpty) {
-      AppMessage.warning(context, 'Saisissez le téléphone du destinataire.');
+      AppMessage.warning(context, l10n.recipientPhoneRequired);
       return;
     }
     if (phone.length != 8) {
-      AppMessage.error(
-        context,
-        'Le numéro du destinataire doit contenir 8 chiffres.',
-      );
+      AppMessage.error(context, l10n.recipientPhoneInvalid);
       return;
     }
     final confirmLines = <TransferConfirmationLine>[];
@@ -299,18 +293,12 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       final qty = _selectedTicketsByLineId[line.id] ?? 0;
       if (qty <= 0) continue;
       if (qty > line.availableQty) {
-        AppMessage.error(
-          context,
-          'Quantité supérieure aux tickets disponibles.',
-        );
+        AppMessage.error(context, l10n.transferTicketQuantityUnavailable);
         return;
       }
       final faceLineId = int.tryParse(line.id);
       if (faceLineId == null) {
-        AppMessage.error(
-          context,
-          'Identifiant de ticket manquant. Rechargez les carnets.',
-        );
+        AppMessage.error(context, l10n.transferMissingTicketLine);
         return;
       }
       confirmLines.add(
@@ -320,10 +308,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
     }
 
     if (confirmLines.isEmpty) {
-      AppMessage.warning(
-        context,
-        'Sélectionnez au moins un ticket à transférer.',
-      );
+      AppMessage.warning(context, l10n.transferSelectTicket);
       return;
     }
 
@@ -337,15 +322,12 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
           recipientName = resolvedName;
         } else {
           if (!mounted) return;
-          AppMessage.error(
-            context,
-            "Le client n'existe pas avec cet identifiant.",
-          );
+          AppMessage.error(context, l10n.transferRecipientNotFound);
           return;
         }
       } catch (e) {
         if (!mounted) return;
-        final errorMsg = ErrorPresenter.message(e);
+        final errorMsg = ErrorPresenter.localizedMessage(context, e);
         AppMessage.error(context, errorMsg);
         return;
       }
@@ -361,14 +343,13 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
               recipientName: recipientName,
               lines: confirmLines,
               showQuantity: true,
-              title: 'Confirmer le transfert',
-              introText: 'Vérifiez les tickets avant de confirmer.',
-              confirmLabel: 'Confirmer le transfert',
+              title: l10n.transferConfirmTitle,
+              introText: l10n.transferReviewTickets,
+              confirmLabel: l10n.transferConfirmTitle,
               confirmIcon: Icons.confirmation_number_outlined,
-              sectionLabel: 'Tickets transférés',
+              sectionLabel: l10n.transferredTickets,
               intentOperation: 'ticket-transfer',
-              unconfirmedActionMessage:
-                  'Action non confirmée. Vérifiez l\'état de vos tickets avant de réessayer.',
+              unconfirmedActionMessage: l10n.transferUnconfirmedTickets,
               onConfirm: (actionCode, intent) async {
                 final raw = await OdooFueltokenFacade().ticketsTransfer(
                   intent.withAuthParams({
@@ -378,10 +359,8 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                 );
                 final data = acpecRpcMapOrThrow(
                   raw,
-                  fallbackMessage:
-                      'Transfert de tickets refusé par le serveur.',
-                  publicErrorMessage:
-                      'Le transfert a échoué. Réessayez ou contactez l\'administrateur.',
+                  fallbackMessage: l10n.transferRejected,
+                  publicErrorMessage: l10n.transferFailed,
                 );
                 final responseName = data['dest_partner']?.toString().trim();
                 if (responseName != null && responseName.isNotEmpty) {
@@ -407,7 +386,8 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
           lines: confirmLines,
-          linesTitle: 'Tickets transférés',
+          linesTitle: l10n.transferredTickets,
+          showQuantity: true,
         );
         if (!mounted) return;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -466,7 +446,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _loadData,
-                        child: const Text('Réessayer'),
+                        child: Text(AppLocalizations.of(context).commonRetry),
                       ),
                     ],
                   ),
@@ -489,7 +469,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: _TransferSelectionBottomBar(
-                  totalLabel: 'TOTAL TRANSFERT',
+                  totalLabel: AppLocalizations.of(context).transferTotal,
                   totalAmount: _selectedTransferAmount(),
                   hasSelection: _selectedTicketsTotal() > 0,
                   submitting: _submitting,
@@ -509,7 +489,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                 children: [
                   if (transferable.isNotEmpty) ...[
                     Text(
-                      'Entrez le numéro du destinataire, puis sélectionnez les tickets à transférer.',
+                      AppLocalizations.of(context).transferTicketsInstruction,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -521,10 +501,14 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                     const SizedBox(height: 12),
                   ],
                   if (transferable.isEmpty) ...[
-                    const EmptyState(
+                    EmptyState(
                       icon: Icons.confirmation_number_outlined,
-                      title: 'Aucun ticket disponible',
-                      message: 'Vos tickets disponibles apparaîtront ici',
+                      title: AppLocalizations.of(
+                        context,
+                      ).transferTicketsEmptyTitle,
+                      message: AppLocalizations.of(
+                        context,
+                      ).transferTicketsEmptyMessage,
                     ),
                   ] else ...[
                     TextFormField(
@@ -540,7 +524,9 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                         color: AppColors.ink,
                       ),
                       decoration: _inputDecoration(
-                        hintText: 'Numéro de téléphone',
+                        hintText: AppLocalizations.of(
+                          context,
+                        ).recipientPhoneHint,
                         suffixIcon: Icons.contact_page_outlined,
                       ),
                     ),
@@ -644,7 +630,7 @@ class _TransferSelectionBottomBar extends StatelessWidget {
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: AmountInline(
                     amount: totalAmount,
                     valueStyle: TextStyle(
@@ -690,9 +676,9 @@ class _TransferSelectionBottomBar extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Continuer',
-                      style: TextStyle(
+                  : Text(
+                      AppLocalizations.of(context).commonContinue,
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -741,7 +727,7 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
     if (typeCode.isNotEmpty) return typeCode;
     final carnetNo = widget.line.carnetNo.trim();
     if (carnetNo.isNotEmpty) return carnetNo;
-    return 'Code carnet indisponible';
+    return AppLocalizations.of(context).carnetCodeUnavailable;
   }
 
   @override
@@ -754,7 +740,10 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
           : widget.line.availableQty,
     );
     final subtitleParts = <String>[
-      _ticketExpirationLabel(widget.line.expirationDate),
+      _ticketExpirationLabel(
+        widget.line.expirationDate,
+        AppLocalizations.of(context),
+      ),
     ];
 
     return AnimatedContainer(
@@ -793,7 +782,7 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
                 availableQtyLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
@@ -822,7 +811,7 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
           Row(
             children: [
               Text(
-                'Quantité',
+                AppLocalizations.of(context).purchaseQuantity,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -881,7 +870,9 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
                     child: OverviewInfoCard(
                       items: [
                         OverviewInfoItem(
-                          label: 'Identifiant de référence',
+                          label: AppLocalizations.of(
+                            context,
+                          ).referenceIdentifier,
                           value: _referenceCode(),
                         ),
                       ],

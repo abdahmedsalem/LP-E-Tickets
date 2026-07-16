@@ -11,8 +11,7 @@ void main() {
       () {
         final source = _read('lib/features/station/screens/scan_screen.dart');
 
-        expect(source, contains("_unconfirmedConsumptionMessage"));
-        expect(source, contains("Vérifiez l’historique avant de réessayer"));
+        expect(source, contains('stationConsumptionUnconfirmedMessage'));
         expect(
           source,
           contains("SensitiveActionIntent.create('station-qr-use')"),
@@ -20,7 +19,7 @@ void main() {
         expect(source, contains('intent.withAuthParams'));
         expect(source, isNot(contains("'idempotency_key': const Uuid().v4()")));
         expect(source, contains("ErrorPresenter.isBackendUnavailable"));
-        expect(source, contains("ErrorPresenter.message"));
+        expect(source, contains("ErrorPresenter.localizedMessage"));
         expect(
           source,
           isNot(contains("err.toString().replaceFirst('Exception: ', '')")),
@@ -80,8 +79,8 @@ void main() {
           contains('final result = StationQrCheckResult.fromRpc(raw);'),
         );
         expect(source, contains('if (!result.canConsume)'));
-        expect(source, contains("title: 'QR non consommable'"));
-        expect(source, contains("actionLabel: 'Retour à l’accueil'"));
+        expect(source, contains('title: l10n.stationQrNotConsumable'));
+        expect(source, contains('actionLabel: l10n.stationBackHome'));
         expect(source, contains("context.go('/station/home')"));
         expect(
           source,
@@ -103,15 +102,10 @@ void main() {
       expect(source, contains('_invalidateStationConsumptionCaches('));
       expect(source, contains('Future<void> _showManualFailureDialog'));
       expect(source, contains('ErrorPresenter.isBackendUnavailable'));
-      expect(source, contains("_unconfirmedConsumptionMessage"));
+      expect(source, contains('stationConsumptionUnconfirmedMessage'));
       expect(source, contains("_sensitiveActionErrorMessage"));
-      expect(
-        source,
-        contains(
-          "title: technical ? 'Consommation non confirmée' : 'Opération refusée'",
-        ),
-      );
-      expect(source, contains("actionLabel: 'Retour à la saisie'"));
+      expect(source, contains('l10n.stationConsumptionUnconfirmed'));
+      expect(source, contains('actionLabel: l10n.stationBackToEntry'));
     });
   });
 }

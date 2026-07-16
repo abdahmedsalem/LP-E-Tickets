@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class StationHomeScreen extends StatelessWidget {
@@ -10,6 +11,7 @@ class StationHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.watch<AuthBloc>().state.user;
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -17,10 +19,10 @@ class StationHomeScreen extends StatelessWidget {
 
     final agentName = user.name.trim().isNotEmpty
         ? user.name.trim()
-        : 'Agent station';
+        : l10n.stationAgentFallback;
     final stationName = user.stationName?.trim().isNotEmpty == true
         ? user.stationName!.trim()
-        : 'Station';
+        : l10n.station;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -90,7 +92,7 @@ class StationHomeScreen extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                'Agent station · $stationName',
+                                l10n.stationAgentAtStation(stationName),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -108,7 +110,7 @@ class StationHomeScreen extends StatelessWidget {
                   const SizedBox(width: 4),
                   _StationTopAction(
                     icon: Icons.settings_outlined,
-                    semanticLabel: 'Profil agent station',
+                    semanticLabel: l10n.stationAgentProfile,
                     onTap: () => context.go('/station/profile'),
                   ),
                 ],
@@ -147,8 +149,8 @@ class StationHomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Scanner un QR',
+                      Text(
+                        l10n.stationScanQr,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 22,
@@ -158,8 +160,8 @@ class StationHomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Appuyez pour scanner le QR code client',
+                      Text(
+                        l10n.stationScanPrompt,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
@@ -184,7 +186,7 @@ class StationHomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: const Color(0xFFE2E6DD)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       CircleAvatar(
                         backgroundColor: Color(0xFFEAF6EE),
@@ -199,7 +201,7 @@ class StationHomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Saisir un code manuel',
+                              l10n.stationManualEntry,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -208,7 +210,7 @@ class StationHomeScreen extends StatelessWidget {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              'Mode équivalent au scan du QR client',
+                              l10n.stationManualEquivalent,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF6B7280),
@@ -253,12 +255,12 @@ class StationHomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 14),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Historique des consommations',
+                              l10n.stationConsumptionHistory,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,

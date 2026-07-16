@@ -25,8 +25,8 @@ void main() {
     test('login screen already exposes change phone and signup exits', () {
       final source = _read('lib/features/auth/screens/login_screen.dart');
 
-      expect(source, contains('Changer de numéro'));
-      expect(source, contains("Créer un compte"));
+      expect(source, contains('l10n.authChangePhone'));
+      expect(source, contains('l10n.authCreateAnAccount'));
       expect(source, contains("'/register'"));
     });
   });

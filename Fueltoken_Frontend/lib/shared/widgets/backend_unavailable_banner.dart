@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 class BackendUnavailableBanner extends StatelessWidget {
   const BackendUnavailableBanner({
     super.key,
@@ -48,7 +50,7 @@ class BackendUnavailableBanner extends StatelessWidget {
                 minimumSize: const Size(0, 34),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Réessayer'),
+              child: Text(AppLocalizations.of(context).commonRetry),
             ),
           ],
         ),

@@ -16,6 +16,7 @@ import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/screens/forgot_otp_flow_screens.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/language_selection_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/register_verify_otp_screen.dart';
@@ -46,6 +47,7 @@ import '../../features/station/screens/station_shell_scaffold.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
 import '../../features/transactions/screens/wallet_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class AppRouter {
   static GoRouter build(AuthBloc authBloc) {
@@ -66,6 +68,7 @@ class AppRouter {
                 auth.user!.isDeviceBlocked);
         final atAuthRoute = {
           '/splash',
+          '/language-selection',
           '/login',
           '/onboarding',
           '/session-pin-lock',
@@ -139,6 +142,10 @@ class AppRouter {
       routes: [
         GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
         GoRoute(
+          path: '/language-selection',
+          builder: (_, _) => const LanguageSelectionScreen(),
+        ),
+        GoRoute(
           path: '/onboarding',
           builder: (_, _) => const OnboardingScreen(),
         ),
@@ -157,11 +164,15 @@ class AppRouter {
         ),
         GoRoute(
           path: '/forgot-password/verify-otp',
-          builder: (_, st) {
+          builder: (context, st) {
             final x = st.extra;
             if (x is! ForgotOtpRouteArgs) {
-              return const Scaffold(
-                body: Center(child: Text('Reprendre depuis le PIN oublie.')),
+              return Scaffold(
+                body: Center(
+                  child: Text(
+                    AppLocalizations.of(context).authRestartFromForgotPin,
+                  ),
+                ),
               );
             }
             return ForgotVerifyOtpScreen(args: x);
@@ -169,12 +180,12 @@ class AppRouter {
         ),
         GoRoute(
           path: '/forgot-password/reset',
-          builder: (_, st) {
+          builder: (context, st) {
             final x = st.extra;
             if (x is! ForgotResetRouteArgs) {
-              return const Scaffold(
+              return Scaffold(
                 body: Center(
-                  child: Text('Reprendre depuis la verification OTP.'),
+                  child: Text(AppLocalizations.of(context).authRestartFromOtp),
                 ),
               );
             }

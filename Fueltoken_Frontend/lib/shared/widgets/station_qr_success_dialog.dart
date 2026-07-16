@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 
 class StationQrSuccessDialog extends StatelessWidget {
   const StationQrSuccessDialog({
@@ -18,6 +19,7 @@ class StationQrSuccessDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final maxHeight = MediaQuery.sizeOf(context).height * 0.86;
 
     return Dialog(
@@ -63,8 +65,8 @@ class StationQrSuccessDialog extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const Text(
-                        'QR consommé avec succès',
+                      Text(
+                        l10n.stationQrConsumedSuccess,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 21,
@@ -75,8 +77,8 @@ class StationQrSuccessDialog extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'La consommation a bien été enregistrée.',
+                      Text(
+                        l10n.stationConsumptionRecorded,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
@@ -96,19 +98,19 @@ class StationQrSuccessDialog extends StatelessWidget {
                         child: Column(
                           children: [
                             _SuccessInfoLine(
-                              label: 'Montant',
+                              label: l10n.amount,
                               value: amount,
                               valueColor: AppColors.success,
                               emphasized: true,
                             ),
                             const SizedBox(height: 16),
                             _SuccessInfoLine(
-                              label: 'Date/heure',
+                              label: l10n.stationDateTime,
                               value: consumedAt,
                             ),
                             const SizedBox(height: 16),
                             _SuccessInfoLine(
-                              label: 'N° transaction',
+                              label: l10n.stationTransactionNumber,
                               value: transactionName,
                             ),
                           ],
@@ -128,8 +130,8 @@ class StationQrSuccessDialog extends StatelessWidget {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Terminer',
+                          child: Text(
+                            l10n.stationFinish,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
@@ -183,7 +185,7 @@ class _SuccessInfoLine extends StatelessWidget {
           flex: 2,
           child: Text(
             value,
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.end,
             style: TextStyle(
               fontSize: emphasized ? 17 : 13.5,
               height: 1.3,

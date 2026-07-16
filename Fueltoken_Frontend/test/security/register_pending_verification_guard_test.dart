@@ -57,7 +57,7 @@ void main() {
         expect(source, contains('PendingSignupStore.save('));
         expect(source, contains('final _pin = TextEditingController();'));
         expect(source, contains('bool get _needsPinEntry'));
-        expect(source, contains('PIN de confirmation'));
+        expect(source, contains('l10n.authConfirmPin'));
         expect(source, contains('validateFourDigitNumericPassword(pin)'));
         expect(source, contains('pin: pin'));
         expect(source, contains('class _MissingRegisterOtpScreen'));
@@ -122,7 +122,7 @@ void main() {
           header,
           isNot(contains("subtitleFuelToken: 'Tickets Carburant'")),
         );
-        expect(header, contains('Leader Petroleum — Tickets Carburant'));
+        expect(header, contains('l10n.authRegisterBrand'));
       },
     );
   });

@@ -14,6 +14,8 @@ void main() {
       expect(router, contains("path: '/splash'"));
       expect(router, contains("'/splash',"));
       expect(router, contains('const SplashScreen()'));
+      expect(router, contains("path: '/language-selection'"));
+      expect(router, contains('const LanguageSelectionScreen()'));
       expect(router, contains("path: '/onboarding'"));
       expect(router, contains("path: '/login'"));
     });

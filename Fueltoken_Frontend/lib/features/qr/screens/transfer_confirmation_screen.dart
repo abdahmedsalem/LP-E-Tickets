@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
@@ -6,6 +6,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/face_line.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/standard_confirmation_scaffold.dart';
@@ -17,15 +18,14 @@ class TransferConfirmationArgs {
     required this.recipientPhone,
     required this.recipientName,
     required this.lines,
+    required this.title,
+    required this.introText,
+    required this.confirmLabel,
+    required this.sectionLabel,
+    required this.intentOperation,
+    required this.unconfirmedActionMessage,
     this.showQuantity = false,
-    this.title = 'Confirmer l\'envoi',
-    this.introText = 'Vérifiez les carnets avant de confirmer.',
-    this.confirmLabel = 'Confirmer l\'envoi',
     this.confirmIcon = Icons.send_rounded,
-    this.sectionLabel = 'Carnets envoyés',
-    this.intentOperation = 'carnets-transfer',
-    this.unconfirmedActionMessage =
-        'Action non confirmée. Vérifiez l’état de l’opération avant de réessayer.',
     this.onConfirm,
   }) : assert(onConfirm != null);
 
@@ -50,7 +50,6 @@ class TransferConfirmationArgs {
   /// Callback appelé quand l'utilisateur confirme sans motif éditable.
   final Future<void> Function(String actionCode, SensitiveActionIntent intent)?
   onConfirm;
-
 }
 
 class TransferConfirmationLine {
@@ -102,8 +101,10 @@ class _TransferConfirmationScreenState
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
-        title: 'Vérification du PIN',
-        description: 'Saisissez votre PIN pour confirmer cette opération.',
+        title: AppLocalizations.of(context).commonPinVerification,
+        description: AppLocalizations.of(
+          context,
+        ).commonPinConfirmationDescription,
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final intent = SensitiveActionIntent.create(widget.args.intentOperation);
@@ -117,7 +118,7 @@ class _TransferConfirmationScreenState
           context,
           ErrorPresenter.isBackendUnavailable(e)
               ? widget.args.unconfirmedActionMessage
-              : ErrorPresenter.message(e),
+              : ErrorPresenter.localizedMessage(context, e),
         );
       }
       return;
@@ -127,7 +128,7 @@ class _TransferConfirmationScreenState
           context,
           ErrorPresenter.isBackendUnavailable(e)
               ? widget.args.unconfirmedActionMessage
-              : ErrorPresenter.message(e),
+              : ErrorPresenter.localizedMessage(context, e),
         );
       }
       return;
@@ -152,9 +153,7 @@ class _TransferConfirmationScreenState
       onCancel: () => _close(false),
       onBack: () => _close(false),
       content: [
-        _TransferConfirmationHeroCard(
-          recipientName: args.recipientName,
-        ),
+        _TransferConfirmationHeroCard(recipientName: args.recipientName),
         const SizedBox(height: 20),
         _TransferConfirmationSectionHeader(label: args.sectionLabel),
         const SizedBox(height: 14),
@@ -174,9 +173,7 @@ class _TransferConfirmationScreenState
 // -----------------------------------------------------------------------------
 
 class _TransferConfirmationHeroCard extends StatelessWidget {
-  const _TransferConfirmationHeroCard({
-    required this.recipientName,
-  });
+  const _TransferConfirmationHeroCard({required this.recipientName});
 
   final String recipientName;
 
@@ -199,7 +196,7 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bénéficiaire',
+                  AppLocalizations.of(context).beneficiary,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -299,7 +296,7 @@ class _TransferTotalRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Montant total',
+            AppLocalizations.of(context).totalAmount,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -309,7 +306,7 @@ class _TransferTotalRow extends StatelessWidget {
         ),
         _AmountInline(
           amount: totalAmount,
-          textAlign: TextAlign.right,
+          textAlign: TextAlign.end,
           valueStyle: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
@@ -334,7 +331,7 @@ class _TransferConfirmationDisclaimerText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Le transfert vers $recipientName est définitif et ne peut pas être annulé après confirmation.',
+      AppLocalizations.of(context).transferFinalDisclaimer(recipientName),
       textAlign: TextAlign.center,
       style: const TextStyle(
         fontSize: 12.5,

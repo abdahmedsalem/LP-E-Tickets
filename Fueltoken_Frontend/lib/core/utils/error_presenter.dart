@@ -1,4 +1,7 @@
+import 'package:flutter/widgets.dart';
+
 import '../../data/services/odoo_jsonrpc_client.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Traduit toute exception en message court et convivial pour l'utilisateur.
 ///
@@ -23,6 +26,20 @@ class ErrorPresenter {
         .replaceFirst('OdooJsonRpcException: ', '')
         .trim();
     return _sanitize(raw);
+  }
+
+  static String localizedMessage(BuildContext context, Object error) {
+    final l10n = AppLocalizations.of(context);
+    if (Localizations.localeOf(context).languageCode != 'ar') {
+      return message(error);
+    }
+    if (error is OdooJsonRpcException && error.requiresReLogin) {
+      return l10n.sessionExpiredReconnect;
+    }
+    if (isBackendUnavailable(error)) {
+      return l10n.commonServerUnavailable;
+    }
+    return l10n.commonGenericError;
   }
 
   static String network() =>

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Coquille station avec une barre basse inspirée de `botontabs.jfif`.
 class StationShellScaffold extends StatelessWidget {
@@ -17,6 +18,7 @@ class StationShellScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final selected = navigationShell.currentIndex;
 
@@ -61,7 +63,7 @@ class StationShellScaffold extends StatelessWidget {
                         children: [
                           Expanded(
                             child: _StationBarTab(
-                              label: 'Accueil',
+                              label: l10n.stationNavHome,
                               icon: Icons.home_rounded,
                               selected: selected == 0,
                               onTap: () => _goTo(context, '/station/home'),
@@ -79,7 +81,7 @@ class StationShellScaffold extends StatelessWidget {
                   child: Semantics(
                     button: true,
                     selected: selected == 1,
-                    label: 'Scan',
+                    label: l10n.stationNavScan,
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -117,8 +119,8 @@ class StationShellScaffold extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
-                                'Scan',
+                              Text(
+                                l10n.stationNavScan,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,

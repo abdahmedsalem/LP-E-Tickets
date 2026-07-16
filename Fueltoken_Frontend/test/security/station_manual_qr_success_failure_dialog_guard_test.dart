@@ -24,12 +24,12 @@ void main() {
 
       expect(source, contains('final guarded = acpecRpcMapOrThrow('));
       expect(source, contains('StationQrSuccessDialog('));
-      expect(dialogSource, contains('QR consommé avec succès'));
-      expect(dialogSource, contains('Montant'));
-      expect(dialogSource, contains('Date/heure'));
-      expect(dialogSource, contains('N° transaction'));
+      expect(dialogSource, contains('stationQrConsumedSuccess'));
+      expect(dialogSource, contains('l10n.amount'));
+      expect(dialogSource, contains('stationDateTime'));
+      expect(dialogSource, contains('stationTransactionNumber'));
       expect(source, contains('transaction_name'));
-      expect(dialogSource, contains('Terminer'));
+      expect(dialogSource, contains('stationFinish'));
       expect(source, contains("context.go('/station/home')"));
 
       expect(source, isNot(contains("_showSnack('QR consommé avec succès.')")));
@@ -44,9 +44,9 @@ void main() {
         );
 
         expect(source, contains('Future<void> _showManualFailureDialog'));
-        expect(source, contains('Opération refusée'));
-        expect(source, contains('Consommation non confirmée'));
-        expect(source, contains('Retour à la saisie'));
+        expect(source, contains('stationOperationRejected'));
+        expect(source, contains('stationConsumptionUnconfirmed'));
+        expect(source, contains('stationBackToEntry'));
         expect(source, contains('_sensitiveActionErrorMessage(e)'));
       },
     );
@@ -63,12 +63,9 @@ void main() {
           contains('final result = StationQrCheckResult.fromRpc(raw);'),
         );
         expect(source, contains('if (!result.canConsume)'));
-        expect(source, contains("title: 'QR non consommable'"));
-        expect(
-          source,
-          contains('Le serveur indique que ce QR n’est pas consommable.'),
-        );
-        expect(source, contains("actionLabel: 'Retour à l’accueil'"));
+        expect(source, contains('title: l10n.stationQrNotConsumable'));
+        expect(source, contains('l10n.stationQrNotConsumableMessage'));
+        expect(source, contains('actionLabel: l10n.stationBackHome'));
         expect(source, contains("context.go('/station/home')"));
 
         expect(source, contains('if (data != null && canConsume)'));
@@ -79,7 +76,7 @@ void main() {
           'class _InfoRow extends StatelessWidget',
         );
 
-        expect(card, contains("const statusText = 'Consommable';"));
+        expect(card, contains('final statusText = l10n.stationConsumable;'));
         expect(card, contains('AppColors.leaderGreen'));
         expect(card, isNot(contains('Non consommable')));
         expect(card, isNot(contains('canConsume')));

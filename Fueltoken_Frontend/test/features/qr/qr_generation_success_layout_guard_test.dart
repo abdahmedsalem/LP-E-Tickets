@@ -17,8 +17,11 @@ void main() {
     final sharedSource = File(
       'lib/shared/widgets/qr_generation_carnet_line.dart',
     ).readAsStringSync();
-    expect(sharedSource, contains('alignment: Alignment.centerLeft'));
-    expect(sharedSource, contains('alignment: Alignment.centerRight'));
+    expect(
+      sharedSource,
+      contains('alignment: AlignmentDirectional.centerStart'),
+    );
+    expect(sharedSource, contains('alignment: AlignmentDirectional.centerEnd'));
     expect(sharedSource, contains('const SizedBox(height: 8)'));
   });
 }

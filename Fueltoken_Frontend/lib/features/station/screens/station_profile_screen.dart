@@ -14,6 +14,7 @@ import '../../../data/models/acpec_station_profile.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -31,6 +32,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
   bool _profileLoading = false;
   String? _profileError;
   bool _darkPref = false;
+  String _localeCode = AppPreferences.defaultLocaleCode;
 
   @override
   void initState() {
@@ -43,7 +45,49 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
 
   Future<void> _loadDark() async {
     final d = await AppPreferences.darkMode();
-    if (mounted) setState(() => _darkPref = d);
+    final locale = await AppPreferences.localeCode();
+    if (mounted) {
+      setState(() {
+        _darkPref = d;
+        _localeCode = locale;
+      });
+    }
+  }
+
+  Future<void> _pickLanguage() async {
+    final l10n = AppLocalizations.of(context);
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(l10n.settingsFrench),
+              trailing: _localeCode == 'fr'
+                  ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                  : null,
+              onTap: () => Navigator.pop(sheetContext, 'fr'),
+            ),
+            ListTile(
+              title: Text(l10n.settingsArabic),
+              trailing: _localeCode == 'ar'
+                  ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                  : null,
+              onTap: () => Navigator.pop(sheetContext, 'ar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || choice == _localeCode) return;
+    await AppPreferences.setLocaleCode(choice);
+    if (!mounted) return;
+    setState(() => _localeCode = choice);
+    await context
+        .findAncestorStateOfType<FuelTokenAppState>()
+        ?.reloadPreferences();
   }
 
   Future<void> _persistTheme(bool dark) async {
@@ -56,9 +100,9 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
 
   String _briefError(Object e) {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirée. Reconnectez-vous.';
+      return AppLocalizations.of(context).stationSessionExpired;
     }
-    return ErrorPresenter.message(e).trim();
+    return ErrorPresenter.localizedMessage(context, e).trim();
   }
 
   Future<void> _loadAcpecProfile({bool forceRefresh = false}) async {
@@ -102,6 +146,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.watch<AuthBloc>().state.user;
     if (user == null) {
       return const Scaffold(body: AppPageLoading());
@@ -114,7 +159,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
         ? ap.stationName
         : (user.stationName?.trim().isNotEmpty == true
               ? user.stationName!.trim()
-              : 'Station');
+              : l10n.station);
     final operatorSubtitle = useAcpec && ap != null
         ? ap.operatorName
         : user.name;
@@ -129,7 +174,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
         centerTitle: false,
         toolbarHeight: 66,
         title: Text(
-          'Profil',
+          l10n.stationProfileTitle,
           style: TextStyle(
             fontWeight: FontWeight.w900,
             fontSize: 24,
@@ -149,7 +194,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
           ),
           const SizedBox(height: 16),
           if (ap != null) ...[
-            _SectionLabel('Informations'),
+            _SectionLabel(l10n.stationInformation),
             const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(
@@ -166,16 +211,22 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
               child: Column(
                 children: [
                   _ProfileSubCard(
-                    title: 'Station',
+                    title: l10n.station,
                     icon: Icons.local_gas_station_outlined,
                     compact: true,
                     rows: [
-                      _ProfileRow('Nom', ap.stationName),
-                      _ProfileRow('Code', ap.stationCode, mono: true),
-                      _ProfileRow('Adresse', ap.stationAddress),
+                      _ProfileRow(l10n.stationNameLabel, ap.stationName),
                       _ProfileRow(
-                        'Statut',
-                        ap.stationActive ? 'En service' : 'Hors service',
+                        l10n.stationCodeLabel,
+                        ap.stationCode,
+                        mono: true,
+                      ),
+                      _ProfileRow(l10n.stationAddressLabel, ap.stationAddress),
+                      _ProfileRow(
+                        l10n.stationStatusLabel,
+                        ap.stationActive
+                            ? l10n.stationInService
+                            : l10n.stationOutOfService,
                       ),
                     ],
                   ),
@@ -199,13 +250,10 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                 ),
               ),
           ] else ...[
-            const ApiRequiredView(
-              message:
-                  'Connectez-vous au serveur ACPEC pour afficher le profil station.',
-            ),
+            ApiRequiredView(message: l10n.stationProfileServerRequired),
           ],
           const SizedBox(height: 20),
-          _SectionLabel('Préférences'),
+          _SectionLabel(l10n.stationPreferences),
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
@@ -216,28 +264,52 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                   ? null
                   : AppColors.softShadow,
             ),
-            child: SwitchListTile.adaptive(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: scheme.outline.withValues(alpha: 0.35)),
-              ),
-              tileColor: scheme.surface,
-              title: Text(
-                'Mode sombre',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  leading: const Icon(Icons.language_rounded),
+                  title: Text(
+                    l10n.settingsLanguage,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _localeCode == 'ar'
+                        ? l10n.settingsArabic
+                        : l10n.settingsFrench,
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: _pickLanguage,
                 ),
-              ),
-              subtitle: Text(
-                'Appliqué à toute l’app sur cet appareil.',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              ),
-              value: _darkPref,
-              activeTrackColor: scheme.primary,
-              activeThumbColor: scheme.onPrimary,
-              onChanged: _persistTheme,
+                Divider(
+                  height: 1,
+                  color: scheme.outline.withValues(alpha: 0.18),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  title: Text(
+                    l10n.settingsDarkMode,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    l10n.stationDarkModeSubtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  value: _darkPref,
+                  activeTrackColor: scheme.primary,
+                  activeThumbColor: scheme.onPrimary,
+                  onChanged: _persistTheme,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -249,7 +321,7 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                 context.go('/login');
               },
               icon: const Icon(Icons.logout_rounded),
-              label: const Text('Se déconnecter'),
+              label: Text(l10n.stationLogout),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger,
                 foregroundColor: Colors.white,
@@ -281,6 +353,7 @@ class _ProfileHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -339,7 +412,9 @@ class _ProfileHeroCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      inService ? 'En service' : 'Hors service',
+                      inService
+                          ? l10n.stationInService
+                          : l10n.stationOutOfService,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -397,6 +472,7 @@ class _AcpecProfileErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
@@ -429,7 +505,7 @@ class _AcpecProfileErrorCard extends StatelessWidget {
           FilledButton.tonalIcon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Réessayer'),
+            label: Text(l10n.commonRetry),
           ),
         ],
       ),
@@ -445,6 +521,7 @@ class _AcpecStationProfilePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -457,7 +534,7 @@ class _AcpecStationProfilePanel extends StatelessWidget {
             border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
           ),
           child: Text(
-            'Station liée et opérateur mobile (ACPEC).',
+            l10n.stationLinkedOperator,
             style: TextStyle(
               fontSize: 11,
               height: 1.35,
@@ -468,27 +545,29 @@ class _AcpecStationProfilePanel extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _ProfileSubCard(
-          title: 'Station',
+          title: l10n.station,
           icon: Icons.local_gas_station_outlined,
           rows: [
-            _ProfileRow('Nom', profile.stationName),
-            _ProfileRow('Code', profile.stationCode, mono: true),
-            _ProfileRow('Adresse', profile.stationAddress),
+            _ProfileRow(l10n.stationNameLabel, profile.stationName),
+            _ProfileRow(l10n.stationCodeLabel, profile.stationCode, mono: true),
+            _ProfileRow(l10n.stationAddressLabel, profile.stationAddress),
             _ProfileRow(
-              'Statut',
-              profile.stationActive ? 'En service' : 'Hors service',
+              l10n.stationStatusLabel,
+              profile.stationActive
+                  ? l10n.stationInService
+                  : l10n.stationOutOfService,
             ),
           ],
         ),
         const SizedBox(height: 10),
         _ProfileSubCard(
-          title: 'Opérateur (mobile)',
+          title: l10n.stationMobileOperator,
           icon: Icons.badge_outlined,
           rows: [
-            _ProfileRow('Nom', profile.operatorName),
-            _ProfileRow('E-mail', profile.operatorEmail),
+            _ProfileRow(l10n.stationNameLabel, profile.operatorName),
+            _ProfileRow(l10n.stationEmailLabel, profile.operatorEmail),
             _ProfileRow(
-              'Téléphone',
+              l10n.stationPhoneLabel,
               profile.operatorPhone.isEmpty ? '—' : profile.operatorPhone,
             ),
             _ProfileRow('ID', profile.operatorId, mono: true),

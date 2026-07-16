@@ -21,6 +21,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mini_qr.dart';
 import '../../../shared/widgets/station_qr_failure_dialog.dart';
 import '../../../shared/widgets/station_qr_success_dialog.dart';
@@ -57,9 +58,6 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   DateTime? _lastHandledAt;
   static const Duration _sameCodeCooldown = Duration(seconds: 3);
   final Set<String> _consumedThisSession = <String>{};
-  static const String _unconfirmedConsumptionMessage =
-      'Action non confirmée. Vérifiez l’historique avant de réessayer.';
-
   @override
   void initState() {
     super.initState();
@@ -104,10 +102,9 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       }
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _cameraError =
-              'Caméra indisponible. Vérifiez les autorisations puis réessayez.',
-        );
+        setState(() {
+          _cameraError = AppLocalizations.of(context).stationCameraUnavailable;
+        });
       }
     } finally {
       _startingScanner = false;
@@ -238,6 +235,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _checkQrAcpec(String publicCode) async {
+    final l10n = AppLocalizations.of(context);
     final codeKey = publicCode.trim().toLowerCase();
 
     if (_consumedThisSession.contains(codeKey)) {
@@ -248,9 +246,9 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 
       try {
         await _showFailureDialog(
-          title: 'QR non consommable',
-          message: 'QR déjà consommé. Ce QR ne peut plus être consommé.',
-          actionLabel: 'Retour à l’accueil',
+          title: l10n.stationQrNotConsumable,
+          message: l10n.stationQrAlreadyConsumed,
+          actionLabel: l10n.stationBackHome,
         );
         if (mounted) _goStationHome();
       } finally {
@@ -282,11 +280,11 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 
       if (!result.canConsume) {
         await _showFailureDialog(
-          title: 'QR non consommable',
-          message:
-              result.reason ??
-              'Le serveur indique que ce QR n’est pas consommable.',
-          actionLabel: 'Retour à l’accueil',
+          title: l10n.stationQrNotConsumable,
+          message: Localizations.localeOf(context).languageCode == 'ar'
+              ? l10n.stationQrNotConsumableMessage
+              : result.reason ?? l10n.stationQrNotConsumableMessage,
+          actionLabel: l10n.stationBackHome,
         );
         if (mounted) _goStationHome();
         return;
@@ -333,9 +331,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         // consommable : ne pas induire l’opérateur en erreur.
         final technical = ErrorPresenter.isBackendUnavailable(e);
         await _showFailureDialog(
-          title: technical ? 'Vérification impossible' : 'QR non consommable',
-          message: ErrorPresenter.message(e),
-          actionLabel: technical ? 'Retour au scan' : 'Retour à l’accueil',
+          title: technical
+              ? l10n.stationVerificationImpossible
+              : l10n.stationQrNotConsumable,
+          message: ErrorPresenter.localizedMessage(context, e),
+          actionLabel: technical
+              ? l10n.stationBackToScan
+              : l10n.stationBackHome,
         );
         if (mounted) {
           if (technical) {
@@ -354,6 +356,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _consume(String code) async {
+    final l10n = AppLocalizations.of(context);
     if (_consuming) return;
     final trimmed = code.trim();
     if (trimmed.isEmpty) return;
@@ -368,14 +371,12 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     }
     try {
       if (!AppEnvironment.useAcpecLiveData) {
-        throw Exception(
-          'Connexion serveur ACPEC requise pour consommer un QR.',
-        );
+        throw Exception(l10n.commonServerUnavailable);
       }
       final actionCode = await showSensitiveActionCodeDialog(
         context,
-        title: 'Vérification du PIN',
-        description: 'Saisissez votre PIN pour confirmer cette opération.',
+        title: l10n.stationPinVerification,
+        description: l10n.stationPinScanDescription,
       );
       if (actionCode == null || actionCode.isEmpty) {
         if (mounted) await _restartScannerAfterModal();
@@ -388,9 +389,8 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       );
       final guarded = acpecRpcMapOrThrow(
         raw,
-        fallbackMessage: 'Consommation QR refusée par le serveur.',
-        publicErrorMessage:
-            'La consommation du QR a échoué. Réessayez ou contactez l’administrateur.',
+        fallbackMessage: l10n.stationConsumptionRejected,
+        publicErrorMessage: l10n.stationConsumptionFailed,
       );
       final qr = AcpecQrMapper.fromStationUseResult(
         guarded,
@@ -404,7 +404,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
             'transaction_name',
             'transactionName',
           ]) ??
-          'Non renseigné';
+          l10n.commonNotProvided;
       final consumedAt =
           _payloadDateTime(guarded, const [
             'consumed_at',
@@ -461,11 +461,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       if (mounted) {
         final technical = ErrorPresenter.isBackendUnavailable(err);
         await _showFailureDialog(
-          title: technical ? 'Consommation non confirmée' : 'Opération refusée',
+          title: technical
+              ? l10n.stationConsumptionUnconfirmed
+              : l10n.stationOperationRejected,
           message: technical
-              ? _unconfirmedConsumptionMessage
-              : ErrorPresenter.message(err),
-          actionLabel: 'Retour au scan',
+              ? l10n.stationConsumptionUnconfirmedMessage
+              : ErrorPresenter.localizedMessage(context, err),
+          actionLabel: l10n.stationBackToScan,
         );
         if (mounted) await _restartScannerAfterModal();
       }
@@ -596,6 +598,7 @@ class _ScanHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 26, 0),
       child: Column(
@@ -605,7 +608,7 @@ class _ScanHeader extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                tooltip: 'Retour à l’accueil',
+                tooltip: l10n.stationBackHome,
                 onPressed: onBack,
                 icon: const Icon(Icons.arrow_back_rounded),
                 color: _scanInk,
@@ -613,7 +616,7 @@ class _ScanHeader extends StatelessWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  'Scanner QR Client',
+                  l10n.stationScannerTitle,
                   style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w800,
@@ -629,7 +632,7 @@ class _ScanHeader extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 330),
             child: Text(
-              'Scannez n\'importe quel code QR compatible et payez plus rapidement et facilement',
+              l10n.stationScannerSubtitle,
               style: TextStyle(
                 fontSize: 13.8,
                 fontWeight: FontWeight.w500,
@@ -707,6 +710,7 @@ class _CameraErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
@@ -733,7 +737,7 @@ class _CameraErrorCard extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Réactiver la caméra'),
+            label: Text(l10n.stationReactivateCamera),
           ),
         ],
       ),
@@ -846,6 +850,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final result = widget.result;
     final bottom = MediaQuery.paddingOf(context).bottom;
     final scheme = Theme.of(context).colorScheme;
@@ -876,7 +881,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Vérification QR',
+                    l10n.stationQrVerificationTitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 18,
@@ -887,7 +892,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Contrôle serveur avant consommation',
+                    l10n.stationQrVerificationSubtitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
@@ -904,24 +909,23 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                   ),
                   const SizedBox(height: 12),
                   _InfoLine(
-                    label: 'Montant total',
+                    label: l10n.stationTotalAmount,
                     value: result.totalAmount != null
                         ? Formatters.money(result.totalAmount!)
-                        : 'Non renseigné',
+                        : l10n.commonNotProvided,
                     highlighted: true,
                   ),
                   const SizedBox(height: 8),
                   _InfoLine(
-                    label: 'Client',
-                    value: result.clientName ?? 'Non renseigné',
+                    label: l10n.stationClient,
+                    value: result.clientName ?? l10n.commonNotProvided,
                   ),
                   const SizedBox(height: 12),
                   _QrStatePill(
-                    label: 'Consommation autorisée',
+                    label: l10n.stationConsumptionAllowed,
                     color: AppColors.success,
                     icon: Icons.check_circle_outline,
-                    subtitle:
-                        'Vous pouvez enregistrer la consommation sur ce QR.',
+                    subtitle: l10n.stationConsumptionAllowedMessage,
                   ),
                   const SizedBox(height: 18),
                   Row(
@@ -933,7 +937,7 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                             onPressed: _confirming
                                 ? null
                                 : () => Navigator.pop(context),
-                            child: const Text('Annuler'),
+                            child: Text(l10n.commonCancel),
                           ),
                         ),
                       ),
@@ -955,7 +959,9 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
                                     }
                                   },
                             child: Text(
-                              _confirming ? 'Validation…' : 'Continuer',
+                              _confirming
+                                  ? l10n.stationValidating
+                                  : l10n.commonContinue,
                             ),
                           ),
                         ),
@@ -1077,10 +1083,10 @@ class _InfoLine extends StatelessWidget {
           ),
           Expanded(
             child: Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: Text(
                 value,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.35,

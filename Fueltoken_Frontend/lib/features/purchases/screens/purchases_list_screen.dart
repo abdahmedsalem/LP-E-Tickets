@@ -13,6 +13,7 @@ import '../../../data/models/purchase_lot.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -57,7 +58,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
       setState(() {
         _lots = [];
         _loading = false;
-        _error = 'Session requise.';
+        _error = AppLocalizations.of(context).commonSessionRequired;
       });
       return;
     }
@@ -91,17 +92,13 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = e.isOdooSessionExpired
-              ? 'Session expirée. Reconnectez-vous pour actualiser la liste.'
-              : ErrorPresenter.message(e);
+          _error = ErrorPresenter.localizedMessage(context, e);
         });
       } catch (e) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = ErrorPresenter.isBackendUnavailable(e)
-              ? ErrorPresenter.backendUnavailable()
-              : ErrorPresenter.message(e);
+          _error = ErrorPresenter.localizedMessage(context, e);
         });
       }
       return;
@@ -109,14 +106,14 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
 
     setState(() {
       _loading = false;
-      _error =
-          'Connexion serveur ACPEC requise pour afficher vos commandes de carnets.';
+      _error = AppLocalizations.of(context).commonServerUnavailable;
       _lots = [];
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final minEmptyHeight = math.max(
       320.0,
@@ -141,7 +138,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
         backgroundColor: const Color(0xFF0F7A5A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Nouvelle commande'),
+        label: Text(l10n.purchasesNewOrder),
       ),
       body: SafeArea(
         child: Container(
@@ -156,9 +153,8 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Mes commandes',
-                subtitle:
-                    'Chaque carte résume la commande de carnets, le montant total et la date de validation.',
+                title: l10n.purchasesListTitle,
+                subtitle: l10n.purchasesListSubtitle,
                 onBack: () => context.pop(),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
@@ -170,7 +166,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '$totalLots commandes',
+                    l10n.purchasesCount(totalLots),
                     style: const TextStyle(
                       color: Color(0xFF374151),
                       fontSize: 12,
@@ -186,7 +182,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                   children: [
                     Expanded(
                       child: _SummaryPill(
-                        label: 'Carnets commandés',
+                        label: l10n.purchasesApproved,
                         value: '$approvedLots',
                         color: const Color(0xFFDCFCE7),
                         foreground: const Color(0xFF0F7A5A),
@@ -195,7 +191,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _SummaryPill(
-                        label: 'Commandes rejetées',
+                        label: l10n.purchasesRejected,
                         value: '$rejectedLots',
                         color: const Color(0xFFFFE4E6),
                         foreground: const Color(0xFFB91C1C),
@@ -204,7 +200,7 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _SummaryPill(
-                        label: 'Montant',
+                        label: l10n.amount,
                         value: Formatters.money(totalAmount),
                         color: const Color(0xFFF3F4F6),
                         foreground: const Color(0xFF374151),
@@ -236,9 +232,9 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                             height: minEmptyHeight,
                             child: _EmptyPanel(
                               icon: Icons.cloud_off_outlined,
-                              title: 'Connexion requise',
+                              title: l10n.purchasesConnectionRequired,
                               message: _error!,
-                              actionLabel: 'Réessayer',
+                              actionLabel: l10n.commonRetry,
                               onAction: _refresh,
                             ),
                           ),
@@ -259,16 +255,15 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
                                 children: [
                                   EmptyState(
                                     icon: Icons.receipt_long_outlined,
-                                    title: 'Aucune commande',
-                                    message:
-                                        'Créez une nouvelle commande pour faire apparaître ici la commande, le montant et sa validation.',
+                                    title: l10n.purchasesEmptyTitle,
+                                    message: l10n.purchasesEmptyMessage,
                                     action: FilledButton.icon(
                                       onPressed: () async {
                                         await context.push('/purchases/new');
                                         await _refresh();
                                       },
                                       icon: const Icon(Icons.add_rounded),
-                                      label: const Text('Nouvelle commande'),
+                                      label: Text(l10n.purchasesNewOrder),
                                     ),
                                   ),
                                 ],
@@ -321,6 +316,7 @@ class _PurchaseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final stateColor = switch (lot.state) {
       PurchaseLotState.approved => const Color(0xFF0F7A5A),
@@ -334,10 +330,10 @@ class _PurchaseTile extends StatelessWidget {
       PurchaseLotState.rejected => const Color(0xFFB91C1C),
       PurchaseLotState.draft => const Color(0xFF6B7280),
     };
-    final typeLabel = _purchaseTypeLabel(lot);
+    final typeLabel = _purchaseTypeLabel(l10n, lot);
     final validationLabel = lot.validationDate != null
         ? Formatters.date(lot.validationDate!)
-        : 'En attente de validation';
+        : l10n.purchasesPendingValidation;
 
     return Material(
       color: Colors.transparent,
@@ -416,7 +412,7 @@ class _PurchaseTile extends StatelessWidget {
                                 Formatters.money(lot.totalAmount),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
+                                textAlign: TextAlign.end,
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
@@ -442,7 +438,18 @@ class _PurchaseTile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              StatusBadge.lot(lot.state),
+                              StatusBadge.lot(
+                                lot.state,
+                                label: switch (lot.state) {
+                                  PurchaseLotState.draft => l10n.statusDraft,
+                                  PurchaseLotState.submitted =>
+                                    l10n.statusSubmitted,
+                                  PurchaseLotState.approved =>
+                                    l10n.statusApproved,
+                                  PurchaseLotState.rejected =>
+                                    l10n.statusRejected,
+                                },
+                              ),
                             ],
                           ),
                         ],
@@ -455,7 +462,7 @@ class _PurchaseTile extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _MetricBlock(
-                        title: 'Type de carnet',
+                        title: l10n.purchasesCarnetType,
                         value: typeLabel,
                         icon: Icons.style_outlined,
                         accent: stateColor,
@@ -464,7 +471,7 @@ class _PurchaseTile extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _MetricBlock(
-                        title: 'Montant total',
+                        title: l10n.totalAmount,
                         value: Formatters.money(lot.totalAmount),
                         icon: Icons.payments_outlined,
                         accent: amountColor,
@@ -475,7 +482,7 @@ class _PurchaseTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 _MetricBlock(
-                  title: 'Date de validation',
+                  title: l10n.purchasesValidationDate,
                   value: validationLabel,
                   icon: Icons.event_available_outlined,
                   accent: stateColor,
@@ -519,7 +526,7 @@ class _PurchaseTile extends StatelessWidget {
                 ],
                 const SizedBox(height: 14),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: AlignmentDirectional.centerEnd,
                   child: Icon(
                     Icons.arrow_forward_rounded,
                     size: 18,
@@ -535,8 +542,8 @@ class _PurchaseTile extends StatelessWidget {
   }
 }
 
-String _purchaseTypeLabel(PurchaseLot lot) {
-  if (lot.lines.isEmpty) return 'Commande de carnets';
+String _purchaseTypeLabel(AppLocalizations l10n, PurchaseLot lot) {
+  if (lot.lines.isEmpty) return l10n.purchaseOrderTitle;
   final labels = lot.lines
       .map(
         (line) => Formatters.carnetTypeLabelFromServer(
@@ -547,7 +554,7 @@ String _purchaseTypeLabel(PurchaseLot lot) {
       )
       .where((label) => label.isNotEmpty && label != 'Carnet')
       .toList();
-  if (labels.isEmpty) return 'Carnet';
+  if (labels.isEmpty) return l10n.carnet;
   if (labels.length == 1) return labels.first;
   return '${labels.first} +${labels.length - 1}';
 }
@@ -611,7 +618,7 @@ class _MetricBlock extends StatelessWidget {
                   value,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: alignRight ? TextAlign.right : TextAlign.left,
+                  textAlign: alignRight ? TextAlign.end : TextAlign.start,
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,

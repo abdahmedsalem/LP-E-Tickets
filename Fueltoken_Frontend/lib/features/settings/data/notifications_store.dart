@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,11 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/notification_item.dart';
 
-/// Notifications utilisateur persistÃ©es localement, isolÃ©es par utilisateur.
+/// Notifications utilisateur persistées localement, isolées par utilisateur.
 ///
-/// Chaque utilisateur a sa propre clÃ© dans SharedPreferences :
+/// Chaque utilisateur a sa propre clé dans SharedPreferences :
 /// `ft_notifications_items_<userId>`. Le changement d'utilisateur (login /
-/// logout) vide la mÃ©moire et recharge depuis le bon slot.
+/// logout) vide la mémoire et recharge depuis le bon slot.
 class NotificationsStore extends ChangeNotifier {
   NotificationsStore._();
   static final NotificationsStore instance = NotificationsStore._();
@@ -31,19 +31,19 @@ class NotificationsStore extends ChangeNotifier {
     return '$_kItemsKeyPrefix$uid';
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Chargement user-scoped (mÃ©thode principale)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------------------------------------------------------------------
+  // Chargement user-scoped (methode principale)
+  // --------------------------------------------------------------------------
 
   /// Charge les notifications de [userId].
-  /// Si l'utilisateur change, vide la mÃ©moire et recharge depuis le bon slot.
+  /// Si l'utilisateur change, vide la mémoire et recharge depuis le bon slot.
   Future<void> loadForUser(String userId) async {
     if (_userId == userId && _loaded) {
       _recomputeUnread();
       return;
     }
 
-    // Changement d'utilisateur : purger la mÃ©moire
+    // Changement d'utilisateur : purger la mémoire
     if (_userId != userId) {
       _items.clear();
       _loaded = false;
@@ -61,9 +61,9 @@ class NotificationsStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// RÃ©initialisation Ã  la dÃ©connexion : purge la mÃ©moire et rÃ©initialise
-  /// l'ID utilisateur courant. Les donnÃ©es persistÃ©es restent dans SharedPrefs
-  /// et seront rechargÃ©es si l'utilisateur se reconnecte.
+  /// Réinitialisation à la déconnexion : purge la mémoire et réinitialise
+  /// l'ID utilisateur courant. Les données persistées restent dans SharedPrefs
+  /// et seront rechargées si l'utilisateur se reconnecte.
   Future<void> clearAndReset() async {
     _items.clear();
     _loaded = false;
@@ -87,21 +87,21 @@ class NotificationsStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // CompatibilitÃ© backward (appelÃ© depuis main.dart avant authentification)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------------------------------------------------------------------
+  // Compatibilite backward (appele depuis main.dart avant authentification)
+  // --------------------------------------------------------------------------
 
   Future<void> load() async {
     if (_userId != null) {
       return loadForUser(_userId!);
     }
-    // Pas encore d'utilisateur connu â€” ne rien charger
+    // Pas encore d'utilisateur connu — ne rien charger
     _recomputeUnread();
   }
 
   Future<void> migrateLegacyContent() async {
     if (!_loaded) {
-      // Ne pas charger sans userId â€” sera fait dans loadForUser
+      // Ne pas charger sans userId — sera fait dans loadForUser
       return;
     }
     final dateFixed = _backfillNotificationDatesIfNeeded();
@@ -120,12 +120,12 @@ class NotificationsStore extends ChangeNotifier {
     _recomputeUnread();
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------------------------------------------------------------------
   // CRUD
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------------------------------------------------------------------
 
   Future<void> add(NotificationItem item) async {
-    // Garantie : ne pas Ã©crire dans un store sans userId
+    // Garantie : ne pas écrire dans un store sans userId
     if (_userId == null) return;
 
     final existingIndex = _items.indexWhere((e) => e.id == item.id);
@@ -160,9 +160,9 @@ class NotificationsStore extends ChangeNotifier {
     }
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------------------------------------------------------------------
   // Internals
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------------------------------------------------------------------
 
   void _recomputeUnread() {
     unreadCount.value = _items.where((e) => !e.read).length;
@@ -263,25 +263,25 @@ class NotificationsStore extends ChangeNotifier {
     if (status == 'rejected') {
       final reason = rejectionReason?.trim();
       if (reason == null || reason.isEmpty) {
-        return '$amount â€¢ RejetÃ©e le $date';
+        return '$amount • Rejetée le $date';
       }
-      return '$amount â€¢ RejetÃ©e le $date â€¢ Motif: $reason';
+      return '$amount • Rejetée le $date • Motif: $reason';
     }
-    return '$amount â€¢ ValidÃ©e le $date';
+    return '$amount • Validée le $date';
   }
 
   (String amount, String date)? _extractPurchaseMeta(String body) {
     final normalized = body.trim();
 
     final modern = RegExp(
-      r'^(.+?)\s*[â€¢Â·]\s*(?:ValidÃ©e|RejetÃ©e) le\s*(.+?)(?:\s*[â€¢Â·]\s*Motif:.*)?$',
+      r'^(.+?)\s*[•·]\s*(?:Validée|Rejetée) le\s*(.+?)(?:\s*[•·]\s*Motif:.*)?$',
     ).firstMatch(normalized);
     if (modern != null) {
       return (modern.group(1)!.trim(), modern.group(2)!.trim());
     }
 
     final legacy = RegExp(
-      r'tickets pour\s+(.+?)\.\s+(?:ValidÃ©e|RejetÃ©e) le\s+(.+?)(?:\s*[â€¢Â·]\s*Motif:.*)?\.?$',
+      r'tickets pour\s+(.+?)\.\s+(?:Validée|Rejetée) le\s+(.+?)(?:\s*[•·]\s*Motif:.*)?\.?$',
       caseSensitive: false,
     ).firstMatch(normalized);
     if (legacy != null) {

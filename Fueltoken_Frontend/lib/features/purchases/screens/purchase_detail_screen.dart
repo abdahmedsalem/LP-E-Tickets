@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -26,6 +26,7 @@ import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -51,7 +52,7 @@ bool _isReasonableBusinessDate(DateTime date) {
 
 String _safeDateTimeDash(DateTime? date) {
   if (date == null || !_isReasonableBusinessDate(date)) {
-    return 'Non renseignée';
+    return '—';
   }
   return Formatters.dateTimeDash(date);
 }
@@ -99,7 +100,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       setState(() {
         _lot = null;
         _loading = false;
-        _loadError = 'Session requise.';
+        _loadError = AppLocalizations.of(context).commonSessionRequired;
       });
       return;
     }
@@ -110,8 +111,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         setState(() {
           _lot = null;
           _loading = false;
-          _loadError =
-              'Cette commande ne peut pas être ouverte. Vérifiez le lien ou réessayez.';
+          _loadError = AppLocalizations.of(context).purchaseCannotOpen;
         });
         return;
       }
@@ -194,16 +194,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _loadError = e.isOdooSessionExpired
-              ? 'Session expirée. Reconnectez-vous.'
-              : ErrorPresenter.message(e);
+          _loadError = ErrorPresenter.localizedMessage(context, e);
           _lot = null;
         });
       } catch (e) {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _loadError = ErrorPresenter.message(e);
+          _loadError = ErrorPresenter.localizedMessage(context, e);
           _lot = null;
         });
       }
@@ -212,7 +210,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     setState(() {
       _loading = false;
-      _loadError = 'Connexion serveur ACPEC requise pour afficher ce lot.';
+      _loadError = AppLocalizations.of(context).commonServerUnavailable;
       _lot = null;
     });
   }
@@ -259,13 +257,15 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   String _briefPurchaseActionError(Object e) {
     if (ErrorPresenter.isBackendUnavailable(e)) {
-      return _unconfirmedPurchaseActionMessage;
+      return Localizations.localeOf(context).languageCode == 'ar'
+          ? AppLocalizations.of(context).purchaseUnconfirmed
+          : _unconfirmedPurchaseActionMessage;
     }
     final message = ErrorPresenter.message(e).trim();
     if (message.length > 160 ||
         message.contains('Traceback') ||
         message.contains('Exception(')) {
-      return 'L’opération n’a pas abouti. Réessayez ou reconnectez-vous.';
+      return AppLocalizations.of(context).purchaseOperationFailed;
     }
     return message;
   }
@@ -282,7 +282,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (mounted) {
           AppMessage.error(
             context,
-            'Impossible d\'effectuer cette action pour cette commande.',
+            AppLocalizations.of(context).purchaseActionUnavailable,
           );
         }
         return;
@@ -372,13 +372,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     if (mounted) {
       AppMessage.error(
         context,
-        'Connexion serveur ACPEC requise pour valider ce lot.',
+        AppLocalizations.of(context).commonServerUnavailable,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final user = context.read<AuthBloc>().state.user;
     final isAdmin = user?.role == UserRole.admin;
@@ -415,7 +416,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ScreenHeader(title: 'Détail de la commande', onBack: _handleBack),
+            ScreenHeader(title: l10n.purchaseDetailTitle, onBack: _handleBack),
             Expanded(
               child: _loading
                   ? ListView(
@@ -458,7 +459,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           child: FilledButton.tonalIcon(
                             onPressed: _refresh,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Réessayer'),
+                            label: Text(l10n.commonRetry),
                           ),
                         ),
                       ],
@@ -469,7 +470,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       padding: const EdgeInsets.all(24),
                       children: [
                         SizedBox(height: 48),
-                        Center(child: Text('Commande introuvable.')),
+                        Center(child: Text(l10n.purchaseNotFound)),
                       ],
                     )
                   : RefreshIndicator(
@@ -494,13 +495,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                             _RejectionCard(reason: _lot!.rejectionReason!),
                           ],
                           const SizedBox(height: 20),
-                          const SectionLabel('Informations'),
+                          SectionLabel(l10n.purchaseInformation),
                           _MetaCard(lot: _lot!),
                           const SizedBox(height: 20),
-                          const SectionLabel('Lignes de commande'),
+                          SectionLabel(l10n.purchaseOrderLines),
                           _LinesCard(lot: _lot!),
                           const SizedBox(height: 20),
-                          const SectionLabel('Preuves de paiement'),
+                          SectionLabel(l10n.purchasePaymentProofs),
                           _ProofsSection(lot: _lot!),
                         ],
                       ),
@@ -635,7 +636,7 @@ class _MetaCard extends StatelessWidget {
         children: [
           _InfoRow(
             icon: Icons.flag_outlined,
-            label: 'Statut',
+            label: AppLocalizations.of(context).status,
             value: lot.state.label,
             trailing: Icon(
               lot.state == PurchaseLotState.approved
@@ -653,36 +654,36 @@ class _MetaCard extends StatelessWidget {
           ),
           _InfoRow(
             icon: Icons.person_outline,
-            label: 'Acheteur',
+            label: AppLocalizations.of(context).buyer,
             value: lot.clientName,
           ),
           if (lot.paymentReference != null &&
               lot.paymentReference!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.tag_outlined,
-              label: 'Référence de paiement',
+              label: AppLocalizations.of(context).paymentReference,
               value: lot.paymentReference!.trim(),
             ),
           _InfoRow(
             icon: Icons.schedule_outlined,
-            label: 'Soumis le',
+            label: AppLocalizations.of(context).submittedOn,
             value: _safeDateTimeDash(lot.submittedAt ?? lot.createdAt),
           ),
           _InfoRow(
             icon: Icons.event_outlined,
-            label: 'Expiration des tickets',
+            label: AppLocalizations.of(context).ticketsExpiration,
             value: _safeDateTimeDash(lot.expirationDate),
           ),
           if (lot.validationDate != null)
             _InfoRow(
               icon: Icons.verified_outlined,
-              label: 'Validé le',
+              label: AppLocalizations.of(context).validatedOn,
               value: Formatters.dateTimeDash(lot.validationDate!),
             ),
           if (lot.validatorName != null && lot.validatorName!.trim().isNotEmpty)
             _InfoRow(
               icon: Icons.badge_outlined,
-              label: 'Validé par',
+              label: AppLocalizations.of(context).validatedBy,
               value: lot.validatorName!.trim(),
             ),
         ],
@@ -786,7 +787,7 @@ class _RejectionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Motif de rejet',
+                      AppLocalizations.of(context).rejectionReason,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -824,8 +825,8 @@ class _LinesCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Text(
           AppEnvironment.useAcpecLiveData
-              ? 'Le serveur n?a pas renvoy? de lignes pour cette commande. V?rifiez que la commande existe et vous appartient.'
-              : 'Aucune ligne pour ce lot.',
+              ? AppLocalizations.of(context).purchaseNoLines
+              : AppLocalizations.of(context).purchaseNoLines,
           style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -909,9 +910,9 @@ class _LinesCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Text(
-                  'Total commande',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context).purchaseTotal,
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF2E7D32),
                   ),
@@ -955,11 +956,11 @@ class _ProofsSection extends StatelessWidget {
     final pathLooksLikeFile = looksLikeAttachmentFilename(path);
 
     if (items.isEmpty && (path == null || path.isEmpty || !pathLooksLikeFile)) {
-      return const AppCard(
-        padding: EdgeInsets.all(16),
+      return AppCard(
+        padding: const EdgeInsets.all(16),
         child: Text(
-          'Aucune preuve de paiement jointe à cette commande.',
-          style: TextStyle(
+          AppLocalizations.of(context).purchaseNoProof,
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
             height: 1.35,
@@ -972,7 +973,7 @@ class _ProofsSection extends StatelessWidget {
         ? items
         : [
             PurchaseProofSummary(
-              label: 'Preuve de paiement',
+              label: AppLocalizations.of(context).purchaseProofTitle,
               filename: path,
               url: path,
               mimeType: null,
@@ -1034,7 +1035,10 @@ class _ProofTile extends StatelessWidget {
       final bytes = await _resolveBytes();
       if (bytes == null || bytes.isEmpty) {
         if (context.mounted) {
-          AppMessage.error(context, 'Téléchargement indisponible.');
+          AppMessage.error(
+            context,
+            AppLocalizations.of(context).purchaseDownloadUnavailable,
+          );
         }
         return;
       }
@@ -1049,7 +1053,10 @@ class _ProofTile extends StatelessWidget {
       }
     } catch (_) {
       if (context.mounted) {
-        AppMessage.error(context, 'Impossible de télécharger la preuve.');
+        AppMessage.error(
+          context,
+          AppLocalizations.of(context).purchaseProofDownloadFailed,
+        );
       }
     }
   }
@@ -1065,10 +1072,10 @@ class _ProofTile extends StatelessWidget {
             appBar: AppBar(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
-              title: const Text('Preuve de paiement'),
+              title: Text(AppLocalizations.of(context).purchaseProofTitle),
               actions: [
                 IconButton(
-                  tooltip: 'Télécharger',
+                  tooltip: AppLocalizations.of(context).commonDownload,
                   onPressed: () async {
                     await _downloadProof(ctx);
                   },
@@ -1103,7 +1110,7 @@ class _ProofTile extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () => Navigator.pop(ctx),
                             icon: const Icon(Icons.close_rounded),
-                            label: const Text('Fermer'),
+                            label: Text(AppLocalizations.of(ctx).commonClose),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
                               side: BorderSide(

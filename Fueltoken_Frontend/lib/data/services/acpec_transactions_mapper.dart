@@ -468,14 +468,14 @@ class AcpecTransactionsMapper {
     );
   }
 
-  /// RÃ©ponse route `â€¦/transactions/detail` (`transaction_id`).
+  /// Réponse route `.../transactions/detail` (`transaction_id`).
   static BusinessTransaction parseDetail(
     dynamic raw, {
     required String userId,
     required String userName,
   }) {
     if (raw is! Map) {
-      throw Exception('RÃ©ponse dÃ©tail transaction invalide.');
+      throw Exception('Réponse détail transaction invalide.');
     }
     var root = Map<String, dynamic>.from(raw);
     _ensureOk(root);
@@ -1175,7 +1175,7 @@ class AcpecTransactionsMapper {
     final s = v?.toString().toLowerCase().trim() ?? '';
     if (s.isEmpty) return TxType.walletLedger;
 
-    // Plus spÃ©cifique dâ€™abord (sous-chaÃ®nes ambiguÃ«s Â« qr Â»).
+    // Plus specifique d'abord (sous-chaines ambigues « qr »).
     if (s.contains('expir') ||
         s.contains('expired') ||
         s == 'expire' ||
@@ -1186,7 +1186,7 @@ class AcpecTransactionsMapper {
         (s.contains('qr') || s.contains('code'))) {
       return TxType.qrSeparer;
     }
-    if (s.contains('separer') || s.contains('sÃ©parer') || s == 'separer_qr') {
+    if (s.contains('separer') || s.contains('séparer') || s == 'separer_qr') {
       return TxType.qrSeparer;
     }
     if (s.contains('retirer') ||

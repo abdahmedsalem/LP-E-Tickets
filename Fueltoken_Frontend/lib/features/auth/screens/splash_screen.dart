@@ -8,6 +8,7 @@ import '../../../core/config/app_brand_config.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_role.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -81,6 +82,12 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } else {
       if (!mounted) return;
+      final hasSelectedLanguage = await AppPreferences.hasSelectedLanguage();
+      if (!mounted) return;
+      if (!hasSelectedLanguage) {
+        context.go('/language-selection');
+        return;
+      }
       final pendingSignup = await PendingSignupStore.loadUsable();
       if (!mounted) return;
       if (pendingSignup != null) {
@@ -155,9 +162,9 @@ class _SplashScreenState extends State<SplashScreen>
                               child: const Center(child: FuelMark(size: 62)),
                             ),
                             const SizedBox(height: 24),
-                            const Text(
-                              'Tickets Carburant',
-                              style: TextStyle(
+                            Text(
+                              AppLocalizations.of(context).authBrandName,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
@@ -165,7 +172,9 @@ class _SplashScreenState extends State<SplashScreen>
                                 height: 1,
                               ),
                             ),
-                            if (AppBrandConfig.operatorTagline.isNotEmpty) ...[
+                            if (Localizations.localeOf(context).languageCode !=
+                                    'ar' &&
+                                AppBrandConfig.operatorTagline.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(
                                 AppBrandConfig.operatorTagline,
@@ -178,7 +187,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ],
                             const SizedBox(height: 60),
                             Text(
-                              'Bons carburant traçables',
+                              AppLocalizations.of(context).authSplashTagline,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.7),
                                 fontSize: 12,

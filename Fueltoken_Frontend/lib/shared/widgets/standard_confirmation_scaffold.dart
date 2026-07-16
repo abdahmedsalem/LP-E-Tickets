@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'screen_header.dart';
 
 class StandardConfirmationScaffold extends StatelessWidget {
@@ -96,9 +97,9 @@ class StandardConfirmationScaffold extends StatelessWidget {
                 height: 44,
                 child: TextButton(
                   onPressed: confirming ? null : onCancel,
-                  child: const Text(
-                    'Annuler',
-                    style: TextStyle(
+                  child: Text(
+                    AppLocalizations.of(context).commonCancel,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.muted,

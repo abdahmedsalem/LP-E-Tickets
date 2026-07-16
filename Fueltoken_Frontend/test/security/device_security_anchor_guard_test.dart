@@ -27,10 +27,10 @@ void main() {
         source,
         contains('final deviceBlocked = user?.isDeviceBlocked == true;'),
       );
-      expect(source, contains('Appareil bloqué'));
-      expect(source, contains('Contactez l’administrateur'));
-      expect(source, contains('Vérifier à nouveau'));
-      expect(source, contains('Activation en attente'));
+      expect(source, contains('l10n.authDeviceBlocked'));
+      expect(source, contains('l10n.authDeviceBlockedMessage'));
+      expect(source, contains('l10n.authCheckAgain'));
+      expect(source, contains('l10n.authActivationPending'));
     });
 
     test('session business auth codes stay strict and backend-confirmed', () {

@@ -12,8 +12,8 @@ void main() {
         final source = _read('lib/features/station/screens/scan_screen.dart');
 
         expect(source, contains('ErrorPresenter.isBackendUnavailable(e)'));
-        expect(source, contains('Vérification impossible'));
-        expect(source, contains('Retour au scan'));
+        expect(source, contains('stationVerificationImpossible'));
+        expect(source, contains('stationBackToScan'));
         expect(source, contains('_restartScannerAfterModal();'));
         expect(source, isNot(contains('on OdooJsonRpcException catch')));
       },
@@ -25,8 +25,8 @@ void main() {
       );
 
       expect(source, contains('ErrorPresenter.isBackendUnavailable(e)'));
-      expect(source, contains('Vérification impossible'));
-      expect(source, contains('Retour à la saisie'));
+      expect(source, contains('stationVerificationImpossible'));
+      expect(source, contains('stationBackToEntry'));
       expect(source, contains("if (mounted && !technical)"));
       expect(source, contains("context.go('/station/home')"));
     });

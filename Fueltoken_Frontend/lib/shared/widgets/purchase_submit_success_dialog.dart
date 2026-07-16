@@ -5,6 +5,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/acpec_purchase_create_result.dart';
 import '../../features/purchases/screens/purchase_confirmation_screen.dart';
 import '../../features/qr/screens/transfer_confirmation_screen.dart';
+import '../../l10n/app_localizations.dart';
 import 'amount_inline.dart';
 import 'quantity_circle_badge.dart';
 import 'qr_generation_carnet_line.dart';
@@ -33,7 +34,8 @@ Future<void> showTransferSuccessDialog(
   required DateTime confirmedAt,
   required String recipientName,
   List<TransferConfirmationLine> lines = const [],
-  String linesTitle = 'Carnets transférés',
+  String? linesTitle,
+  bool showQuantity = false,
 }) {
   return Navigator.of(context, rootNavigator: true).push<void>(
     MaterialPageRoute(
@@ -43,6 +45,7 @@ Future<void> showTransferSuccessDialog(
         recipientName: recipientName,
         lines: lines,
         linesTitle: linesTitle,
+        showQuantity: showQuantity,
       ),
     ),
   );
@@ -99,20 +102,21 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _SuccessScaffold(
-      title: 'Commande de carnets enregistrée',
-      message: 'Votre commande de carnets est en attente de validation.',
+      title: l10n.purchaseSuccessTitle,
+      message: l10n.purchaseSuccessMessage,
       icon: Icons.check_circle_rounded,
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _PurchasedLinesSection(lines: lines),
       rows: [
         _SuccessRowData(
-          label: 'Montant total',
+          label: l10n.totalAmount,
           value: _totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
         _SuccessRowData(
-          label: 'Date',
+          label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
         ),
@@ -128,41 +132,48 @@ class TransferSuccessScreen extends StatelessWidget {
     required this.confirmedAt,
     required this.recipientName,
     this.lines = const [],
-    this.linesTitle = 'Carnets transférés',
+    this.linesTitle,
+    this.showQuantity = false,
   });
 
   final int totalAmount;
   final DateTime confirmedAt;
   final String recipientName;
   final List<TransferConfirmationLine> lines;
-  final String linesTitle;
+  final String? linesTitle;
+  final bool showQuantity;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _SuccessScaffold(
-      title: 'Transfert confirmé',
+      title: l10n.transferSuccessTitle,
       icon: Icons.check_circle_rounded,
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty
           ? null
           : _TransferredLinesSection(
               lines: lines,
-              title: linesTitle,
-              showQuantity: linesTitle.toLowerCase().contains('ticket'),
+              title:
+                  linesTitle ??
+                  (showQuantity
+                      ? l10n.transferredTickets
+                      : l10n.transferredCarnets),
+              showQuantity: showQuantity,
             ),
       rows: [
         _SuccessRowData(
-          label: 'Bénéficiaire',
+          label: l10n.beneficiary,
           value: recipientName,
           valueColor: AppColors.ink,
         ),
         _SuccessRowData(
-          label: 'Montant total',
+          label: l10n.totalAmount,
           value: totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
         _SuccessRowData(
-          label: 'Date',
+          label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
         ),
@@ -187,20 +198,21 @@ class QrGenerationSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _SuccessScaffold(
-      title: 'QR généré',
-      message: 'Votre QR est disponible dans la liste des QR.',
+      title: l10n.qrGeneratedTitle,
+      message: l10n.qrGeneratedMessage,
       icon: Icons.qr_code_2_rounded,
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _GeneratedQrLinesSection(lines: lines),
       rows: [
         _SuccessRowData(
-          label: 'Montant total',
+          label: l10n.totalAmount,
           value: totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
         _SuccessRowData(
-          label: 'Date',
+          label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
         ),
@@ -320,9 +332,9 @@ class _SuccessScaffold extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    "Retour à l'accueil",
-                    style: TextStyle(
+                  child: Text(
+                    AppLocalizations.of(context).returnHome,
+                    style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
                       color: Colors.white,
@@ -345,6 +357,7 @@ class _PurchasedLinesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
@@ -357,7 +370,7 @@ class _PurchasedLinesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Carnets commandés',
+            l10n.purchasedCarnets,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -471,6 +484,7 @@ class _GeneratedQrLinesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
@@ -483,7 +497,7 @@ class _GeneratedQrLinesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Carnets utilisés',
+            l10n.usedCarnets,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -514,22 +528,21 @@ class _GeneratedQrLineRow extends StatelessWidget {
 
   final QrGenerationSuccessLine line;
 
-  String _carnetLabel() {
+  String _carnetLabel(AppLocalizations l10n) {
     final raw = line.label.trim();
-    if (raw.isEmpty) return 'Carnet';
+    if (raw.isEmpty) return l10n.carnet;
     return raw.replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), '');
   }
 
-  String _title() {
-    final qtyLabel =
-        '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}';
-    return '$qtyLabel de carnet ${_carnetLabel()}';
+  String _title(AppLocalizations l10n) {
+    return l10n.ticketsFromCarnet(line.qty, _carnetLabel(l10n));
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return QrGenerationCarnetLine(
-      title: _title(),
+      title: _title(l10n),
       amount: line.totalAmount,
       expirationDate: line.expirationDate,
     );
@@ -567,10 +580,10 @@ class _PurchasedLineRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   _carnetTypeLabel(),
                   maxLines: 1,
@@ -600,10 +613,10 @@ class _PurchasedLineRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: AmountInline(
                 amount: line.totalAmount,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
               ),
             ),
           ),
@@ -636,10 +649,7 @@ class _SummaryRow extends StatelessWidget {
   final String value;
   final Color valueColor;
 
-  bool _isAmountRow() {
-    final normalized = label.toLowerCase();
-    return normalized.contains('montant');
-  }
+  bool _isAmountRow() => RegExp(r'^\d+$').hasMatch(value.trim());
 
   @override
   Widget build(BuildContext context) {
@@ -660,13 +670,10 @@ class _SummaryRow extends StatelessWidget {
         Expanded(
           flex: 2,
           child: _isAmountRow()
-              ? AmountInline(
-                  amount: int.parse(value),
-                  textAlign: TextAlign.right,
-                )
+              ? AmountInline(amount: int.parse(value), textAlign: TextAlign.end)
               : Text(
                   value,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,

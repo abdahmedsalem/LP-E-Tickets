@@ -55,8 +55,8 @@ void main() {
     expect(transactions, contains('child: txs.isEmpty'));
     expect(transactions, contains('EmptyState('));
     expect(transactions, contains('TransactionsScreenMode.wallet'));
-    expect(transactions, contains("return 'Historique des opérations';"));
-    expect(transactions, contains("return 'Mouvements du portefeuille';"));
+    expect(transactions, contains('return l10n.transactionsHistoryTitle;'));
+    expect(transactions, contains('return l10n.walletMovementsTitle;'));
   });
 
   test('EmptyState owns the shared size and positioning rules', () {

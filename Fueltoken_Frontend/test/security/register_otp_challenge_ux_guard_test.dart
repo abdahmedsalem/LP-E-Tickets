@@ -38,10 +38,7 @@ void main() {
         );
 
         expect(source, contains('challengeId == null || challengeId <= 0'));
-        expect(
-          source,
-          contains('Le serveur n’a pas confirmé le code SMS. Réessayez.'),
-        );
+        expect(source, contains('authSmsNotConfirmed'));
 
         expect(extractor, contains("dataMap['otp_challenge_id']"));
         expect(extractor, contains("dataMap['challenge_id']"));
@@ -62,11 +59,8 @@ void main() {
           contains("import '../../../data/services/odoo_jsonrpc_client.dart';"),
         );
         expect(source, contains('error is OdooJsonRpcException'));
-        expect(
-          source,
-          contains('Code SMS introuvable, expiré ou déjà utilisé.'),
-        );
-        expect(source, contains('Référence support :'));
+        expect(source, contains('authOtpMissingExpired'));
+        expect(source, contains('supportReference(ref)'));
         expect(source, isNot(contains('debug_reason')));
       },
     );

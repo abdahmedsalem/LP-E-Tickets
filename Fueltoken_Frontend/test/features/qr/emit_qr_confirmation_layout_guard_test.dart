@@ -33,7 +33,7 @@ void main() {
     final sectionSource = source.substring(sectionStart, sectionEnd);
 
     expect(source, isNot(contains("title: 'Tickets à générer'")));
-    expect(sectionSource, contains("'Carnets utilisés'"));
+    expect(sectionSource, contains('l10n.usedCarnets'));
     expect(sectionSource, contains('fontSize: 16'));
     expect(sectionSource, contains('fontWeight: FontWeight.w800'));
   });

@@ -16,14 +16,17 @@ void main() {
 
     expect(
       source,
-      contains('_TxLineTitle(\n                  title: _lineTypeLabel()'),
+      contains('_TxLineTitle(\n                  title: _lineTypeLabel(l10n)'),
     );
     expect(
       source,
-      contains('_TxLineTitle(\n                  title: _qrTitle()'),
+      contains('_TxLineTitle(\n                  title: _qrTitle(l10n)'),
     );
     expect(widgetSource, contains('fit: BoxFit.scaleDown'));
-    expect(widgetSource, contains('alignment: Alignment.centerLeft'));
+    expect(
+      widgetSource,
+      contains('alignment: AlignmentDirectional.centerStart'),
+    );
     expect(widgetSource, contains('maxLines: 1'));
     expect(widgetSource, contains('softWrap: false'));
     expect(widgetSource, isNot(contains('TextOverflow.ellipsis')));

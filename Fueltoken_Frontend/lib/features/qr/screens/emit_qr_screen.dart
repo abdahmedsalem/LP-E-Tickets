@@ -25,6 +25,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -61,6 +62,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   Future<void> _loadLiveFaces() async {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     setState(() {
@@ -88,21 +90,26 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       setState(() {
         _liveLoading = false;
         _liveError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _liveLoading = false;
-        _liveError = ErrorPresenter.message(e);
+        _liveError = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
 
   String _qrIssueErrorMessage(Object error) {
+    if (Localizations.localeOf(context).languageCode == 'ar') {
+      return ErrorPresenter.localizedMessage(context, error);
+    }
     if (ErrorPresenter.isBackendUnavailable(error)) {
-      return _unconfirmedQrIssueMessage;
+      return Localizations.localeOf(context).languageCode == 'ar'
+          ? AppLocalizations.of(context).qrUnconfirmed
+          : _unconfirmedQrIssueMessage;
     }
 
     final message = ErrorPresenter.message(error).trim();
@@ -224,6 +231,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
       return Scaffold(
@@ -233,7 +241,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Génération de QR',
+                title: l10n.qrGenerationTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -243,7 +251,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   padding: EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
                     Text(
-                      'Sélectionnez les carnets à inclure dans le QR.',
+                      l10n.qrGenerationSelectInstruction,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -273,7 +281,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Génération de QR',
+                title: l10n.qrGenerationTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -283,7 +291,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
                     Text(
-                      'Sélectionnez les carnets à inclure dans le QR.',
+                      l10n.qrGenerationSelectInstruction,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -310,7 +318,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Génération de QR',
+                title: l10n.qrGenerationTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -320,7 +328,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
                     Text(
-                      'Sélectionnez les carnets à inclure dans le QR.',
+                      l10n.qrGenerationSelectInstruction,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -350,7 +358,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Génération de QR',
+                title: l10n.qrGenerationTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -369,7 +377,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: _loadLiveFaces,
-                          child: const Text('Réessayer'),
+                          child: Text(l10n.commonRetry),
                         ),
                       ],
                     ),
@@ -407,7 +415,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ScreenHeader(
-              title: 'Génération de QR',
+              title: l10n.qrGenerationTitle,
               onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
@@ -417,7 +425,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 130),
                       children: [
                         Text(
-                          'Choisissez un carnet et une quantité.',
+                          l10n.qrGenerationChooseInstruction,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w400,
@@ -452,11 +460,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                         const SizedBox(height: 8),
                       ],
                     )
-                  : const EmptyState(
+                  : EmptyState(
                       icon: Icons.layers_clear_outlined,
-                      title: 'Aucun ticket disponible',
-                      message:
-                          'Soumettez un achat de tickets et attendez la validation pour générer un QR.',
+                      title: l10n.qrGenerationEmptyTitle,
+                      message: l10n.qrGenerationEmptyMessage,
                     ),
             ),
           ],
@@ -466,6 +473,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   Future<void> _confirmEmit(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
 
@@ -474,7 +482,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         .where((line) => (_request[line.id] ?? 0) > 0)
         .toList();
     if (selectedLines.isEmpty) {
-      AppMessage.warning(context, 'Sélectionnez au moins un carnet.');
+      AppMessage.warning(context, l10n.qrGenerationSelectAtLeastOne);
       return;
     }
 
@@ -499,8 +507,8 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
-            title: 'Confirmer la génération',
-            confirmLabel: 'Générer le QR',
+            title: l10n.qrGenerationConfirmTitle,
+            confirmLabel: l10n.qrGenerateButton,
             showHero: false,
             hero: _EmitConfirmationHero(
               totalQty: totalQty,
@@ -516,8 +524,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
               ],
             ),
             summaryRows: const [],
-            disclaimer:
-                'La génération de QR se fera à partir des carnets sélectionnés.',
+            disclaimer: l10n.qrGenerationDisclaimer,
           ),
         ),
       ),
@@ -574,6 +581,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     required int totalAmount,
     required List<QrGenerationSuccessLine> successLines,
   }) async {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     setState(() => _emitting = true);
@@ -591,8 +599,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         final guarded = acpecRpcMapOrThrow(
           raw,
           fallbackMessage: 'Génération de QR refusée par le serveur.',
-          publicErrorMessage:
-              "La génération de QR a échoué. Réessayez ou contactez l'administrateur.",
+          publicErrorMessage: l10n.qrGenerationFailed,
         );
         final transactionReference =
             guarded['transaction_reference']?.toString().trim().isNotEmpty ==
@@ -662,6 +669,7 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final disabled = onEmit == null;
     return Container(
       width: double.infinity,
@@ -681,7 +689,7 @@ class _BottomBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'MONTANT TOTAL QR',
+                  l10n.qrGenerationTotal.toUpperCase(),
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 9,
@@ -692,7 +700,7 @@ class _BottomBar extends StatelessWidget {
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: _AmountInline(
                     amount: totalAmount,
                     valueStyle: TextStyle(
@@ -730,9 +738,9 @@ class _BottomBar extends StatelessWidget {
               ),
               child: emitting
                   ? const AppInlineLoading(size: 20)
-                  : const Text(
-                      'Générer',
-                      style: TextStyle(
+                  : Text(
+                      l10n.qrGenerate,
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -795,19 +803,20 @@ class _CompositionRowState extends State<_CompositionRow> {
     return Formatters.numberFr(widget.available);
   }
 
-  String _referenceCode() {
+  String _referenceCode(AppLocalizations l10n) {
     final code = widget.referenceCode.trim();
-    return code.isNotEmpty ? code : 'Code carnet indisponible';
+    return code.isNotEmpty ? code : l10n.carnetCodeUnavailable;
   }
 
-  String _expirationLabel() {
+  String _expirationLabel(AppLocalizations l10n) {
     final expirationDate = widget.expirationDate;
-    if (expirationDate == null) return 'Non disponible';
-    return 'Expire le ${Formatters.dateTimeDash(expirationDate)}';
+    if (expirationDate == null) return l10n.notAvailable;
+    return l10n.expiresOn(Formatters.dateTimeDash(expirationDate));
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isSelected = widget.selected > 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -824,7 +833,7 @@ class _CompositionRowState extends State<_CompositionRow> {
               Stack(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(right: 112),
+                    padding: const EdgeInsetsDirectional.only(end: 112),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -841,7 +850,7 @@ class _CompositionRowState extends State<_CompositionRow> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _expirationLabel(),
+                          _expirationLabel(l10n),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -855,12 +864,12 @@ class _CompositionRowState extends State<_CompositionRow> {
                     ),
                   ),
                   Align(
-                    alignment: Alignment.topRight,
+                    alignment: AlignmentDirectional.topEnd,
                     child: Text(
                       _availabilityLabel(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
+                      textAlign: TextAlign.end,
                       style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
@@ -878,7 +887,7 @@ class _CompositionRowState extends State<_CompositionRow> {
               Row(
                 children: [
                   Text(
-                    'Quantité',
+                    l10n.purchaseQuantity,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -915,8 +924,8 @@ class _CompositionRowState extends State<_CompositionRow> {
                         child: OverviewInfoCard(
                           items: [
                             OverviewInfoItem(
-                              label: 'Code de référence',
-                              value: _referenceCode(),
+                              label: l10n.referenceCode,
+                              value: _referenceCode(l10n),
                             ),
                           ],
                         ),
@@ -1023,6 +1032,7 @@ class _EmitConfirmationHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Container(
@@ -1043,8 +1053,8 @@ class _EmitConfirmationHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Montant total QR',
+              Text(
+                l10n.qrGenerationTotal,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w400,
@@ -1067,7 +1077,7 @@ class _EmitConfirmationHero extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                '$totalQty ticket${totalQty > 1 ? 's' : ''}',
+                l10n.ticketCount(totalQty),
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -1101,6 +1111,7 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final totalAmount = lines.fold<int>(
       0,
       (sum, line) => sum + (line.faceValue * (request[line.id] ?? 0)),
@@ -1118,7 +1129,7 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Carnets utilisés',
+            l10n.usedCarnets,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -1162,7 +1173,7 @@ class _EmitConfirmationTotalRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Montant total',
+            AppLocalizations.of(context).totalAmount,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -1172,7 +1183,7 @@ class _EmitConfirmationTotalRow extends StatelessWidget {
         ),
         _AmountInline(
           amount: totalAmount,
-          textAlign: TextAlign.right,
+          textAlign: TextAlign.end,
           valueStyle: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
@@ -1202,23 +1213,22 @@ class _EmitConfirmationLineRow extends StatelessWidget {
   final int faceValue;
   final DateTime expirationDate;
 
-  String _title() {
-    final qtyLabel =
-        '${Formatters.numberFr(selectedQty)} ticket${selectedQty > 1 ? 's' : ''}';
+  String _title(AppLocalizations l10n) {
     final carnetLabel = label.trim().isNotEmpty
         ? label.trim().replaceFirst(
             RegExp(r'^Carnet\s+', caseSensitive: false),
             '',
           )
-        : 'Carnet';
-    return '$qtyLabel de carnet $carnetLabel';
+        : l10n.carnet;
+    return l10n.ticketsFromCarnet(selectedQty, carnetLabel);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final amount = selectedQty * faceValue;
     return QrGenerationCarnetLine(
-      title: _title(),
+      title: _title(l10n),
       amount: amount,
       expirationDate: expirationDate,
     );
@@ -1230,7 +1240,7 @@ class _AmountInline extends StatelessWidget {
     required this.amount,
     required this.valueStyle,
     required this.unitStyle,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.start,
   });
 
   final int amount;

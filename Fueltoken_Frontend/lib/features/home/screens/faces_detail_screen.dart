@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/auth/auth_session_host.dart';
@@ -12,6 +12,7 @@ import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
@@ -157,15 +158,13 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       }
       setState(() {
         _liveLoading = false;
-        _liveError = ErrorPresenter.message(e);
+        _liveError = ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _liveLoading = false;
-        _liveError = ErrorPresenter.isBackendUnavailable(e)
-            ? ErrorPresenter.backendUnavailable()
-            : ErrorPresenter.message(e);
+        _liveError = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
@@ -255,14 +254,14 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 
     final carnetSize = _carnetSizeFor(line);
     if (carnetSize > 0) {
-      return Formatters.carnetTypeLabel(
-        carnetSize,
-        line.faceValue,
-        currency: _currencyFor(line),
+      return AppLocalizations.of(context).carnetTypeFallback(
+        Formatters.numberFr(carnetSize),
+        Formatters.numberFr(line.faceValue),
+        _currencyFor(line),
       );
     }
 
-    return 'Carnet';
+    return AppLocalizations.of(context).carnet;
   }
 
   String _currencyFor(FaceLine line) {
@@ -308,7 +307,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       return fallback;
     }
 
-    return 'Code carnet indisponible';
+    return AppLocalizations.of(context).carnetCodeUnavailable;
   }
 
   String _carnetFullNoFor(FaceLine line) {
@@ -317,6 +316,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 
   // ignore: unused_element
   Future<void> _openCarnetDetail(FaceLine line) async {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final bottom = MediaQuery.paddingOf(context).bottom;
     final availableQty = line.availableQty;
@@ -326,17 +326,17 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     final expiredQty = line.expiredQty;
     final displayQty = line.isExpired ? expiredQty : availableQty;
     final stateLabel = line.isExpired
-        ? 'Expiré'
+        ? l10n.carnetStatusExpired
         : availableQty > 0
-        ? 'Disponible'
-        : 'Indisponible';
+        ? l10n.carnetStatusAvailable
+        : l10n.carnetStatusUnavailable;
     final stateColor = line.isExpired
         ? AppColors.danger
         : availableQty > 0
         ? AppColors.success
         : AppColors.warning;
     final carnetCode = _carnetDisplayCodeFor(line);
-    final carnetTitle = 'Carnet $carnetCode';
+    final carnetTitle = '${l10n.carnet} $carnetCode';
     final carnetTypeLabel = _carnetTypeLabelFor(line);
     final fullCarnetNo = _carnetFullNoFor(line);
     final carnetSize = _carnetSizeFor(line);
@@ -446,6 +446,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
       // Keep the page shell visible while the session is not ready yet.
@@ -456,7 +457,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             physics: AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              const _HistoryAlignedPageHeader(title: 'Mes carnets'),
+              _HistoryAlignedPageHeader(title: l10n.carnetsTitle),
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -483,7 +484,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              const _HistoryAlignedPageHeader(title: 'Mes carnets'),
+              _HistoryAlignedPageHeader(title: l10n.carnetsTitle),
               const SizedBox(height: 18),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -514,7 +515,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              const _HistoryAlignedPageHeader(title: 'Mes carnets'),
+              _HistoryAlignedPageHeader(title: l10n.carnetsTitle),
               const SizedBox(height: 18),
               if (_liveLines.isNotEmpty) ...[
                 // Summary cards only show once live data has been loaded.
@@ -570,12 +571,12 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                   ? [
                       EmptyState(
                         icon: Icons.cloud_off_outlined,
-                        title: "Erreur de chargement",
+                        title: l10n.carnetsLoadError,
                         message: _liveError!,
                         action: FilledButton.tonalIcon(
                           onPressed: _loadLiveFaces,
                           icon: const Icon(Icons.refresh_rounded),
-                          label: const Text("Reessayer"),
+                          label: Text(l10n.commonRetry),
                         ),
                       ),
                     ]
@@ -583,8 +584,8 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                   ? [
                       EmptyState(
                         icon: Icons.layers_outlined,
-                        title: "Aucun carnet",
-                        message: "Vous n'avez encore aucun carnet disponible.",
+                        title: l10n.carnetsEmptyTitle,
+                        message: l10n.carnetsEmptyMessage,
                       ),
                     ]
                   : [
@@ -629,13 +630,14 @@ class _CarnetsSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Résumé portefeuille',
+            l10n.carnetsSummaryTitle,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
@@ -647,7 +649,7 @@ class _CarnetsSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _CarnetSummaryMetric(
-                  label: 'Tickets disponibles',
+                  label: l10n.carnetsAvailableTickets,
                   value: Formatters.numberFr(availableTickets),
                   icon: Icons.confirmation_number_outlined,
                   accent: AppColors.success,
@@ -656,7 +658,7 @@ class _CarnetsSummaryCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _CarnetSummaryMetric(
-                  label: 'Valeur',
+                  label: l10n.carnetsValue,
                   value: availableAmountLabel,
                   icon: Icons.payments_outlined,
                   accent: AppColors.primary,
@@ -669,7 +671,7 @@ class _CarnetsSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _CarnetSummaryMetric(
-                  label: 'QR actifs',
+                  label: l10n.carnetsActiveQr,
                   value: Formatters.numberFr(activeQrTickets),
                   icon: Icons.qr_code_2_outlined,
                   accent: AppColors.warning,
@@ -678,7 +680,7 @@ class _CarnetsSummaryCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _CarnetSummaryMetric(
-                  label: 'Expirés',
+                  label: l10n.carnetsExpired,
                   value: Formatters.numberFr(expiredTickets),
                   icon: Icons.event_busy_outlined,
                   accent: AppColors.danger,
@@ -766,7 +768,7 @@ class _HistoryAlignedPageHeader extends StatelessWidget {
         title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.left,
+        textAlign: TextAlign.start,
         style: TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.w700,
@@ -787,10 +789,11 @@ class _CarnetFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final items = [
-      (_CarnetQuickFilter.all, 'Tous'),
-      (_CarnetQuickFilter.active, 'Disponibles'),
-      (_CarnetQuickFilter.expired, 'Expirés'),
+      (_CarnetQuickFilter.all, l10n.filterAll),
+      (_CarnetQuickFilter.active, l10n.filterAvailable),
+      (_CarnetQuickFilter.expired, l10n.filterExpired),
     ];
 
     return SingleChildScrollView(
@@ -889,6 +892,7 @@ class _CarnetDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
@@ -898,7 +902,7 @@ class _CarnetDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ScreenHeader(
-              title: 'Détail Carnet',
+              title: l10n.carnetDetailTitle,
               onBack: () => Navigator.of(context).pop(),
             ),
             const SizedBox(height: 18),
@@ -907,7 +911,7 @@ class _CarnetDetailScreen extends StatelessWidget {
                 padding: EdgeInsets.fromLTRB(16, 20, 16, 20 + bottom),
                 children: [
                   Text(
-                    'Détail des tickets de ce carnet.',
+                    l10n.carnetDetailDescription,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
@@ -972,6 +976,7 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final amountLabel = availableAmountLabel.trim().isNotEmpty
         ? availableAmountLabel.trim()
@@ -987,30 +992,30 @@ class _CarnetDetailOverviewCard extends StatelessWidget {
       child: Column(
         children: [
           _DetailInfoRow(
-            label: 'Code de référence',
-            value: title.trim().isNotEmpty ? title : 'Non disponible',
+            label: l10n.referenceCode,
+            value: title.trim().isNotEmpty ? title : l10n.notAvailable,
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           _DetailInfoRow(
-            label: 'N° complet du carnet',
+            label: l10n.carnetFullNumber,
             value: fullCarnetNo.trim().isNotEmpty
                 ? fullCarnetNo
-                : 'Non disponible',
+                : l10n.notAvailable,
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           _DetailInfoRow(
-            label: 'QR actifs',
+            label: l10n.carnetsActiveQr,
             value: Formatters.numberFr(activeQty),
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           _DetailInfoRow(
-            label: 'QR consommés',
+            label: l10n.consumedQr,
             value: Formatters.numberFr(consumedQty),
           ),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           _DetailInfoRow(
-            label: 'Montant disponible',
-            value: amountLabel.isNotEmpty ? amountLabel : 'Non disponible',
+            label: l10n.availableAmount,
+            value: amountLabel.isNotEmpty ? amountLabel : l10n.notAvailable,
           ),
         ],
       ),
@@ -1049,7 +1054,7 @@ class _DetailInfoRow extends StatelessWidget {
               flex: 7,
               child: Text(
                 value,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
@@ -1087,10 +1092,9 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
 
-  String get _titleLabel =>
-      widget.carnetTypeLabel.trim().isEmpty
-          ? 'Carnet'
-          : widget.carnetTypeLabel.trim();
+  String get _titleLabel => widget.carnetTypeLabel.trim().isEmpty
+      ? AppLocalizations.of(context).carnet
+      : widget.carnetTypeLabel.trim();
 
   String get _availabilityLabel {
     final value = _ticketAvailabilityLabel(
@@ -1118,7 +1122,7 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
       return fallback;
     }
 
-    return 'Code carnet indisponible';
+    return AppLocalizations.of(context).carnetCodeUnavailable;
   }
 
   String _carnetFullNoFor(FaceLine line) {
@@ -1127,6 +1131,7 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final line = widget.line;
     final availableQty = line.availableQty;
     final expiredQty = line.expiredQty;
@@ -1134,17 +1139,17 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
     final activeQty = line.qrActiveQty;
     final consumedQty = line.consumedQty;
     final stateLabel = line.isExpired
-        ? 'Expiré'
+        ? l10n.carnetStatusExpired
         : availableQty > 0
-            ? 'Disponible'
-            : 'Indisponible';
+        ? l10n.carnetStatusAvailable
+        : l10n.carnetStatusUnavailable;
     final stateColor = line.isExpired
         ? AppColors.danger
         : availableQty > 0
-            ? AppColors.success
-            : AppColors.warning;
+        ? AppColors.success
+        : AppColors.warning;
     final carnetCode = _carnetDisplayCodeFor(line);
-    final carnetTitle = 'Carnet $carnetCode';
+    final carnetTitle = l10n.carnetWithCode(carnetCode);
     final carnetTypeLabel = widget.carnetTypeLabel;
     final fullCarnetNo = _carnetFullNoFor(line);
     final carnetSize = widget.carnetSize;
@@ -1206,7 +1211,9 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
                     children: [
                       Expanded(
                         child: Text(
-                          'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                          l10n.carnetExpiresOn(
+                            Formatters.dateTimeDash(line.expirationDate),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

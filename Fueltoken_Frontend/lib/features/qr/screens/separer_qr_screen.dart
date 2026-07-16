@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,6 +19,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
@@ -52,11 +53,12 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
   }
 
   Future<void> _loadParent() async {
+    final l10n = AppLocalizations.of(context);
     if (!AppEnvironment.useAcpecLiveData) {
       setState(() {
         _parent = null;
         _loading = false;
-        _error = 'Connexion serveur ACPEC requise pour séparer un QR.';
+        _error = l10n.qrServerRequiredForSeparation;
       });
       return;
     }
@@ -88,7 +90,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         setState(() {
           _parent = qr;
           _loading = false;
-          _error = 'Seuls les QR bloqués peuvent être séparés.';
+          _error = l10n.qrOnlyBlockedCanSeparate;
         });
         return;
       }
@@ -103,30 +105,30 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         _parent = null;
         _loading = false;
         _error = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _parent = null;
         _loading = false;
-        _error = ErrorPresenter.message(e);
+        _error = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
     final actionCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => QrActionConfirmationScreen(
           args: QrActionConfirmationArgs(
-            title: 'Séparer les tickets valides',
-            subtitle:
-                'Les tickets expirés restent séparés des tickets encore utilisables',
-            confirmLabel: 'Séparer les tickets valides',
+            title: l10n.qrSeparateTitle,
+            subtitle: l10n.qrSeparateSubtitle,
+            confirmLabel: l10n.qrSeparateTitle,
             hero: _SeparerConfirmationHero(
               qrCode: parent.publicCode,
               validCount: parent.lines
@@ -139,22 +141,21 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
             details: _SeparerConfirmationLinesSection(lines: parent.lines),
             summaryRows: [
               QrActionSummaryRow(
-                label: 'Detail',
+                label: l10n.detail,
                 value: '${parent.lines.length}',
               ),
               QrActionSummaryRow(
-                label: 'Tickets valides',
+                label: l10n.validTickets,
                 value:
                     '${parent.lines.where((l) => !l.isExpired).fold<int>(0, (s, l) => s + l.qty)}',
               ),
               QrActionSummaryRow(
-                label: 'Tickets expirés',
+                label: l10n.expiredTickets,
                 value:
                     '${parent.lines.where((l) => l.isExpired).fold<int>(0, (s, l) => s + l.qty)}',
               ),
             ],
-            disclaimer:
-                'La séparation générera un nouveau QR pour les lignes non expirées.',
+            disclaimer: l10n.qrSeparationDisclaimer,
           ),
         ),
       ),
@@ -171,10 +172,11 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
     String actionCode,
     SensitiveActionIntent intent,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final parent = _parent;
     if (parent == null || parent.state != QrState.blocked) return;
     final user = context.read<AuthBloc>().state.user;
-    if (user == null) throw Exception('Session requise.');
+    if (user == null) throw Exception(l10n.commonSessionRequired);
 
     setState(() => _submitting = true);
     try {
@@ -186,8 +188,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Séparation QR refusée par le serveur.',
-        publicErrorMessage:
-            "La séparation du QR a échoué. Réessayez ou contactez l'administrateur.",
+        publicErrorMessage: l10n.qrSeparationFailed,
       );
 
       final newQrRaw = payload['new_qr'];
@@ -216,7 +217,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         OdooFueltokenRpcConfig.qrList,
       );
       if (!mounted) return;
-      AppMessage.success(context, 'QR séparé avec succès.');
+      AppMessage.success(context, l10n.qrSeparationSuccess);
       QrRefreshBus.instance.bump();
       WalletRefreshBus.instance.bump();
       FacesRefreshBus.instance.bump();
@@ -229,12 +230,12 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
       AppMessage.error(
         context,
         e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e),
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, ErrorPresenter.message(e));
+      AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -242,6 +243,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -249,7 +251,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
           child: Column(
             children: [
               ScreenHeader(
-                title: 'Séparer les tickets valides',
+                title: l10n.qrSeparateTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const Expanded(
@@ -281,7 +283,9 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
                   onPressed: _parent == null
                       ? _loadParent
                       : () => popOrGo(context, '/qr'),
-                  child: Text(_parent == null ? 'Réessayer' : 'Retour'),
+                  child: Text(
+                    _parent == null ? l10n.commonRetry : l10n.commonBack,
+                  ),
                 ),
               ],
             ),
@@ -292,7 +296,7 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
 
     final parent = _parent;
     if (parent == null) {
-      return const Scaffold(body: Center(child: Text('QR introuvable.')));
+      return Scaffold(body: Center(child: Text(l10n.qrNotFound)));
     }
 
     final validCount = parent.lines
@@ -338,7 +342,9 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.call_split_rounded, size: 18),
-              label: Text(_submitting ? 'Séparation...' : 'Séparer'),
+              label: Text(
+                _submitting ? l10n.qrSeparationInProgress : l10n.qrSeparate,
+              ),
             ),
           ),
         ),
@@ -347,9 +353,8 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
         child: Column(
           children: [
             ScreenHeader(
-              title: 'Séparer les tickets valides',
-              subtitle:
-                  'Les tickets expirés restent séparés des tickets encore utilisables',
+              title: l10n.qrSeparateTitle,
+              subtitle: l10n.qrSeparateSubtitle,
               onBack: () => popOrGo(context, '/qr'),
             ),
             Expanded(
@@ -366,35 +371,35 @@ class _SeparerQrScreenState extends State<SeparerQrScreen> {
                     expiredAmount: expiredAmount,
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Répartition actuelle'),
+                  SectionLabel(l10n.currentDistribution),
                   const SizedBox(height: 8),
                   AppCard(
                     child: Column(
                       children: [
                         _SummaryStatRow(
-                          label: 'Tickets valides',
+                          label: l10n.validTickets,
                           value: '$validCount',
                         ),
                         const SizedBox(height: 8),
                         _SummaryStatRow(
-                          label: 'Tickets expirés',
+                          label: l10n.expiredTickets,
                           value: '$expiredCount',
                         ),
                         const SizedBox(height: 8),
                         _SummaryStatRow(
-                          label: 'Montant valide',
+                          label: l10n.validAmount,
                           value: Formatters.money(validAmount),
                         ),
                         const SizedBox(height: 8),
                         _SummaryStatRow(
-                          label: 'Montant expiré',
+                          label: l10n.expiredAmount,
                           value: Formatters.money(expiredAmount),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const SectionLabel('Repartition des tickets'),
+                  SectionLabel(l10n.ticketDistribution),
                   const SizedBox(height: 8),
                   for (final line in parent.lines) ...[
                     _LineCard(line: line),
@@ -430,14 +435,15 @@ class _SeparationSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text(
-                'QR à séparer',
+              Text(
+                l10n.qrToSeparate,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -457,7 +463,7 @@ class _SeparationSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Les lignes non expirées seront déplacées dans un nouveau QR.',
+            l10n.qrValidLinesMoved,
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.body,
@@ -480,14 +486,14 @@ class _SeparationSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SummaryStatBlock(
-                  label: 'Tickets valides',
+                  label: l10n.validTickets,
                   value: '$validCount',
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _SummaryStatBlock(
-                  label: 'Tickets expirés',
+                  label: l10n.expiredTickets,
                   value: '$expiredCount',
                 ),
               ),
@@ -498,14 +504,14 @@ class _SeparationSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SummaryStatBlock(
-                  label: 'Montant valide',
+                  label: l10n.validAmount,
                   value: Formatters.money(validAmount),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _SummaryStatBlock(
-                  label: 'Montant expiré',
+                  label: l10n.expiredAmount,
                   value: Formatters.money(expiredAmount),
                 ),
               ),
@@ -606,6 +612,7 @@ class _SeparerConfirmationHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Container(
@@ -626,8 +633,8 @@ class _SeparerConfirmationHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'QR à séparer',
+              Text(
+                l10n.qrToSeparate,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -648,8 +655,7 @@ class _SeparerConfirmationHero extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                '$validCount ticket${validCount > 1 ? 's' : ''} valides · '
-                '$expiredCount ticket${expiredCount > 1 ? 's' : ''} expirés',
+                l10n.qrValidExpiredSummary(validCount, expiredCount),
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -671,12 +677,13 @@ class _SeparerConfirmationLinesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Lignes du QR',
+            l10n.qrLines,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -709,6 +716,7 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isExpired = line.isExpired;
     return Row(
       children: [
@@ -717,7 +725,7 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}',
+                l10n.ticketCount(line.qty),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -726,7 +734,10 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${isExpired ? 'Expirée' : 'Active'} · ${Formatters.dateTime(line.expirationDate)}',
+                l10n.ticketStatusWithDate(
+                  isExpired ? l10n.statusExpired : l10n.statusActive,
+                  Formatters.dateTime(line.expirationDate),
+                ),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -760,6 +771,7 @@ class _LineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isExpired = line.isExpired;
     return AppCard(
       child: Row(
@@ -771,7 +783,7 @@ class _LineCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}',
+                  l10n.ticketCount(line.qty),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -780,7 +792,10 @@ class _LineCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${isExpired ? 'Expirée' : 'Active'} · ${Formatters.dateTime(line.expirationDate)}',
+                  l10n.ticketStatusWithDate(
+                    isExpired ? l10n.statusExpired : l10n.statusActive,
+                    Formatters.dateTime(line.expirationDate),
+                  ),
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -807,6 +822,3 @@ class _LineCard extends StatelessWidget {
     );
   }
 }
-
-
-

@@ -33,7 +33,7 @@ void main() {
       expect(source, contains('Future<void> _stopScannerForModal()'));
       expect(source, contains('Future<void> _restartScannerAfterModal()'));
       expect(source, contains('_cameraError'));
-      expect(source, contains('Réactiver la caméra'));
+      expect(source, contains('stationReactivateCamera'));
     });
 
     test(
@@ -66,9 +66,9 @@ void main() {
     test('QR check sheet uses cancel and continue for consumable QR', () {
       final source = _read('lib/features/station/screens/scan_screen.dart');
 
-      expect(source, contains('Vérification QR'));
-      expect(source, contains('Annuler'));
-      expect(source, contains('Continuer'));
+      expect(source, contains('stationQrVerificationTitle'));
+      expect(source, contains('l10n.commonCancel'));
+      expect(source, contains('l10n.commonContinue'));
       expect(source, isNot(contains("'Envoyer'")));
       expect(source, contains('consumeRequested = true;'));
     });
@@ -92,8 +92,8 @@ void main() {
       () {
         final source = _read('lib/features/station/screens/scan_screen.dart');
 
-        expect(source, contains("title: 'QR non consommable'"));
-        expect(source, contains("actionLabel: 'Retour à l’accueil'"));
+        expect(source, contains('title: l10n.stationQrNotConsumable'));
+        expect(source, contains('actionLabel: l10n.stationBackHome'));
         expect(source, contains('result.reason ??'));
         expect(source, contains('_goStationHome();'));
 
@@ -121,10 +121,7 @@ void main() {
         expect(sheetIndex, greaterThan(dialogIndex));
 
         expect(source, isNot(contains('Consommation bloquée')));
-        expect(
-          source,
-          contains('Le serveur indique que ce QR n’est pas consommable.'),
-        );
+        expect(source, contains('l10n.stationQrNotConsumableMessage'));
       },
     );
 
@@ -174,13 +171,8 @@ void main() {
       final source = _read('lib/features/station/screens/scan_screen.dart');
 
       expect(source, contains('Future<void> _showFailureDialog'));
-      expect(
-        source,
-        contains(
-          "title: technical ? 'Consommation non confirmée' : 'Opération refusée'",
-        ),
-      );
-      expect(source, contains("actionLabel: 'Retour au scan'"));
+      expect(source, contains('l10n.stationConsumptionUnconfirmed'));
+      expect(source, contains('actionLabel: l10n.stationBackToScan'));
       expect(source, contains('await _restartScannerAfterModal();'));
     });
 
@@ -198,12 +190,12 @@ void main() {
           contains('setState(() => _leavingAfterSuccess = true);'),
         );
         expect(source, contains('StationQrSuccessDialog('));
-        expect(dialogSource, contains('QR consommé avec succès'));
-        expect(dialogSource, contains('Montant'));
-        expect(dialogSource, contains('Date/heure'));
-        expect(dialogSource, contains('N° transaction'));
+        expect(dialogSource, contains('stationQrConsumedSuccess'));
+        expect(dialogSource, contains('l10n.amount'));
+        expect(dialogSource, contains('stationDateTime'));
+        expect(dialogSource, contains('stationTransactionNumber'));
         expect(source, contains('transaction_name'));
-        expect(dialogSource, contains('Terminer'));
+        expect(dialogSource, contains('stationFinish'));
 
         final successIndex = source.indexOf('await _showSuccess(');
         expect(successIndex, greaterThanOrEqualTo(0));
@@ -221,7 +213,7 @@ void main() {
       );
       expect(source, contains('return PopScope('));
       expect(source, contains('canPop: !_consuming'));
-      expect(source, contains("tooltip: 'Retour à l’accueil'"));
+      expect(source, contains('tooltip: l10n.stationBackHome'));
       expect(source, contains('Icons.arrow_back_rounded'));
       expect(source, contains('onPressed: onBack'));
     });

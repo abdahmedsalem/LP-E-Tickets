@@ -28,10 +28,10 @@ class TransferLineRow extends StatelessWidget {
           child: SizedBox(
             height: 20,
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   title,
                   maxLines: 1,
@@ -52,10 +52,7 @@ class TransferLineRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Center(
-              child: QuantityCircleBadge(
-                quantity: quantity ?? 0,
-                size: 18,
-              ),
+              child: QuantityCircleBadge(quantity: quantity ?? 0, size: 18),
             ),
           ),
           const SizedBox(width: 10),
@@ -65,7 +62,7 @@ class TransferLineRow extends StatelessWidget {
           flex: showQuantity ? 4 : 6,
           child: AmountInline(
             amount: amount,
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.end,
             valueStyle: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,

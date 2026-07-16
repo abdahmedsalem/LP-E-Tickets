@@ -12,7 +12,7 @@ void main() {
     final screenSource = source.substring(screenStart, screenEnd);
 
     expect(screenSource, isNot(contains("label: 'Référence'")));
-    expect(screenSource, contains("label: 'Montant total'"));
-    expect(screenSource, contains("label: 'Date'"));
+    expect(screenSource, contains('label: l10n.totalAmount'));
+    expect(screenSource, contains('label: l10n.date'));
   });
 }

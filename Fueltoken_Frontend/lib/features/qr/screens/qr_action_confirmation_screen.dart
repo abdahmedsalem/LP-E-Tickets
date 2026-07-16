@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/standard_confirmation_scaffold.dart';
 
@@ -70,8 +71,10 @@ class _QrActionConfirmationScreenState
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
-        title: 'Vérification du PIN',
-        description: 'Saisissez votre PIN pour confirmer cette opération.',
+        title: AppLocalizations.of(context).commonPinVerification,
+        description: AppLocalizations.of(
+          context,
+        ).commonPinConfirmationDescription,
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       _close(actionCode);
@@ -83,10 +86,11 @@ class _QrActionConfirmationScreenState
   @override
   Widget build(BuildContext context) {
     final args = widget.args;
+    final l10n = AppLocalizations.of(context);
 
     return StandardConfirmationScaffold(
       title: args.title,
-      introText: args.subtitle ?? 'Vérifiez les éléments avant de confirmer.',
+      introText: args.subtitle ?? l10n.commonConfirmReview,
       confirmLabel: args.confirmLabel,
       confirmIcon: Icons.qr_code_rounded,
       confirming: _confirming,
@@ -208,7 +212,7 @@ class _SummaryRow extends StatelessWidget {
         if (_looksLikeAmount(value))
           _AmountInline(
             amount: int.parse(value.replaceAll(RegExp(r'[^0-9]'), '').trim()),
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.end,
             valueStyle: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -239,7 +243,7 @@ class _AmountInline extends StatelessWidget {
     required this.amount,
     required this.valueStyle,
     required this.unitStyle,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.start,
   });
 
   final int amount;

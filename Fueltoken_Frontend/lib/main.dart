@@ -19,6 +19,7 @@ import 'core/config/app_environment.dart';
 import 'core/debug/acpec_network_startup_log.dart';
 import 'core/router/app_router.dart';
 import 'core/settings/app_preferences.dart';
+import 'l10n/app_localizations.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/notifications/purchase_validation_notification_service.dart';
@@ -321,14 +322,15 @@ class FuelTokenAppState extends State<FuelTokenApp>
           onPointerUp: (_) => _recordUserActivity(),
           onPointerCancel: (_) => _recordUserActivity(),
           child: MaterialApp.router(
-            title: 'FuelToken',
+            onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: _themeMode,
             locale: AppPreferences.localeFromCode(_localeCode),
-            supportedLocales: const [Locale('fr'), Locale('ar')],
+            supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: const [
+              AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,

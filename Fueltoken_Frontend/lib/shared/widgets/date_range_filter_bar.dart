@@ -8,6 +8,9 @@ class DateRangeFilterBar extends StatelessWidget {
     required this.onPickFrom,
     required this.onPickTo,
     required this.onApply,
+    this.fromPrefix = 'Du',
+    this.toPrefix = 'Au',
+    this.applySemanticLabel,
     this.applyColor = const Color(0xFF1B8F3A),
   });
 
@@ -16,6 +19,9 @@ class DateRangeFilterBar extends StatelessWidget {
   final VoidCallback onPickFrom;
   final VoidCallback onPickTo;
   final VoidCallback onApply;
+  final String fromPrefix;
+  final String toPrefix;
+  final String? applySemanticLabel;
   final Color applyColor;
 
   @override
@@ -25,7 +31,7 @@ class DateRangeFilterBar extends StatelessWidget {
         Flexible(
           flex: 43,
           child: _DateRangeChip(
-            label: 'Du',
+            label: fromPrefix,
             value: fromLabel,
             onTap: onPickFrom,
           ),
@@ -34,7 +40,7 @@ class DateRangeFilterBar extends StatelessWidget {
         Flexible(
           flex: 43,
           child: _DateRangeChip(
-            label: 'Au',
+            label: toPrefix,
             value: toLabel,
             onTap: onPickTo,
           ),
@@ -46,13 +52,17 @@ class DateRangeFilterBar extends StatelessWidget {
           child: InkWell(
             onTap: onApply,
             borderRadius: BorderRadius.circular(12),
-            child: const SizedBox(
+            child: SizedBox(
               width: 42,
               height: 42,
-              child: Icon(
-                Icons.arrow_forward_rounded,
-                size: 22,
-                color: Colors.white,
+              child: Semantics(
+                label: applySemanticLabel,
+                button: true,
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 22,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),

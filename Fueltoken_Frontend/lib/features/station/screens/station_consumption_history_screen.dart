@@ -15,6 +15,7 @@ import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
@@ -37,14 +38,14 @@ extension _StationRegularizationFilterX on _StationRegularizationFilter {
     }
   }
 
-  String get label {
+  String label(AppLocalizations l10n) {
     switch (this) {
       case _StationRegularizationFilter.all:
-        return 'Tous';
+        return l10n.stationFilterAll;
       case _StationRegularizationFilter.pending:
-        return 'Non régularisé';
+        return l10n.stationFilterPending;
       case _StationRegularizationFilter.regularized:
-        return 'Régularisé';
+        return l10n.stationFilterRegularized;
     }
   }
 
@@ -123,12 +124,12 @@ class _StationConsumptionHistoryScreenState
 
   String _briefError(Object e) {
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirée. Reconnectez-vous.';
+      return AppLocalizations.of(context).stationSessionExpired;
     }
     if (ErrorPresenter.isBackendUnavailable(e)) {
       return ErrorPresenter.backendUnavailable();
     }
-    return ErrorPresenter.message(e);
+    return ErrorPresenter.localizedMessage(context, e);
   }
 
   Future<void> _load() async {
@@ -137,10 +138,11 @@ class _StationConsumptionHistoryScreenState
     if (user == null) {
       setState(() {
         _loading = false;
-        _error = 'Session requise.';
+        _error = AppLocalizations.of(context).commonSessionRequired;
       });
       return;
     }
+    final l10n = AppLocalizations.of(context);
 
     setState(() {
       _loading = true;
@@ -191,8 +193,8 @@ class _StationConsumptionHistoryScreenState
       final totalKnown = totalCount;
       final partialMessage = reachedGuard
           ? totalKnown == null
-                ? 'Résultat partiel : trop de consommations pour cette période. Réduisez la fenêtre de dates.'
-                : 'Résultat partiel : $loadedCount / $totalKnown consommations chargées. Réduisez la fenêtre de dates.'
+                ? l10n.stationHistoryPartial
+                : l10n.stationHistoryPartialCount(loadedCount, totalKnown)
           : null;
 
       if (!mounted) return;
@@ -301,6 +303,7 @@ class _StationConsumptionHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final items = _filteredItems;
     final shown = items;
@@ -320,8 +323,8 @@ class _StationConsumptionHistoryScreenState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: 'Historique des consommations',
-                subtitle: 'QR consommés par période',
+                title: l10n.stationConsumptionHistory,
+                subtitle: l10n.stationHistorySubtitle,
                 onBack: () => context.go('/station/home'),
                 trailing: ScreenHeaderIconButton(
                   icon: Icons.filter_list_rounded,
@@ -382,10 +385,10 @@ class _StationConsumptionHistoryScreenState
               else if (_error != null && _items.isEmpty)
                 _ErrorPanel(message: _error!, onRetry: _load)
               else if (shown.isEmpty)
-                const EmptyState(
+                EmptyState(
                   icon: Icons.history_toggle_off_rounded,
-                  title: "C'est tout pour le moment",
-                  message: 'Aucune consommation enregistrée',
+                  title: l10n.stationHistoryEmptyTitle,
+                  message: l10n.stationHistoryEmptyMessage,
                 )
               else
                 Padding(
@@ -411,7 +414,7 @@ class _StationConsumptionHistoryScreenState
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "C'est tout pour le moment",
+                        l10n.stationHistoryEndTitle,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: scheme.onSurface,
@@ -419,7 +422,7 @@ class _StationConsumptionHistoryScreenState
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Aucune autre consommation enregistrée',
+                        l10n.stationHistoryEndMessage,
                         style: TextStyle(
                           fontSize: 12,
                           color: scheme.onSurfaceVariant,
@@ -487,6 +490,7 @@ class _StationRegularizationFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final selectedColor = filter == _StationRegularizationFilter.regularized
         ? const Color(0xFF16A34A)
@@ -517,7 +521,7 @@ class _StationRegularizationFilterChip extends StatelessWidget {
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
-                  filter.label,
+                  filter.label(l10n),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -548,6 +552,7 @@ class _StationHistoryTotalsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return AppCard(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
@@ -575,7 +580,7 @@ class _StationHistoryTotalsCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Résumé des QR consommés',
+                      l10n.stationHistorySummary,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -605,7 +610,7 @@ class _StationHistoryTotalsCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _StationHistoryTotalTile(
-                  label: 'QR consommés',
+                  label: l10n.stationConsumedQr,
                   value: Formatters.number(qrCount),
                   icon: Icons.qr_code_2_rounded,
                   valueColor: scheme.onSurface,
@@ -614,7 +619,7 @@ class _StationHistoryTotalsCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _StationHistoryTotalTile(
-                  label: 'Montant total',
+                  label: l10n.stationTotal,
                   value: Formatters.money(totalAmount),
                   icon: Icons.payments_rounded,
                   valueColor: AppColors.danger,
@@ -705,6 +710,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final tx = widget.transaction;
     final amount = tx.totalAmount.abs();
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
@@ -739,9 +745,9 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Consommation de carburant',
+                              l10n.stationFuelConsumption,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -756,7 +762,7 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                             Formatters.money(amount),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
+                            textAlign: TextAlign.end,
                             style: const TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w800,
@@ -769,12 +775,12 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                       ),
                       const SizedBox(height: 4),
                       Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: AlignmentDirectional.centerStart,
                         child: Text(
                           '$dateLabel $hourLabel',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.left,
+                          textAlign: TextAlign.start,
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.muted,
@@ -825,17 +831,18 @@ class _StationConsumptionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final tx = transaction;
     final clientLabel = tx.userName.trim().isEmpty
-        ? 'Client inconnu'
+        ? l10n.stationUnknownClient
         : tx.userName.trim();
     final stationLabel = (tx.stationName ?? '').trim().isEmpty
-        ? 'Station inconnue'
+        ? l10n.stationUnknownStation
         : tx.stationName!.trim();
     final rows = <({String label, String value})>[
-      (label: 'N° transaction', value: tx.txNumber),
-      (label: 'Client', value: clientLabel),
-      (label: 'Station', value: stationLabel),
+      (label: l10n.stationTransactionNumber, value: tx.txNumber),
+      (label: l10n.stationClient, value: clientLabel),
+      (label: l10n.station, value: stationLabel),
     ];
 
     return Column(
@@ -883,7 +890,7 @@ class _StationInfoRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               value,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.end,
               style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
@@ -1009,6 +1016,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
@@ -1045,7 +1053,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Détail QR',
+                          l10n.stationQrDetail,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1085,18 +1093,24 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   _DetailInfoGrid(
                     items: [
-                      ('Montant', Formatters.money(amount)),
-                      ('Client', tx.userName),
+                      (l10n.amount, Formatters.money(amount)),
+                      (l10n.stationClient, tx.userName),
                       ('QR', tx.qrDisplayName),
                       (
-                        'Date consommation',
+                        l10n.stationConsumptionDate,
                         DateFormat('dd-MM-yyyy HH:mm:ss').format(tx.date),
                       ),
-                      ('État régularisation', tx.regularizationLabel),
-                      ('Réf régularisation', tx.regularizationReference ?? '—'),
+                      (
+                        l10n.stationRegularizationStatus,
+                        tx.regularizationLabel,
+                      ),
+                      (
+                        l10n.stationRegularizationReference,
+                        tx.regularizationReference ?? '—',
+                      ),
                       if (tx.regularizationDate != null)
                         (
-                          'Date régularisation',
+                          l10n.stationRegularizationDate,
                           DateFormat(
                             'dd-MM-yyyy HH:mm:ss',
                           ).format(tx.regularizationDate!),
@@ -1105,7 +1119,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Détail de la consommation',
+                    l10n.stationConsumptionDetail,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -1136,7 +1150,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
+                                l10n.ticketCount(line.qty),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -1276,6 +1290,7 @@ class _ErrorPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1301,7 +1316,7 @@ class _ErrorPanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Réessayer'),
+            label: Text(l10n.commonRetry),
           ),
         ],
       ),

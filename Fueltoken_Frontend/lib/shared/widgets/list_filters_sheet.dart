@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'filter_chip.dart';
 
 /// Section de filtres pour une bottom sheet (valeurs, types, expiration, etc.).
@@ -34,6 +35,7 @@ Future<void> showListFiltersSheet({
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
+      final l10n = AppLocalizations.of(ctx);
       final bottom = MediaQuery.paddingOf(ctx).bottom;
       return DraggableScrollableSheet(
         initialChildSize: 0.55,
@@ -61,10 +63,10 @@ Future<void> showListFiltersSheet({
                   padding: const EdgeInsets.fromLTRB(20, 14, 12, 8),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Filtres',
-                          style: TextStyle(
+                          l10n.filtersTitle,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink,
@@ -78,15 +80,15 @@ Future<void> showListFiltersSheet({
                             onClearAll();
                             Navigator.pop(ctx);
                           },
-                          child: const Text(
-                            'Tout effacer',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                          child: Text(
+                            l10n.filtersClearAll,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                       IconButton(
                         onPressed: () => Navigator.pop(ctx),
                         icon: const Icon(Icons.close_rounded),
-                        tooltip: 'Fermer',
+                        tooltip: l10n.commonCloseTooltip,
                       ),
                     ],
                   ),
@@ -141,9 +143,9 @@ Future<void> showListFiltersSheet({
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
-                        'Voir les résultats',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.filtersViewResults,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),

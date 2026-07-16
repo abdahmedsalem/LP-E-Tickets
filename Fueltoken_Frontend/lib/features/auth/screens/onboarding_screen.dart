@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 
 class OnboardingScreen extends StatelessWidget {
@@ -20,6 +21,7 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -48,20 +50,20 @@ class OnboardingScreen extends StatelessWidget {
                       borderRadius: BorderRadius.all(Radius.circular(28)),
                       boxShadow: AppColors.elevatedShadow,
                     ),
-                    child: const Padding(
-                      padding: EdgeInsets.fromLTRB(24, 28, 24, 30),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 30),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.local_gas_station_rounded,
                             color: Colors.white,
                             size: 42,
                           ),
-                          SizedBox(height: 22),
+                          const SizedBox(height: 22),
                           Text(
-                            'Bienvenue sur Tickets Carburant',
-                            style: TextStyle(
+                            l10n.authWelcomeTitle,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 27,
                               height: 1.08,
@@ -69,10 +71,10 @@ class OnboardingScreen extends StatelessWidget {
                               letterSpacing: -1.2,
                             ),
                           ),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text(
-                            'Achetez, gérez et utilisez vos carnets de tickets carburant en toute sécurité.',
-                            style: TextStyle(
+                            l10n.authWelcomeMessage,
+                            style: const TextStyle(
                               color: Color(0xFFE0F2FE),
                               fontSize: 15.5,
                               height: 1.45,
@@ -95,9 +97,9 @@ class OnboardingScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
-                        'Créer mon compte',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.authCreateAccount,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
@@ -111,9 +113,9 @@ class OnboardingScreen extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 6,
                       children: [
-                        const Text(
-                          'Vous avez déjà un compte ?',
-                          style: TextStyle(
+                        Text(
+                          l10n.authAlreadyAccount,
+                          style: const TextStyle(
                             fontSize: 14,
                             color: Color(0xFF475569),
                             fontWeight: FontWeight.w500,
@@ -121,9 +123,9 @@ class OnboardingScreen extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () => _goToLogin(context),
-                          child: const Text(
-                            'Se connecter',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+                          child: Text(
+                            l10n.authSignIn,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],

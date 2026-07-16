@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/login_session_cache.dart';
-import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart'
     show kOtpSmsCodeLength;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/app_alert_dialog.dart';
 import '../bloc/auth_bloc.dart';
@@ -79,20 +79,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _showContactsHelp() async {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     await showAppAlertDialog(
       context,
-      title: 'Contacts',
-      message:
-          'Contactez votre support Tickets Carburant ou votre point de contact habituel pour obtenir de l’aide.',
-      confirmLabel: 'Fermer',
+      title: l10n.authContacts,
+      message: l10n.authContactsHelp,
+      confirmLabel: l10n.commonClose,
       icon: Icons.mail_outline_rounded,
     );
   }
 
   String _presentLoginFailure(String raw) {
+    if (Localizations.localeOf(context).languageCode == 'ar') {
+      return AppLocalizations.of(context).authLoginFailed;
+    }
     final t = raw.trim();
     if (t.isEmpty) {
-      return 'Connexion impossible. Vérifiez le numéro ou le code SMS.';
+      return AppLocalizations.of(context).authLoginFailed;
     }
     // Erreurs JSON-RPC / réseau (souvent > 160 car.) : les afficher pour diagnostic
     // (ex. mauvaise ODOO_JSONRPC_BASE_URL depuis un téléphone).
@@ -105,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _presentOtpFailure(String raw) {
     final t = raw.trim();
     if (t.isEmpty) {
-      return 'Code SMS incorrect. Réessayez.';
+      return AppLocalizations.of(context).authOtpIncorrect;
     }
 
     final normalized = t.toLowerCase();
@@ -113,34 +116,35 @@ class _LoginScreenState extends State<LoginScreen> {
         normalized.contains('invalid') ||
         normalized.contains('pin incorrect') ||
         normalized.contains('code sms')) {
-      return 'Code SMS incorrect. Réessayez.';
+      return AppLocalizations.of(context).authOtpIncorrect;
     }
 
     return _presentLoginFailure(t);
   }
 
-  static String? _validateIdentifier(String? v) {
+  String? _validateIdentifier(String? v) {
+    final l10n = AppLocalizations.of(context);
     if (v == null || v.trim().isEmpty) {
-      return 'Saisissez votre numéro de téléphone';
+      return l10n.authPhoneRequired;
     }
     var digits = v.trim().replaceAll(RegExp(r'\D'), '');
     if (digits.startsWith('222')) {
       digits = digits.substring(3);
     }
-    return validateMrLocalPhone(digits);
+    return digits.length == 8 ? null : l10n.authPhoneInvalid;
   }
 
-  static String? _validateOtp(String? v) {
+  String? _validateOtp(String? v) {
     final clean = (v ?? '').trim().replaceAll(RegExp(r'\D'), '');
     if (clean.length != kOtpSmsCodeLength) {
-      return 'Saisissez un code à $kOtpSmsCodeLength chiffres.';
+      return AppLocalizations.of(context).authOtpLength(kOtpSmsCodeLength);
     }
     return null;
   }
 
   String get _phoneCounterLabel {
     final t = _identifier.text.trim();
-    if (t.isEmpty) return '8 chiffres';
+    if (t.isEmpty) return AppLocalizations.of(context).authDigitsCount(8);
     var digits = t.replaceAll(RegExp(r'\D'), '');
     if (digits.startsWith('222')) {
       digits = digits.substring(3);
@@ -151,6 +155,13 @@ class _LoginScreenState extends State<LoginScreen> {
   String get _otpCounterLabel {
     final clean = _otp.text.trim().replaceAll(RegExp(r'\D'), '');
     return '${clean.length}/$kOtpSmsCodeLength';
+  }
+
+  String _presentLoginInfo(String raw) {
+    if (Localizations.localeOf(context).languageCode == 'ar') {
+      return AppLocalizations.of(context).sessionExpiredReconnect;
+    }
+    return raw;
   }
 
   void _submit(AuthState state) {
@@ -171,6 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -216,9 +228,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 } else {
                   await showAppAlertDialog(
                     ctx,
-                    title: 'Connexion',
+                    title: l10n.authLoginTitle,
                     message: msg,
-                    confirmLabel: 'Fermer',
+                    confirmLabel: l10n.commonClose,
                     isError: true,
                     icon: Icons.gpp_maybe_outlined,
                   );
@@ -229,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
           },
           builder: (ctx, state) {
             final loading = state.status == AuthStatus.authenticating;
-            final buttonLabel = _otpStep ? 'Continuer' : 'Se connecter';
+            final buttonLabel = _otpStep ? l10n.authContinue : l10n.authSignIn;
             return GestureDetector(
               onTap: () => FocusScope.of(context).unfocus(),
               child: SafeArea(
@@ -256,14 +268,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 34),
                             _LoginSectionTitle(
                               title: _otpStep
-                                  ? 'Code de vérification'
-                                  : 'Vérification du compte',
+                                  ? l10n.authVerificationCode
+                                  : l10n.authAccountVerification,
                             ),
                             const SizedBox(height: 10),
                             Text(
                               _otpStep
-                                  ? 'Nous avons envoyé un code par SMS au ${_otpIdentifier ?? _identifier.text.trim()}.'
-                                  : 'Saisissez votre téléphone pour vérifier votre compte.',
+                                  ? l10n.authOtpSentTo(
+                                      _otpIdentifier ?? _identifier.text.trim(),
+                                    )
+                                  : l10n.authEnterPhone,
                               style: const TextStyle(
                                 fontSize: 13.5,
                                 height: 1.35,
@@ -274,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 16),
                             _LoginTextField(
                               controller: _identifier,
-                              hint: 'Téléphone',
+                              hint: l10n.authPhone,
                               obscure: false,
                               keyboardType: TextInputType.phone,
                               textCapitalization: TextCapitalization.none,
@@ -291,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 18),
                               _LoginTextField(
                                 controller: _otp,
-                                hint: 'Code SMS',
+                                hint: l10n.authSmsCode,
                                 obscure: false,
                                 validator: _validateOtp,
                                 keyboardType: TextInputType.number,
@@ -305,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 counterLabel: _otpCounterLabel,
                               ),
                               Align(
-                                alignment: Alignment.centerRight,
+                                alignment: AlignmentDirectional.centerEnd,
                                 child: TextButton(
                                   onPressed: loading
                                       ? null
@@ -327,9 +341,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
                                   ),
-                                  child: const Text(
-                                    'Renvoyer le code',
-                                    style: TextStyle(
+                                  child: Text(
+                                    l10n.authResendCode,
+                                    style: const TextStyle(
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -389,7 +403,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Center(
                                 child: TextButton(
                                   onPressed: loading ? null : _resetOtpStep,
-                                  child: const Text('Changer de numéro'),
+                                  child: Text(l10n.authChangePhone),
                                 ),
                               ),
                             ],
@@ -404,11 +418,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                   TextButton(
                                     onPressed: () =>
                                         ctx.push('/forgot-password'),
-                                    child: const Text('PIN oublié ?'),
+                                    child: Text(l10n.authForgotPin),
                                   ),
                                   TextButton(
                                     onPressed: () => ctx.go('/register'),
-                                    child: const Text("Créer un compte"),
+                                    child: Text(l10n.authCreateAnAccount),
                                   ),
                                 ],
                               ),
@@ -425,9 +439,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     size: 19,
                                     color: Color(0xFF203A73),
                                   ),
-                                  label: const Text(
-                                    'Contacts',
-                                    style: TextStyle(
+                                  label: Text(
+                                    l10n.authContacts,
+                                    style: const TextStyle(
                                       fontSize: 15.2,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF203A73),
@@ -449,7 +463,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (state.loginInfoMessage != null) ...[
                               const SizedBox(height: 18),
                               _SessionNoticeCard(
-                                message: state.loginInfoMessage!,
+                                message: _presentLoginInfo(
+                                  state.loginInfoMessage!,
+                                ),
                               ),
                             ],
                           ],
@@ -515,8 +531,8 @@ class _LoginWelcomeCopy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Text(
-      'Tickets Carburant',
+    return Text(
+      AppLocalizations.of(context).authBrandName,
       textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: 26,
@@ -634,7 +650,7 @@ class _LoginTextField extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Align(
-          alignment: Alignment.centerRight,
+          alignment: AlignmentDirectional.centerEnd,
           child: Text(
             counterLabel,
             style: const TextStyle(

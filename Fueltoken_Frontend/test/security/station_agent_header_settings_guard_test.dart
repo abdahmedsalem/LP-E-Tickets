@@ -10,7 +10,8 @@ void main() {
       ).readAsStringSync();
 
       expect(source, contains('agentName'));
-      expect(source, contains('Agent station'));
+      expect(source, contains('stationAgentFallback'));
+      expect(source, contains('stationAgentAtStation'));
       expect(source, contains('Icons.badge_outlined'));
       expect(source, contains('Icons.settings_outlined'));
       expect(source, contains("context.go('/station/profile')"));

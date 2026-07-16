@@ -22,6 +22,7 @@ import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -64,6 +65,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   }
 
   Future<void> _reloadOffers() async {
+    final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (!mounted || user == null) return;
     setState(() {
@@ -76,8 +78,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         setState(() {
           _loadingOffers = false;
           _offerTypes = [];
-          _offerLoadError =
-              'Connexion serveur ACPEC requise pour proposer des offres.';
+          _offerLoadError = l10n.purchaseServerRequired;
         });
         return;
       }
@@ -148,7 +149,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     if (v > clamped && cap < v) {
       AppMessage.warning(
         context,
-        'Plafond : $_kMaxTicketsPerPurchase tickets au total (${_otherTickets(typeId)} déjà sur d\'autres tickets).',
+        AppLocalizations.of(
+          context,
+        ).purchaseMaxTickets(_kMaxTicketsPerPurchase),
       );
     }
   }
@@ -198,7 +201,12 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (metadataError != null) {
         if (!mounted) return;
         _clearProof();
-        AppMessage.error(context, metadataError);
+        AppMessage.error(
+          context,
+          Localizations.localeOf(context).languageCode == 'ar'
+              ? AppLocalizations.of(context).purchaseProofUnreadable
+              : metadataError,
+        );
         return;
       }
 
@@ -211,7 +219,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (bytes == null || bytes.isEmpty) {
         if (!mounted) return;
         _clearProof();
-        AppMessage.error(context, 'La preuve de paiement est illisible.');
+        AppMessage.error(
+          context,
+          AppLocalizations.of(context).purchaseProofUnreadable,
+        );
         return;
       }
 
@@ -222,7 +233,12 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       if (contentError != null) {
         if (!mounted) return;
         _clearProof();
-        AppMessage.error(context, contentError);
+        AppMessage.error(
+          context,
+          Localizations.localeOf(context).languageCode == 'ar'
+              ? AppLocalizations.of(context).purchaseProofUnreadable
+              : contentError,
+        );
         return;
       }
 
@@ -233,36 +249,37 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       });
     } catch (_) {
       if (!mounted) return;
-      AppMessage.error(context, "Impossible de charger la preuve de paiement.");
+      AppMessage.error(
+        context,
+        AppLocalizations.of(context).purchaseProofLoadFailed,
+      );
     }
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     if (_submitting) return;
     setState(() => _submitting = true);
     try {
       final user = context.read<AuthBloc>().state.user;
       if (user == null) return;
       if (!user.isDeviceTrusted) {
-        AppMessage.error(
-          context,
-          'Cet appareil doit être validé par un administrateur avant de pouvoir créer une commande.',
-        );
+        AppMessage.error(context, l10n.purchaseDeviceApprovalRequired);
         return;
       }
       if (_totalTickets() > _kMaxTicketsPerPurchase) {
         AppMessage.warning(
           context,
-          'Maximum $_kMaxTicketsPerPurchase tickets par commande.',
+          l10n.purchaseMaxTickets(_kMaxTicketsPerPurchase),
         );
         return;
       }
       if (!_hasSelection) {
-        AppMessage.warning(context, 'Indiquez au moins un ticket.');
+        AppMessage.warning(context, l10n.purchaseSelectAtLeastOne);
         return;
       }
       if (_proofPath == null || _proofFilename == null) {
-        AppMessage.error(context, 'La preuve de paiement est obligatoire.');
+        AppMessage.error(context, l10n.purchaseProofRequired);
         return;
       }
 
@@ -280,7 +297,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
           _proofBytes ?? (kIsWeb ? null : await File(proofPath).readAsBytes());
       if (!mounted) return;
       if (proofBytes == null || proofBytes.isEmpty) {
-        AppMessage.error(context, 'La preuve de paiement est illisible.');
+        AppMessage.error(context, l10n.purchaseProofUnreadable);
         return;
       }
       final proofValidationError = PurchasePaymentProofGuard.validateBytes(
@@ -288,7 +305,12 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         bytes: proofBytes,
       );
       if (proofValidationError != null) {
-        AppMessage.error(context, proofValidationError);
+        AppMessage.error(
+          context,
+          Localizations.localeOf(context).languageCode == 'ar'
+              ? l10n.purchaseProofUnreadable
+              : proofValidationError,
+        );
         return;
       }
       // Naviguer vers l'écran de confirmation
@@ -384,6 +406,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   }
 
   Future<void> _openPaymentProofSheet() async {
+    final l10n = AppLocalizations.of(context);
     if (!_hasSelection || _submitting) return;
 
     await showModalBottomSheet<void>(
@@ -431,7 +454,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Ajouter la preuve de paiement',
+                          l10n.purchaseAddProof,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -441,7 +464,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Vérifiez le panier, puis joignez un reçu ou un virement avant de confirmer.',
+                          l10n.purchaseProofInstruction,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -465,7 +488,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Preuve de paiement',
+                          l10n.purchaseProofTitle,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -510,9 +533,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                             ),
                             child: _submitting
                                 ? const AppInlineLoading(size: 20)
-                                : const Text(
-                                    'Envoyer la commande',
-                                    style: TextStyle(
+                                : Text(
+                                    l10n.purchaseSendOrder,
+                                    style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -544,6 +567,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final amt = _totalAmount();
     final showEmptyState =
         !_loadingOffers && _offerLoadError == null && _offerTypes.isEmpty;
@@ -570,7 +594,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         child: Column(
           children: [
             ScreenHeader(
-              title: 'Commande de carnets',
+              title: l10n.purchaseOrderTitle,
               onBack: () => context.pop(),
             ),
             const SizedBox(height: 18),
@@ -580,7 +604,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 children: [
                   if (!showEmptyState) ...[
                     Text(
-                      'Sélectionnez les carnets et indiquez la quantité.',
+                      l10n.purchaseSelectInstruction,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -610,7 +634,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           TextButton.icon(
                             onPressed: _reloadOffers,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Actualiser'),
+                            label: Text(l10n.commonRefresh),
                           ),
                         ],
                       ),
@@ -618,12 +642,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   else if (_offerTypes.isEmpty)
                     EmptyState(
                       icon: Icons.inventory_2_outlined,
-                      title: AppEnvironment.useAcpecLiveData
-                          ? 'Aucun type de ticket détecté pour le moment.'
-                          : "Aucun type de ticket unitaire n'est disponible pour votre société.",
-                      message: AppEnvironment.useAcpecLiveData
-                          ? "Lorsque des offres seront disponibles pour votre compte, elles s'afficheront ici."
-                          : null,
+                      title: l10n.purchaseNoOffersTitle,
+                      message: l10n.purchaseNoOffersMessage,
                     )
                   else ...[
                     GridView.builder(
@@ -809,6 +829,7 @@ class _CarnetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isSelected = quantity > 0;
 
     return Material(
@@ -864,7 +885,7 @@ class _CarnetCard extends StatelessWidget {
                     '${Formatters.numberFr(type.totalAmount)} ${type.displayCurrency}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
+                    textAlign: TextAlign.end,
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
@@ -879,7 +900,7 @@ class _CarnetCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Validité ${type.validityDays} jours',
+                      l10n.purchaseValidityDays(type.validityDays),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -898,7 +919,7 @@ class _CarnetCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'Quantité',
+                    l10n.purchaseQuantity,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -940,6 +961,7 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final disabled = onSubmit == null || !hasSelection;
     return Container(
       width: double.infinity,
@@ -959,7 +981,7 @@ class _BottomBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'TOTAL PANIER',
+                  l10n.purchaseCartTotal.toUpperCase(),
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 9,
@@ -970,7 +992,7 @@ class _BottomBar extends StatelessWidget {
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -1022,9 +1044,9 @@ class _BottomBar extends StatelessWidget {
               ),
               child: submitting
                   ? const AppInlineLoading(size: 20)
-                  : const Text(
-                      'Continuer',
-                      style: TextStyle(
+                  : Text(
+                      l10n.purchaseContinue,
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1213,10 +1235,10 @@ class _PurchaseLinesSummaryRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   label,
                   maxLines: 1,
@@ -1246,11 +1268,11 @@ class _PurchaseLinesSummaryRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: AmountInline(
                 amount: amount,
                 currency: currency,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 valueStyle: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -1285,7 +1307,7 @@ class _PurchaseLinesSummaryTotalRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Montant total',
+            AppLocalizations.of(context).totalAmount,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -1296,7 +1318,7 @@ class _PurchaseLinesSummaryTotalRow extends StatelessWidget {
         AmountInline(
           amount: totalAmount,
           currency: currency,
-          textAlign: TextAlign.right,
+          textAlign: TextAlign.end,
           valueStyle: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
@@ -1321,6 +1343,7 @@ class _ProofPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hasFile = path != null;
     return Material(
       color: Colors.transparent,
@@ -1374,8 +1397,8 @@ class _ProofPicker extends StatelessWidget {
                   children: [
                     Text(
                       hasFile
-                          ? 'Preuve sélectionnée'
-                          : 'Ajouter la preuve de paiement',
+                          ? l10n.purchaseProofSelected
+                          : l10n.purchaseAddProof,
                       style: TextStyle(
                         color: AppColors.ink,
                         fontWeight: FontWeight.w700,
@@ -1387,7 +1410,9 @@ class _ProofPicker extends StatelessWidget {
                     Text(
                       hasFile
                           ? path!.split(RegExp(r'[/\\]')).last
-                          : 'JPG, PNG ou PDF — taille maximale ${PurchasePaymentProofGuard.maxSizeLabel}.',
+                          : l10n.purchaseProofFormats(
+                              PurchasePaymentProofGuard.maxSizeLabel,
+                            ),
                       style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 12,

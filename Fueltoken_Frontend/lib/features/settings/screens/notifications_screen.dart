@@ -8,6 +8,7 @@ import '../../../core/notifications/purchase_validation_notification_service.dar
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/qr_token.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -61,6 +62,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnimatedBuilder(
       animation: _store,
       builder: (context, _) {
@@ -82,12 +84,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 AppBarHeader(
-                  title: 'Notifications',
+                  title: l10n.notificationsTitle,
                   action: hasUnread
                       ? TextButton(
                           onPressed: _markAllRead,
                           child: Text(
-                            'Tout lu',
+                            l10n.notificationsMarkAllRead,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -101,11 +103,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const SizedBox(height: 12),
                 Expanded(
                   child: notifications.isEmpty
-                      ? const EmptyState(
+                      ? EmptyState(
                           icon: Icons.notifications_none_rounded,
-                          title: 'Aucune notification',
-                          message:
-                              'Les achats validés, QR et transferts apparaîtront ici.',
+                          title: l10n.notificationsEmptyTitle,
+                          message: l10n.notificationsEmptyMessage,
                         )
                       : ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
@@ -113,7 +114,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           children: [
                             if (unreadItems.isNotEmpty) ...[
                               SectionLabel(
-                                'Non lues',
+                                l10n.notificationsUnread,
                                 trailing: Text(
                                   '${unreadItems.length}',
                                   style: TextStyle(
@@ -135,7 +136,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ],
                             if (readItems.isNotEmpty) ...[
                               SectionLabel(
-                                'Lues',
+                                l10n.notificationsRead,
                                 trailing: Text(
                                   '${readItems.length}',
                                   style: TextStyle(
@@ -180,6 +181,7 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isQrExpiration = _isQrExpiration(item);
     final isPurchase = item.id.startsWith('purchase-');
     final isTransfer = _isReceiptNotification(item);
@@ -192,7 +194,7 @@ class _NotificationCard extends StatelessWidget {
         ? const Color(0xFFF59E0B)
         : const Color(0xFFF59E0B);
     final dateLabel = item.notificationDateLabel?.trim() ?? '';
-    final titleLabel = item.title;
+    final titleLabel = _notificationTitle(l10n, item);
 
     return AppCard(
       onTap: onToggleDetails,
@@ -265,7 +267,9 @@ class _NotificationCard extends StatelessWidget {
                     _QrExpirationTile(item: item),
                   ] else ...[
                     Text(
-                      item.body,
+                      Localizations.localeOf(context).languageCode == 'ar'
+                          ? l10n.notificationsUpdateMessage
+                          : item.body,
                       style: TextStyle(
                         fontSize: 12.2,
                         fontWeight: FontWeight.w500,
@@ -285,6 +289,17 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
+String _notificationTitle(AppLocalizations l10n, NotificationItem item) {
+  if (item.id.startsWith('purchase-')) {
+    return item.purchaseStatus == 'rejected'
+        ? l10n.txOrderRejected
+        : l10n.txOrderValidated;
+  }
+  if (_isReceiptNotification(item)) return l10n.txCarnetReceipt;
+  if (_isQrExpiration(item)) return l10n.txQrExpiration;
+  return l10n.notificationsTitle;
+}
+
 class _PurchaseLineTile extends StatelessWidget {
   const _PurchaseLineTile({required this.line});
 
@@ -292,7 +307,9 @@ class _PurchaseLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final carnet = line.label.trim().isEmpty ? 'Carnet' : line.label.trim();
+    final carnet = line.label.trim().isEmpty
+        ? AppLocalizations.of(context).carnet
+        : line.label.trim();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -341,7 +358,7 @@ class _PurchaseLineTile extends StatelessWidget {
                 ),
               ],
             ),
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.end,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -358,7 +375,9 @@ class _ReceiptLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final carnet = line.label.trim().isEmpty ? 'Carnet' : line.label.trim();
+    final carnet = line.label.trim().isEmpty
+        ? AppLocalizations.of(context).carnet
+        : line.label.trim();
     final amount = _displayAmount(line.amountLabel, fallback: line.totalAmount);
 
     return AppCard(
@@ -411,7 +430,7 @@ class _ReceiptLineTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -450,12 +469,12 @@ bool _isReceiptNotification(NotificationItem item) {
       text.contains('réception');
 }
 
-String _qrExpirationAmountLabel(NotificationItem item) {
+String _qrExpirationAmountLabel(AppLocalizations l10n, NotificationItem item) {
   final direct = item.amountLabel?.trim();
   if (direct != null && direct.isNotEmpty) return direct;
   final parsed = _valueAfterLabel(item.body, const ['montant', 'amount']);
   if (parsed != null && parsed.isNotEmpty) return parsed;
-  return 'Montant indisponible';
+  return l10n.notificationsAmountUnavailable;
 }
 
 String? _valueAfterLabel(String body, List<String> labels) {
@@ -490,8 +509,9 @@ class _QrExpirationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final qrCode = item.qrPublicCode?.trim() ?? '';
-    final amount = _qrExpirationAmountLabel(item);
+    final amount = _qrExpirationAmountLabel(l10n, item);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -514,14 +534,16 @@ class _QrExpirationTile extends StatelessWidget {
               children: [
                 Center(
                   child: MiniQR(
-                    data: qrCode.isEmpty ? 'QR indisponible' : qrCode,
+                    data: qrCode.isEmpty
+                        ? l10n.notificationsQrUnavailable
+                        : qrCode,
                     state: QrState.expired,
                     size: 104,
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  qrCode.isEmpty ? 'Code QR indisponible' : qrCode,
+                  qrCode.isEmpty ? l10n.notificationsQrUnavailable : qrCode,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -544,10 +566,10 @@ class _QrExpirationTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Montant',
-                    style: TextStyle(
+                    l10n.amount,
+                    style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: AppColors.ink,
@@ -588,7 +610,7 @@ class _QrExpirationTile extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.visibility_rounded, size: 18),
-              label: const Text('Voir le QR'),
+              label: Text(l10n.notificationsViewQr),
             ),
           ),
         ],

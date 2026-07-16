@@ -30,8 +30,8 @@ void main() {
         expect(source, contains('String _carnetDisplayCodeFor(FaceLine line)'));
         expect(source, contains('line.carnetShortCode.trim()'));
         expect(source, contains('line.carnetNo.trim()'));
-        expect(source, contains("return 'Code carnet indisponible';"));
-        expect(source, contains("final carnetTitle = 'Carnet \$carnetCode';"));
+        expect(source, contains('.carnetCodeUnavailable'));
+        expect(source, contains('l10n.carnetWithCode(carnetCode)'));
 
         final shortCodeIndex = source.indexOf('line.carnetShortCode.trim()');
         final carnetNoIndex = source.indexOf('line.carnetNo.trim()');
@@ -48,8 +48,8 @@ void main() {
       expect(source, contains('String _carnetTypeLabelFor(FaceLine line)'));
       expect(source, contains('final rawName = line.carnetTypeName.trim();'));
       expect(source, contains('return _normalizedCarnetLabel(rawName);'));
-      expect(source, contains('Formatters.carnetTypeLabel('));
-      expect(source, contains('currency: _currencyFor(line),'));
+      expect(source, contains('carnetTypeFallback('));
+      expect(source, contains('_currencyFor(line),'));
       expect(source, isNot(contains('Carnet de 10 tickets')));
       expect(source, isNot(contains('10 tickets x 100 MRU')));
     });
@@ -57,10 +57,10 @@ void main() {
     test('carnet detail keeps explicit non-sensitive labels', () {
       final source = _facesDetailScreenSource();
 
-      expect(source, contains('Code de référence'));
-      expect(source, contains('N° complet du carnet'));
-      expect(source, contains('Tickets disponibles'));
-      expect(source, contains('Montant disponible'));
+      expect(source, contains('l10n.referenceCode'));
+      expect(source, contains('l10n.carnetFullNumber'));
+      expect(source, contains('l10n.carnetsAvailableTickets'));
+      expect(source, contains('l10n.availableAmount'));
       expect(source, contains('ticketsAvailableLabel'));
       expect(source, contains('availableAmountLabel'));
       expect(source, contains('fullCarnetNo'));
@@ -82,7 +82,7 @@ void main() {
       expect(source, contains('onTap: onTap'));
       expect(source, contains('Row('));
       expect(source, contains('Icons.confirmation_number_outlined'));
-      expect(source, contains('Expire le'));
+      expect(source, contains('l10n.carnetExpiresOn('));
     });
   });
 }

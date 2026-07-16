@@ -6,19 +6,24 @@ String _read(String path) => File(path).readAsStringSync();
 
 void main() {
   group('Patch2H onboarding registration screen guard', () {
-    test('splash routes first unauthenticated opening to onboarding', () {
+    test('splash requests language before first onboarding', () {
       final splash = _read('lib/features/auth/screens/splash_screen.dart');
       final prefs = _read('lib/core/settings/app_preferences.dart');
       final router = _read('lib/core/router/app_router.dart');
 
       expect(prefs, contains('_kHasSeenOnboarding'));
+      expect(prefs, contains('_kHasSelectedLanguage'));
+      expect(prefs, contains('Future<bool> hasSelectedLanguage()'));
       expect(prefs, contains('Future<bool> hasSeenOnboarding()'));
       expect(prefs, contains('Future<void> setHasSeenOnboarding(bool value)'));
       expect(splash, contains('PendingSignupStore.loadUsable()'));
+      expect(splash, contains('AppPreferences.hasSelectedLanguage()'));
+      expect(splash, contains("context.go('/language-selection')"));
       expect(splash, contains("context.go('/register/verify-otp')"));
       expect(splash, contains('AppPreferences.hasSeenOnboarding()'));
       expect(splash, contains("seenOnboarding ? '/login' : '/onboarding'"));
       expect(router, contains("path: '/onboarding'"));
+      expect(router, contains("path: '/language-selection'"));
       expect(router, contains('const OnboardingScreen()'));
     });
 
@@ -29,10 +34,10 @@ void main() {
           'lib/features/auth/screens/onboarding_screen.dart',
         );
 
-        expect(source, contains('Tickets Carburant'));
-        expect(source, contains('Créer mon compte'));
-        expect(source, contains('Vous avez déjà un compte ?'));
-        expect(source, contains('Se connecter'));
+        expect(source, contains('l10n.authWelcomeTitle'));
+        expect(source, contains('l10n.authCreateAccount'));
+        expect(source, contains('l10n.authAlreadyAccount'));
+        expect(source, contains('l10n.authSignIn'));
         expect(source, contains('setHasSeenOnboarding(true)'));
         expect(source, contains('context.go(route)'));
         expect(source, isNot(contains('LanguageSwitch')));
@@ -68,16 +73,16 @@ void main() {
           contains('validateFourDigitNumericPassword(pin) == null'),
         );
         expect(source, contains('_pinConfirm.text.trim() == pin'));
-        expect(source, contains("hint: 'Confirmer le PIN'"));
+        expect(source, contains('hint: l10n.authConfirmPin'));
         expect(
           source,
           contains('onPressed: canSubmit ? _onCreateAccount : null'),
         );
         expect(source, contains('const _RegisterCompactHeader()'));
-        expect(source, contains('Leader Petroleum — Tickets Carburant'));
+        expect(source, contains('l10n.authRegisterBrand'));
         expect(
           source,
-          contains('Recevez un code SMS pour vérifier votre compte.'),
+          contains('l10n.authRegisterInstruction'),
         );
         expect(source, isNot(contains('const _RegisterWelcomeCopy(),')));
         expect(
@@ -114,7 +119,7 @@ void main() {
       );
       final repo = _read('lib/data/repositories/auth_repository.dart');
 
-      expect(register, contains('Code SMS envoyé.'));
+      expect(register, contains('authSmsSent'));
       expect(
         register,
         isNot(
@@ -125,7 +130,7 @@ void main() {
         ),
       );
 
-      expect(registerVerify, contains('Code SMS introuvable'));
+      expect(registerVerify, contains('authOtpMissingExpired'));
       expect(
         registerVerify,
         isNot(
@@ -136,8 +141,8 @@ void main() {
         ),
       );
 
-      expect(forgot, contains('Saisissez le code SMS'));
-      expect(forgot, contains("labelText: 'Code SMS'"));
+      expect(forgot, contains('authEnterSixDigitCode'));
+      expect(forgot, contains('authSmsCode'));
       expect(
         forgot,
         isNot(

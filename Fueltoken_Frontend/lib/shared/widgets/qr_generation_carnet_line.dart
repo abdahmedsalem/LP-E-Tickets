@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
+import '../../l10n/app_localizations.dart';
 import 'amount_inline.dart';
 
 class QrGenerationCarnetLine extends StatelessWidget {
@@ -18,6 +19,7 @@ class QrGenerationCarnetLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -26,7 +28,7 @@ class QrGenerationCarnetLine extends StatelessWidget {
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   title,
                   maxLines: 1,
@@ -43,14 +45,14 @@ class QrGenerationCarnetLine extends StatelessWidget {
             const SizedBox(width: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: AmountInline(amount: amount),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
-          'Expire le ${Formatters.dateTimeDash(expirationDate)}',
+          l10n.expiresOn(Formatters.dateTimeDash(expirationDate)),
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,

@@ -103,7 +103,8 @@ void main() {
       );
 
       expect(source, contains('AuthUnlockRequested(pin: pin)'));
-      expect(source, contains('PIN serveur'));
+      expect(source, contains('l10n.authUnlock'));
+      expect(source, contains('l10n.authPinFourDigits'));
       expect(source, isNot(contains('AuthLocalPinSetupRequested(pin: pin)')));
       expect(
         source,

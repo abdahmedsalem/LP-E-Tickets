@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -9,6 +9,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/models/carnet_type.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/quantity_circle_badge.dart';
@@ -61,20 +62,23 @@ class _PurchaseConfirmationScreenState
     _closing = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final nav = Navigator.maybeOf(context, rootNavigator: true) ?? Navigator.of(context);
+        final nav =
+            Navigator.maybeOf(context, rootNavigator: true) ??
+            Navigator.of(context);
         nav.pop(result);
       }
     });
   }
 
   Future<void> _onConfirm() async {
+    final l10n = AppLocalizations.of(context);
     if (_confirming) return;
     setState(() => _confirming = true);
     try {
       final actionCode = await showSensitiveActionCodeDialog(
         context,
-        title: 'Vérification du PIN',
-        description: 'Saisissez votre PIN pour confirmer cette opération.',
+        title: l10n.commonPinVerification,
+        description: l10n.commonPinConfirmationDescription,
       );
       if (actionCode == null || actionCode.isEmpty || !mounted) return;
       final result = await widget.args.onConfirm(actionCode);
@@ -85,8 +89,10 @@ class _PurchaseConfirmationScreenState
         AppMessage.error(
           context,
           ErrorPresenter.isBackendUnavailable(e)
-              ? widget.args.unconfirmedActionMessage
-              : ErrorPresenter.message(e),
+              ? (Localizations.localeOf(context).languageCode == 'ar'
+                    ? l10n.purchaseUnconfirmed
+                    : widget.args.unconfirmedActionMessage)
+              : ErrorPresenter.localizedMessage(context, e),
         );
       }
     } finally {
@@ -96,11 +102,12 @@ class _PurchaseConfirmationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final lines = widget.args.lines;
 
     return Scaffold(
-        backgroundColor: Colors.white,
-        bottomNavigationBar: SafeArea(
+      backgroundColor: Colors.white,
+      bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Column(
@@ -136,16 +143,16 @@ class _PurchaseConfirmationScreenState
                         )
                       : Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
+                          children: [
+                            const Icon(
                               Icons.check_circle_outline_rounded,
                               color: Colors.white,
                               size: 19,
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             Text(
-                              'Confirmer la commande',
-                              style: TextStyle(
+                              l10n.purchaseConfirmTitle,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -161,9 +168,9 @@ class _PurchaseConfirmationScreenState
                 height: 44,
                 child: TextButton(
                   onPressed: () => _close(null),
-                  child: const Text(
-                    'Annuler',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.purchaseCancel,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.muted,
@@ -174,12 +181,12 @@ class _PurchaseConfirmationScreenState
             ],
           ),
         ),
-        ),
-        body: SafeArea(
-          child: Column(
+      ),
+      body: SafeArea(
+        child: Column(
           children: [
             ScreenHeader(
-              title: 'Confirmer la commande',
+              title: l10n.purchaseConfirmTitle,
               onBack: () => _close(null),
             ),
             const SizedBox(height: 14),
@@ -188,7 +195,7 @@ class _PurchaseConfirmationScreenState
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
                 children: [
                   Text(
-                    'Vérifiez la commande de carnets avant de confirmer.',
+                    l10n.purchaseConfirmInstruction,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
@@ -198,22 +205,21 @@ class _PurchaseConfirmationScreenState
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const _SectionHeader(title: 'Commande de carnets'),
+                  _SectionHeader(title: l10n.purchaseOrderTitle),
                   const SizedBox(height: 14),
                   _PurchaseLinesCard(lines: lines),
                   const SizedBox(height: 22),
-                  const _SectionHeader(title: 'Preuve de paiement'),
+                  _SectionHeader(title: l10n.purchaseProofTitle),
                   const SizedBox(height: 14),
                   _PaymentProofImageCard(
                     proofPath: widget.args.proofPath,
                     proofBytes: widget.args.proofBytes,
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    "En confirmant, votre commande de carnets sera envoyée à un administrateur pour validation. "
-                    'Les carnets seront crédités après approbation.',
+                  Text(
+                    l10n.purchaseConfirmationDisclaimer,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12.5,
                       color: AppColors.muted,
                       height: 1.5,
@@ -343,10 +349,10 @@ class _PurchaseLineRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   label,
                   maxLines: 1,
@@ -367,10 +373,7 @@ class _PurchaseLineRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Center(
-              child: QuantityCircleBadge(
-                quantity: qty,
-                size: rowHeight,
-              ),
+              child: QuantityCircleBadge(quantity: qty, size: rowHeight),
             ),
           ),
         ),
@@ -379,11 +382,11 @@ class _PurchaseLineRow extends StatelessWidget {
           child: SizedBox(
             height: rowHeight,
             child: Align(
-              alignment: Alignment.centerRight,
+              alignment: AlignmentDirectional.centerEnd,
               child: _AmountInline(
                 amount: amount,
                 currency: currency,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 valueStyle: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -415,7 +418,7 @@ class _TotalRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Montant total',
+            AppLocalizations.of(context).totalAmount,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -448,7 +451,7 @@ class _AmountInline extends StatelessWidget {
     required this.currency,
     required this.valueStyle,
     required this.unitStyle,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.start,
   });
 
   final int amount;
@@ -508,7 +511,7 @@ class _PaymentProofSummaryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Montant total',
+                    AppLocalizations.of(context).totalAmount,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -531,7 +534,7 @@ class _PaymentProofSummaryCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
-              'La génération de QR se fera à partir des carnets sélectionnés.',
+              AppLocalizations.of(context).purchaseApprovalHint,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -607,5 +610,3 @@ class _PaymentProofImageCard extends StatelessWidget {
     );
   }
 }
-
-

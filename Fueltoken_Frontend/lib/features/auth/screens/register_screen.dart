@@ -12,6 +12,7 @@ import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
 import '../../../data/services/odoo_auth_service.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';
@@ -74,8 +75,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _validatePinConfirm(String? raw) {
     final value = raw?.trim() ?? '';
-    if (value.isEmpty) return 'Confirmez votre PIN';
-    if (value != _pin.text.trim()) return 'Les PIN ne correspondent pas.';
+    final l10n = AppLocalizations.of(context);
+    if (value.isEmpty) return l10n.authConfirmPinRequired;
+    if (value != _pin.text.trim()) return l10n.authPinsMismatch;
     return null;
   }
 
@@ -87,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       AppMessage.error(
         context,
-        "L'inscription Odoo ACPEC n'est pas configurée sur cet appareil.",
+        AppLocalizations.of(context).authRegistrationUnavailable,
       );
       return;
     }
@@ -105,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (challengeId == null || challengeId <= 0) {
         AppMessage.error(
           context,
-          'Le serveur n’a pas confirmé le code SMS. Réessayez.',
+          AppLocalizations.of(context).authSmsNotConfirmed,
         );
         return;
       }
@@ -117,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         companyId: companyId,
       );
       if (!mounted) return;
-      AppMessage.info(context, 'Code SMS envoyé.');
+      AppMessage.info(context, AppLocalizations.of(context).authSmsSent);
       context.push(
         '/register/verify-otp',
         extra: RegisterOtpRouteArgs(
@@ -142,21 +144,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final ref = error.reference?.trim();
       final refLine = ref == null || ref.isEmpty
           ? ''
-          : '\nRéférence support : $ref';
+          : '\n${AppLocalizations.of(context).supportReference(ref)}';
 
       if (error.publicCode == 'SIGNUP_NOT_ALLOWED') {
-        return 'Inscription impossible avec ce numéro. '
-            'Si vous avez déjà un compte, connectez-vous.'
-            '$refLine';
+        return '${AppLocalizations.of(context).authRegistrationFailed}$refLine';
       }
 
       final msg = error.message.trim();
-      if (msg.isNotEmpty && !msg.contains('OdooJsonRpcException')) {
+      if (Localizations.localeOf(context).languageCode != 'ar' &&
+          msg.isNotEmpty &&
+          !msg.contains('OdooJsonRpcException')) {
         return '$msg$refLine';
       }
     }
 
-    return ErrorPresenter.message(error);
+    return ErrorPresenter.localizedMessage(context, error);
   }
 
   int? _extractChallengeId(Map<String, dynamic> response) {
@@ -185,6 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -215,16 +218,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 16),
                           _RegisterField(
                             controller: _name,
-                            hint: 'Nom complet',
+                            hint: l10n.authFullName,
                             validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Nom requis'
+                                ? l10n.authNameRequired
                                 : null,
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: 10),
                           _RegisterField(
                             controller: _phoneLocal,
-                            hint: 'Numéro de téléphone',
+                            hint: l10n.authPhone,
                             keyboardType: TextInputType.phone,
                             maxLength: 8,
                             inputFormatters: [
@@ -238,14 +241,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 10),
                           _RegisterField(
                             controller: _pin,
-                            hint: 'Définir le PIN',
+                            hint: l10n.authDefinePin,
                             obscure: _obscure,
                             keyboardType: TextInputType.number,
                             maxLength: kSecretCodeLength,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
-                            validator: validateFourDigitNumericPassword,
+                            validator: (value) =>
+                                validateFourDigitNumericPassword(value) == null
+                                ? null
+                                : l10n.authEnterPinFourDigits,
                             counterLabel:
                                 '${_pin.text.trim().length}/$kSecretCodeLength',
                             trailing: IconButton(
@@ -265,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 10),
                           _RegisterField(
                             controller: _pinConfirm,
-                            hint: 'Confirmer le PIN',
+                            hint: l10n.authConfirmPin,
                             obscure: _obscureConfirm,
                             keyboardType: TextInputType.number,
                             maxLength: kSecretCodeLength,
@@ -318,9 +324,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'Créer mon compte',
-                                      style: TextStyle(
+                                  : Text(
+                                      l10n.authCreateAccount,
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -335,9 +341,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               spacing: 6,
                               runSpacing: 4,
                               children: [
-                                const Text(
-                                  'Vous avez déjà un compte ?',
-                                  style: TextStyle(
+                                Text(
+                                  l10n.authAlreadyAccount,
+                                  style: const TextStyle(
                                     fontSize: 13.5,
                                     color: AppColors.muted,
                                     fontWeight: FontWeight.w500,
@@ -351,9 +357,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     if (!ctx.mounted) return;
                                     ctx.go('/login');
                                   },
-                                  child: const Text(
-                                    'Se connecter',
-                                    style: TextStyle(
+                                  child: Text(
+                                    l10n.authSignIn,
+                                    style: const TextStyle(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -365,7 +371,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (state.status == AuthStatus.failure &&
                               state.errorMessage != null) ...[
                             const SizedBox(height: 18),
-                            _RegisterNoticeCard(message: state.errorMessage!),
+                            _RegisterNoticeCard(
+                              message:
+                                  Localizations.localeOf(
+                                        context,
+                                      ).languageCode ==
+                                      'ar'
+                                  ? l10n.commonGenericError
+                                  : state.errorMessage!,
+                            ),
                           ],
                         ],
                       ),
@@ -386,6 +400,7 @@ class _RegisterCompactHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -408,9 +423,9 @@ class _RegisterCompactHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Créer un compte',
-          style: TextStyle(
+        Text(
+          l10n.authRegisterTitle,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 26,
             height: 1.05,
@@ -419,9 +434,9 @@ class _RegisterCompactHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Leader Petroleum — Tickets Carburant',
-          style: TextStyle(
+        Text(
+          l10n.authRegisterBrand,
+          style: const TextStyle(
             color: AppColors.brandBlueDeep,
             fontSize: 13.5,
             height: 1.25,
@@ -429,9 +444,9 @@ class _RegisterCompactHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Recevez un code SMS pour vérifier votre compte.',
-          style: TextStyle(
+        Text(
+          l10n.authRegisterInstruction,
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13.5,
             height: 1.35,
@@ -581,7 +596,7 @@ class _RegisterField extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Align(
-          alignment: Alignment.centerRight,
+          alignment: AlignmentDirectional.centerEnd,
           child: Text(
             counterLabel,
             style: const TextStyle(

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../data/services/odoo_auth_service.dart';
-import '../../../core/validation/contact_validators.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import 'forgot_otp_flow_screens.dart';
 
@@ -54,7 +54,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')
           : null;
       if (!mounted) return;
-      AppMessage.info(context, 'Code envoye.');
+      AppMessage.info(context, AppLocalizations.of(context).authCodeSent);
       context.push(
         '/forgot-password/verify-otp',
         extra: ForgotOtpRouteArgs(
@@ -64,11 +64,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
     } on StateError catch (e) {
       if (mounted) {
-        AppMessage.error(context, ErrorPresenter.message(e));
+        AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
       }
     } catch (e) {
       if (mounted) {
-        AppMessage.error(context, ErrorPresenter.message(e));
+        AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -77,6 +77,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -119,8 +120,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        const Text(
-                          'Recuperation du PIN',
+                        Text(
+                          l10n.authPinRecovery,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 18,
@@ -130,8 +131,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Entrez votre numero pour recevoir le code de verification.',
+                        Text(
+                          l10n.authPinRecoveryInstruction,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
@@ -160,7 +161,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               children: [
                                 _AuthTextField(
                                   controller: _phoneLocal,
-                                  label: 'Numero',
+                                  label: l10n.authNumber,
                                   hint: 'XXXXXXXX',
                                   keyboardType: TextInputType.number,
                                   maxLength: 8,
@@ -168,7 +169,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     FilteringTextInputFormatter.digitsOnly,
                                     LengthLimitingTextInputFormatter(8),
                                   ],
-                                  validator: validateMrLocalPhone,
+                                  validator: (value) {
+                                    final digits = (value ?? '').replaceAll(
+                                      RegExp(r'\D'),
+                                      '',
+                                    );
+                                    return digits.length == 8
+                                        ? null
+                                        : l10n.authPhoneInvalid;
+                                  },
                                   counterLabel:
                                       '${_phoneLocal.text.trim().replaceAll(RegExp(r'\D'), '').length}/8',
                                 ),
@@ -205,9 +214,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                                         color: Colors.white,
                                                       ),
                                                 )
-                                              : const Text(
-                                                  'Envoyer le code',
-                                                  style: TextStyle(
+                                              : Text(
+                                                  l10n.authSendCode,
+                                                  style: const TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w800,
@@ -219,8 +228,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                const Text(
-                                  'Le code est envoye par SMS sur votre numero de telephone.',
+                                Text(
+                                  l10n.authCodeSentBySms,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 12.5,

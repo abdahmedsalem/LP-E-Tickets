@@ -19,6 +19,7 @@ import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
@@ -352,7 +353,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (user == null) {
       setState(() {
         _acpecLoading = false;
-        _acpecError = 'Session requise.';
+        _acpecError = AppLocalizations.of(context).commonSessionRequired;
       });
       return;
     }
@@ -416,17 +417,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _acpecLoading = false;
         _acpecLoadingMore = false;
         _acpecError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? AppLocalizations.of(context).sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _acpecLoading = false;
         _acpecLoadingMore = false;
-        _acpecError = ErrorPresenter.isBackendUnavailable(e)
-            ? ErrorPresenter.backendUnavailable()
-            : ErrorPresenter.message(e);
+        _acpecError = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
@@ -438,7 +437,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (user == null) {
       setState(() {
         _acpecLoading = false;
-        _acpecError = 'Session requise.';
+        _acpecError = AppLocalizations.of(context).commonSessionRequired;
       });
       return;
     }
@@ -502,16 +501,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       setState(() {
         _acpecLoading = false;
         _acpecError = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? AppLocalizations.of(context).sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _acpecLoading = false;
-        _acpecError = ErrorPresenter.isBackendUnavailable(e)
-            ? ErrorPresenter.backendUnavailable()
-            : ErrorPresenter.message(e);
+        _acpecError = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
@@ -525,45 +522,57 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  static String _titleForRole(UserRole role, TransactionsScreenMode mode) {
+  static String _titleForRole(
+    AppLocalizations l10n,
+    UserRole role,
+    TransactionsScreenMode mode,
+  ) {
     if (mode == TransactionsScreenMode.wallet) {
-      return 'Mouvements du portefeuille';
+      return l10n.walletMovementsTitle;
     }
     switch (role) {
       case UserRole.user:
-        return 'Historique des opérations';
+        return l10n.transactionsHistoryTitle;
       case UserRole.station:
-        return 'Historique station';
+        return l10n.stationHistoryTitle;
       case UserRole.admin:
-        return 'Historique global';
+        return l10n.globalHistoryTitle;
     }
   }
 
-  static String _emptyTitle(UserRole role, TransactionsScreenMode mode) {
+  static String _emptyTitle(
+    AppLocalizations l10n,
+    UserRole role,
+    TransactionsScreenMode mode,
+  ) {
     if (mode == TransactionsScreenMode.wallet) {
-      return 'Aucun mouvement de portefeuille pour l\u0027instant';
+      return l10n.walletEmptyTitle;
     }
     switch (role) {
       case UserRole.user:
-        return 'Aucun mouvement pour l\u0027instant';
+        return l10n.historyEmptyTitle;
       case UserRole.station:
-        return 'Aucune activité enregistrée';
+        return l10n.stationHistoryEmptyTitle;
       case UserRole.admin:
-        return 'Historique vide';
+        return l10n.globalHistoryEmptyTitle;
     }
   }
 
-  static String _emptyMessage(UserRole role, TransactionsScreenMode mode) {
+  static String _emptyMessage(
+    AppLocalizations l10n,
+    UserRole role,
+    TransactionsScreenMode mode,
+  ) {
     if (mode == TransactionsScreenMode.wallet) {
-      return 'Les commandes validées, générations de QR, transferts, réceptions et expirations apparaîtront ici.';
+      return l10n.walletEmptyMessage;
     }
     switch (role) {
       case UserRole.user:
-        return 'Vos commandes, la génération de QR et vos utilisations apparaîtront ici.';
+        return l10n.historyEmptyMessage;
       case UserRole.station:
-        return 'Les contrôles et utilisations traités pour cette station s\u0027afficheront ici.';
+        return l10n.stationHistoryEmptyMessage;
       case UserRole.admin:
-        return 'Synchronisez ou ajoutez des données : l\u0027historique global se remplira automatiquement.';
+        return l10n.globalHistoryEmptyMessage;
     }
   }
 
@@ -571,6 +580,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
+        final l10n = AppLocalizations.of(context);
         final user = authState.user;
         if (user == null) {
           return Scaffold(
@@ -601,7 +611,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 children: [
                   AppBarHeader(
-                    title: _titleForRole(user.role, widget.mode),
+                    title: _titleForRole(l10n, user.role, widget.mode),
                     onBack: () => popOrGoRoleHome(context, user.role),
                     showBack: showBack,
                     leadingOnlyWhenNavigatorCanPop: true,
@@ -628,7 +638,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   )
                   .toList();
 
-        final groups = _groupByDay(txs);
+        final groups = _groupByDay(txs, l10n);
 
         if (acpec && _acpecLoading && _acpecError == null) {
           return Scaffold(
@@ -637,7 +647,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 children: [
                   AppBarHeader(
-                    title: _titleForRole(user.role, widget.mode),
+                    title: _titleForRole(l10n, user.role, widget.mode),
                     onBack: () => popOrGoRoleHome(context, user.role),
                     showBack: showBack,
                     leadingOnlyWhenNavigatorCanPop: true,
@@ -667,7 +677,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 children: [
                   AppBarHeader(
-                    title: _titleForRole(user.role, widget.mode),
+                    title: _titleForRole(l10n, user.role, widget.mode),
                     onBack: () => popOrGoRoleHome(context, user.role),
                     showBack: showBack,
                     leadingOnlyWhenNavigatorCanPop: true,
@@ -693,7 +703,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             onPressed: () =>
                                 unawaited(_reloadAcpecForCurrentFilter()),
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('R\u00e9essayer'),
+                            label: Text(l10n.commonRetry),
                           ),
                         ),
                       ],
@@ -717,7 +727,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _titleForRole(user.role, widget.mode),
+                          _titleForRole(l10n, user.role, widget.mode),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -748,6 +758,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     child: DateRangeFilterBar(
                       fromLabel: _compactDate(_draftFrom),
                       toLabel: _compactDate(_draftTo),
+                      fromPrefix: l10n.dateFrom,
+                      toPrefix: l10n.dateTo,
+                      applySemanticLabel: l10n.dateApply,
                       onPickFrom: _pickFrom,
                       onPickTo: _pickTo,
                       onApply: _applyDateFilter,
@@ -765,8 +778,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             children: [
                               EmptyState(
                                 icon: Icons.fact_check_outlined,
-                                title: _emptyTitle(user.role, widget.mode),
-                                message: _emptyMessage(user.role, widget.mode),
+                                title: _emptyTitle(
+                                  l10n,
+                                  user.role,
+                                  widget.mode,
+                                ),
+                                message: _emptyMessage(
+                                  l10n,
+                                  user.role,
+                                  widget.mode,
+                                ),
                               ),
                             ],
                           ),
@@ -817,9 +838,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               Icons.expand_more_rounded,
                                               size: 20,
                                             ),
-                                            label: const Text(
-                                              'Charger la page suivante',
-                                            ),
+                                            label: Text(l10n.loadNextPage),
                                           ),
                                         ),
                                       Center(
@@ -834,7 +853,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               )
                                             : _acpecHasMore
                                             ? Text(
-                                                'Faites d\u00e9filer pour charger plus',
+                                                l10n.scrollToLoadMore,
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: AppColors.muted
@@ -843,7 +862,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                                 ),
                                               )
                                             : Text(
-                                                "Fin de l'historique pour cette période",
+                                                l10n.historyPeriodEnd,
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: AppColors.muted
@@ -901,26 +920,27 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   List<({String label, List<BusinessTransaction> items})> _groupByDay(
     List<BusinessTransaction> txs,
+    AppLocalizations l10n,
   ) {
     final map = <String, List<BusinessTransaction>>{};
     final today = DateTime.now();
     for (final t in txs) {
-      final key = _dayLabel(t.date, today);
+      final key = _dayLabel(t.date, today, l10n);
       map.putIfAbsent(key, () => []).add(t);
     }
     return map.entries.map((e) => (label: e.key, items: e.value)).toList();
   }
 
-  String _dayLabel(DateTime d, DateTime today) {
+  String _dayLabel(DateTime d, DateTime today, AppLocalizations l10n) {
     final isToday =
         d.year == today.year && d.month == today.month && d.day == today.day;
-    if (isToday) return 'Aujourd\'hui';
+    if (isToday) return l10n.today;
     final yesterday = today.subtract(const Duration(days: 1));
     final isYesterday =
         d.year == yesterday.year &&
         d.month == yesterday.month &&
         d.day == yesterday.day;
-    if (isYesterday) return 'Hier';
+    if (isYesterday) return l10n.yesterday;
     return Formatters.date(d);
   }
 }
@@ -946,12 +966,13 @@ class _TxCardState extends State<_TxCard> {
   @override
   Widget build(BuildContext context) {
     final tx = widget.tx;
+    final l10n = AppLocalizations.of(context);
     final amountColor = _amountColorFor(
       tx,
       mode: widget.mode,
       currentUserId: widget.currentUserId,
     );
-    final title = tx.displayTitleForViewer(widget.currentUserId);
+    final title = _transactionTitle(l10n, tx, widget.currentUserId);
     final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
     final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
     final amountPrefix = _historyAmountPrefix(
@@ -1015,7 +1036,7 @@ class _TxCardState extends State<_TxCard> {
                           _AmountInline(
                             amount: tx.totalAmount.abs(),
                             prefix: amountPrefix,
-                            textAlign: TextAlign.right,
+                            textAlign: TextAlign.end,
                             valueStyle: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w800,
@@ -1073,7 +1094,8 @@ class _TxDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = _transactionDetailRows(tx, currentUserId);
+    final l10n = AppLocalizations.of(context);
+    final rows = _transactionDetailRows(l10n, tx, currentUserId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1085,7 +1107,7 @@ class _TxDetailBody extends StatelessWidget {
         if (tx.lines.isNotEmpty) ...[
           const SizedBox(height: 10),
           Text(
-            'Detail',
+            l10n.detail,
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
@@ -1142,7 +1164,7 @@ class _TxDetailRowWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               row.value,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.end,
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
@@ -1190,54 +1212,54 @@ class _TxLineRow extends StatelessWidget {
     return derived > 0 ? derived : 0;
   }
 
-  String _purchaseTitle() {
+  String _purchaseTitle(AppLocalizations l10n) {
     final serverLabel = line.carnetTypeName.trim();
     if (serverLabel.isNotEmpty) return serverLabel;
     if (line.carnetSize > 0 && line.faceValue > 0) {
-      return _historyCarnetTypeLabel(line.carnetSize, line.faceValue);
+      return _historyCarnetTypeLabel(l10n, line.carnetSize, line.faceValue);
     }
     final carnetSize = _carnetSize(fromAmount: true);
     if (carnetSize > 0 && line.faceValue > 0) {
-      return _historyCarnetTypeLabel(carnetSize, line.faceValue);
+      return _historyCarnetTypeLabel(l10n, carnetSize, line.faceValue);
     }
     if (line.faceValue > 0) {
-      return 'Carnet ${Formatters.numberFr(line.faceValue)}';
+      return l10n.carnetWithValue(Formatters.numberFr(line.faceValue));
     }
-    return 'Carnet';
+    return l10n.carnet;
   }
 
-  String _lineTypeLabel() {
-    final label = _purchaseTitle();
+  String _lineTypeLabel(AppLocalizations l10n) {
+    final label = _purchaseTitle(l10n);
     if (label.trim().isNotEmpty) return label;
-    return 'Carnet';
+    return l10n.carnet;
   }
 
-  String _qrTitle() {
+  String _qrTitle(AppLocalizations l10n) {
     final qty = line.qty > 0 ? line.qty : 1;
-    final ticketLabel =
-        '${Formatters.numberFr(qty)} ticket${qty > 1 ? 's' : ''}';
     final carnetLabel = Formatters.carnetTypeLabelFromServer(
       line.carnetTypeName,
       fallbackSize: line.carnetSize,
       fallbackFaceValue: line.faceValue,
       fallbackCode: line.carnetTypeCode,
     ).replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), 'carnet ');
-    return '$ticketLabel de $carnetLabel';
+    return l10n.ticketsFromCarnet(qty, carnetLabel);
   }
 
-  String? _subtitle() {
+  String? _subtitle(AppLocalizations l10n) {
     if (txType == TxType.purchaseSubmitted) return null;
     if (line.expirationDate == null) return null;
-    return 'Date d\'expiration : ${DateFormat('dd-MM-yyyy').format(line.expirationDate!)}';
+    return l10n.expirationDateLabel(
+      DateFormat('dd-MM-yyyy').format(line.expirationDate!),
+    );
   }
 
   bool get _showTicketCount =>
       (txType == TxType.carnetTransfer || txType == TxType.carnetReceived) &&
       line.qty > 0;
 
-  String? _ticketCountLabel() {
+  String? _ticketCountLabel(AppLocalizations l10n) {
     if (!_showTicketCount) return null;
-    return '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''}';
+    return l10n.ticketCount(line.qty);
   }
 
   TextStyle _titleStyle(BuildContext context, {required double fontSize}) {
@@ -1259,8 +1281,9 @@ class _TxLineRow extends StatelessWidget {
   }
 
   Widget _purchaseBody(BuildContext context) {
-    final subtitle = _subtitle();
-    final ticketCountLabel = _ticketCountLabel();
+    final l10n = AppLocalizations.of(context);
+    final subtitle = _subtitle(l10n);
+    final ticketCountLabel = _ticketCountLabel(l10n);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
@@ -1276,7 +1299,7 @@ class _TxLineRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _TxLineTitle(
-                  title: _lineTypeLabel(),
+                  title: _lineTypeLabel(l10n),
                   style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
@@ -1292,7 +1315,7 @@ class _TxLineRow extends StatelessWidget {
             children: [
               _AmountInline(
                 amount: line.amount,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 valueStyle: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
@@ -1310,7 +1333,7 @@ class _TxLineRow extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   ticketCountLabel,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   style: const TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
@@ -1327,8 +1350,9 @@ class _TxLineRow extends StatelessWidget {
   }
 
   Widget _qrBody(BuildContext context) {
-    final subtitle = _subtitle();
-    final ticketCountLabel = _ticketCountLabel();
+    final l10n = AppLocalizations.of(context);
+    final subtitle = _subtitle(l10n);
+    final ticketCountLabel = _ticketCountLabel(l10n);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
@@ -1344,7 +1368,7 @@ class _TxLineRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _TxLineTitle(
-                  title: _qrTitle(),
+                  title: _qrTitle(l10n),
                   style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
@@ -1360,7 +1384,7 @@ class _TxLineRow extends StatelessWidget {
             children: [
               _AmountInline(
                 amount: line.amount,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 valueStyle: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1378,7 +1402,7 @@ class _TxLineRow extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   ticketCountLabel,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   style: const TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
@@ -1412,13 +1436,14 @@ class _TxLineTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return FittedBox(
       fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Text(title, maxLines: 1, softWrap: false, style: style),
     );
   }
 }
 
 List<_TxDetailRow> _transactionDetailRows(
+  AppLocalizations l10n,
   BusinessTransaction tx,
   String currentUserId,
 ) {
@@ -1426,10 +1451,17 @@ List<_TxDetailRow> _transactionDetailRows(
   final lotRef = tx.lotInternalRef ?? tx.lotId;
   final station = tx.stationName ?? tx.stationId;
   final totalQty = tx.lines.fold<int>(0, (sum, l) => sum + l.qty);
-  final transferPartyLabel = tx.transferPartyRoleLabelForViewer(currentUserId);
+  final transferPartyLabel = tx.isIncomingTransferForViewer(currentUserId)
+      ? l10n.sender
+      : l10n.beneficiary;
+  final pendingPurchaseDecision = switch (tx.pendingPurchaseDecisionLabel) {
+    'Commande validée' => l10n.orderValidatedNote,
+    'Commande refusée' => l10n.orderRejectedNote,
+    _ => null,
+  };
   final baseRows = <_TxDetailRow>[
     _TxDetailRow(
-      label: 'Référence publique',
+      label: l10n.publicReference,
       value: tx.txReference?.trim().isNotEmpty == true
           ? tx.txReference!.trim()
           : tx.txNumber,
@@ -1445,43 +1477,39 @@ List<_TxDetailRow> _transactionDetailRows(
         if (tx.type != TxType.purchaseValidated &&
             lotRef != null &&
             lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Carnet', value: lotRef),
-        _TxDetailRow(label: 'Acheteur', value: tx.userName),
-        if (tx.type == TxType.purchaseSubmitted &&
-            (tx.note ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Note', value: tx.note!.trim()),
-        if (tx.type == TxType.purchaseRejected &&
-            (tx.note ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Message', value: tx.note!.trim()),
+          _TxDetailRow(label: l10n.carnet, value: lotRef),
+        _TxDetailRow(label: l10n.buyer, value: tx.userName),
+        if (pendingPurchaseDecision != null)
+          _TxDetailRow(label: l10n.note, value: pendingPurchaseDecision),
       ];
     case TxType.qrEmission:
       return [
         ...baseRows,
         if (qrReference.trim().isNotEmpty)
-          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
+          _TxDetailRow(label: l10n.referenceCode, value: qrReference.trim()),
         if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Carnet', value: lotRef),
+          _TxDetailRow(label: l10n.carnet, value: lotRef),
       ];
     case TxType.qrSeparer:
       return [
         ...baseRows,
         if (qrReference.trim().isNotEmpty)
-          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
-        _TxDetailRow(label: 'Tickets', value: '$totalQty'),
+          _TxDetailRow(label: l10n.referenceCode, value: qrReference.trim()),
+        _TxDetailRow(label: l10n.tickets, value: '$totalQty'),
       ];
     case TxType.qrRetirer:
       return [
         ...baseRows,
         if (qrReference.trim().isNotEmpty)
-          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
-        _TxDetailRow(label: 'Tickets retirés', value: '$totalQty'),
+          _TxDetailRow(label: l10n.referenceCode, value: qrReference.trim()),
+        _TxDetailRow(label: l10n.withdrawnTickets, value: '$totalQty'),
       ];
     case TxType.carnetTransfer:
       {
         return [
           ...baseRows,
           if (lotRef != null && lotRef.isNotEmpty)
-            _TxDetailRow(label: 'Carnet', value: lotRef),
+            _TxDetailRow(label: l10n.carnet, value: lotRef),
           if ((tx.transferParty ?? '').trim().isNotEmpty)
             _TxDetailRow(
               label: transferPartyLabel,
@@ -1493,41 +1521,69 @@ List<_TxDetailRow> _transactionDetailRows(
       return [
         ...baseRows,
         if (lotRef != null && lotRef.isNotEmpty)
-          _TxDetailRow(label: 'Carnet', value: lotRef),
+          _TxDetailRow(label: l10n.carnet, value: lotRef),
         if ((tx.transferParty ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Expéditeur', value: tx.transferParty!.trim()),
+          _TxDetailRow(label: l10n.sender, value: tx.transferParty!.trim()),
       ];
     case TxType.stationConsumption:
       return [
         ...baseRows,
         if (qrReference.trim().isNotEmpty)
-          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
+          _TxDetailRow(label: l10n.referenceCode, value: qrReference.trim()),
         if (station != null && station.isNotEmpty)
-          _TxDetailRow(label: 'Station', value: station),
+          _TxDetailRow(label: l10n.station, value: station),
         if ((tx.actorUserName ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Pompiste', value: tx.actorUserName!.trim()),
+          _TxDetailRow(label: l10n.attendant, value: tx.actorUserName!.trim()),
       ];
     case TxType.expiration:
       return [
         ...baseRows,
         if (qrReference.trim().isNotEmpty)
-          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
+          _TxDetailRow(label: l10n.referenceCode, value: qrReference.trim()),
       ];
     case TxType.qrBlocked:
     case TxType.walletLedger:
       return [
         ...baseRows,
         if (qrReference.trim().isNotEmpty && tx.type == TxType.qrBlocked)
-          _TxDetailRow(label: 'Code de référence', value: qrReference.trim()),
+          _TxDetailRow(label: l10n.referenceCode, value: qrReference.trim()),
         if (tx.type == TxType.qrBlocked)
-          const _TxDetailRow(
-            label: 'Message',
-            value: 'QR bloqué à cause des tickets expirés',
+          _TxDetailRow(
+            label: l10n.message,
+            value: l10n.qrBlockedExpiredTicketsMessage,
           )
         else if ((tx.note ?? '').trim().isNotEmpty)
-          _TxDetailRow(label: 'Message', value: tx.note!.trim()),
+          _TxDetailRow(label: l10n.message, value: tx.note!.trim()),
       ];
   }
+}
+
+String _transactionTitle(
+  AppLocalizations l10n,
+  BusinessTransaction tx,
+  String currentUserId,
+) {
+  if (tx.type == TxType.carnetTransfer || tx.type == TxType.carnetReceived) {
+    final incoming = tx.isIncomingTransferForViewer(currentUserId);
+    final tickets = tx.isTicketTransfer;
+    if (incoming) {
+      return tickets ? l10n.txTicketReceipt : l10n.txCarnetReceipt;
+    }
+    return tickets ? l10n.txTicketTransfer : l10n.txCarnetTransfer;
+  }
+  return switch (tx.type) {
+    TxType.purchaseSubmitted => l10n.txOrderSubmitted,
+    TxType.purchaseValidated => l10n.txOrderValidated,
+    TxType.purchaseRejected => l10n.txOrderRejected,
+    TxType.qrEmission => l10n.txQrGeneration,
+    TxType.qrSeparer => l10n.txQrSplit,
+    TxType.qrRetirer => l10n.txQrWithdrawal,
+    TxType.qrBlocked => l10n.txQrBlocked,
+    TxType.stationConsumption => l10n.txFuelConsumption,
+    TxType.expiration => l10n.txQrExpiration,
+    TxType.walletLedger => l10n.txMovement,
+    TxType.carnetTransfer || TxType.carnetReceived => l10n.txMovement,
+  };
 }
 
 String historyTxTitle(TxType type) {
@@ -1618,21 +1674,22 @@ class _HistoryFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final items = mode == TransactionsScreenMode.wallet
         ? [
-            (_HistoryQuickFilter.all, 'Tous'),
-            (_HistoryQuickFilter.purchases, 'Achats'),
-            (_HistoryQuickFilter.qr, 'Générations QR'),
-            (_HistoryQuickFilter.transfer, 'Transferts'),
-            (_HistoryQuickFilter.receipts, 'Réceptions'),
-            (_HistoryQuickFilter.expirations, 'Expirations'),
+            (_HistoryQuickFilter.all, l10n.filterAll),
+            (_HistoryQuickFilter.purchases, l10n.filterPurchases),
+            (_HistoryQuickFilter.qr, l10n.filterQrGenerations),
+            (_HistoryQuickFilter.transfer, l10n.filterTransfers),
+            (_HistoryQuickFilter.receipts, l10n.filterReceipts),
+            (_HistoryQuickFilter.expirations, l10n.filterExpirations),
           ]
         : [
-            (_HistoryQuickFilter.all, 'Tous'),
-            (_HistoryQuickFilter.purchases, 'Commandes'),
-            (_HistoryQuickFilter.transfer, 'Envoi / reçu'),
-            (_HistoryQuickFilter.consumption, 'Consommation'),
-            (_HistoryQuickFilter.qr, 'QR'),
+            (_HistoryQuickFilter.all, l10n.filterAll),
+            (_HistoryQuickFilter.purchases, l10n.filterOrders),
+            (_HistoryQuickFilter.transfer, l10n.filterSentReceived),
+            (_HistoryQuickFilter.consumption, l10n.filterConsumption),
+            (_HistoryQuickFilter.qr, l10n.navQr),
           ];
 
     return SingleChildScrollView(
@@ -1693,8 +1750,8 @@ class _HistoryFilterChip extends StatelessWidget {
   }
 }
 
-String _historyCarnetTypeLabel(int size, int faceValue) {
-  return 'Carnet ${Formatters.numberFr(size)} x $faceValue';
+String _historyCarnetTypeLabel(AppLocalizations l10n, int size, int faceValue) {
+  return '${l10n.carnet} ${Formatters.numberFr(size)} x $faceValue';
 }
 
 class _TransactionFact {

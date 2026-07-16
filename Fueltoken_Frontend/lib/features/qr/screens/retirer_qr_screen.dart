@@ -19,6 +19,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -50,11 +51,12 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
   }
 
   Future<void> _loadParent() async {
+    final l10n = AppLocalizations.of(context);
     if (!AppEnvironment.useAcpecLiveData) {
       setState(() {
         _parent = null;
         _loading = false;
-        _error = 'Connexion serveur ACPEC requise pour retirer un QR.';
+        _error = l10n.qrServerRequiredForWithdrawal;
       });
       return;
     }
@@ -86,7 +88,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         setState(() {
           _parent = qr;
           _loading = false;
-          _error = 'Seuls les QR actifs peuvent être retirés.';
+          _error = l10n.qrOnlyActiveCanWithdraw;
         });
         return;
       }
@@ -94,7 +96,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         setState(() {
           _parent = qr;
           _loading = false;
-          _error = 'Un QR contenant une seule ligne ne peut pas être retiré.';
+          _error = l10n.qrSingleLineCannotWithdraw;
         });
         return;
       }
@@ -110,15 +112,15 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         _parent = null;
         _loading = false;
         _error = e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e);
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _parent = null;
         _loading = false;
-        _error = ErrorPresenter.message(e);
+        _error = ErrorPresenter.localizedMessage(context, e);
       });
     }
   }
@@ -157,6 +159,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     final parent = _parent;
     if (parent == null ||
         parent.state != QrState.active ||
@@ -164,23 +167,20 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       return;
     }
     final user = context.read<AuthBloc>().state.user;
-    if (user == null) throw Exception('Session requise.');
+    if (user == null) throw Exception(l10n.commonSessionRequired);
 
     final picks = <Map<String, dynamic>>[];
     for (final line in _selectedLines(parent)) {
       final qrLineId = _qrLineIdForApi(line);
       if (qrLineId == null) {
-        AppMessage.error(
-          context,
-          'Identifiant de ligne QR manquant. Rechargez le QR.',
-        );
+        AppMessage.error(context, l10n.qrMissingLineIdentifier);
         return;
       }
       picks.add({'qr_line_id': qrLineId, 'qty': line.qty});
     }
 
     if (picks.isEmpty) {
-      AppMessage.warning(context, 'Sélectionnez au moins une ligne à retirer.');
+      AppMessage.warning(context, l10n.qrSelectAtLeastOneLine);
       return;
     }
 
@@ -188,6 +188,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
   }
 
   Future<void> _performSubmit() async {
+    final l10n = AppLocalizations.of(context);
     final parent = _parent;
     if (parent == null ||
         parent.state != QrState.active ||
@@ -195,30 +196,27 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       return;
     }
     final user = context.read<AuthBloc>().state.user;
-    if (user == null) throw Exception('Session requise.');
+    if (user == null) throw Exception(l10n.commonSessionRequired);
 
     final picks = <Map<String, dynamic>>[];
     for (final line in _selectedLines(parent)) {
       final qrLineId = _qrLineIdForApi(line);
       if (qrLineId == null) {
-        AppMessage.error(
-          context,
-          'Identifiant de ligne QR manquant. Rechargez le QR.',
-        );
+        AppMessage.error(context, l10n.qrMissingLineIdentifier);
         return;
       }
       picks.add({'qr_line_id': qrLineId, 'qty': line.qty});
     }
 
     if (picks.isEmpty) {
-      AppMessage.warning(context, 'Sélectionnez au moins une ligne à retirer.');
+      AppMessage.warning(context, l10n.qrSelectAtLeastOneLine);
       return;
     }
 
     final actionCode = await showSensitiveActionCodeDialog(
       context,
-      title: 'Vérification du PIN',
-      description: 'Saisissez votre PIN pour confirmer cette opération.',
+      title: l10n.commonPinVerification,
+      description: l10n.commonPinConfirmationDescription,
     );
     if (actionCode == null || actionCode.isEmpty || !mounted) return;
 
@@ -234,8 +232,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       final payload = acpecRpcMapOrThrow(
         raw,
         fallbackMessage: 'Retrait QR refusé par le serveur.',
-        publicErrorMessage:
-            'Le retrait du QR a échoué. Réessayez ou contactez l’administrateur.',
+        publicErrorMessage: l10n.qrWithdrawalFailed,
       );
 
       final newQrRaw = payload['new_qr'];
@@ -264,7 +261,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         OdooFueltokenRpcConfig.qrList,
       );
       if (!mounted) return;
-      AppMessage.success(context, 'QR retiré avec succès.');
+      AppMessage.success(context, l10n.qrWithdrawalSuccess);
       QrRefreshBus.instance.bump();
       WalletRefreshBus.instance.bump();
       FacesRefreshBus.instance.bump();
@@ -277,12 +274,12 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       AppMessage.error(
         context,
         e.isOdooSessionExpired
-            ? 'Session expirée. Reconnectez-vous.'
-            : ErrorPresenter.message(e),
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e),
       );
     } catch (e) {
       if (!mounted) return;
-      AppMessage.error(context, ErrorPresenter.message(e));
+      AppMessage.error(context, ErrorPresenter.localizedMessage(context, e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -290,6 +287,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -297,7 +295,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
           child: Column(
             children: [
               ScreenHeader(
-                title: 'Retirer',
+                title: l10n.qrWithdrawTitle,
                 onBack: () => popOrGo(context, '/qr'),
               ),
               const SizedBox(height: 18),
@@ -330,7 +328,9 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                   onPressed: _parent == null
                       ? _loadParent
                       : () => popOrGo(context, '/qr'),
-                  child: Text(_parent == null ? 'Réessayer' : 'Retour'),
+                  child: Text(
+                    _parent == null ? l10n.commonRetry : l10n.commonBack,
+                  ),
                 ),
               ],
             ),
@@ -341,7 +341,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
 
     final parent = _parent;
     if (parent == null) {
-      return const Scaffold(body: Center(child: Text('QR introuvable.')));
+      return Scaffold(body: Center(child: Text(l10n.qrNotFound)));
     }
 
     final selectedLineCount = _selectedLines(parent).length;
@@ -379,10 +379,10 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                   : const Icon(Icons.call_split_rounded, size: 18),
               label: Text(
                 _submitting
-                    ? 'Retrait...'
+                    ? l10n.qrWithdrawalInProgress
                     : selectedLineCount > 0
-                    ? 'Retirer ($selectedLineCount)'
-                    : 'Retirer',
+                    ? l10n.qrWithdrawSelected(selectedLineCount)
+                    : l10n.qrWithdraw,
               ),
             ),
           ),
@@ -392,7 +392,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
         child: Column(
           children: [
             ScreenHeader(
-              title: 'Retirer',
+              title: l10n.qrWithdrawTitle,
               onBack: () => popOrGo(context, '/qr'),
             ),
             const SizedBox(height: 18),
@@ -402,7 +402,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 children: [
                   Text(
-                    'Sélectionnez les lignes à retirer.',
+                    l10n.qrWithdrawInstruction,
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w500,
@@ -429,7 +429,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Sélection',
+                                l10n.selection,
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -438,7 +438,7 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '$selectedLineCount ligne${selectedLineCount > 1 ? 's' : ''} sélectionnée${selectedLineCount > 1 ? 's' : ''}',
+                                l10n.selectedLines(selectedLineCount),
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
@@ -519,14 +519,15 @@ class _RetirerLineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final borderColor = selected
         ? AppColors.leaderGreen.withValues(alpha: 0.42)
         : const Color(0xFFE8EAED);
     final bgColor = selected ? AppColors.successSurface : Colors.white;
-    final lineTitle =
-        '${Formatters.numberFr(line.qty)} ticket${line.qty > 1 ? 's' : ''} '
-        'de carnet ${Formatters.numberFr(line.carnetSize > 0 ? line.carnetSize : line.qty)} × '
+    final carnetLabel =
+        '${l10n.carnet} ${Formatters.numberFr(line.carnetSize > 0 ? line.carnetSize : line.qty)} × '
         '${Formatters.numberFr(line.faceValue)}';
+    final lineTitle = l10n.ticketsFromCarnet(line.qty, carnetLabel);
 
     return Material(
       color: Colors.transparent,
@@ -577,7 +578,9 @@ class _RetirerLineCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Expire le ${Formatters.dateTimeDash(line.expirationDate)}',
+                      l10n.expiresOn(
+                        Formatters.dateTimeDash(line.expirationDate),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
