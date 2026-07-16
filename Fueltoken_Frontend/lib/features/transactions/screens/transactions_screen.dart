@@ -1275,10 +1275,8 @@ class _TxLineRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _lineTypeLabel(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                _TxLineTitle(
+                  title: _lineTypeLabel(),
                   style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
@@ -1345,10 +1343,8 @@ class _TxLineRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _qrTitle(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                _TxLineTitle(
+                  title: _qrTitle(),
                   style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
@@ -1403,6 +1399,22 @@ class _TxLineRow extends StatelessWidget {
     if (_isPurchaseStyle) return _purchaseBody(context);
     if (_isQrStyle) return _qrBody(context);
     return _qrBody(context);
+  }
+}
+
+class _TxLineTitle extends StatelessWidget {
+  const _TxLineTitle({required this.title, required this.style});
+
+  final String title;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(title, maxLines: 1, softWrap: false, style: style),
+    );
   }
 }
 

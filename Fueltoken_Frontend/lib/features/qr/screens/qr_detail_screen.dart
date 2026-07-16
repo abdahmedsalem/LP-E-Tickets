@@ -669,8 +669,8 @@ class _HeroQrCard extends StatelessWidget {
                   value: qr.internalRef?.trim().isNotEmpty == true
                       ? qr.internalRef!.trim()
                       : qr.publicCode.trim().isNotEmpty
-                          ? qr.publicCode.trim()
-                          : 'Non disponible',
+                      ? qr.publicCode.trim()
+                      : 'Non disponible',
                 ),
                 const Divider(height: 1, thickness: 1, color: AppColors.line),
                 _DetailInfoRow(
@@ -691,7 +691,6 @@ class _HeroQrCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _QrNumericCodePanel extends StatelessWidget {
@@ -760,8 +759,8 @@ class _QrNumericCodePanel extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.visibility_outlined),
-                    ),
-              ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 6),
@@ -885,15 +884,19 @@ class _CompositionLineRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    _title(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14.2,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      height: 1.18,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _title(),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: 14.2,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        height: 1.18,
+                      ),
                     ),
                   ),
                 ),

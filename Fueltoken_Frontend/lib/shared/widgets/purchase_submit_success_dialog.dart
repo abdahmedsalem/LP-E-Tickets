@@ -194,12 +194,6 @@ class QrGenerationSuccessScreen extends StatelessWidget {
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _GeneratedQrLinesSection(lines: lines),
       rows: [
-        if ((transactionReference ?? '').trim().isNotEmpty)
-          _SuccessRowData(
-            label: 'Référence',
-            value: transactionReference!.trim(),
-            valueColor: AppColors.ink,
-          ),
         _SuccessRowData(
           label: 'Montant total',
           value: totalAmount.toString(),
