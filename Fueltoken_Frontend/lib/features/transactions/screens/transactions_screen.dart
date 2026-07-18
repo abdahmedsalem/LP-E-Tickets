@@ -26,6 +26,7 @@ import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/list_screen_header.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -536,6 +537,75 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
+  Widget _listHeader(AppLocalizations l10n, UserRole role) {
+    final options = _isWalletMode
+        ? [
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.all,
+              label: l10n.filterAll,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.purchases,
+              label: l10n.filterPurchases,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.qr,
+              label: l10n.filterQrGenerations,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.transfer,
+              label: l10n.filterTransfers,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.receipts,
+              label: l10n.filterReceipts,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.expirations,
+              label: l10n.filterExpirations,
+            ),
+          ]
+        : [
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.all,
+              label: l10n.filterAll,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.purchases,
+              label: l10n.filterOrders,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.transfer,
+              label: l10n.filterSentReceived,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.consumption,
+              label: l10n.filterConsumption,
+            ),
+            ListScreenFilterOption(
+              value: _HistoryQuickFilter.qr,
+              label: l10n.navQr,
+            ),
+          ];
+
+    return ListScreenHeader<_HistoryQuickFilter>(
+      title: _titleForRole(l10n, role, widget.mode),
+      options: options,
+      selected: _quickFilter,
+      onSelected: _setQuickFilter,
+    );
+  }
+
+  Widget _headerForState(AppLocalizations l10n, UserRole role) {
+    if (role == UserRole.user) return _listHeader(l10n, role);
+    return AppBarHeader(
+      title: _titleForRole(l10n, role, widget.mode),
+      onBack: () => popOrGoRoleHome(context, role),
+      showBack: true,
+      leadingOnlyWhenNavigatorCanPop: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
@@ -546,13 +616,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           return Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(
-              child: ListView(
-                physics: AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(26, 18, 26, 96),
+              child: Column(
                 children: [
-                  AppLoadingSkeleton(
-                    style: AppLoadingSkeletonStyle.historyRows,
-                    itemCount: 5,
+                  _listHeader(l10n, UserRole.user),
+                  Expanded(
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 96),
+                      children: const [
+                        AppLoadingSkeleton(
+                          style: AppLoadingSkeletonStyle.historyRows,
+                          itemCount: 5,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -561,7 +638,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         }
 
         final acpec = AppEnvironment.useAcpecLiveData;
-        final showBack = user.role != UserRole.user;
         final currentUserId = user.id;
 
         if (!acpec) {
@@ -570,12 +646,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             body: SafeArea(
               child: Column(
                 children: [
-                  AppBarHeader(
-                    title: _titleForRole(l10n, user.role, widget.mode),
-                    onBack: () => popOrGoRoleHome(context, user.role),
-                    showBack: showBack,
-                    leadingOnlyWhenNavigatorCanPop: true,
-                  ),
+                  _headerForState(l10n, user.role),
                   const Expanded(child: ApiRequiredView()),
                 ],
               ),
@@ -606,12 +677,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             body: SafeArea(
               child: Column(
                 children: [
-                  AppBarHeader(
-                    title: _titleForRole(l10n, user.role, widget.mode),
-                    onBack: () => popOrGoRoleHome(context, user.role),
-                    showBack: showBack,
-                    leadingOnlyWhenNavigatorCanPop: true,
-                  ),
+                  _headerForState(l10n, user.role),
                   Expanded(
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -636,12 +702,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             body: SafeArea(
               child: Column(
                 children: [
-                  AppBarHeader(
-                    title: _titleForRole(l10n, user.role, widget.mode),
-                    onBack: () => popOrGoRoleHome(context, user.role),
-                    showBack: showBack,
-                    leadingOnlyWhenNavigatorCanPop: true,
-                  ),
+                  _headerForState(l10n, user.role),
                   Expanded(
                     child: ListView(
                       controller: _scroll,
@@ -680,37 +741,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           body: SafeArea(
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _titleForRole(l10n, user.role, widget.mode),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                            letterSpacing: -0.2,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 26),
-                  child: _HistoryFilterChips(
-                    mode: widget.mode,
-                    selected: _quickFilter,
-                    onSelected: _setQuickFilter,
-                  ),
-                ),
+                _listHeader(l10n, user.role),
                 if (user.role == UserRole.user) ...[
                   const SizedBox(height: 12),
                   Padding(
@@ -1591,95 +1622,6 @@ String _historyAmountPrefix(
       return '- ';
     default:
       return '';
-  }
-}
-
-class _HistoryFilterChips extends StatelessWidget {
-  const _HistoryFilterChips({
-    required this.mode,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final TransactionsScreenMode mode;
-  final _HistoryQuickFilter selected;
-  final ValueChanged<_HistoryQuickFilter> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final items = mode == TransactionsScreenMode.wallet
-        ? [
-            (_HistoryQuickFilter.all, l10n.filterAll),
-            (_HistoryQuickFilter.purchases, l10n.filterPurchases),
-            (_HistoryQuickFilter.qr, l10n.filterQrGenerations),
-            (_HistoryQuickFilter.transfer, l10n.filterTransfers),
-            (_HistoryQuickFilter.receipts, l10n.filterReceipts),
-            (_HistoryQuickFilter.expirations, l10n.filterExpirations),
-          ]
-        : [
-            (_HistoryQuickFilter.all, l10n.filterAll),
-            (_HistoryQuickFilter.purchases, l10n.filterOrders),
-            (_HistoryQuickFilter.transfer, l10n.filterSentReceived),
-            (_HistoryQuickFilter.consumption, l10n.filterConsumption),
-            (_HistoryQuickFilter.qr, l10n.navQr),
-          ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            _HistoryFilterChip(
-              label: items[i].$2,
-              selected: selected == items[i].$1,
-              onTap: () => onSelected(items[i].$1),
-            ),
-            if (i != items.length - 1) const SizedBox(width: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _HistoryFilterChip extends StatelessWidget {
-  const _HistoryFilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final bg = selected ? scheme.primary : scheme.surfaceContainerHighest;
-    final fg = selected ? scheme.onPrimary : scheme.onSurface;
-
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: fg,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

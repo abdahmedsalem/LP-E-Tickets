@@ -19,6 +19,7 @@ import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/list_screen_header.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
@@ -445,6 +446,32 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     }
   }
 
+  Widget _listHeader(
+    AppLocalizations l10n, {
+    required double horizontalPadding,
+  }) {
+    return ListScreenHeader<_CarnetQuickFilter>(
+      title: l10n.carnetsTitle,
+      horizontalPadding: horizontalPadding,
+      options: [
+        ListScreenFilterOption(
+          value: _CarnetQuickFilter.all,
+          label: l10n.filterAll,
+        ),
+        ListScreenFilterOption(
+          value: _CarnetQuickFilter.active,
+          label: l10n.filterAvailable,
+        ),
+        ListScreenFilterOption(
+          value: _CarnetQuickFilter.expired,
+          label: l10n.filterExpired,
+        ),
+      ],
+      selected: _quickFilter,
+      onSelected: _setQuickFilter,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -458,15 +485,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             physics: AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              _HistoryAlignedPageHeader(title: l10n.carnetsTitle),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _CarnetFilterChips(
-                  selected: _quickFilter,
-                  onSelected: _setQuickFilter,
-                ),
-              ),
+              _listHeader(l10n, horizontalPadding: 10),
               const SizedBox(height: 16),
               AppLoadingSkeleton(
                 style: AppLoadingSkeletonStyle.ticketGroups,
@@ -485,15 +504,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              _HistoryAlignedPageHeader(title: l10n.carnetsTitle),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _CarnetFilterChips(
-                  selected: _quickFilter,
-                  onSelected: _setQuickFilter,
-                ),
-              ),
+              _listHeader(l10n, horizontalPadding: 26),
               const SizedBox(height: 16),
               const Expanded(child: ApiRequiredView()),
             ],
@@ -516,9 +527,9 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
             children: [
-              _HistoryAlignedPageHeader(title: l10n.carnetsTitle),
-              const SizedBox(height: 18),
+              _listHeader(l10n, horizontalPadding: 10),
               if (_liveLines.isNotEmpty) ...[
+                const SizedBox(height: 14),
                 // Summary cards only show once live data has been loaded.
                 _CarnetsSummaryCard(
                   availableTickets: _liveLines.fold<int>(
@@ -535,15 +546,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                     (sum, line) => sum + line.expiredQty,
                   ),
                 ),
-                const SizedBox(height: 14),
               ],
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _CarnetFilterChips(
-                  selected: _quickFilter,
-                  onSelected: _setQuickFilter,
-                ),
-              ),
               const SizedBox(height: 16),
               if (_liveError != null && allLines.isNotEmpty) ...[
                 Padding(
@@ -751,105 +754,6 @@ class _CarnetSummaryMetric extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HistoryAlignedPageHeader extends StatelessWidget {
-  const _HistoryAlignedPageHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Text(
-        title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.start,
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-          height: 1.2,
-          letterSpacing: -0.2,
-          color: AppColors.ink,
-        ),
-      ),
-    );
-  }
-}
-
-class _CarnetFilterChips extends StatelessWidget {
-  const _CarnetFilterChips({required this.selected, required this.onSelected});
-
-  final _CarnetQuickFilter selected;
-  final ValueChanged<_CarnetQuickFilter> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final items = [
-      (_CarnetQuickFilter.all, l10n.filterAll),
-      (_CarnetQuickFilter.active, l10n.filterAvailable),
-      (_CarnetQuickFilter.expired, l10n.filterExpired),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            _CarnetFilterChip(
-              label: items[i].$2,
-              selected: selected == items[i].$1,
-              onTap: () => onSelected(items[i].$1),
-            ),
-            if (i != items.length - 1) const SizedBox(width: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _CarnetFilterChip extends StatelessWidget {
-  const _CarnetFilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final bg = selected ? scheme.primary : scheme.surfaceContainerHighest;
-    final fg = selected ? scheme.onPrimary : scheme.onSurface;
-
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: fg,
-            ),
-          ),
-        ),
       ),
     );
   }

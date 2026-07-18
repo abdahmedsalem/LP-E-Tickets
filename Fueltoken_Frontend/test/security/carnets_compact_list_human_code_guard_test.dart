@@ -76,10 +76,13 @@ void main() {
       expect(source, isNot(contains('public_code')));
     });
 
-    test('carnet list remains compact and tap opens detail', () {
+    test('carnet list remains compact and tap expands detail', () {
       final source = _facesDetailScreenSource();
 
-      expect(source, contains('onTap: onTap'));
+      expect(
+        source,
+        contains('onTap: () => setState(() => _expanded = !_expanded)'),
+      );
       expect(source, contains('Row('));
       expect(source, contains('Icons.confirmation_number_outlined'));
       expect(source, contains('l10n.carnetExpiresOn('));

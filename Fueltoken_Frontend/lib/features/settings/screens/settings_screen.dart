@@ -38,7 +38,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _bioPref = false;
-  bool _darkPref = false;
   String _localeCode = 'fr';
   final _localAuth = LocalAuthentication();
 
@@ -146,23 +145,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _load() async {
     final bio = await LoginSessionCache.biometricPreferred();
-    final dark = await AppPreferences.darkMode();
     final loc = await AppPreferences.localeCode();
     if (mounted) {
       setState(() {
         _bioPref = bio;
-        _darkPref = dark;
         _localeCode = loc;
       });
     }
-  }
-
-  Future<void> _persistTheme(bool dark) async {
-    await AppPreferences.setDarkMode(dark);
-    if (!mounted) return;
-    setState(() => _darkPref = dark);
-    final app = context.findAncestorStateOfType<FuelTokenAppState>();
-    await app?.reloadPreferences();
   }
 
   Future<void> _pickLanguage() async {
@@ -353,40 +342,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (mounted) setState(() => _bioPref = v);
                         },
                       ),
-                    ),
-                    _prefTile(
-                      context,
-                      icon: Icons.dark_mode_outlined,
-                      title: l10n.settingsDarkMode,
-                      subtitle: l10n.settingsDarkModeSubtitle,
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      trailing: Switch.adaptive(
-                        value: _darkPref,
-                        activeTrackColor: scheme.primary,
-                        activeThumbColor: scheme.onPrimary,
-                        onChanged: (v) => _persistTheme(v),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    _sectionTitle(l10n.settingsService.toUpperCase(), scheme),
-                    _prefTile(
-                      context,
-                      icon: Icons.verified_user_outlined,
-                      title: l10n.settingsServiceConnection,
-                      subtitle: l10n.settingsServiceConnectionSubtitle,
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      onTap: () => context.push('/settings/acpec-step1'),
-                    ),
-                    _prefTile(
-                      context,
-                      icon: Icons.how_to_reg_outlined,
-                      title: l10n.authCreateAnAccount,
-                      subtitle: l10n.settingsCreateAccountSubtitle,
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      onTap: () => context.push('/register'),
                     ),
                     const SizedBox(height: 18),
                     _LogoutTile(

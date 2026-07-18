@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-String _read(String path) => File(path).readAsStringSync();
+String _read(String path) =>
+    File(path).readAsStringSync().replaceAll('\r\n', '\n');
 
 void main() {
   test('transfer screens show instructions only when data is available', () {
@@ -19,13 +20,19 @@ void main() {
     expect(tickets, isNot(contains('Seuls les tickets disponibles')));
   });
 
-  test('purchase screen hides instructions and action bar when empty', () {
+  test('purchase screen shows instructions only after offers load', () {
     final source = _read(
       'lib/features/purchases/screens/submit_purchase_screen.dart',
     );
 
-    expect(source, contains('final showEmptyState ='));
-    expect(source, contains('if (!showEmptyState) ...['));
+    expect(
+      source,
+      contains(
+        'if (!_loadingOffers &&\n'
+        '                      _offerLoadError == null &&\n'
+        '                      _offerTypes.isNotEmpty) ...[',
+      ),
+    );
     expect(source, contains('bottomNavigationBar: _offerTypes.isEmpty'));
   });
 

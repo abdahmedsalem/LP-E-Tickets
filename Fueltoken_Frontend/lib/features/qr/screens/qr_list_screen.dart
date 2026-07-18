@@ -18,7 +18,7 @@ import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/history_aligned_page_header.dart';
+import '../../../shared/widgets/list_screen_header.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/bloc/auth_bloc.dart';
@@ -35,14 +35,6 @@ class _QrListScreenState extends State<QrListScreen> {
   List<QrToken> _liveQrs = [];
   bool _liveLoading = false;
   String? _liveError;
-
-  static const _filterStates = <QrState?>[
-    null,
-    QrState.active,
-    QrState.blocked,
-    QrState.consumed,
-    QrState.expired,
-  ];
 
   late final VoidCallback _qrBusListener;
 
@@ -162,11 +154,9 @@ class _QrListScreenState extends State<QrListScreen> {
         backgroundColor: Colors.white,
         body: SafeArea(
           child: _QrListShell(
-            filterRow: _QrFilterRow(
-              selected: _filterState,
-              totalCount: 0,
-              onSelected: _onSelectTab,
-            ),
+            selected: _filterState,
+            totalCount: 0,
+            onSelected: _onSelectTab,
             child: const _QrLoadingSkeleton(),
           ),
         ),
@@ -177,11 +167,9 @@ class _QrListScreenState extends State<QrListScreen> {
         backgroundColor: Colors.white,
         body: SafeArea(
           child: _QrListShell(
-            filterRow: _QrFilterRow(
-              selected: _filterState,
-              totalCount: 0,
-              onSelected: _onSelectTab,
-            ),
+            selected: _filterState,
+            totalCount: 0,
+            onSelected: _onSelectTab,
             child: const ApiRequiredView(),
           ),
         ),
@@ -198,11 +186,9 @@ class _QrListScreenState extends State<QrListScreen> {
           color: scheme.primary,
           onRefresh: () => _refreshLive(force: true),
           child: _QrListShell(
-            filterRow: _QrFilterRow(
-              selected: _filterState,
-              totalCount: qrs.length,
-              onSelected: _onSelectTab,
-            ),
+            selected: _filterState,
+            totalCount: qrs.length,
+            onSelected: _onSelectTab,
             child: _liveLoading
                 ? const _QrLoadingSkeleton()
                 : qrs.isEmpty
@@ -258,9 +244,16 @@ class _QrListScreenState extends State<QrListScreen> {
 }
 
 class _QrListShell extends StatelessWidget {
-  const _QrListShell({required this.filterRow, required this.child});
+  const _QrListShell({
+    required this.selected,
+    required this.totalCount,
+    required this.onSelected,
+    required this.child,
+  });
 
-  final Widget filterRow;
+  final QrState? selected;
+  final int totalCount;
+  final ValueChanged<QrState?> onSelected;
   final Widget child;
 
   @override
@@ -269,14 +262,33 @@ class _QrListShell extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HistoryAlignedPageHeader(title: l10n.qrsTitle),
-        const SizedBox(height: 18),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 26),
-          clipBehavior: Clip.none,
-          child: filterRow,
+        ListScreenHeader<QrState?>(
+          title: l10n.qrsTitle,
+          options: [
+            ListScreenFilterOption(
+              value: null,
+              label: l10n.filterAll,
+              count: totalCount,
+            ),
+            ListScreenFilterOption(
+              value: QrState.active,
+              label: l10n.qrFilterActive,
+            ),
+            ListScreenFilterOption(
+              value: QrState.blocked,
+              label: l10n.qrFilterBlocked,
+            ),
+            ListScreenFilterOption(
+              value: QrState.consumed,
+              label: l10n.qrFilterConsumed,
+            ),
+            ListScreenFilterOption(
+              value: QrState.expired,
+              label: l10n.filterExpired,
+            ),
+          ],
+          selected: selected,
+          onSelected: onSelected,
         ),
         const SizedBox(height: 18),
         Expanded(child: child),
@@ -517,97 +529,6 @@ class _QrCodeLeadingIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Icon(Icons.qr_code_2_rounded, color: _foreground, size: 25),
-    );
-  }
-}
-
-class _QrFilterRow extends StatelessWidget {
-  const _QrFilterRow({
-    required this.selected,
-    required this.totalCount,
-    required this.onSelected,
-  });
-
-  final QrState? selected;
-  final int totalCount;
-  final ValueChanged<QrState?> onSelected;
-
-  String _labelFor(AppLocalizations l10n, QrState? state) {
-    switch (state) {
-      case null:
-        return l10n.filterAll;
-      case QrState.active:
-        return l10n.qrFilterActive;
-      case QrState.blocked:
-        return l10n.qrFilterBlocked;
-      case QrState.consumed:
-        return l10n.qrFilterConsumed;
-      case QrState.expired:
-        return l10n.filterExpired;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final states = _QrListScreenState._filterStates;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (var i = 0; i < states.length; i++) ...[
-            _QrFilterChip(
-              label: _labelFor(l10n, states[i]),
-              selected: selected == states[i],
-              count: states[i] == null ? totalCount : null,
-              onTap: () => onSelected(states[i]),
-            ),
-            if (i != states.length - 1) const SizedBox(width: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _QrFilterChip extends StatelessWidget {
-  const _QrFilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.count,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final int? count;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final bg = selected ? scheme.primary : scheme.surfaceContainerHighest;
-    final fg = selected ? scheme.onPrimary : scheme.onSurface;
-
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            count == null ? label : '$label $count',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: fg,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

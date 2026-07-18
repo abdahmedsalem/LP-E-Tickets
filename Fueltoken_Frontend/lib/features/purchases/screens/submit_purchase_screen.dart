@@ -570,9 +570,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final amt = _totalAmount();
-    final showEmptyState =
-        !_loadingOffers && _offerLoadError == null && _offerTypes.isEmpty;
-
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _offerTypes.isEmpty
@@ -603,7 +600,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
                 children: [
-                  if (!showEmptyState) ...[
+                  if (!_loadingOffers &&
+                      _offerLoadError == null &&
+                      _offerTypes.isNotEmpty) ...[
                     Text(
                       l10n.purchaseSelectInstruction,
                       style: TextStyle(
