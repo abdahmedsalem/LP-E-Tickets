@@ -19,6 +19,7 @@ import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 /// Carnets disponibles - vue par face et par carnet.
@@ -1179,10 +1180,8 @@ class _CarnetLineCardState extends State<_CarnetLineCard>
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          _titleLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: SingleLineCardTitle(
+                          text: _titleLabel,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

@@ -27,6 +27,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
@@ -877,19 +878,13 @@ class _CompositionLineRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      _title(l10n),
-                      maxLines: 1,
-                      softWrap: false,
-                      style: TextStyle(
-                        fontSize: 14.2,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        height: 1.18,
-                      ),
+                  child: SingleLineCardTitle(
+                    text: _title(l10n),
+                    style: TextStyle(
+                      fontSize: 14.2,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      height: 1.18,
                     ),
                   ),
                 ),

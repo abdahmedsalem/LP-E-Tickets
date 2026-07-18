@@ -29,6 +29,7 @@ import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../../shared/widgets/quantity_circle_badge.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -732,14 +733,14 @@ class _PurchaseOfferSkeletonCard extends StatelessWidget {
       child: Stack(
         children: [
           const Align(
-            alignment: Alignment.topRight,
+            alignment: AlignmentDirectional.topEnd,
             child: _SkeletonLine(width: 72, height: 12),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Padding(
-                padding: EdgeInsets.only(right: 112),
+                padding: EdgeInsetsDirectional.only(end: 112),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -867,11 +868,8 @@ class _CarnetCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      type.name,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
+                    child: SingleLineCardTitle(
+                      text: type.name,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,

@@ -172,9 +172,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 height: 1,
                               ),
                             ),
-                            if (Localizations.localeOf(context).languageCode !=
-                                    'ar' &&
-                                AppBrandConfig.operatorTagline.isNotEmpty) ...[
+                            if (AppBrandConfig.operatorTagline.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(
                                 AppBrandConfig.operatorTagline,

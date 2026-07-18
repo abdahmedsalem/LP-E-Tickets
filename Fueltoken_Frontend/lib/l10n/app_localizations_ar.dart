@@ -178,9 +178,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonRefresh => 'تحديث';
 
   @override
-  String get qrsViewAll => 'عرض جميع رموز QR';
-
-  @override
   String get sessionExpiredReconnect =>
       'انتهت الجلسة. يرجى تسجيل الدخول مجددًا.';
 

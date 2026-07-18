@@ -24,6 +24,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/overview_info_card.dart';
 import '../../../shared/widgets/purchase_submit_success_dialog.dart';
 import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import 'transfer_confirmation_screen.dart';
 
@@ -764,11 +765,8 @@ class _TransferTicketLineCardState extends State<_TransferTicketLineCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  widget.carnetTypeLabel,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
+                child: SingleLineCardTitle(
+                  text: widget.carnetTypeLabel,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

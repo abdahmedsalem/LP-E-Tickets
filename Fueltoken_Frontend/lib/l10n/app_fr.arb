@@ -84,7 +84,6 @@
   "qrsEmptyMessage": "Aucun QR n’est disponible pour le moment.",
   "qrsFilterEmptyMessage": "Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.",
   "commonRefresh": "Actualiser",
-  "qrsViewAll": "Voir tous les QR",
   "sessionExpiredReconnect": "Session expirée. Reconnectez-vous.",
   "qrExpirationUndefined": "Expiration non définie",
   "qrExpiresFrom": "Expire dès {date}",

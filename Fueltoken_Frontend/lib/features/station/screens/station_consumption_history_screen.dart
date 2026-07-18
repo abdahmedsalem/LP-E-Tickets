@@ -22,6 +22,7 @@ import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 enum _StationRegularizationFilter { all, pending, regularized }
@@ -746,10 +747,8 @@ class _StationHistoryRowState extends State<_StationHistoryRow> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              l10n.stationFuelConsumption,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: SingleLineCardTitle(
+                              text: l10n.stationFuelConsumption,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -1026,7 +1025,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 20, 8),
               child: Row(
                 children: [
                   IconButton(
@@ -1361,7 +1360,7 @@ class _HistorySkeletonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 14, 4, 14),
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 14, 4, 14),
       child: Row(
         children: [
           Expanded(

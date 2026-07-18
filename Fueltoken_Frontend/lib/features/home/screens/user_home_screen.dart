@@ -13,6 +13,7 @@ import '../../../core/config/app_environment.dart';
 import '../../settings/data/notifications_store.dart';
 import '../../../shared/widgets/fuel_brand_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../wallet/bloc/wallet_cubit.dart';
@@ -160,7 +161,12 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                     padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 12, 0),
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          16,
+                          4,
+                          12,
+                          0,
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -385,7 +391,7 @@ class _BackendUnavailableBanner extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 12, 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.error.withValues(alpha: 0.28)),
@@ -527,11 +533,10 @@ class _QuickActionCard extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: math.max(8.0, cardWidth * 0.055)),
-                    Text(
-                      title,
+                    SingleLineCardTitle(
+                      text: title,
+                      alignment: Alignment.center,
                       textAlign: TextAlign.center,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: math.min(
                           12.0,
@@ -563,7 +568,7 @@ class _HomeTopAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsetsDirectional.only(start: 6),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -599,9 +604,9 @@ class _HomeTopAction extends StatelessWidget {
                   ),
                 ),
                 if (badge != null && badge! > 0)
-                  Positioned(
+                  PositionedDirectional(
                     top: 4,
-                    right: 4,
+                    end: 4,
                     child: Container(
                       constraints: const BoxConstraints(
                         minWidth: 14,

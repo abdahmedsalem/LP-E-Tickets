@@ -9,7 +9,7 @@ class AmountInline extends StatelessWidget {
     this.valueStyle,
     this.unitStyle,
     this.currency,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.start,
   });
 
   static const double unitFontSize = 9.5;

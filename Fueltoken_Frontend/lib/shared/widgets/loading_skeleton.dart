@@ -109,7 +109,7 @@ class _HistorySkeletonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 14, 4, 14),
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 14, 4, 14),
       child: Row(
         children: [
           Expanded(

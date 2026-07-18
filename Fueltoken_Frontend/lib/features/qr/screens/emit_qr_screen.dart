@@ -27,6 +27,7 @@ import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/overview_info_card.dart';
@@ -837,10 +838,8 @@ class _CompositionRowState extends State<_CompositionRow> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        SingleLineCardTitle(
+                          text: widget.title,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,

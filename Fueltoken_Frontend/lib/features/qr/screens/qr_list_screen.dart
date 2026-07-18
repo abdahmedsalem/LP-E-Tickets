@@ -224,23 +224,10 @@ class _QrListScreenState extends State<QrListScreen> {
                             : (_filterState == null
                                   ? l10n.qrsEmptyMessage
                                   : l10n.qrsFilterEmptyMessage),
-                        action: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () => _refreshLive(force: true),
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: Text(l10n.commonRefresh),
-                            ),
-                            if (_filterState != null) ...[
-                              const SizedBox(height: 10),
-                              TextButton.icon(
-                                onPressed: () => _onSelectTab(null),
-                                icon: const Icon(Icons.layers_clear_rounded),
-                                label: Text(l10n.qrsViewAll),
-                              ),
-                            ],
-                          ],
+                        action: FilledButton.tonalIcon(
+                          onPressed: () => _refreshLive(force: true),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: Text(l10n.commonRefresh),
                         ),
                       ),
                     ],
@@ -409,7 +396,7 @@ class _QrCompactListTile extends StatelessWidget {
         onTap: canOpen ? () => _openDetail(context) : null,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 12, 14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),

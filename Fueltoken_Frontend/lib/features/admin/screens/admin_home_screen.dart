@@ -14,6 +14,7 @@ import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/acpec_admin_report_summary.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -474,11 +475,10 @@ class _ActionCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: math.max(10.0, cardWidth * 0.08)),
-                      Text(
-                        title,
+                      SingleLineCardTitle(
+                        text: title,
+                        alignment: Alignment.center,
                         textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: math.min(
                             14.5,
@@ -546,11 +546,10 @@ class _ActionCard extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: wide ? (compact ? 4 : 10) : 10),
-                    Text(
-                      title,
+                    SingleLineCardTitle(
+                      text: title,
+                      alignment: Alignment.center,
                       textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: wide ? (compact ? 12 : 14) : 13,

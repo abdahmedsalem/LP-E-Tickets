@@ -34,6 +34,7 @@ import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_pill.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
@@ -577,11 +578,8 @@ class _PurchaseHeroCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      lot.clientName,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
+                    SingleLineCardTitle(
+                      text: lot.clientName,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -1176,8 +1174,8 @@ class _ProofTile extends StatelessWidget {
                   ),
                 ),
                 if (url != null && url.isNotEmpty)
-                  Positioned(
-                    right: 10,
+                  PositionedDirectional(
+                    end: 10,
                     bottom: 10,
                     child: Row(
                       children: [

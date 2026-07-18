@@ -26,6 +26,7 @@ import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 enum TransactionsScreenMode { history, wallet }
@@ -1021,10 +1022,8 @@ class _TxCardState extends State<_TxCard> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: SingleLineCardTitle(
+                              text: title,
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
@@ -1298,8 +1297,8 @@ class _TxLineRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TxLineTitle(
-                  title: _lineTypeLabel(l10n),
+                SingleLineCardTitle(
+                  text: _lineTypeLabel(l10n),
                   style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
@@ -1367,8 +1366,8 @@ class _TxLineRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TxLineTitle(
-                  title: _qrTitle(l10n),
+                SingleLineCardTitle(
+                  text: _qrTitle(l10n),
                   style: _titleStyle(context, fontSize: 14),
                 ),
                 if (subtitle != null) ...[
@@ -1423,22 +1422,6 @@ class _TxLineRow extends StatelessWidget {
     if (_isPurchaseStyle) return _purchaseBody(context);
     if (_isQrStyle) return _qrBody(context);
     return _qrBody(context);
-  }
-}
-
-class _TxLineTitle extends StatelessWidget {
-  const _TxLineTitle({required this.title, required this.style});
-
-  final String title;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: AlignmentDirectional.centerStart,
-      child: Text(title, maxLines: 1, softWrap: false, style: style),
-    );
   }
 }
 
@@ -1773,7 +1756,7 @@ class _AmountInline extends StatelessWidget {
     required this.amount,
     required this.valueStyle,
     required this.unitStyle,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.start,
     this.prefix = '',
   });
 

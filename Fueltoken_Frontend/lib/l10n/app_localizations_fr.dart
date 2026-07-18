@@ -179,9 +179,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonRefresh => 'Actualiser';
 
   @override
-  String get qrsViewAll => 'Voir tous les QR';
-
-  @override
   String get sessionExpiredReconnect => 'Session expirée. Reconnectez-vous.';
 
   @override

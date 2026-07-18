@@ -144,7 +144,12 @@ class WalletGradientCard extends StatelessWidget {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 18, 18, 16),
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          20,
+                          18,
+                          18,
+                          16,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -197,7 +202,7 @@ class WalletGradientCard extends StatelessWidget {
                                 Flexible(
                                   child: FittedBox(
                                     fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
+                                    alignment: AlignmentDirectional.centerStart,
                                     child: Text(
                                       Formatters.numberFr(amount),
                                       style: const TextStyle(

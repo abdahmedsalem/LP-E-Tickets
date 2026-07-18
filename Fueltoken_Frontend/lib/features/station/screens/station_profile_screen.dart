@@ -17,6 +17,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/api_required_view.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 /// Profil station / opérateur (données retirées de l’accueil).
@@ -387,10 +388,8 @@ class _ProfileHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  stationTitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                SingleLineCardTitle(
+                  text: stationTitle,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,

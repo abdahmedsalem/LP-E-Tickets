@@ -21,6 +21,7 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
 import '../../../main.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_bar_header.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
@@ -443,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _sectionTitle(String text, ColorScheme scheme) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 10, top: 4),
+      padding: const EdgeInsetsDirectional.only(start: 4, bottom: 10, top: 4),
       child: Text(
         text,
         style: TextStyle(
@@ -499,8 +500,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
+                      SingleLineCardTitle(
+                        text: title,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,

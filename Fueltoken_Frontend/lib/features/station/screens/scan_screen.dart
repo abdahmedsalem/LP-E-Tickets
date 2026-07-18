@@ -600,7 +600,7 @@ class _ScanHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 26, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 26, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

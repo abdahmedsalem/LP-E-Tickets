@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../shared/widgets/standard_confirmation_scaffold.dart';
 import '../../../shared/widgets/transfer_line_row.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 
 /// Arguments passés à [TransferConfirmationScreen].
 class TransferConfirmationArgs {
@@ -204,10 +205,8 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  recipientName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                SingleLineCardTitle(
+                  text: recipientName,
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -411,7 +410,7 @@ class _AmountInline extends StatelessWidget {
     required this.amount,
     required this.valueStyle,
     required this.unitStyle,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.start,
   });
 
   final int amount;

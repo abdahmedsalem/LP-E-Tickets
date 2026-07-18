@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import 'single_line_card_title.dart';
 
 /// Quick action: 50×50 rounded square + label below.
 /// `primary: true` = elevated green box (white icon), otherwise white box.
@@ -45,10 +46,9 @@ class QuickAction extends StatelessWidget {
           children: [
             box,
             const SizedBox(height: 6),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            SingleLineCardTitle(
+              text: label,
+              alignment: Alignment.center,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 11,

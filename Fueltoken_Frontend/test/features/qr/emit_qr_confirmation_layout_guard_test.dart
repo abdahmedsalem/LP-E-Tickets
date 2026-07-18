@@ -3,6 +3,25 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('QR generation card titles stay complete on one line', () {
+    final source = File(
+      'lib/features/qr/screens/emit_qr_screen.dart',
+    ).readAsStringSync();
+    final cardStart = source.indexOf('class _CompositionRowState');
+    final cardEnd = source.indexOf('class ', cardStart + 1);
+    final cardSource = source.substring(cardStart, cardEnd);
+
+    final titleStart = cardSource.indexOf('widget.title');
+    final titleEnd = cardSource.indexOf(
+      'const SizedBox(height: 16)',
+      titleStart,
+    );
+    final titleSource = cardSource.substring(titleStart, titleEnd);
+
+    expect(cardSource, contains('SingleLineCardTitle('));
+    expect(titleSource, isNot(contains('TextOverflow.ellipsis')));
+  });
+
   test('QR confirmation keeps line title and amount on one row', () {
     final source = File(
       'lib/features/qr/screens/emit_qr_screen.dart',
@@ -13,12 +32,16 @@ void main() {
 
     expect(rowSource, contains('QrGenerationCarnetLine('));
 
-    final sharedSource = File(
+    final lineSource = File(
       'lib/shared/widgets/qr_generation_carnet_line.dart',
     ).readAsStringSync();
-    expect(sharedSource, contains('fit: BoxFit.scaleDown'));
-    expect(sharedSource, contains('maxLines: 1'));
-    expect(sharedSource, contains('softWrap: false'));
+    final titleSource = File(
+      'lib/shared/widgets/single_line_card_title.dart',
+    ).readAsStringSync();
+    expect(lineSource, contains('SingleLineCardTitle('));
+    expect(titleSource, contains('fit: BoxFit.scaleDown'));
+    expect(titleSource, contains('maxLines: 1'));
+    expect(titleSource, contains('softWrap: false'));
   });
 
   test('QR confirmation displays Carnets utilisés inside the lines card', () {

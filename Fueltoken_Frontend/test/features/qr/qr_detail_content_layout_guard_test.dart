@@ -11,14 +11,18 @@ void main() {
     final rowSource = source.substring(rowStart);
     final titleEnd = rowSource.indexOf('AmountInline(');
     final titleSource = rowSource.substring(0, titleEnd);
+    final sharedSource = File(
+      'lib/shared/widgets/single_line_card_title.dart',
+    ).readAsStringSync();
 
-    expect(titleSource, contains('fit: BoxFit.scaleDown'));
+    expect(titleSource, contains('SingleLineCardTitle('));
+    expect(sharedSource, contains('fit: BoxFit.scaleDown'));
     expect(
-      titleSource,
-      contains('alignment: AlignmentDirectional.centerStart'),
+      sharedSource,
+      contains('this.alignment = AlignmentDirectional.centerStart'),
     );
-    expect(titleSource, contains('maxLines: 1'));
-    expect(titleSource, contains('softWrap: false'));
+    expect(sharedSource, contains('maxLines: 1'));
+    expect(sharedSource, contains('softWrap: false'));
     expect(titleSource, isNot(contains('TextOverflow.ellipsis')));
   });
 }

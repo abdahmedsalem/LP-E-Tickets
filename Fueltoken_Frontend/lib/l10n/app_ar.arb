@@ -54,7 +54,6 @@
   "qrsEmptyMessage": "لا يتوفر أي رمز QR في الوقت الحالي.",
   "qrsFilterEmptyMessage": "لا يحتوي هذا الفلتر على أي رمز QR. جرّب فلترًا آخر أو اعرض جميع النتائج.",
   "commonRefresh": "تحديث",
-  "qrsViewAll": "عرض جميع رموز QR",
   "sessionExpiredReconnect": "انتهت الجلسة. يرجى تسجيل الدخول مجددًا.",
   "qrExpirationUndefined": "تاريخ انتهاء الصلاحية غير محدد",
   "qrExpiresFrom": "تنتهي الصلاحية ابتداءً من {date}",

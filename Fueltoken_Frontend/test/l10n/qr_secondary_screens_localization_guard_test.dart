@@ -33,7 +33,7 @@ void main() {
     final separation = File(paths[2]).readAsStringSync();
 
     expect(detail, contains('l10n.qrDetailTitle'));
-    expect(detail, contains('AlignmentDirectional.centerStart'));
+    expect(detail, contains('SingleLineCardTitle('));
     expect(withdrawal, contains('l10n.selectedLines(selectedLineCount)'));
     expect(separation, contains('l10n.qrSeparationDisclaimer'));
   });

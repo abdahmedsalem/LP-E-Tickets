@@ -19,6 +19,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 /// Liste des commandes (données locales ou synchronisées ACPEC selon la configuration).
@@ -393,11 +394,8 @@ class _PurchaseTile extends StatelessWidget {
                           Row(
                             children: [
                               Expanded(
-                                child: Text(
-                                  typeLabel,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.ellipsis,
+                                child: SingleLineCardTitle(
+                                  text: typeLabel,
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w900,

@@ -14,7 +14,6 @@ void main() {
     expect(arabic.qrStatusConsumed, 'مستهلك');
     expect(arabic.qrsEmptyTitle, 'لا توجد رموز QR');
     expect(arabic.commonRefresh, 'تحديث');
-    expect(arabic.qrsViewAll, 'عرض جميع رموز QR');
     expect(arabic.qrExpiresFrom('16-07-2026'), contains('16-07-2026'));
     expect(arabic.qrConsumedOn('16-07-2026'), contains('16-07-2026'));
   });

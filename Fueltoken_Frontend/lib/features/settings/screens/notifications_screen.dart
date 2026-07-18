@@ -14,6 +14,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/mini_qr.dart';
 import '../../../shared/widgets/section_label.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../data/notifications_store.dart';
 import '../models/notification_item.dart';
@@ -210,8 +211,8 @@ class _NotificationCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      titleLabel,
+                    SingleLineCardTitle(
+                      text: titleLabel,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -322,10 +323,8 @@ class _PurchaseLineTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Text(
-              carnet,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            child: SingleLineCardTitle(
+              text: carnet,
               style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
@@ -392,10 +391,8 @@ class _ReceiptLineTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      carnet,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    SingleLineCardTitle(
+                      text: carnet,
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
@@ -578,7 +575,7 @@ class _QrExpirationTile extends StatelessWidget {
                 ),
                 Text(
                   amount,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,

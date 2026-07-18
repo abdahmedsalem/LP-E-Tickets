@@ -350,7 +350,7 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: Material(
         color: selected ? scheme.primary : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),

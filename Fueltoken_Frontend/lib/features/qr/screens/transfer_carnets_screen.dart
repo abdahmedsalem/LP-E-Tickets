@@ -25,6 +25,7 @@ import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/amount_inline.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 
@@ -776,11 +777,8 @@ class _TransferLineCardState extends State<_TransferLineCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      widget.carnetTypeLabel,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
+                    child: SingleLineCardTitle(
+                      text: widget.carnetTypeLabel,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,

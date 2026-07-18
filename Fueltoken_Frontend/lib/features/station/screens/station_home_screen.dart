@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class StationHomeScreen extends StatelessWidget {
@@ -149,8 +150,9 @@ class StationHomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        l10n.stationScanQr,
+                      SingleLineCardTitle(
+                        text: l10n.stationScanQr,
+                        alignment: Alignment.center,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 22,
@@ -200,8 +202,8 @@ class StationHomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              l10n.stationManualEntry,
+                            SingleLineCardTitle(
+                              text: l10n.stationManualEntry,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -259,8 +261,8 @@ class StationHomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              l10n.stationConsumptionHistory,
+                            SingleLineCardTitle(
+                              text: l10n.stationConsumptionHistory,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,

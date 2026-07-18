@@ -138,7 +138,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 64, 12),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 64, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -186,7 +186,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                   const SizedBox(height: 14),
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
+                    alignment: AlignmentDirectional.centerStart,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -225,8 +225,8 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                 ],
               ),
             ),
-            Positioned(
-              right: 0,
+            PositionedDirectional(
+              end: 0,
               top: 0,
               bottom: 0,
               child: Center(

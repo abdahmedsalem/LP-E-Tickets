@@ -26,6 +26,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 
 class RetirerQrScreen extends StatefulWidget {
   const RetirerQrScreen({super.key, required this.qrId});
@@ -552,10 +553,8 @@ class _RetirerLineCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            lineTitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          child: SingleLineCardTitle(
+                            text: lineTitle,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,

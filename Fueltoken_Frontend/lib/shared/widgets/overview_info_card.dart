@@ -83,7 +83,7 @@ class _OverviewInfoRow extends StatelessWidget {
               flex: 7,
               child: Text(
                 value,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.end,
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,

@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../l10n/app_localizations.dart';
 import 'amount_inline.dart';
+import 'single_line_card_title.dart';
 
 class QrGenerationCarnetLine extends StatelessWidget {
   const QrGenerationCarnetLine({
@@ -26,19 +27,13 @@ class QrGenerationCarnetLine extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                    height: 1.2,
-                  ),
+              child: SingleLineCardTitle(
+                text: title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  height: 1.2,
                 ),
               ),
             ),

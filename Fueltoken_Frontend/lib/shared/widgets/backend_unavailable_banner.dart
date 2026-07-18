@@ -20,7 +20,7 @@ class BackendUnavailableBanner extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 12, 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.error.withValues(alpha: 0.28)),

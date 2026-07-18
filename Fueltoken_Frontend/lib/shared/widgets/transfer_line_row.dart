@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import 'amount_inline.dart';
 import 'quantity_circle_badge.dart';
+import 'single_line_card_title.dart';
 
 class TransferLineRow extends StatelessWidget {
   const TransferLineRow({
@@ -29,19 +30,13 @@ class TransferLineRow extends StatelessWidget {
             height: 20,
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                    height: 1.2,
-                  ),
+              child: SingleLineCardTitle(
+                text: title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  height: 1.2,
                 ),
               ),
             ),

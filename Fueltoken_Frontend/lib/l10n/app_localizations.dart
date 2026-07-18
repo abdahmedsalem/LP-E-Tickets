@@ -422,12 +422,6 @@ abstract class AppLocalizations {
   /// **'Actualiser'**
   String get commonRefresh;
 
-  /// No description provided for @qrsViewAll.
-  ///
-  /// In fr, this message translates to:
-  /// **'Voir tous les QR'**
-  String get qrsViewAll;
-
   /// No description provided for @sessionExpiredReconnect.
   ///
   /// In fr, this message translates to:

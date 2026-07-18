@@ -355,7 +355,7 @@ class _PinCodeBoxes extends StatelessWidget {
         if (errorText != null) ...[
           const SizedBox(height: 12),
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: Text(
               errorText!,
               style: const TextStyle(
