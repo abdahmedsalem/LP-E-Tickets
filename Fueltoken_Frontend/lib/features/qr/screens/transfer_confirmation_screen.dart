@@ -9,6 +9,7 @@ import '../../../data/models/face_line.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../shared/widgets/card_section_title.dart';
 import '../../../shared/widgets/standard_confirmation_scaffold.dart';
 import '../../../shared/widgets/transfer_line_row.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
@@ -156,9 +157,8 @@ class _TransferConfirmationScreenState
       content: [
         _TransferConfirmationHeroCard(recipientName: args.recipientName),
         const SizedBox(height: 20),
-        _TransferConfirmationSectionHeader(label: args.sectionLabel),
-        const SizedBox(height: 14),
         _TransferConfirmationLinesCard(
+          sectionLabel: args.sectionLabel,
           lines: args.lines,
           showQuantity: args.showQuantity,
         ),
@@ -222,31 +222,14 @@ class _TransferConfirmationHeroCard extends StatelessWidget {
   }
 }
 
-class _TransferConfirmationSectionHeader extends StatelessWidget {
-  const _TransferConfirmationSectionHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 16.5,
-        fontWeight: FontWeight.w800,
-        color: AppColors.ink,
-        height: 1.1,
-      ),
-    );
-  }
-}
-
 class _TransferConfirmationLinesCard extends StatelessWidget {
   const _TransferConfirmationLinesCard({
+    required this.sectionLabel,
     required this.lines,
     required this.showQuantity,
   });
 
+  final String sectionLabel;
   final List<TransferConfirmationLine> lines;
   final bool showQuantity;
 
@@ -263,7 +246,10 @@ class _TransferConfirmationLinesCard extends StatelessWidget {
         border: Border.all(color: AppColors.line),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          CardSectionTitle(text: sectionLabel),
+          const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
             _TransferLineRow(line: lines[i], showQuantity: showQuantity),
             if (i < lines.length - 1)

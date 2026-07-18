@@ -27,6 +27,7 @@ import '../../../data/services/sensitive_action_intent.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/screen_header.dart';
+import '../../../shared/widgets/card_section_title.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -1127,14 +1128,7 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.usedCarnets,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
+          CardSectionTitle(text: l10n.usedCarnets),
           const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
             _EmitConfirmationLineRow(

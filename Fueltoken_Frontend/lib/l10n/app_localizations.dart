@@ -119,8 +119,14 @@ abstract class AppLocalizations {
   /// No description provided for @homeBuyCarnets.
   ///
   /// In fr, this message translates to:
-  /// **'Acheter des carnets'**
+  /// **'Commander des carnets'**
   String get homeBuyCarnets;
+
+  /// No description provided for @homeWalletTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Portefeuille Leader Petroleum'**
+  String get homeWalletTitle;
 
   /// No description provided for @homeGenerateQr.
   ///

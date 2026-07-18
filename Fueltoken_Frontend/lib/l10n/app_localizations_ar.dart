@@ -18,7 +18,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeQuickActions => 'إجراءات سريعة';
 
   @override
-  String get homeBuyCarnets => 'شراء الدفاتر';
+  String get homeBuyCarnets => 'طلب الدفاتر';
+
+  @override
+  String get homeWalletTitle => 'محفظة ليدر بتروليوم';
 
   @override
   String get homeGenerateQr => 'إنشاء رمز QR';

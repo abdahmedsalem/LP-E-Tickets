@@ -35,13 +35,12 @@ void main() {
     final lineSource = File(
       'lib/shared/widgets/qr_generation_carnet_line.dart',
     ).readAsStringSync();
-    final titleSource = File(
-      'lib/shared/widgets/single_line_card_title.dart',
+    final sharedRowSource = File(
+      'lib/shared/widgets/confirmation_line_main_row.dart',
     ).readAsStringSync();
-    expect(lineSource, contains('SingleLineCardTitle('));
-    expect(titleSource, contains('fit: BoxFit.scaleDown'));
-    expect(titleSource, contains('maxLines: 1'));
-    expect(titleSource, contains('softWrap: false'));
+    expect(lineSource, contains('ConfirmationLineMainRow('));
+    expect(sharedRowSource, contains('SingleLineCardTitle('));
+    expect(sharedRowSource, contains('static const double height = 20'));
   });
 
   test('QR confirmation displays Carnets utilisés inside the lines card', () {
@@ -56,8 +55,6 @@ void main() {
     final sectionSource = source.substring(sectionStart, sectionEnd);
 
     expect(source, isNot(contains("title: 'Tickets à générer'")));
-    expect(sectionSource, contains('l10n.usedCarnets'));
-    expect(sectionSource, contains('fontSize: 16'));
-    expect(sectionSource, contains('fontWeight: FontWeight.w800'));
+    expect(sectionSource, contains('CardSectionTitle(text: l10n.usedCarnets)'));
   });
 }

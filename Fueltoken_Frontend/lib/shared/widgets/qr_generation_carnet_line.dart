@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../l10n/app_localizations.dart';
-import 'amount_inline.dart';
-import 'single_line_card_title.dart';
+import 'confirmation_line_main_row.dart';
 
 class QrGenerationCarnetLine extends StatelessWidget {
   const QrGenerationCarnetLine({
@@ -24,27 +23,7 @@ class QrGenerationCarnetLine extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SingleLineCardTitle(
-                text: title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                  height: 1.2,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerEnd,
-              child: AmountInline(amount: amount),
-            ),
-          ],
-        ),
+        ConfirmationLineMainRow(title: title, amount: amount),
         const SizedBox(height: 8),
         Text(
           l10n.expiresOn(Formatters.dateTimeDash(expirationDate)),

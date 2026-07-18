@@ -10,9 +10,12 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/models/carnet_type.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
-import '../../../shared/widgets/quantity_circle_badge.dart';
+import '../../../shared/widgets/card_section_title.dart';
+import '../../../shared/widgets/confirmation_line_main_row.dart';
+import '../../../shared/widgets/confirmation_line_styles.dart';
 import '../../../shared/widgets/screen_header.dart';
 
 class PurchaseConfirmationArgs {
@@ -205,13 +208,13 @@ class _PurchaseConfirmationScreenState
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _SectionHeader(title: l10n.purchaseOrderTitle),
-                  const SizedBox(height: 14),
-                  _PurchaseLinesCard(lines: lines),
+                  _PurchaseLinesCard(
+                    title: l10n.purchaseOrderTitle,
+                    lines: lines,
+                  ),
                   const SizedBox(height: 22),
-                  _SectionHeader(title: l10n.purchaseProofTitle),
-                  const SizedBox(height: 14),
                   _PaymentProofImageCard(
+                    title: l10n.purchaseProofTitle,
                     proofPath: widget.args.proofPath,
                     proofBytes: widget.args.proofBytes,
                   ),
@@ -235,28 +238,10 @@ class _PurchaseConfirmationScreenState
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
+class _PurchaseLinesCard extends StatelessWidget {
+  const _PurchaseLinesCard({required this.title, required this.lines});
 
   final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16.5,
-        fontWeight: FontWeight.w800,
-        color: AppColors.ink,
-        height: 1.1,
-      ),
-    );
-  }
-}
-
-class _PurchaseLinesCard extends StatelessWidget {
-  const _PurchaseLinesCard({required this.lines});
-
   final List<PurchaseConfirmationLine> lines;
 
   String _carnetTypeLabel(PurchaseConfirmationLine line) {
@@ -295,7 +280,10 @@ class _PurchaseLinesCard extends StatelessWidget {
         border: Border.all(color: AppColors.line),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          CardSectionTitle(text: title),
+          const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
             _PurchaseLineRow(
               label: _carnetTypeLabel(lines[i]),
@@ -339,69 +327,12 @@ class _PurchaseLineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const rowHeight = 20.0;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          flex: 8,
-          child: SizedBox(
-            height: rowHeight,
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                    height: 1.15,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: SizedBox(
-            height: rowHeight,
-            child: Center(
-              child: QuantityCircleBadge(quantity: qty, size: rowHeight),
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 3,
-          child: SizedBox(
-            height: rowHeight,
-            child: Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: _AmountInline(
-                amount: amount,
-                currency: currency,
-                textAlign: TextAlign.end,
-                valueStyle: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF2E7D32),
-                ),
-                unitStyle: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return ConfirmationLineMainRow(
+      title: label,
+      amount: amount,
+      currency: currency,
+      quantity: qty,
+      showQuantity: true,
     );
   }
 }
@@ -426,56 +357,13 @@ class _TotalRow extends StatelessWidget {
             ),
           ),
         ),
-        _AmountInline(
+        AmountInline(
           amount: totalAmount,
           currency: currency,
-          valueStyle: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF2E7D32),
-          ),
-          unitStyle: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
-          ),
+          valueStyle: ConfirmationLineStyles.amountValue,
+          unitStyle: ConfirmationLineStyles.amountUnit,
         ),
       ],
-    );
-  }
-}
-
-class _AmountInline extends StatelessWidget {
-  const _AmountInline({
-    required this.amount,
-    required this.currency,
-    required this.valueStyle,
-    required this.unitStyle,
-    this.textAlign = TextAlign.start,
-  });
-
-  final int amount;
-  final String currency;
-  final TextStyle valueStyle;
-  final TextStyle unitStyle;
-  final TextAlign textAlign;
-
-  @override
-  Widget build(BuildContext context) {
-    final unit = currency.trim().isNotEmpty
-        ? currency.trim()
-        : Formatters.fallbackCurrency;
-
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-          TextSpan(text: ' $unit', style: unitStyle),
-        ],
-      ),
-      textAlign: textAlign,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -551,8 +439,13 @@ class _PaymentProofSummaryCard extends StatelessWidget {
 }
 
 class _PaymentProofImageCard extends StatelessWidget {
-  const _PaymentProofImageCard({required this.proofPath, this.proofBytes});
+  const _PaymentProofImageCard({
+    required this.title,
+    required this.proofPath,
+    this.proofBytes,
+  });
 
+  final String title;
   final String? proofPath;
   final Uint8List? proofBytes;
 
@@ -572,28 +465,35 @@ class _PaymentProofImageCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.line),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          width: double.infinity,
-          height: 140,
-          child: ColoredBox(
-            color: const Color(0xFFF3F4F6),
-            child: hasBytes
-                ? Image.memory(
-                    proofBytes!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _missingProof(),
-                  )
-                : file != null
-                ? Image.file(
-                    file,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _missingProof(),
-                  )
-                : _missingProof(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CardSectionTitle(text: title),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 140,
+              child: ColoredBox(
+                color: const Color(0xFFF3F4F6),
+                child: hasBytes
+                    ? Image.memory(
+                        proofBytes!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _missingProof(),
+                      )
+                    : file != null
+                    ? Image.file(
+                        file,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _missingProof(),
+                      )
+                    : _missingProof(),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

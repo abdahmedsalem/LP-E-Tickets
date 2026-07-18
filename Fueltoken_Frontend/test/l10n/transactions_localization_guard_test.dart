@@ -18,12 +18,17 @@ void main() {
     final source = File(
       'lib/features/transactions/screens/transactions_screen.dart',
     ).readAsStringSync();
+    final dateFilterSource = File(
+      'lib/shared/widgets/date_range_filter_bar.dart',
+    ).readAsStringSync();
 
     expect(source, contains('l10n.transactionsHistoryTitle'));
     expect(source, contains('l10n.walletMovementsTitle'));
     expect(source, contains('_transactionTitle(l10n, tx'));
     expect(source, contains('_transactionDetailRows(l10n, tx'));
     expect(source, contains('l10n.filterSentReceived'));
-    expect(source, contains('l10n.dateFrom'));
+    expect(source, contains('DateRangeFilterBar('));
+    expect(dateFilterSource, contains('l10n.dateFrom'));
+    expect(dateFilterSource, contains('l10n.dateTo'));
   });
 }

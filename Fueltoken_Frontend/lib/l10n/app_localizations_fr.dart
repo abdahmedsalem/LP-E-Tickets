@@ -18,7 +18,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get homeQuickActions => 'Actions rapides';
 
   @override
-  String get homeBuyCarnets => 'Acheter des carnets';
+  String get homeBuyCarnets => 'Commander des carnets';
+
+  @override
+  String get homeWalletTitle => 'Portefeuille Leader Petroleum';
 
   @override
   String get homeGenerateQr => 'Générer un QR';

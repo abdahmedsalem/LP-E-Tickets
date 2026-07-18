@@ -10,7 +10,7 @@ void main() {
     expect(french.homeQuickActions, 'Actions rapides');
     expect(arabic.homeQuickActions, 'إجراءات سريعة');
     expect(arabic.homeVerifiedAccount, 'حساب موثّق');
-    expect(arabic.homeBuyCarnets, 'شراء الدفاتر');
+    expect(arabic.homeBuyCarnets, 'طلب الدفاتر');
     expect(arabic.homeGenerateQr, 'إنشاء رمز QR');
     expect(arabic.homeTransferCarnets, 'تحويل الدفاتر');
     expect(arabic.homeTransferTickets, 'تحويل التذاكر');

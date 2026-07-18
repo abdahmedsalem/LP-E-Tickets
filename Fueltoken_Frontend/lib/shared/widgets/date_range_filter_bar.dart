@@ -1,62 +1,136 @@
 import 'package:flutter/material.dart';
 
-class DateRangeFilterBar extends StatelessWidget {
+import '../../core/utils/formatters.dart';
+import '../../l10n/app_localizations.dart';
+
+class DateRangeFilterBar extends StatefulWidget {
   const DateRangeFilterBar({
     super.key,
-    required this.fromLabel,
-    required this.toLabel,
-    required this.onPickFrom,
-    required this.onPickTo,
+    required this.initialFrom,
+    required this.initialTo,
     required this.onApply,
-    this.fromPrefix = 'Du',
-    this.toPrefix = 'Au',
-    this.applySemanticLabel,
-    this.applyColor = const Color(0xFF1B8F3A),
+    this.firstDate,
+    this.lastDate,
   });
 
-  final String fromLabel;
-  final String toLabel;
-  final VoidCallback onPickFrom;
-  final VoidCallback onPickTo;
-  final VoidCallback onApply;
-  final String fromPrefix;
-  final String toPrefix;
-  final String? applySemanticLabel;
-  final Color applyColor;
+  final DateTime initialFrom;
+  final DateTime initialTo;
+  final ValueChanged<DateTimeRange> onApply;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+
+  @override
+  State<DateRangeFilterBar> createState() => _DateRangeFilterBarState();
+}
+
+class _DateRangeFilterBarState extends State<DateRangeFilterBar> {
+  static const double _controlHeight = 38;
+
+  late DateTime _draftFrom;
+  late DateTime _draftTo;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncDraftDates();
+  }
+
+  @override
+  void didUpdateWidget(covariant DateRangeFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameDay(widget.initialFrom, oldWidget.initialFrom) ||
+        !_sameDay(widget.initialTo, oldWidget.initialTo)) {
+      _syncDraftDates();
+    }
+  }
+
+  void _syncDraftDates() {
+    _draftFrom = _startOfDay(widget.initialFrom);
+    _draftTo = _startOfDay(widget.initialTo);
+  }
+
+  DateTime get _firstDate => widget.firstDate ?? DateTime(2020);
+
+  DateTime get _lastDate =>
+      widget.lastDate ?? DateTime.now().add(const Duration(days: 365));
+
+  static DateTime _startOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  static DateTime _endOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Future<void> _pickFrom() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _draftFrom,
+      firstDate: _firstDate,
+      lastDate: _lastDate,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _draftFrom = _startOfDay(picked);
+      if (_draftFrom.isAfter(_draftTo)) _draftTo = _draftFrom;
+    });
+  }
+
+  Future<void> _pickTo() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _draftTo,
+      firstDate: _firstDate,
+      lastDate: _lastDate,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _draftTo = _startOfDay(picked);
+      if (_draftTo.isBefore(_draftFrom)) _draftFrom = _draftTo;
+    });
+  }
+
+  void _apply() {
+    widget.onApply(
+      DateTimeRange(start: _startOfDay(_draftFrom), end: _endOfDay(_draftTo)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Flexible(
           flex: 43,
           child: _DateRangeChip(
-            label: fromPrefix,
-            value: fromLabel,
-            onTap: onPickFrom,
+            label: l10n.dateFrom,
+            value: Formatters.date(_draftFrom),
+            onTap: _pickFrom,
           ),
         ),
         const SizedBox(width: 10),
         Flexible(
           flex: 43,
           child: _DateRangeChip(
-            label: toPrefix,
-            value: toLabel,
-            onTap: onPickTo,
+            label: l10n.dateTo,
+            value: Formatters.date(_draftTo),
+            onTap: _pickTo,
           ),
         ),
         const SizedBox(width: 10),
         Material(
-          color: applyColor,
+          color: const Color(0xFF1B8F3A),
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            onTap: onApply,
+            onTap: _apply,
             borderRadius: BorderRadius.circular(12),
             child: SizedBox(
               width: 42,
-              height: 42,
+              height: _controlHeight,
               child: Semantics(
-                label: applySemanticLabel,
+                label: l10n.dateApply,
                 button: true,
                 child: const Icon(
                   Icons.arrow_forward_rounded,
@@ -89,7 +163,7 @@ class _DateRangeChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 42,
+        height: _DateRangeFilterBarState._controlHeight,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: Colors.white,

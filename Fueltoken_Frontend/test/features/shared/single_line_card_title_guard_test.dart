@@ -35,9 +35,8 @@ void main() {
       'lib/features/station/screens/station_home_screen.dart',
       'lib/features/station/screens/station_profile_screen.dart',
       'lib/features/transactions/screens/transactions_screen.dart',
-      'lib/shared/widgets/qr_generation_carnet_line.dart',
+      'lib/shared/widgets/confirmation_line_main_row.dart',
       'lib/shared/widgets/quick_action.dart',
-      'lib/shared/widgets/transfer_line_row.dart',
     ];
 
     for (final path in paths) {

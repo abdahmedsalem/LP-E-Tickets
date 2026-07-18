@@ -3,6 +3,8 @@ import 'package:lottie/lottie.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/formatters.dart';
+import '../../l10n/app_localizations.dart';
+import 'loading_skeleton.dart';
 
 /// Logo marque PNG fond transparent — carte solde accueil.
 class _ClientWalletBrandLogo extends StatelessWidget {
@@ -81,10 +83,12 @@ class ClientHomeWalletCard extends StatefulWidget {
     super.key,
     required this.amount,
     this.currency = Formatters.fallbackCurrency,
+    this.loading = false,
   });
 
   final int amount;
   final String currency;
+  final bool loading;
 
   @override
   State<ClientHomeWalletCard> createState() => _ClientHomeWalletCardState();
@@ -147,7 +151,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Leader petrolium wallet',
+                          AppLocalizations.of(context).homeWalletTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -184,44 +188,49 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          _showAmount
-                              ? Formatters.numberFr(widget.amount)
-                              : '••••',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1.0,
-                            height: 1,
-                            shadows: [
-                              Shadow(
-                                color: Color(0x33000000),
-                                blurRadius: 10,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                  if (widget.loading)
+                    const AppLoadingSkeleton(
+                      style: AppLoadingSkeletonStyle.walletAmount,
+                    )
+                  else
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            _showAmount
+                                ? Formatters.numberFr(widget.amount)
+                                : '••••',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.0,
+                              height: 1,
+                              shadows: [
+                                Shadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.currency,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.currency,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

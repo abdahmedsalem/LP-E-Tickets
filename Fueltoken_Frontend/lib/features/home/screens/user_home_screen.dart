@@ -270,6 +270,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                           child: ClientHomeWalletCard(
                             amount: wallet.amount,
                             currency: _walletCurrency,
+                            loading: wallet.loading,
                           ),
                         ),
                       ),

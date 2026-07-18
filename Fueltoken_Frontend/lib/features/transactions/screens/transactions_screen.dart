@@ -57,8 +57,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   TxType? _filter;
   _HistoryQuickFilter _quickFilter = _HistoryQuickFilter.all;
 
-  late DateTime _draftFrom;
-  late DateTime _draftTo;
   late DateTime _activeFrom;
   late DateTime _activeTo;
 
@@ -100,10 +98,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _draftFrom = DateTime(now.year, now.month, now.day);
-    _draftTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    _activeFrom = _draftFrom;
-    _activeTo = _draftTo;
+    _activeFrom = DateTime(now.year, now.month, now.day);
+    _activeTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _scroll.addListener(_onAcpecScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -153,47 +149,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     required int offset,
   }) => {'limit': limit, 'offset': offset};
 
-  static String _compactDate(DateTime date) {
-    return DateFormat('dd-MM-yyyy').format(date);
-  }
-
-  Future<void> _pickFrom() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _draftFrom,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && mounted) {
-      setState(() => _draftFrom = picked);
-    }
-  }
-
-  Future<void> _pickTo() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _draftTo,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && mounted) {
-      setState(() => _draftTo = picked);
-    }
-  }
-
-  void _applyDateFilter() {
-    final from = DateTime(_draftFrom.year, _draftFrom.month, _draftFrom.day);
-    final to = DateTime(
-      _draftTo.year,
-      _draftTo.month,
-      _draftTo.day,
-      23,
-      59,
-      59,
-    );
+  void _applyDateFilter(DateTimeRange range) {
     setState(() {
-      _activeFrom = from;
-      _activeTo = to;
+      _activeFrom = range.start;
+      _activeTo = range.end;
       _acpecItems = [];
       _acpecHasMore = true;
       _acpecTotal = null;
@@ -757,13 +716,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: DateRangeFilterBar(
-                      fromLabel: _compactDate(_draftFrom),
-                      toLabel: _compactDate(_draftTo),
-                      fromPrefix: l10n.dateFrom,
-                      toPrefix: l10n.dateTo,
-                      applySemanticLabel: l10n.dateApply,
-                      onPickFrom: _pickFrom,
-                      onPickTo: _pickTo,
+                      initialFrom: _activeFrom,
+                      initialTo: _activeTo,
                       onApply: _applyDateFilter,
                     ),
                   ),
@@ -1015,14 +969,15 @@ class _TxCardState extends State<_TxCard> {
               isExpanded: _expanded,
               headerBuilder: (context, isExpanded) {
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  padding: const EdgeInsets.fromLTRB(10, 16, 10, 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SingleLineCardTitle(
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SingleLineCardTitle(
                               text: title,
                               style: const TextStyle(
                                 fontSize: 14,
@@ -1030,41 +985,36 @@ class _TxCardState extends State<_TxCard> {
                                 color: AppColors.ink,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          _AmountInline(
-                            amount: tx.totalAmount.abs(),
-                            prefix: amountPrefix,
-                            textAlign: TextAlign.end,
-                            valueStyle: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: amountColor,
-                              height: 1,
-                              letterSpacing: -0.2,
+                            const SizedBox(height: 12),
+                            Text(
+                              '$dateLabel $hourLabel',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            unitStyle: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: amountColor.withValues(alpha: 0.82),
-                              height: 1,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '$dateLabel $hourLabel',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 12),
+                      _AmountInline(
+                        amount: tx.totalAmount.abs(),
+                        prefix: amountPrefix,
+                        textAlign: TextAlign.end,
+                        valueStyle: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: amountColor,
+                          height: 1,
+                          letterSpacing: -0.2,
+                        ),
+                        unitStyle: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: amountColor.withValues(alpha: 0.82),
+                          height: 1,
+                        ),
                       ),
                     ],
                   ),

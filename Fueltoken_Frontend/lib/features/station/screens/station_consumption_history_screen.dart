@@ -75,7 +75,6 @@ class _StationConsumptionHistoryScreenState
     with SingleTickerProviderStateMixin {
   static const int _pageSize = 100;
   static const int _maxAutoLoadPages = 50;
-  static const Color _cOrange = Color(0xFF16A34A);
 
   List<BusinessTransaction> _items = [];
   bool _loading = true;
@@ -84,8 +83,6 @@ class _StationConsumptionHistoryScreenState
   int? _backendTotalQrCount;
   late final VoidCallback _walletBusListener;
 
-  late DateTime _draftFrom;
-  late DateTime _draftTo;
   late DateTime _activeFrom;
   late DateTime _activeTo;
   _StationRegularizationFilter _regularizationFilter =
@@ -100,10 +97,8 @@ class _StationConsumptionHistoryScreenState
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
     final now = DateTime.now();
-    _draftFrom = DateTime(now.year, now.month, now.day);
-    _draftTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    _activeFrom = _draftFrom;
-    _activeTo = _draftTo;
+    _activeFrom = DateTime(now.year, now.month, now.day);
+    _activeTo = DateTime(now.year, now.month, now.day, 23, 59, 59);
     // Recharger l'historique quand un scan est effectué (WalletRefreshBus)
     _walletBusListener = () {
       if (mounted && AppEnvironment.useAcpecLiveData) _load();
@@ -259,43 +254,10 @@ class _StationConsumptionHistoryScreenState
     }).toList();
   }
 
-  Future<void> _pickFrom() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _draftFrom,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && mounted) {
-      setState(() => _draftFrom = picked);
-    }
-  }
-
-  Future<void> _pickTo() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _draftTo,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null && mounted) {
-      setState(() => _draftTo = picked);
-    }
-  }
-
-  void _applyFilter() {
-    final from = DateTime(_draftFrom.year, _draftFrom.month, _draftFrom.day);
-    final to = DateTime(
-      _draftTo.year,
-      _draftTo.month,
-      _draftTo.day,
-      23,
-      59,
-      59,
-    );
+  void _applyFilter(DateTimeRange range) {
     setState(() {
-      _activeFrom = from;
-      _activeTo = to;
+      _activeFrom = range.start;
+      _activeTo = range.end;
     });
     if (AppEnvironment.useAcpecLiveData) {
       unawaited(_load());
@@ -336,12 +298,9 @@ class _StationConsumptionHistoryScreenState
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: DateRangeFilterBar(
-                  fromLabel: _compactDate(_draftFrom),
-                  toLabel: _compactDate(_draftTo),
-                  onPickFrom: _pickFrom,
-                  onPickTo: _pickTo,
+                  initialFrom: _activeFrom,
+                  initialTo: _activeTo,
                   onApply: _applyFilter,
-                  applyColor: _cOrange,
                 ),
               ),
               const SizedBox(height: 12),

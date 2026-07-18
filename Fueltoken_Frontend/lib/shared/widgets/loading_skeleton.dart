@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 
 enum AppLoadingSkeletonStyle {
+  walletAmount,
   historyRows,
   qrCards,
   ticketGroups,
@@ -50,6 +51,14 @@ class _AppLoadingSkeletonState extends State<AppLoadingSkeleton>
       builder: (context, _) {
         final opacity = 0.34 + (_controller.value * 0.36);
         switch (widget.style) {
+          case AppLoadingSkeletonStyle.walletAmount:
+            return _SkeletonBlock(
+              width: 132,
+              height: 26,
+              opacity: opacity,
+              color: Colors.white,
+              radius: 8,
+            );
           case AppLoadingSkeletonStyle.historyRows:
             return _HistorySkeletonList(
               opacity: opacity,
@@ -454,12 +463,14 @@ class _SkeletonBlock extends StatelessWidget {
     required this.width,
     required this.height,
     required this.opacity,
+    this.color = const Color(0xFFDDE3E8),
     this.radius = 999,
   });
 
   final double width;
   final double height;
   final double opacity;
+  final Color color;
   final double radius;
 
   @override
@@ -468,7 +479,7 @@ class _SkeletonBlock extends StatelessWidget {
       width: width.isFinite ? width : double.infinity,
       height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFFDDE3E8),
+        color: color,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
