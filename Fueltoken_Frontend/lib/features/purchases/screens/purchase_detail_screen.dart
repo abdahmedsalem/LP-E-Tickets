@@ -937,8 +937,6 @@ class _LinesCard extends StatelessWidget {
 String _lineTypeLabel(PurchaseLine line) {
   return Formatters.carnetTypeLabelFromServer(
     line.carnetTypeName,
-    fallbackSize: line.carnetSize,
-    fallbackFaceValue: line.faceValue,
     fallbackCode: line.carnetTypeCode,
   );
 }

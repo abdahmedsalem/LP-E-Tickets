@@ -25,4 +25,22 @@ void main() {
     expect(sharedSource, contains('softWrap: false'));
     expect(titleSource, isNot(contains('TextOverflow.ellipsis')));
   });
+
+  test('QR detail content uses the localized carnet type name', () {
+    final frontendSource = File(
+      'lib/features/qr/screens/qr_detail_screen.dart',
+    ).readAsStringSync();
+    final rowStart = frontendSource.indexOf('class _CompositionLineRow');
+    final rowSource = frontendSource.substring(rowStart);
+    final backendSource = File(
+      '../FuelToken_Backend/addons/acpec_fueltoken_api/controllers/api_mobile.py',
+    ).readAsStringSync();
+
+    expect(rowSource, contains('final localizedLabel = label.trim();'));
+    expect(rowSource, isNot(contains("RegExp(r'^\\s*Carnet")));
+    expect(
+      backendSource,
+      contains("'carnet_type_name': self._carnet_type_label("),
+    );
+  });
 }

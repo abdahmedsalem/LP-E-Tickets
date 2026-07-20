@@ -11,7 +11,6 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/face_line.dart';
-import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -50,9 +49,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
   final _phoneController = TextEditingController();
   final Map<String, int> _selectedTicketsByLineId = <String, int>{};
 
-  Map<String, int> _carnetSizeById = <String, int>{};
-  Map<String, int> _carnetSizeByCode = <String, int>{};
-  Map<String, int> _carnetSizeByName = <String, int>{};
   List<FaceLine> _faces = [];
   bool _loading = false;
   bool _submitting = false;
@@ -88,29 +84,6 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
         },
       ),
     );
-  }
-
-  int _carnetSizeFor(FaceLine line) {
-    if (line.carnetFaceCount > 0) return line.carnetFaceCount;
-    final byId = _carnetSizeById[line.carnetTypeId.trim()];
-    if (byId != null && byId > 0) return byId;
-    final byCode = _carnetSizeByCode[line.carnetTypeCode.trim().toUpperCase()];
-    if (byCode != null && byCode > 0) return byCode;
-    final byName = _carnetSizeByName[line.carnetTypeName.trim().toLowerCase()];
-    if (byName != null && byName > 0) return byName;
-
-    final nameMatch = RegExp(r'\d+').firstMatch(line.carnetTypeName);
-    if (nameMatch != null) {
-      final parsed = int.tryParse(nameMatch.group(0)!);
-      if (parsed != null && parsed > 0) return parsed;
-    }
-
-    final match = RegExp(r'\d+').firstMatch(line.carnetTypeCode);
-    if (match != null) {
-      final parsed = int.tryParse(match.group(0)!);
-      if (parsed != null && parsed > 0) return parsed;
-    }
-    return 0;
   }
 
   List<FaceLine> get _transferableTicketLines {
@@ -182,29 +155,11 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: _carnetSizeFor(line),
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-
-    final rawCode = line.carnetTypeCode.trim().toUpperCase();
-    if (rawCode.isNotEmpty) {
-      if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
-        return rawCode;
-      }
-      return rawCode;
-    }
-
-    final size = _carnetSizeFor(line);
-    if (size > 0) {
-      return 'C${size}T-${line.faceValue}';
-    }
-
-    return AppLocalizations.of(context).carnet;
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    return label.isNotEmpty ? label : AppLocalizations.of(context).carnet;
   }
 
   Future<void> _loadData() async {
@@ -225,33 +180,15 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
     });
 
     try {
-      final companyId = AppEnvironment.companyIdForUser(user);
       final facesRaw = await OdooFueltokenFacade().faces(
         const <String, dynamic>{},
       );
-      final catalogResult = await AcpecCarnetCatalogService.instance
-          .loadMobileCatalogFacesOnly(companyId: companyId);
 
       final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
-      final byId = <String, int>{};
-      final byCode = <String, int>{};
-      final byName = <String, int>{};
-      for (final type in catalogResult.types) {
-        if (type.id.trim().isNotEmpty) byId[type.id.trim()] = type.size;
-        if (type.code.trim().isNotEmpty) {
-          byCode[type.code.trim().toUpperCase()] = type.size;
-        }
-        if (type.name.trim().isNotEmpty) {
-          byName[type.name.trim().toLowerCase()] = type.size;
-        }
-      }
 
       if (!mounted) return;
       setState(() {
         _faces = faces;
-        _carnetSizeById = byId;
-        _carnetSizeByCode = byCode;
-        _carnetSizeByName = byName;
         _loading = false;
       });
     } on OdooJsonRpcException catch (e) {

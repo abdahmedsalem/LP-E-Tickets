@@ -14,12 +14,15 @@ void main() {
     );
     final amountPrefix = source.substring(
       source.indexOf('String _historyAmountPrefix('),
-      source.indexOf('String _historyCarnetTypeLabel'),
+      source.indexOf('class _TransactionFact'),
     );
 
     expect(walletTypes, contains('TxType.qrEmission'));
     expect(amountPrefix, contains('case TxType.qrEmission:'));
     expect(amountPrefix, contains("return '- ';"));
-    expect(source, contains('label: l10n.filterQrGenerations'));
+    expect(
+      source,
+      contains('_HistoryQuickFilter.qr => l10n.filterQrGenerations'),
+    );
   });
 }

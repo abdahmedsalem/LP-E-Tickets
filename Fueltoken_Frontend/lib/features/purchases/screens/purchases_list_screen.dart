@@ -546,8 +546,7 @@ String _purchaseTypeLabel(AppLocalizations l10n, PurchaseLot lot) {
       .map(
         (line) => Formatters.carnetTypeLabelFromServer(
           line.carnetTypeName,
-          fallbackSize: line.carnetSize,
-          fallbackFaceValue: line.faceValue,
+          fallbackCode: line.carnetTypeCode,
         ).trim(),
       )
       .where((label) => label.isNotEmpty && label != 'Carnet')

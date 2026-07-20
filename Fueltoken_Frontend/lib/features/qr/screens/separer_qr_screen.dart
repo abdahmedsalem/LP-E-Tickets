@@ -26,9 +26,19 @@ import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/face_value_chip.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_label.dart';
+import '../../../shared/widgets/single_line_card_title.dart';
 import 'qr_action_confirmation_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
+
+String _separationLineTitle(AppLocalizations l10n, QrLine line) {
+  final serverLabel = Formatters.carnetTypeLabelFromServer(
+    line.carnetTypeName,
+    fallbackCode: line.carnetTypeCode,
+  );
+  final carnetLabel = serverLabel.isEmpty ? l10n.carnet : serverLabel;
+  return l10n.ticketsFromCarnet(line.qty, carnetLabel);
+}
 
 class SeparerQrScreen extends StatefulWidget {
   const SeparerQrScreen({super.key, required this.qrId});
@@ -724,9 +734,9 @@ class _SeparerConfirmationLineRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                l10n.ticketCount(line.qty),
-                style: TextStyle(
+              SingleLineCardTitle(
+                text: _separationLineTitle(l10n, line),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink,
@@ -782,9 +792,9 @@ class _LineCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  l10n.ticketCount(line.qty),
-                  style: TextStyle(
+                SingleLineCardTitle(
+                  text: _separationLineTitle(l10n, line),
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink,

@@ -77,7 +77,12 @@ void main() {
   test('splash keeps the same widget structure in French and Arabic', () {
     final source = _read('lib/features/auth/screens/splash_screen.dart');
 
-    expect(source, contains('if (AppBrandConfig.operatorTagline.isNotEmpty)'));
+    expect(
+      source,
+      matches(
+        RegExp(r'if \(AppBrandConfig\s*\.operatorTagline\s*\.isNotEmpty\)'),
+      ),
+    );
     expect(source, isNot(contains('Localizations.localeOf(context)')));
   });
 

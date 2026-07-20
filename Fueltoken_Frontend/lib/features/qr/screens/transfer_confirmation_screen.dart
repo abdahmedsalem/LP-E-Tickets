@@ -371,19 +371,19 @@ class _TransferLineRow extends StatelessWidget {
   final TransferConfirmationLine line;
   final bool showQuantity;
 
-  String _carnetTypeLabel() {
-    return Formatters.carnetTypeLabelFromServer(
+  String _carnetTypeLabel(AppLocalizations l10n) {
+    final label = Formatters.carnetTypeLabelFromServer(
       line.faceLine.carnetTypeName,
-      fallbackSize: line.carnetSize,
-      fallbackFaceValue: line.faceLine.faceValue,
       fallbackCode: line.faceLine.carnetTypeCode,
     );
+    return label.isNotEmpty ? label : l10n.carnet;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return TransferLineRow(
-      title: _carnetTypeLabel(),
+      title: _carnetTypeLabel(l10n),
       quantity: line.carnetQty,
       amount: line.totalAmount,
       showQuantity: showQuantity,

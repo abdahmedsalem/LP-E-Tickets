@@ -793,30 +793,9 @@ class _CompositionCard extends StatelessWidget {
   const _CompositionCard({required this.qr});
   final QrToken qr;
 
-  int _carnetSizeFor(QrLine line) {
-    if (line.carnetSize > 0) return line.carnetSize;
-
-    final nameMatch = RegExp(r'\d+').firstMatch(line.carnetTypeName);
-    if (nameMatch != null) {
-      final parsed = int.tryParse(nameMatch.group(0)!);
-      if (parsed != null && parsed > 0) return parsed;
-    }
-
-    final codeMatch = RegExp(r'\d+').firstMatch(line.carnetTypeCode);
-    if (codeMatch != null) {
-      final parsed = int.tryParse(codeMatch.group(0)!);
-      if (parsed != null && parsed > 0) return parsed;
-    }
-
-    return 0;
-  }
-
   String _carnetLabel(QrLine line) {
-    final carnetSize = _carnetSizeFor(line);
     return Formatters.carnetTypeLabelFromServer(
       line.carnetTypeName,
-      fallbackSize: carnetSize,
-      fallbackFaceValue: line.faceValue,
       fallbackCode: line.carnetTypeCode,
     );
   }
@@ -853,13 +832,8 @@ class _CompositionLineRow extends StatelessWidget {
   final QrLine line;
 
   String _title(AppLocalizations l10n) {
-    final cleanLabel = label.replaceFirst(
-      RegExp(r'^\s*Carnet\s+', caseSensitive: false),
-      '',
-    );
-    final carnetLabel = cleanLabel.trim().isEmpty
-        ? l10n.carnet
-        : '${l10n.carnet} $cleanLabel';
+    final localizedLabel = label.trim();
+    final carnetLabel = localizedLabel.isEmpty ? l10n.carnet : localizedLabel;
     return l10n.ticketsFromCarnet(line.qty, carnetLabel);
   }
 

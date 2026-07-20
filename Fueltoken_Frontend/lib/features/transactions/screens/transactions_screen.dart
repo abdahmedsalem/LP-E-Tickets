@@ -501,11 +501,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  static String _emptyTitle(
+  String _emptyTitle(
     AppLocalizations l10n,
     UserRole role,
     TransactionsScreenMode mode,
   ) {
+    if (role == UserRole.user && _quickFilter != _HistoryQuickFilter.all) {
+      return l10n.filteredEmptyTitle(_quickFilterLabel(l10n, _quickFilter));
+    }
     if (mode == TransactionsScreenMode.wallet) {
       return l10n.walletEmptyTitle;
     }
@@ -519,11 +522,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  static String _emptyMessage(
+  String _emptyMessage(
     AppLocalizations l10n,
     UserRole role,
     TransactionsScreenMode mode,
   ) {
+    if (role == UserRole.user && _quickFilter != _HistoryQuickFilter.all) {
+      final filter = _quickFilterLabel(l10n, _quickFilter);
+      return mode == TransactionsScreenMode.wallet
+          ? l10n.walletFilteredEmptyMessage(filter)
+          : l10n.historyFilteredEmptyMessage(filter);
+    }
     if (mode == TransactionsScreenMode.wallet) {
       return l10n.walletEmptyMessage;
     }
@@ -537,56 +546,53 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
+  String _quickFilterLabel(AppLocalizations l10n, _HistoryQuickFilter filter) {
+    if (_isWalletMode) {
+      return switch (filter) {
+        _HistoryQuickFilter.all => l10n.filterAll,
+        _HistoryQuickFilter.purchases => l10n.filterPurchases,
+        _HistoryQuickFilter.qr => l10n.filterQrGenerations,
+        _HistoryQuickFilter.transfer => l10n.filterTransfers,
+        _HistoryQuickFilter.receipts => l10n.filterReceipts,
+        _HistoryQuickFilter.expirations => l10n.filterExpirations,
+        _HistoryQuickFilter.consumption => l10n.filterConsumption,
+      };
+    }
+    return switch (filter) {
+      _HistoryQuickFilter.all => l10n.filterAll,
+      _HistoryQuickFilter.purchases => l10n.filterOrders,
+      _HistoryQuickFilter.transfer => l10n.filterSentReceived,
+      _HistoryQuickFilter.consumption => l10n.filterConsumption,
+      _HistoryQuickFilter.qr => l10n.navQr,
+      _HistoryQuickFilter.receipts => l10n.filterReceipts,
+      _HistoryQuickFilter.expirations => l10n.filterExpirations,
+    };
+  }
+
   Widget _listHeader(AppLocalizations l10n, UserRole role) {
-    final options = _isWalletMode
-        ? [
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.all,
-              label: l10n.filterAll,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.purchases,
-              label: l10n.filterPurchases,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.qr,
-              label: l10n.filterQrGenerations,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.transfer,
-              label: l10n.filterTransfers,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.receipts,
-              label: l10n.filterReceipts,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.expirations,
-              label: l10n.filterExpirations,
-            ),
+    final filters = _isWalletMode
+        ? const [
+            _HistoryQuickFilter.all,
+            _HistoryQuickFilter.purchases,
+            _HistoryQuickFilter.qr,
+            _HistoryQuickFilter.transfer,
+            _HistoryQuickFilter.receipts,
+            _HistoryQuickFilter.expirations,
           ]
-        : [
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.all,
-              label: l10n.filterAll,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.purchases,
-              label: l10n.filterOrders,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.transfer,
-              label: l10n.filterSentReceived,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.consumption,
-              label: l10n.filterConsumption,
-            ),
-            ListScreenFilterOption(
-              value: _HistoryQuickFilter.qr,
-              label: l10n.navQr,
-            ),
+        : const [
+            _HistoryQuickFilter.all,
+            _HistoryQuickFilter.purchases,
+            _HistoryQuickFilter.transfer,
+            _HistoryQuickFilter.consumption,
+            _HistoryQuickFilter.qr,
           ];
+    final options = [
+      for (final filter in filters)
+        ListScreenFilterOption(
+          value: filter,
+          label: _quickFilterLabel(l10n, filter),
+        ),
+    ];
 
     return ListScreenHeader<_HistoryQuickFilter>(
       title: _titleForRole(l10n, role, widget.mode),
@@ -1180,31 +1186,11 @@ class _TxLineRow extends StatelessWidget {
       txType == TxType.qrBlocked ||
       txType == TxType.expiration;
 
-  int _carnetSize({required bool fromAmount}) {
-    if (line.carnetSize > 0) return line.carnetSize;
-    if (!fromAmount ||
-        line.faceValue <= 0 ||
-        line.qty <= 0 ||
-        line.amount <= 0) {
-      return 0;
-    }
-    final derived = (line.amount / line.faceValue / line.qty).round();
-    return derived > 0 ? derived : 0;
-  }
-
   String _purchaseTitle(AppLocalizations l10n) {
     final serverLabel = line.carnetTypeName.trim();
     if (serverLabel.isNotEmpty) return serverLabel;
-    if (line.carnetSize > 0 && line.faceValue > 0) {
-      return _historyCarnetTypeLabel(l10n, line.carnetSize, line.faceValue);
-    }
-    final carnetSize = _carnetSize(fromAmount: true);
-    if (carnetSize > 0 && line.faceValue > 0) {
-      return _historyCarnetTypeLabel(l10n, carnetSize, line.faceValue);
-    }
-    if (line.faceValue > 0) {
-      return l10n.carnetWithValue(Formatters.numberFr(line.faceValue));
-    }
+    final code = line.carnetTypeCode.trim();
+    if (code.isNotEmpty) return code;
     return l10n.carnet;
   }
 
@@ -1216,12 +1202,11 @@ class _TxLineRow extends StatelessWidget {
 
   String _qrTitle(AppLocalizations l10n) {
     final qty = line.qty > 0 ? line.qty : 1;
-    final carnetLabel = Formatters.carnetTypeLabelFromServer(
+    final resolvedLabel = Formatters.carnetTypeLabelFromServer(
       line.carnetTypeName,
-      fallbackSize: line.carnetSize,
-      fallbackFaceValue: line.faceValue,
       fallbackCode: line.carnetTypeCode,
-    ).replaceFirst(RegExp(r'^Carnet\s+', caseSensitive: false), 'carnet ');
+    );
+    final carnetLabel = resolvedLabel.isNotEmpty ? resolvedLabel : l10n.carnet;
     return l10n.ticketsFromCarnet(qty, carnetLabel);
   }
 
@@ -1623,10 +1608,6 @@ String _historyAmountPrefix(
     default:
       return '';
   }
-}
-
-String _historyCarnetTypeLabel(AppLocalizations l10n, int size, int faceValue) {
-  return '${l10n.carnet} ${Formatters.numberFr(size)} x $faceValue';
 }
 
 class _TransactionFact {

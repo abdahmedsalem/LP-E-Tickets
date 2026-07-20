@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -467,8 +467,9 @@ class PurchaseValidationNotificationService {
         )
         .toList(growable: false);
     final isRejected = lot.state == PurchaseLotState.rejected;
-    final title =
-        isRejected ? 'Commande de carnets rejetée' : 'Commande de carnets validée';
+    final title = isRejected
+        ? 'Commande de carnets rejetée'
+        : 'Commande de carnets validée';
     final rejectionReason = isRejected ? lot.rejectionReason : null;
     final body = isRejected
         ? _rejectedBody(amountLabel, dateLabel, rejectionReason)
@@ -656,35 +657,19 @@ class PurchaseValidationNotificationService {
   }
 
   String _lineLabel(PurchaseLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: line.carnetSize,
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-    return Formatters.carnetTypeLabel(line.carnetSize, line.faceValue);
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    return label.isNotEmpty ? label : 'Carnet';
   }
 
   String _txLineLabel(TransactionLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: line.carnetSize,
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-    final code = line.carnetTypeCode.trim();
-    if (code.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        code,
-        fallbackSize: line.carnetSize,
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-    return Formatters.carnetTypeLabel(line.carnetSize, line.faceValue);
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    return label.isNotEmpty ? label : 'Carnet';
   }
 
   Future<List<BusinessTransaction>> _loadStationConsumptionTransactions(

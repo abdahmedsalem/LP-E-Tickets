@@ -453,23 +453,19 @@ class _TransferredLineRow extends StatelessWidget {
   final TransferConfirmationLine line;
   final bool showQuantity;
 
-  String _carnetTypeLabel() {
-    final size = line.carnetSize;
-    final faceValue = line.faceLine.faceValue;
-    if (size > 0 && faceValue > 0) {
-      return Formatters.carnetTypeLabel(size, faceValue);
-    }
-    return Formatters.normalizeCarnetTypeLabel(
+  String _carnetTypeLabel(AppLocalizations l10n) {
+    final label = Formatters.carnetTypeLabelFromServer(
       line.faceLine.carnetTypeName,
-      fallbackSize: size,
-      fallbackFaceValue: faceValue,
+      fallbackCode: line.faceLine.carnetTypeCode,
     );
+    return label.isNotEmpty ? label : l10n.carnet;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return TransferLineRow(
-      title: _carnetTypeLabel(),
+      title: _carnetTypeLabel(l10n),
       quantity: line.carnetQty,
       amount: line.totalAmount,
       showQuantity: showQuantity,
@@ -554,22 +550,17 @@ class _PurchasedLineRow extends StatelessWidget {
 
   final PurchaseConfirmationLine line;
 
-  String _carnetTypeLabel() {
-    if (line.carnetType.size > 0 && line.carnetType.faceValue > 0) {
-      return Formatters.carnetTypeLabel(
-        line.carnetType.size,
-        line.carnetType.faceValue,
-      );
-    }
-    return Formatters.normalizeCarnetTypeLabel(
+  String _carnetTypeLabel(AppLocalizations l10n) {
+    final label = Formatters.carnetTypeLabelFromServer(
       line.carnetType.name,
-      fallbackSize: line.carnetType.size,
-      fallbackFaceValue: line.carnetType.faceValue,
+      fallbackCode: line.carnetType.code,
     );
+    return label.isNotEmpty ? label : l10n.carnet;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     const rowHeight = 20.0;
 
     return Row(
@@ -585,7 +576,7 @@ class _PurchasedLineRow extends StatelessWidget {
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
-                  _carnetTypeLabel(),
+                  _carnetTypeLabel(l10n),
                   maxLines: 1,
                   softWrap: false,
                   style: TextStyle(

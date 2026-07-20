@@ -248,6 +248,18 @@ abstract class AppLocalizations {
   /// **'Vous n\'avez encore aucun carnet disponible.'**
   String get carnetsEmptyMessage;
 
+  /// No description provided for @filteredEmptyTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun résultat pour « {filter} »'**
+  String filteredEmptyTitle(String filter);
+
+  /// No description provided for @carnetsFilteredEmptyMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun carnet ne correspond au filtre « {filter} » pour le moment.'**
+  String carnetsFilteredEmptyMessage(String filter);
+
   /// No description provided for @carnetsSummaryTitle.
   ///
   /// In fr, this message translates to:
@@ -422,6 +434,12 @@ abstract class AppLocalizations {
   /// **'Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.'**
   String get qrsFilterEmptyMessage;
 
+  /// No description provided for @qrsFilteredEmptyMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun QR ne correspond au filtre « {filter} » pour le moment.'**
+  String qrsFilteredEmptyMessage(String filter);
+
   /// No description provided for @commonRefresh.
   ///
   /// In fr, this message translates to:
@@ -500,6 +518,12 @@ abstract class AppLocalizations {
   /// **'Les commandes validées, générations de QR, transferts, réceptions et expirations apparaîtront ici.'**
   String get walletEmptyMessage;
 
+  /// No description provided for @walletFilteredEmptyMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun mouvement ne correspond au filtre « {filter} » pour le moment.'**
+  String walletFilteredEmptyMessage(String filter);
+
   /// No description provided for @historyEmptyTitle.
   ///
   /// In fr, this message translates to:
@@ -511,6 +535,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Vos commandes, la génération de QR et vos utilisations apparaîtront ici.'**
   String get historyEmptyMessage;
+
+  /// No description provided for @historyFilteredEmptyMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune opération ne correspond au filtre « {filter} » pour le moment.'**
+  String historyFilteredEmptyMessage(String filter);
 
   /// No description provided for @stationHistoryEmptyTitle.
   ///

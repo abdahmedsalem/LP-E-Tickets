@@ -1163,13 +1163,17 @@ class _CarnetBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final title = row['carnet_type_name']?.toString().trim().isNotEmpty == true
-        ? row['carnet_type_name'].toString().trim()
-        : (row['name']?.toString().trim().isNotEmpty == true
-              ? row['name'].toString().trim()
-              : (row['carnet_type_code']?.toString() ??
-                    row['code']?.toString() ??
-                    'Carnet ${_n('carnet_type_id')}'));
+    final serverName = row['carnet_type_name']?.toString().trim() ?? '';
+    final legacyName = row['name']?.toString().trim() ?? '';
+    final code =
+        row['carnet_type_code']?.toString().trim() ??
+        row['code']?.toString().trim() ??
+        '';
+    final title = serverName.isNotEmpty
+        ? serverName
+        : (legacyName.isNotEmpty
+              ? legacyName
+              : (code.isNotEmpty ? code : l10n.carnet));
 
     final fv = _n('face_value');
 

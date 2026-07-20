@@ -247,8 +247,6 @@ class _PurchaseLinesCard extends StatelessWidget {
   String _carnetTypeLabel(PurchaseConfirmationLine line) {
     final raw = Formatters.carnetTypeLabelFromServer(
       line.carnetType.name,
-      fallbackSize: line.carnetType.size,
-      fallbackFaceValue: line.carnetType.faceValue,
       fallbackCode: line.carnetType.code,
     );
     return raw.replaceFirst(RegExp(r'^\s*\d+\s*[x×]\s*'), '');

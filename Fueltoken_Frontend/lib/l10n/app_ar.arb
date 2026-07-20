@@ -25,6 +25,22 @@
   "carnetsLoadError": "خطأ في التحميل",
   "carnetsEmptyTitle": "لا توجد دفاتر",
   "carnetsEmptyMessage": "ليس لديك أي دفتر متاح حتى الآن.",
+  "filteredEmptyTitle": "لا توجد نتائج ضمن «{filter}»",
+  "@filteredEmptyTitle": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "carnetsFilteredEmptyMessage": "لا يوجد أي دفتر ضمن «{filter}» حالياً.",
+  "@carnetsFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "carnetsSummaryTitle": "ملخص المحفظة",
   "carnetsAvailableTickets": "التذاكر المتاحة",
   "carnetsValue": "القيمة",
@@ -54,6 +70,14 @@
   "qrsNoResults": "لا توجد نتائج",
   "qrsEmptyMessage": "لا يتوفر أي رمز QR في الوقت الحالي.",
   "qrsFilterEmptyMessage": "لا يحتوي هذا الفلتر على أي رمز QR. جرّب فلترًا آخر أو اعرض جميع النتائج.",
+  "qrsFilteredEmptyMessage": "لا يوجد أي رمز QR ضمن «{filter}» حالياً.",
+  "@qrsFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "commonRefresh": "تحديث",
   "sessionExpiredReconnect": "انتهت الجلسة. يرجى تسجيل الدخول مجددًا.",
   "qrExpirationUndefined": "تاريخ انتهاء الصلاحية غير محدد",
@@ -67,8 +91,24 @@
   "globalHistoryTitle": "السجل العام",
   "walletEmptyTitle": "لا توجد حركات في المحفظة حالياً",
   "walletEmptyMessage": "ستظهر هنا الطلبات المعتمدة وعمليات إنشاء QR والتحويل والاستلام وانتهاء الصلاحية.",
+  "walletFilteredEmptyMessage": "لا توجد أي حركة ضمن «{filter}» حالياً.",
+  "@walletFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "historyEmptyTitle": "لا توجد عمليات حالياً",
   "historyEmptyMessage": "ستظهر هنا طلباتك وعمليات إنشاء QR والاستخدام.",
+  "historyFilteredEmptyMessage": "لا توجد أي عملية ضمن «{filter}» حالياً.",
+  "@historyFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "stationHistoryEmptyTitle": "لا توجد أنشطة مسجلة",
   "stationHistoryEmptyMessage": "ستظهر هنا عمليات التحقق والاستخدام التي تمت في هذه المحطة.",
   "globalHistoryEmptyTitle": "السجل فارغ",

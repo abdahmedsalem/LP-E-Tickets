@@ -704,7 +704,7 @@ class _CarnetAgg {
 
   String get displayName {
     if (name.trim().isNotEmpty) return name.trim();
-    return 'C${size}T-$faceValue';
+    return code.trim();
   }
 }
 

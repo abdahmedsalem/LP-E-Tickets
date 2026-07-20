@@ -10,6 +10,7 @@ import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/debug/acpec_rpc_debug.dart';
 import '../../core/network/acpec_fueltoken_rpc_coordinator.dart';
+import '../../core/settings/app_preferences.dart';
 
 /// Erreur JSON-RPC, HTTP ou réseau.
 class OdooJsonRpcException implements Exception {
@@ -740,11 +741,13 @@ class OdooJsonRpcClient {
         ? null
         : (accessTokenOverride ?? await OdooSessionStore.readAccessToken());
     final db = OdooApiConfig.databaseNameTrimmed;
+    final languageCode = await AppPreferences.localeCode();
     final cookiePresent = cookie != null && cookie.isNotEmpty;
     try {
       final headers = <String, dynamic>{
         Headers.contentTypeHeader: Headers.jsonContentType,
         Headers.acceptHeader: Headers.jsonContentType,
+        'Accept-Language': languageCode,
         if (!omitSessionHeaders && cookiePresent) 'Cookie': cookie,
         if (!omitSessionHeaders && sid != null && sid.isNotEmpty)
           'X-Acpec-Session': sid,

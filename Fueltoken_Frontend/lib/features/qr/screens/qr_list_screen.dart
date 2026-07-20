@@ -204,12 +204,16 @@ class _QrListScreenState extends State<QrListScreen> {
                             ? l10n.qrsLoadError
                             : (_filterState == null
                                   ? l10n.qrsEmptyTitle
-                                  : l10n.qrsNoResults),
+                                  : l10n.filteredEmptyTitle(
+                                      _qrFilterLabel(l10n, _filterState),
+                                    )),
                         message: _liveError != null
                             ? _liveError!
                             : (_filterState == null
                                   ? l10n.qrsEmptyMessage
-                                  : l10n.qrsFilterEmptyMessage),
+                                  : l10n.qrsFilteredEmptyMessage(
+                                      _qrFilterLabel(l10n, _filterState),
+                                    )),
                         action: FilledButton.tonalIcon(
                           onPressed: () => _refreshLive(force: true),
                           icon: const Icon(Icons.refresh_rounded),
@@ -243,6 +247,16 @@ class _QrListScreenState extends State<QrListScreen> {
   }
 }
 
+String _qrFilterLabel(AppLocalizations l10n, QrState? state) {
+  return switch (state) {
+    null => l10n.filterAll,
+    QrState.active => l10n.qrFilterActive,
+    QrState.blocked => l10n.qrFilterBlocked,
+    QrState.consumed => l10n.qrFilterConsumed,
+    QrState.expired => l10n.filterExpired,
+  };
+}
+
 class _QrListShell extends StatelessWidget {
   const _QrListShell({
     required this.selected,
@@ -267,24 +281,24 @@ class _QrListShell extends StatelessWidget {
           options: [
             ListScreenFilterOption(
               value: null,
-              label: l10n.filterAll,
+              label: _qrFilterLabel(l10n, null),
               count: totalCount,
             ),
             ListScreenFilterOption(
               value: QrState.active,
-              label: l10n.qrFilterActive,
+              label: _qrFilterLabel(l10n, QrState.active),
             ),
             ListScreenFilterOption(
               value: QrState.blocked,
-              label: l10n.qrFilterBlocked,
+              label: _qrFilterLabel(l10n, QrState.blocked),
             ),
             ListScreenFilterOption(
               value: QrState.consumed,
-              label: l10n.qrFilterConsumed,
+              label: _qrFilterLabel(l10n, QrState.consumed),
             ),
             ListScreenFilterOption(
               value: QrState.expired,
-              label: l10n.filterExpired,
+              label: _qrFilterLabel(l10n, QrState.expired),
             ),
           ],
           selected: selected,

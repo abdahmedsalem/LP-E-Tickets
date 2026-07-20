@@ -20,9 +20,18 @@ class AcpecFueltokenRpcCoordinator {
   final Map<String, Future<dynamic>> _inFlight = {};
   final Map<String, _CacheEntry> _cache = {};
 
-  static String _cacheKey(String route, Map<String, dynamic>? params) {
+  static String _baseCacheKey(String route, Map<String, dynamic>? params) {
     final normalized = _canonicalJson(params ?? const {});
     return '$route|${jsonEncode(normalized)}';
+  }
+
+  static String _cacheKey(
+    String route,
+    Map<String, dynamic>? params,
+    String cacheVariant,
+  ) {
+    final base = _baseCacheKey(route, params);
+    return cacheVariant.isEmpty ? base : '$base|$cacheVariant';
   }
 
   static dynamic _canonicalJson(Object? o) {
@@ -71,8 +80,9 @@ class AcpecFueltokenRpcCoordinator {
     required String route,
     required Map<String, dynamic>? params,
     required Future<dynamic> Function() request,
+    String cacheVariant = '',
   }) async {
-    final key = _cacheKey(route, params);
+    final key = _cacheKey(route, params, cacheVariant);
 
     final inflight = _inFlight[key];
     if (inflight != null) {
@@ -103,7 +113,9 @@ class AcpecFueltokenRpcCoordinator {
 
   /// Invalide une entrée cache (ex. tirer au frais le détail d’un achat).
   void invalidate(String route, [Map<String, dynamic>? params]) {
-    final key = _cacheKey(route, params);
-    _cache.remove(key);
+    final baseKey = _baseCacheKey(route, params);
+    _cache.removeWhere(
+      (key, _) => key == baseKey || key.startsWith('$baseKey|'),
+    );
   }
 }

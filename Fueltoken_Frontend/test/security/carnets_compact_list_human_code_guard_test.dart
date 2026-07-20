@@ -42,14 +42,16 @@ void main() {
       },
     );
 
-    test('carnet type label uses backend label and K4 fallback format', () {
+    test('carnet type label uses backend name then real code fallback', () {
       final source = _facesDetailScreenSource();
 
       expect(source, contains('String _carnetTypeLabelFor(FaceLine line)'));
       expect(source, contains('final rawName = line.carnetTypeName.trim();'));
-      expect(source, contains('return _normalizedCarnetLabel(rawName);'));
-      expect(source, contains('carnetTypeFallback('));
-      expect(source, contains('_currencyFor(line),'));
+      expect(source, contains('if (rawName.isNotEmpty) return rawName;'));
+      expect(source, contains('final rawCode = line.carnetTypeCode.trim();'));
+      expect(source, contains('if (rawCode.isNotEmpty) return rawCode;'));
+      expect(source, contains('AppLocalizations.of(context).carnet'));
+      expect(source, isNot(contains('carnetTypeFallback(')));
       expect(source, isNot(contains('Carnet de 10 tickets')));
       expect(source, isNot(contains('10 tickets x 100 MRU')));
     });

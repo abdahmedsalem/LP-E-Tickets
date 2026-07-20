@@ -215,54 +215,23 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     return 0;
   }
 
-  // Keep raw labels readable by normalizing catalog text before display.
-  String _normalizedCarnetLabel(
-    String raw, {
-    int? fallbackSize,
-    int? fallbackFaceValue,
-  }) {
-    final value = raw.trim();
-    if (value.isEmpty) return '';
-    return Formatters.normalizeCarnetTypeLabel(
-      value,
-      fallbackSize: fallbackSize,
-      fallbackFaceValue: fallbackFaceValue,
-    );
-  }
-
   String _carnetTypeLabelFor(FaceLine line) {
     final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return _normalizedCarnetLabel(rawName);
-    }
+    if (rawName.isNotEmpty) return rawName;
 
     final byId = _carnetNameById[line.carnetTypeId.trim()];
-    if (byId != null && byId.trim().isNotEmpty) {
-      return _normalizedCarnetLabel(byId);
-    }
+    if (byId != null && byId.trim().isNotEmpty) return byId.trim();
 
     final byCode = _carnetNameByCode[line.carnetTypeCode.trim().toUpperCase()];
-    if (byCode != null && byCode.trim().isNotEmpty) {
-      return _normalizedCarnetLabel(byCode);
-    }
+    if (byCode != null && byCode.trim().isNotEmpty) return byCode.trim();
 
     final byFaceValue = _carnetNameByFaceValue[line.faceValue];
     if (byFaceValue != null && byFaceValue.trim().isNotEmpty) {
-      return _normalizedCarnetLabel(byFaceValue);
+      return byFaceValue.trim();
     }
 
     final rawCode = line.carnetTypeCode.trim();
     if (rawCode.isNotEmpty) return rawCode;
-
-    final carnetSize = _carnetSizeFor(line);
-    if (carnetSize > 0) {
-      return AppLocalizations.of(context).carnetTypeFallback(
-        Formatters.numberFr(carnetSize),
-        Formatters.numberFr(line.faceValue),
-        _currencyFor(line),
-      );
-    }
-
     return AppLocalizations.of(context).carnet;
   }
 
@@ -456,20 +425,38 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       options: [
         ListScreenFilterOption(
           value: _CarnetQuickFilter.all,
-          label: l10n.filterAll,
+          label: _filterLabel(l10n, _CarnetQuickFilter.all),
         ),
         ListScreenFilterOption(
           value: _CarnetQuickFilter.active,
-          label: l10n.filterAvailable,
+          label: _filterLabel(l10n, _CarnetQuickFilter.active),
         ),
         ListScreenFilterOption(
           value: _CarnetQuickFilter.expired,
-          label: l10n.filterExpired,
+          label: _filterLabel(l10n, _CarnetQuickFilter.expired),
         ),
       ],
       selected: _quickFilter,
       onSelected: _setQuickFilter,
     );
+  }
+
+  String _filterLabel(AppLocalizations l10n, _CarnetQuickFilter filter) {
+    return switch (filter) {
+      _CarnetQuickFilter.all => l10n.filterAll,
+      _CarnetQuickFilter.active => l10n.filterAvailable,
+      _CarnetQuickFilter.expired => l10n.filterExpired,
+    };
+  }
+
+  String _emptyTitle(AppLocalizations l10n) {
+    if (_quickFilter == _CarnetQuickFilter.all) return l10n.carnetsEmptyTitle;
+    return l10n.filteredEmptyTitle(_filterLabel(l10n, _quickFilter));
+  }
+
+  String _emptyMessage(AppLocalizations l10n) {
+    if (_quickFilter == _CarnetQuickFilter.all) return l10n.carnetsEmptyMessage;
+    return l10n.carnetsFilteredEmptyMessage(_filterLabel(l10n, _quickFilter));
   }
 
   @override
@@ -588,8 +575,8 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
                   ? [
                       EmptyState(
                         icon: Icons.layers_outlined,
-                        title: l10n.carnetsEmptyTitle,
-                        message: l10n.carnetsEmptyMessage,
+                        title: _emptyTitle(l10n),
+                        message: _emptyMessage(l10n),
                       ),
                     ]
                   : [

@@ -88,6 +88,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get carnetsEmptyMessage => 'ليس لديك أي دفتر متاح حتى الآن.';
 
   @override
+  String filteredEmptyTitle(String filter) {
+    return 'لا توجد نتائج ضمن «$filter»';
+  }
+
+  @override
+  String carnetsFilteredEmptyMessage(String filter) {
+    return 'لا يوجد أي دفتر ضمن «$filter» حالياً.';
+  }
+
+  @override
   String get carnetsSummaryTitle => 'ملخص المحفظة';
 
   @override
@@ -178,6 +188,11 @@ class AppLocalizationsAr extends AppLocalizations {
       'لا يحتوي هذا الفلتر على أي رمز QR. جرّب فلترًا آخر أو اعرض جميع النتائج.';
 
   @override
+  String qrsFilteredEmptyMessage(String filter) {
+    return 'لا يوجد أي رمز QR ضمن «$filter» حالياً.';
+  }
+
+  @override
   String get commonRefresh => 'تحديث';
 
   @override
@@ -225,11 +240,21 @@ class AppLocalizationsAr extends AppLocalizations {
       'ستظهر هنا الطلبات المعتمدة وعمليات إنشاء QR والتحويل والاستلام وانتهاء الصلاحية.';
 
   @override
+  String walletFilteredEmptyMessage(String filter) {
+    return 'لا توجد أي حركة ضمن «$filter» حالياً.';
+  }
+
+  @override
   String get historyEmptyTitle => 'لا توجد عمليات حالياً';
 
   @override
   String get historyEmptyMessage =>
       'ستظهر هنا طلباتك وعمليات إنشاء QR والاستخدام.';
+
+  @override
+  String historyFilteredEmptyMessage(String filter) {
+    return 'لا توجد أي عملية ضمن «$filter» حالياً.';
+  }
 
   @override
   String get stationHistoryEmptyTitle => 'لا توجد عمليات استهلاك';

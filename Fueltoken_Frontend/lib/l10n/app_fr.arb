@@ -48,6 +48,22 @@
   "carnetsLoadError": "Erreur de chargement",
   "carnetsEmptyTitle": "Aucun carnet",
   "carnetsEmptyMessage": "Vous n'avez encore aucun carnet disponible.",
+  "filteredEmptyTitle": "Aucun résultat pour « {filter} »",
+  "@filteredEmptyTitle": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "carnetsFilteredEmptyMessage": "Aucun carnet ne correspond au filtre « {filter} » pour le moment.",
+  "@carnetsFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "carnetsSummaryTitle": "Résumé portefeuille",
   "carnetsAvailableTickets": "Tickets disponibles",
   "carnetsValue": "Valeur",
@@ -84,6 +100,14 @@
   "qrsNoResults": "Aucun résultat",
   "qrsEmptyMessage": "Aucun QR n’est disponible pour le moment.",
   "qrsFilterEmptyMessage": "Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.",
+  "qrsFilteredEmptyMessage": "Aucun QR ne correspond au filtre « {filter} » pour le moment.",
+  "@qrsFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "commonRefresh": "Actualiser",
   "sessionExpiredReconnect": "Session expirée. Reconnectez-vous.",
   "qrExpirationUndefined": "Expiration non définie",
@@ -118,8 +142,24 @@
   "globalHistoryTitle": "Historique global",
   "walletEmptyTitle": "Aucun mouvement de portefeuille pour l'instant",
   "walletEmptyMessage": "Les commandes validées, générations de QR, transferts, réceptions et expirations apparaîtront ici.",
+  "walletFilteredEmptyMessage": "Aucun mouvement ne correspond au filtre « {filter} » pour le moment.",
+  "@walletFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "historyEmptyTitle": "Aucun mouvement pour l'instant",
   "historyEmptyMessage": "Vos commandes, la génération de QR et vos utilisations apparaîtront ici.",
+  "historyFilteredEmptyMessage": "Aucune opération ne correspond au filtre « {filter} » pour le moment.",
+  "@historyFilteredEmptyMessage": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
   "stationHistoryEmptyTitle": "Aucune activité enregistrée",
   "stationHistoryEmptyMessage": "Les contrôles et utilisations traités pour cette station s'afficheront ici.",
   "globalHistoryEmptyTitle": "Historique vide",

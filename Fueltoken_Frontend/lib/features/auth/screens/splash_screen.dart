@@ -109,98 +109,154 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(gradient: AppColors.splashGradient),
-          child: Stack(
-            children: [
-              // Top-right green glow
-              Positioned(
-                top: -80,
-                right: -80,
-                child: _GlowBlob(
-                  size: 280,
-                  color: AppColors.leaderGreen.withValues(alpha: 0.22),
-                ),
+        backgroundColor: AppColors.background,
+        body: Stack(
+          children: [
+            PositionedDirectional(
+              top: -110,
+              end: -90,
+              child: _GlowBlob(
+                size: 280,
+                color: AppColors.successSurface.withValues(alpha: 0.78),
               ),
-              // Bas-droite — teal léger
-              Positioned(
-                bottom: -100,
-                right: -60,
-                child: _GlowBlob(
-                  size: 240,
-                  color: AppColors.accentTeal.withValues(alpha: 0.18),
-                ),
+            ),
+            PositionedDirectional(
+              bottom: -120,
+              start: -80,
+              child: _GlowBlob(
+                size: 250,
+                color: AppColors.brandBlueSoft.withValues(alpha: 0.72),
               ),
-              SafeArea(
-                child: Center(
-                  child: FadeTransition(
-                    opacity: _fade,
-                    child: ScaleTransition(
-                      scale: _scale,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // White rounded square holding the brand mark.
-                            Container(
-                              width: 104,
-                              height: 104,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(32),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.20),
-                                    blurRadius: 40,
-                                    offset: const Offset(0, 20),
+            ),
+            SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    child: FadeTransition(
+                      opacity: _fade,
+                      child: ScaleTransition(
+                        scale: _scale,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: AppColors.loginHeroGradient,
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(30),
+                            ),
+                            boxShadow: AppColors.elevatedShadow,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(28, 34, 28, 30),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 104,
+                                  height: 104,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(30),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.16,
+                                        ),
+                                        blurRadius: 30,
+                                        offset: const Offset(0, 14),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Center(
+                                    child: FuelMark(size: 62),
+                                  ),
+                                ),
+                                const SizedBox(height: 26),
+                                Text(
+                                  AppLocalizations.of(context).authBrandName,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.8,
+                                    height: 1.08,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).authSplashTagline,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFFE0F2FE),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                if (AppBrandConfig
+                                    .operatorTagline
+                                    .isNotEmpty) ...[
+                                  const SizedBox(height: 18),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.18,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      AppBrandConfig.operatorTagline,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ],
-                              ),
-                              child: const Center(child: FuelMark(size: 62)),
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              AppLocalizations.of(context).authBrandName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                height: 1,
-                              ),
-                            ),
-                            if (AppBrandConfig.operatorTagline.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                AppBrandConfig.operatorTagline,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                const SizedBox(height: 30),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: SizedBox(
+                                    width: 54,
+                                    child: LinearProgressIndicator(
+                                      minHeight: 3,
+                                      backgroundColor: Colors.white.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                            const SizedBox(height: 60),
-                            Text(
-                              AppLocalizations.of(context).authSplashTagline,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 12,
-                                letterSpacing: 0.4,
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

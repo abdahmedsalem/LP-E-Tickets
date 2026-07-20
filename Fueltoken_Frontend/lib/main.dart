@@ -56,8 +56,16 @@ Future<void> _clearPersistedAuthOnDesktopInterrupt() async {
   } catch (_) {}
 }
 
+Future<void> _hideStatusBar() {
+  return SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: const [SystemUiOverlay.bottom],
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _hideStatusBar();
 
   await _clearPersistedAuthOnDesktopInterrupt();
   if (AppEnvironment.blockReleaseWithoutApi) {
@@ -265,6 +273,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
     }
 
     if (state == AppLifecycleState.resumed) {
+      unawaited(_hideStatusBar());
       if (_shouldIdleLock() && _hasExceededLifecycleGrace(DateTime.now())) {
         _requestSessionLock(AuthLockReason.appLifecycle);
         return;

@@ -1,5 +1,6 @@
 import '../../core/config/odoo_api_config.dart';
 import '../../core/network/acpec_fueltoken_rpc_coordinator.dart';
+import '../../core/settings/app_preferences.dart';
 import '../services/odoo_jsonrpc_client.dart';
 
 /// Client JSON-RPC vers les routes métier ACPEC.
@@ -14,11 +15,16 @@ class AcpecFueltokenJsonRpcApi {
   final AcpecFueltokenRpcCoordinator _coordinator;
 
   /// [route] : chemin absolu serveur (ex. `/api/acpec/...`).
-  Future<dynamic> callRoute(String route, {Map<String, dynamic>? params}) {
+  Future<dynamic> callRoute(
+    String route, {
+    Map<String, dynamic>? params,
+  }) async {
     var r = _normalizeRoute(route);
+    final languageCode = await AppPreferences.localeCode();
     return _coordinator.execute(
       route: r,
       params: params,
+      cacheVariant: 'locale=$languageCode',
       request: () => _client.postJsonRpc(path: r, params: params),
     );
   }

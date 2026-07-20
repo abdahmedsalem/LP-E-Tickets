@@ -9,15 +9,16 @@ void main() {
     test('splash uses Tickets Carburant branding and larger logo', () {
       final source = _read('lib/features/auth/screens/splash_screen.dart');
 
-      expect(source, contains('AppLocalizations.of(context).authBrandName'));
-      expect(
-        source,
-        contains('AppLocalizations.of(context).authSplashTagline'),
-      );
+      expect(source, contains('.authBrandName'));
+      expect(source, contains('.authSplashTagline'));
 
       expect(source, contains('width: 104,'));
       expect(source, contains('height: 104,'));
       expect(source, contains('FuelMark(size: 62)'));
+      expect(source, contains('backgroundColor: AppColors.background'));
+      expect(source, contains('gradient: AppColors.loginHeroGradient'));
+      expect(source, contains('BoxConstraints(maxWidth: 380)'));
+      expect(source, contains('TextAlign.center'));
 
       expect(source, isNot(contains("'FuelToken'")));
     });

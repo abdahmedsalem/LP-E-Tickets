@@ -36,6 +36,14 @@ void main() {
     expect(source, contains('bottomNavigationBar: _offerTypes.isEmpty'));
   });
 
+  test('QR generation shows instructions only with loaded carnet cards', () {
+    final source = _read('lib/features/qr/screens/emit_qr_screen.dart');
+
+    expect(source, isNot(contains('l10n.qrGenerationSelectInstruction')));
+    expect(source, contains('final hasEntries = availableLines.isNotEmpty'));
+    expect(source, contains('l10n.qrGenerationChooseInstruction'));
+  });
+
   test('all four screens use the shared empty state component', () {
     final paths = <String>[
       'lib/features/qr/screens/emit_qr_screen.dart',

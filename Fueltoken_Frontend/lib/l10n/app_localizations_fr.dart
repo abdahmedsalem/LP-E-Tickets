@@ -89,6 +89,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vous n\'avez encore aucun carnet disponible.';
 
   @override
+  String filteredEmptyTitle(String filter) {
+    return 'Aucun résultat pour « $filter »';
+  }
+
+  @override
+  String carnetsFilteredEmptyMessage(String filter) {
+    return 'Aucun carnet ne correspond au filtre « $filter » pour le moment.';
+  }
+
+  @override
   String get carnetsSummaryTitle => 'Résumé portefeuille';
 
   @override
@@ -179,6 +189,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ce filtre ne contient aucun QR. Essayez un autre filtre ou revenez à tous les résultats.';
 
   @override
+  String qrsFilteredEmptyMessage(String filter) {
+    return 'Aucun QR ne correspond au filtre « $filter » pour le moment.';
+  }
+
+  @override
   String get commonRefresh => 'Actualiser';
 
   @override
@@ -226,11 +241,21 @@ class AppLocalizationsFr extends AppLocalizations {
       'Les commandes validées, générations de QR, transferts, réceptions et expirations apparaîtront ici.';
 
   @override
+  String walletFilteredEmptyMessage(String filter) {
+    return 'Aucun mouvement ne correspond au filtre « $filter » pour le moment.';
+  }
+
+  @override
   String get historyEmptyTitle => 'Aucun mouvement pour l\'instant';
 
   @override
   String get historyEmptyMessage =>
       'Vos commandes, la génération de QR et vos utilisations apparaîtront ici.';
+
+  @override
+  String historyFilteredEmptyMessage(String filter) {
+    return 'Aucune opération ne correspond au filtre « $filter » pour le moment.';
+  }
 
   @override
   String get stationHistoryEmptyTitle => 'Aucune consommation';

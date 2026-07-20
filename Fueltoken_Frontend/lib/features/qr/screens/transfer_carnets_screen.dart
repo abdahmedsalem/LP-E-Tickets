@@ -172,32 +172,11 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: _carnetSizeFor(line),
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-
-    final rawCode = line.carnetTypeCode
-        .trim()
-        .replaceAll(' ', '')
-        .toUpperCase();
-    if (rawCode.isNotEmpty) {
-      if (RegExp(r'[A-Z]{3}$').hasMatch(rawCode)) {
-        return rawCode;
-      }
-      return rawCode;
-    }
-
-    final size = _carnetSizeFor(line);
-    if (size > 0) {
-      return 'C${size}T-${line.faceValue}';
-    }
-
-    return AppLocalizations.of(context).carnet;
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    return label.isNotEmpty ? label : AppLocalizations.of(context).carnet;
   }
 
   void _toggleLineSelection(FaceLine line) {

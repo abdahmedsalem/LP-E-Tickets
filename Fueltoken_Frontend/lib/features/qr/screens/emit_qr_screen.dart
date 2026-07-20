@@ -152,31 +152,11 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   String _lineCarnetLabel(FaceLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) {
-      return Formatters.normalizeCarnetTypeLabel(
-        rawName,
-        fallbackSize: _lineCarnetSize(line),
-        fallbackFaceValue: line.faceValue,
-      );
-    }
-
-    final size = _lineCarnetSize(line);
-    final rawCode = line.carnetTypeCode.trim();
-    if (rawCode.isNotEmpty) {
-      return Formatters.carnetTypeLabelFromServer(
-        rawCode,
-        fallbackSize: size,
-        fallbackFaceValue: line.faceValue,
-        fallbackCode: rawCode,
-      );
-    }
-
-    return Formatters.carnetTypeLabel(
-      size,
-      line.faceValue,
-      currency: Formatters.defaultCurrency,
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
     );
+    return label.isNotEmpty ? label : AppLocalizations.of(context).carnet;
   }
 
   String _lineReferenceCode(FaceLine line) {
@@ -252,17 +232,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   physics: AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
-                    Text(
-                      l10n.qrGenerationSelectInstruction,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.muted,
-                        height: 1.35,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     AppLoadingSkeleton(
                       style: AppLoadingSkeletonStyle.qrGeneration,
                       itemCount: 4,
@@ -291,20 +260,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
-                  children: [
-                    Text(
-                      l10n.qrGenerationSelectInstruction,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.muted,
-                        height: 1.35,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const ApiRequiredView(),
-                  ],
+                  children: const [ApiRequiredView()],
                 ),
               ),
             ],
@@ -329,17 +285,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
                   children: [
-                    Text(
-                      l10n.qrGenerationSelectInstruction,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.muted,
-                        height: 1.35,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     AppLoadingSkeleton(
                       style: AppLoadingSkeletonStyle.qrGeneration,
                       itemCount: 4,
@@ -1101,12 +1046,12 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
   final List<FaceLine> lines;
   final Map<String, int> request;
 
-  String _labelFor(FaceLine line) {
-    return Formatters.normalizeCarnetTypeLabel(
+  String _labelFor(FaceLine line, AppLocalizations l10n) {
+    final label = Formatters.carnetTypeLabelFromServer(
       line.carnetTypeName,
-      fallbackSize: line.carnetFaceCount,
-      fallbackFaceValue: line.faceValue,
+      fallbackCode: line.carnetTypeCode,
     );
+    return label.isNotEmpty ? label : l10n.carnet;
   }
 
   @override
@@ -1132,7 +1077,7 @@ class _EmitConfirmationLinesSection extends StatelessWidget {
           const SizedBox(height: 14),
           for (var i = 0; i < lines.length; i++) ...[
             _EmitConfirmationLineRow(
-              label: _labelFor(lines[i]),
+              label: _labelFor(lines[i], l10n),
               selectedQty: request[lines[i].id] ?? 0,
               faceValue: lines[i].faceValue,
               expirationDate: lines[i].expirationDate,
