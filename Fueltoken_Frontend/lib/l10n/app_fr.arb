@@ -1,6 +1,6 @@
 {
   "@@locale": "fr",
-  "appTitle": "FuelToken",
+  "appTitle": "Leader Petroleum Tickets",
   "@appTitle": {
     "description": "Nom de l'application"
   },
@@ -250,6 +250,7 @@
   "qrWithdrawTitle": "Retirer des tickets",
   "qrWithdrawInstruction": "Sélectionnez les lignes à retirer.",
   "qrSelectAtLeastOneLine": "Sélectionnez au moins une ligne à retirer.",
+  "qrKeepAtLeastOneLine": "Au moins une ligne doit rester dans le QR d’origine.",
   "qrMissingLineIdentifier": "Une ligne du QR est indisponible. Rechargez le QR.",
   "qrOnlyActiveCanWithdraw": "Seuls les QR actifs permettent un retrait.",
   "qrSingleLineCannotWithdraw": "Un QR contenant une seule ligne ne permet pas de retrait.",
@@ -387,7 +388,7 @@
   "@transferFinalDisclaimer": {"placeholders": {"recipient": {"type": "String"}}},
   "carnetCodeUnavailable": "Code carnet indisponible",
   "referenceIdentifier": "Identifiant de référence",
-  "authBrandName": "Tickets Carburant",
+  "authBrandName": "Leader Petroleum Tickets",
   "authSplashTagline": "Bons carburant traçables",
   "authWelcomeTitle": "Bienvenue sur Tickets Carburant",
   "authWelcomeMessage": "Commandez, gérez et utilisez vos carnets de tickets carburant en toute sécurité.",
@@ -494,7 +495,7 @@
   "settingsServiceConnectionSubtitle": "Vérifier si le service est disponible.",
   "settingsCreateAccountSubtitle": "Créer un compte avec le code reçu par SMS.",
   "settingsLogoutTitle": "Déconnexion",
-  "settingsLogoutQuestion": "Voulez-vous quitter FuelToken sur cet appareil ?",
+  "settingsLogoutQuestion": "Voulez-vous quitter Leader Petroleum Tickets sur cet appareil ?",
   "settingsLogoutSubtitle": "Fin de session sur cet appareil",
   "settingsCarnets": "Carnets",
   "settingsQr": "QR",
@@ -582,7 +583,7 @@
   "installedVersion": "Version installée : {version}",
   "@installedVersion": {"placeholders": {"version": {"type": "String"}}},
   "updateRequiredTitle": "Mise à jour requise",
-  "updateRequiredMessage": "Installez la dernière version de FuelToken pour continuer à utiliser le service.",
+  "updateRequiredMessage": "Installez la dernière version de Leader Petroleum Tickets pour continuer à utiliser le service.",
   "serviceUnavailableTitle": "Service indisponible",
   "serviceUnavailableMessage": "Le service ne répond pas correctement. Réessayez dans quelques instants.",
   "updateAvailableTitle": "Mise à jour disponible",
@@ -701,5 +702,13 @@
   "stationRegularizationStatus": "État de régularisation",
   "stationRegularizationReference": "Référence de régularisation",
   "stationRegularizationDate": "Date de régularisation",
-  "stationConsumptionDetail": "Détail de la consommation"
+  "stationConsumptionDetail": "Détail de la consommation",
+  "stationQrCode": "Code QR",
+  "stationTransactionIdentifier": "Identifiant de transaction",
+  "stationClientIdentifier": "Identifiant du client",
+  "stationStationIdentifier": "Identifiant de la station",
+  "stationQrIdentifier": "Identifiant du QR",
+  "stationLotIdentifier": "Identifiant du lot",
+  "stationOperatorIdentifier": "Identifiant de l’opérateur",
+  "stationManualExample": "Ex. 1234-5678-9012"
 }

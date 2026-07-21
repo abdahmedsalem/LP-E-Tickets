@@ -266,7 +266,7 @@ class PurchaseValidationNotificationService {
       channelDescription: _channelDescription,
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'FuelToken',
+      ticker: 'Leader Petroleum Tickets',
     );
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -323,7 +323,7 @@ class PurchaseValidationNotificationService {
       channelDescription: _channelDescription,
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'FuelToken',
+      ticker: 'Leader Petroleum Tickets',
     );
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -358,7 +358,7 @@ class PurchaseValidationNotificationService {
       channelDescription: _channelDescription,
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'FuelToken',
+      ticker: 'Leader Petroleum Tickets',
     );
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -394,7 +394,7 @@ class PurchaseValidationNotificationService {
       channelDescription: _channelDescription,
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'FuelToken',
+      ticker: 'Leader Petroleum Tickets',
     );
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,

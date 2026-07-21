@@ -127,13 +127,31 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
   }
 
   void _toggleLineSelection(String lineId) {
-    setState(() {
-      if (_selectedLineIds.contains(lineId)) {
-        _selectedLineIds.remove(lineId);
-      } else {
-        _selectedLineIds.add(lineId);
+    final parent = _parent;
+    if (parent == null) return;
+
+    final nextSelection = Set<String>.of(_selectedLineIds);
+    if (!nextSelection.remove(lineId)) {
+      nextSelection.add(lineId);
+      if (_wouldWithdrawAllLines(parent, nextSelection)) {
+        AppMessage.warning(
+          context,
+          AppLocalizations.of(context).qrKeepAtLeastOneLine,
+        );
+        return;
       }
+    }
+
+    setState(() {
+      _selectedLineIds
+        ..clear()
+        ..addAll(nextSelection);
     });
+  }
+
+  bool _wouldWithdrawAllLines(QrToken parent, Set<String> selectedLineIds) {
+    return parent.lines.isNotEmpty &&
+        parent.lines.every((line) => selectedLineIds.contains(line.id));
   }
 
   List<QrLine> _selectedLines(QrToken parent) {
@@ -184,6 +202,10 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
       AppMessage.warning(context, l10n.qrSelectAtLeastOneLine);
       return;
     }
+    if (_wouldWithdrawAllLines(parent, _selectedLineIds)) {
+      AppMessage.warning(context, l10n.qrKeepAtLeastOneLine);
+      return;
+    }
 
     await _performSubmit();
   }
@@ -211,6 +233,10 @@ class _RetirerQrScreenState extends State<RetirerQrScreen> {
 
     if (picks.isEmpty) {
       AppMessage.warning(context, l10n.qrSelectAtLeastOneLine);
+      return;
+    }
+    if (_wouldWithdrawAllLines(parent, _selectedLineIds)) {
+      AppMessage.warning(context, l10n.qrKeepAtLeastOneLine);
       return;
     }
 
@@ -525,9 +551,11 @@ class _RetirerLineCard extends StatelessWidget {
         ? AppColors.leaderGreen.withValues(alpha: 0.42)
         : const Color(0xFFE8EAED);
     final bgColor = selected ? AppColors.successSurface : Colors.white;
-    final carnetLabel =
-        '${l10n.carnet} ${Formatters.numberFr(line.carnetSize > 0 ? line.carnetSize : line.qty)} × '
-        '${Formatters.numberFr(line.faceValue)}';
+    final serverLabel = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    final carnetLabel = serverLabel.isEmpty ? l10n.carnet : serverLabel;
     final lineTitle = l10n.ticketsFromCarnet(line.qty, carnetLabel);
 
     return Material(

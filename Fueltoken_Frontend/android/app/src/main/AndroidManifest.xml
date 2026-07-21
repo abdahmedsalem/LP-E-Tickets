@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <application
         android:networkSecurityConfig="@xml/network_security_config"
-        android:label="FuelToken"
+        android:label="Leader Petroleum Tickets"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"

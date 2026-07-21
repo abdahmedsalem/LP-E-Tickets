@@ -9,7 +9,7 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
-  String get appTitle => 'FuelToken';
+  String get appTitle => 'Leader Petroleum Tickets';
 
   @override
   String get homeVerifiedAccount => 'Compte vérifié';
@@ -553,6 +553,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Sélectionnez au moins une ligne à retirer.';
 
   @override
+  String get qrKeepAtLeastOneLine =>
+      'Au moins une ligne doit rester dans le QR d’origine.';
+
+  @override
   String get qrMissingLineIdentifier =>
       'Une ligne du QR est indisponible. Rechargez le QR.';
 
@@ -1001,7 +1005,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get referenceIdentifier => 'Identifiant de référence';
 
   @override
-  String get authBrandName => 'Tickets Carburant';
+  String get authBrandName => 'Leader Petroleum Tickets';
 
   @override
   String get authSplashTagline => 'Bons carburant traçables';
@@ -1341,7 +1345,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsLogoutQuestion =>
-      'Voulez-vous quitter FuelToken sur cet appareil ?';
+      'Voulez-vous quitter Leader Petroleum Tickets sur cet appareil ?';
 
   @override
   String get settingsLogoutSubtitle => 'Fin de session sur cet appareil';
@@ -1657,7 +1661,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get updateRequiredMessage =>
-      'Installez la dernière version de FuelToken pour continuer à utiliser le service.';
+      'Installez la dernière version de Leader Petroleum Tickets pour continuer à utiliser le service.';
 
   @override
   String get serviceUnavailableTitle => 'Service indisponible';
@@ -2037,4 +2041,28 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get stationConsumptionDetail => 'Détail de la consommation';
+
+  @override
+  String get stationQrCode => 'Code QR';
+
+  @override
+  String get stationTransactionIdentifier => 'Identifiant de transaction';
+
+  @override
+  String get stationClientIdentifier => 'Identifiant du client';
+
+  @override
+  String get stationStationIdentifier => 'Identifiant de la station';
+
+  @override
+  String get stationQrIdentifier => 'Identifiant du QR';
+
+  @override
+  String get stationLotIdentifier => 'Identifiant du lot';
+
+  @override
+  String get stationOperatorIdentifier => 'Identifiant de l’opérateur';
+
+  @override
+  String get stationManualExample => 'Ex. 1234-5678-9012';
 }

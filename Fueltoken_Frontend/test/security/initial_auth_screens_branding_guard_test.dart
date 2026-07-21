@@ -6,7 +6,7 @@ String _read(String path) => File(path).readAsStringSync();
 
 void main() {
   group('Patch2J initial auth screens branding guard', () {
-    test('splash uses Tickets Carburant branding and larger logo', () {
+    test('splash uses Leader Petroleum Tickets branding and larger logo', () {
       final source = _read('lib/features/auth/screens/splash_screen.dart');
 
       expect(source, contains('.authBrandName'));

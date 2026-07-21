@@ -31,7 +31,6 @@ void main() {
       'lib/features/qr/screens/transfer_tickets_screen.dart',
       'lib/features/settings/screens/notifications_screen.dart',
       'lib/features/settings/screens/settings_screen.dart',
-      'lib/features/station/screens/station_consumption_history_screen.dart',
       'lib/features/station/screens/station_home_screen.dart',
       'lib/features/station/screens/station_profile_screen.dart',
       'lib/features/transactions/screens/transactions_screen.dart',

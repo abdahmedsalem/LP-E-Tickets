@@ -35,6 +35,7 @@ import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const int _kMaxTicketsPerPurchase = 500;
+const double _kPurchaseOfferCardHeight = 112;
 
 class SubmitPurchaseScreen extends StatefulWidget {
   const SubmitPurchaseScreen({super.key});
@@ -655,7 +656,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                             crossAxisCount: 1,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 0,
-                            mainAxisExtent: 110,
+                            mainAxisExtent: _kPurchaseOfferCardHeight,
                           ),
                       itemCount: _offerTypes.length,
                       itemBuilder: (context, i) {
@@ -714,7 +715,7 @@ class _PurchaseOfferSkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 110,
+      height: _kPurchaseOfferCardHeight,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       decoration: BoxDecoration(
         color: Colors.white,

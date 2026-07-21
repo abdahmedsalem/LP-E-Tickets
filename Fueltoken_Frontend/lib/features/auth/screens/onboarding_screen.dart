@@ -33,14 +33,14 @@ class OnboardingScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       FuelLogo(
                         size: 34,
                         showOrgWordmark: true,
-                        subtitleFuelToken: 'Tickets Carburant',
+                        subtitleFuelToken: l10n.authBrandName,
                       ),
-                      Spacer(),
+                      const Spacer(),
                     ],
                   ),
                   const Spacer(),

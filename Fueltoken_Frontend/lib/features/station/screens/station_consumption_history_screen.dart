@@ -19,7 +19,6 @@ import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/date_range_filter_bar.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/face_value_chip.dart';
-import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 
 class StationConsumptionHistoryScreen extends StatefulWidget {
@@ -76,13 +75,14 @@ class _StationConsumptionHistoryScreenState
   }
 
   String _briefError(Object e) {
+    final l10n = AppLocalizations.of(context);
     if (e is OdooJsonRpcException && e.isOdooSessionExpired) {
-      return 'Session expirÃ©e. Reconnectez-vous.';
+      return l10n.stationSessionExpired;
     }
     if (ErrorPresenter.isBackendUnavailable(e)) {
-      return ErrorPresenter.backendUnavailable();
+      return l10n.commonServerUnavailable;
     }
-    return e.toString().replaceFirst('Exception: ', '').trim();
+    return ErrorPresenter.localizedMessage(context, e);
   }
 
   Future<void> _load() async {
@@ -91,7 +91,7 @@ class _StationConsumptionHistoryScreenState
     if (user == null) {
       setState(() {
         _loading = false;
-        _error = 'Session requise.';
+        _error = AppLocalizations.of(context).commonSessionRequired;
       });
       return;
     }
@@ -163,6 +163,10 @@ class _StationConsumptionHistoryScreenState
     final l10n = AppLocalizations.of(context);
     final items = _filteredItems;
     final shown = items;
+    final totalAmount = shown.fold<int>(
+      0,
+      (sum, transaction) => sum + transaction.totalAmount.abs(),
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -221,7 +225,21 @@ class _StationConsumptionHistoryScreenState
                   onApply: _applyFilter,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+              if (!_loading && shown.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _StationHistoryTotalsCard(
+                    totalAmount: totalAmount,
+                    qrCount: shown.length,
+                    periodLabel:
+                        '${DateFormat('dd-MM-yyyy').format(_activeFrom)} → '
+                        '${DateFormat('dd-MM-yyyy').format(_activeTo)}',
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ] else
+                const SizedBox(height: 6),
               if (_error != null && _items.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
@@ -318,135 +336,374 @@ class _HeaderIconButton extends StatelessWidget {
   }
 }
 
-class _AmountInline extends StatelessWidget {
-  const _AmountInline({
-    required this.amount,
-    required this.valueStyle,
-    required this.unitStyle,
-    this.textAlign = TextAlign.start,
+class _StationHistoryTotalsCard extends StatelessWidget {
+  const _StationHistoryTotalsCard({
+    required this.totalAmount,
+    required this.qrCount,
+    required this.periodLabel,
   });
 
-  final int amount;
-  final TextStyle valueStyle;
-  final TextStyle unitStyle;
-  final TextAlign textAlign;
+  final int totalAmount;
+  final int qrCount;
+  final String periodLabel;
+
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: Formatters.money(amount),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(text: Formatters.numberFr(amount), style: valueStyle),
-            TextSpan(text: ' ${Formatters.defaultCurrency}', style: unitStyle),
-          ],
-        ),
-        textAlign: textAlign,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.summarize_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.stationHistorySummary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      periodLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _StationHistoryTotalTile(
+                  label: l10n.stationConsumedQr,
+                  value: Formatters.number(qrCount),
+                  icon: Icons.qr_code_2_rounded,
+                  valueColor: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StationHistoryTotalTile(
+                  label: l10n.stationTotal,
+                  value: Formatters.money(totalAmount),
+                  icon: Icons.payments_rounded,
+                  valueColor: AppColors.danger,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _StationHistoryRow extends StatelessWidget {
-  const _StationHistoryRow({required this.transaction});
+class _StationHistoryTotalTile extends StatelessWidget {
+  const _StationHistoryTotalTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.valueColor,
+  });
 
-  final BusinessTransaction transaction;
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color valueColor;
+
   @override
   Widget build(BuildContext context) {
-    final tx = transaction;
-    final amount = tx.totalAmount.abs();
-    final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
-    final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
-    final qrCode = (tx.qrPublicCode ?? tx.qrId ?? '—').trim();
-
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
-      child: Row(
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 11),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.16)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SingleLineCardTitle(
-                  text: tx.displayTitle,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 13),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '$dateLabel $hourLabel',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600,
-                          height: 1.15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        'Client concerné : ${tx.userName}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(
-                          fontSize: 11.2,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w500,
-                          height: 1.15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'QR consommé : ${qrCode.isEmpty ? '—' : qrCode}',
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11.2,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.muted,
-                    fontWeight: FontWeight.w500,
-                    height: 1.15,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          _AmountInline(
-            amount: amount,
-            textAlign: TextAlign.end,
-            valueStyle: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.danger,
-              height: 1,
-              letterSpacing: -0.2,
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.danger.withValues(alpha: 0.82),
-              height: 1,
+          const SizedBox(height: 7),
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: valueColor,
+                height: 1,
+                letterSpacing: -0.25,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StationHistoryRow extends StatefulWidget {
+  const _StationHistoryRow({required this.transaction});
+
+  final BusinessTransaction transaction;
+
+  @override
+  State<_StationHistoryRow> createState() => _StationHistoryRowState();
+}
+
+class _StationHistoryRowState extends State<_StationHistoryRow> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tx = widget.transaction;
+    final amount = tx.totalAmount.abs();
+    final dateLabel = DateFormat('dd-MM-yyyy').format(tx.date);
+    final hourLabel = DateFormat('HH:mm:ss').format(tx.date);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.stationFuelConsumption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            Formatters.money(amount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.danger,
+                              height: 1,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          '$dateLabel $hourLabel',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.start,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: AnimatedRotation(
+                          turns: _expanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          child: const Icon(
+                            Icons.expand_more_rounded,
+                            size: 22,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: _expanded
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                        child: _StationConsumptionPanel(transaction: tx),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StationConsumptionPanel extends StatelessWidget {
+  const _StationConsumptionPanel({required this.transaction});
+
+  final BusinessTransaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tx = transaction;
+    final titleCode = tx.qrDisplayName;
+    final clientLabel = tx.userName.trim().isEmpty
+        ? l10n.stationUnknownClient
+        : tx.userName.trim();
+    final stationLabel = (tx.stationName ?? '').trim().isEmpty
+        ? l10n.stationUnknownStation
+        : tx.stationName!.trim();
+    final rows = <({String label, String value})>[
+      (label: l10n.stationTransactionNumber, value: tx.txNumber),
+      (label: l10n.stationClient, value: clientLabel),
+      (label: l10n.station, value: stationLabel),
+      (label: l10n.stationQrCode, value: titleCode),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          _StationInfoRow(label: rows[i].label, value: rows[i].value),
+          if (i < rows.length - 1)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE8EAED)),
+        ],
+      ],
+    );
+  }
+}
+
+class _StationInfoRow extends StatelessWidget {
+  const _StationInfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 6,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -563,6 +820,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       backgroundColor: Colors.white,
@@ -598,7 +856,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Consommation station',
+                          l10n.stationFuelConsumption,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -630,23 +888,35 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                   _ConsumptionDetailSummary(
                     amount: amount,
                     clientName: tx.userName,
-                    stationName: tx.stationName ?? 'Station inconnue',
-                    txType: tx.type.label,
+                    stationName: tx.stationName ?? l10n.stationUnknownStation,
+                    txType: l10n.stationFuelConsumption,
                   ),
                   const SizedBox(height: 14),
                   _DetailInfoGrid(
                     items: [
-                      ('Transaction', tx.id),
-                      ('Client ID', tx.userId),
-                      ('Station ID', tx.stationId ?? 'â€”'),
-                      ('QR', tx.qrId ?? tx.qrPublicCode ?? 'â€”'),
-                      ('Lot ID', tx.lotId ?? 'â€”'),
-                      ('RÃ©f lot', tx.lotInternalRef ?? 'â€”'),
+                      (l10n.stationTransactionIdentifier, tx.id),
+                      (l10n.stationClientIdentifier, tx.userId),
+                      (
+                        l10n.stationStationIdentifier,
+                        tx.stationId ?? l10n.commonNotProvided,
+                      ),
+                      (
+                        l10n.stationQrIdentifier,
+                        tx.qrId ?? tx.qrPublicCode ?? l10n.commonNotProvided,
+                      ),
+                      (
+                        l10n.stationLotIdentifier,
+                        tx.lotId ?? l10n.commonNotProvided,
+                      ),
+                      (
+                        l10n.lotReference,
+                        tx.lotInternalRef ?? l10n.commonNotProvided,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'DÃ©tail de la consommation',
+                    l10n.stationConsumptionDetail,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -677,7 +947,7 @@ class _StationConsumptionDetailScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                '${line.qty} ticket${line.qty > 1 ? 's' : ''}',
+                                l10n.ticketCount(line.qty),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -798,7 +1068,7 @@ class _ErrorPanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('RÃ©essayer'),
+            label: Text(AppLocalizations.of(context).commonRetry),
           ),
         ],
       ),

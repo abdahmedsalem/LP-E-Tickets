@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// Nom de l'application
   ///
   /// In fr, this message translates to:
-  /// **'FuelToken'**
+  /// **'Leader Petroleum Tickets'**
   String get appTitle;
 
   /// No description provided for @homeVerifiedAccount.
@@ -1046,6 +1046,12 @@ abstract class AppLocalizations {
   /// **'Sélectionnez au moins une ligne à retirer.'**
   String get qrSelectAtLeastOneLine;
 
+  /// No description provided for @qrKeepAtLeastOneLine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Au moins une ligne doit rester dans le QR d’origine.'**
+  String get qrKeepAtLeastOneLine;
+
   /// No description provided for @qrMissingLineIdentifier.
   ///
   /// In fr, this message translates to:
@@ -1817,7 +1823,7 @@ abstract class AppLocalizations {
   /// No description provided for @authBrandName.
   ///
   /// In fr, this message translates to:
-  /// **'Tickets Carburant'**
+  /// **'Leader Petroleum Tickets'**
   String get authBrandName;
 
   /// No description provided for @authSplashTagline.
@@ -2423,7 +2429,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLogoutQuestion.
   ///
   /// In fr, this message translates to:
-  /// **'Voulez-vous quitter FuelToken sur cet appareil ?'**
+  /// **'Voulez-vous quitter Leader Petroleum Tickets sur cet appareil ?'**
   String get settingsLogoutQuestion;
 
   /// No description provided for @settingsLogoutSubtitle.
@@ -2915,7 +2921,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateRequiredMessage.
   ///
   /// In fr, this message translates to:
-  /// **'Installez la dernière version de FuelToken pour continuer à utiliser le service.'**
+  /// **'Installez la dernière version de Leader Petroleum Tickets pour continuer à utiliser le service.'**
   String get updateRequiredMessage;
 
   /// No description provided for @serviceUnavailableTitle.
@@ -3607,6 +3613,54 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Détail de la consommation'**
   String get stationConsumptionDetail;
+
+  /// No description provided for @stationQrCode.
+  ///
+  /// In fr, this message translates to:
+  /// **'Code QR'**
+  String get stationQrCode;
+
+  /// No description provided for @stationTransactionIdentifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant de transaction'**
+  String get stationTransactionIdentifier;
+
+  /// No description provided for @stationClientIdentifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant du client'**
+  String get stationClientIdentifier;
+
+  /// No description provided for @stationStationIdentifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant de la station'**
+  String get stationStationIdentifier;
+
+  /// No description provided for @stationQrIdentifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant du QR'**
+  String get stationQrIdentifier;
+
+  /// No description provided for @stationLotIdentifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant du lot'**
+  String get stationLotIdentifier;
+
+  /// No description provided for @stationOperatorIdentifier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant de l’opérateur'**
+  String get stationOperatorIdentifier;
+
+  /// No description provided for @stationManualExample.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. 1234-5678-9012'**
+  String get stationManualExample;
 }
 
 class _AppLocalizationsDelegate

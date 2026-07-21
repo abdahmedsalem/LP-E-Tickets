@@ -781,31 +781,14 @@ class _CompositionRowState extends State<_CompositionRow> {
                 children: [
                   Padding(
                     padding: const EdgeInsetsDirectional.only(end: 112),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SingleLineCardTitle(
-                          text: widget.title,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _expirationLabel(l10n),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF667085),
-                            height: 1.08,
-                          ),
-                        ),
-                      ],
+                    child: SingleLineCardTitle(
+                      text: widget.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                        height: 1.15,
+                      ),
                     ),
                   ),
                   Align(
@@ -825,6 +808,16 @@ class _CompositionRowState extends State<_CompositionRow> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _expirationLabel(l10n),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF667085),
+                  height: 1.08,
+                ),
               ),
               const SizedBox(height: 5),
               Container(height: 1, color: const Color(0xFFEAECEF)),

@@ -2,7 +2,7 @@
 class AppBrandConfig {
   AppBrandConfig._();
 
-  /// Sous-titre sous « FuelToken » sur l’écran splash (ligne optionnelle).
+  /// Sous-titre de marque sur l’écran splash (ligne optionnelle).
   static const String operatorTagline = String.fromEnvironment(
     'APP_OPERATOR_TAGLINE',
     defaultValue: '',
@@ -52,5 +52,5 @@ class AppBrandConfig {
 
   static String get resolvedLoginFooterNote => loginFooterNote.isNotEmpty
       ? loginFooterNote
-      : 'Utilisez l’identifiant enregistré pour votre compte FuelToken.';
+      : 'Utilisez l’identifiant enregistré pour votre compte Leader Petroleum Tickets.';
 }

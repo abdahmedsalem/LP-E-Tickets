@@ -9,7 +9,7 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appTitle => 'FuelToken';
+  String get appTitle => 'Leader Petroleum Tickets';
 
   @override
   String get homeVerifiedAccount => 'حساب موثّق';
@@ -551,6 +551,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get qrSelectAtLeastOneLine => 'حدد سطراً واحداً على الأقل للسحب.';
 
   @override
+  String get qrKeepAtLeastOneLine =>
+      'يجب إبقاء سطر واحد على الأقل في رمز QR الأصلي.';
+
+  @override
   String get qrMissingLineIdentifier =>
       'أحد أسطر QR غير متاح. أعد تحميل الرمز.';
 
@@ -980,7 +984,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get referenceIdentifier => 'المعرّف المرجعي';
 
   @override
-  String get authBrandName => 'تذاكر الوقود';
+  String get authBrandName => 'Leader Petroleum Tickets';
 
   @override
   String get authSplashTagline => 'قسائم وقود قابلة للتتبع';
@@ -1308,7 +1312,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settingsLogoutQuestion =>
-      'هل تريد تسجيل الخروج من FuelToken على هذا الجهاز؟';
+      'هل تريد تسجيل الخروج من Leader Petroleum Tickets على هذا الجهاز؟';
 
   @override
   String get settingsLogoutSubtitle => 'إنهاء الجلسة على هذا الجهاز';
@@ -1621,7 +1625,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updateRequiredMessage =>
-      'ثبّت أحدث إصدار من FuelToken لمواصلة استخدام الخدمة.';
+      'ثبّت أحدث إصدار من Leader Petroleum Tickets لمواصلة استخدام الخدمة.';
 
   @override
   String get serviceUnavailableTitle => 'الخدمة غير متاحة';
@@ -1988,4 +1992,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get stationConsumptionDetail => 'تفاصيل الاستهلاك';
+
+  @override
+  String get stationQrCode => 'رمز QR';
+
+  @override
+  String get stationTransactionIdentifier => 'معرّف المعاملة';
+
+  @override
+  String get stationClientIdentifier => 'معرّف العميل';
+
+  @override
+  String get stationStationIdentifier => 'معرّف المحطة';
+
+  @override
+  String get stationQrIdentifier => 'معرّف QR';
+
+  @override
+  String get stationLotIdentifier => 'معرّف الدفعة';
+
+  @override
+  String get stationOperatorIdentifier => 'معرّف الموظف';
+
+  @override
+  String get stationManualExample => 'مثال: 1234-5678-9012';
 }

@@ -30,28 +30,22 @@ class StationProfileScreen extends StatefulWidget {
 
 class _StationProfileScreenState extends State<StationProfileScreen> {
   AcpecStationProfileData? _acpecProfile;
-  bool _profileLoading = false;
   String? _profileError;
-  bool _darkPref = false;
   String _localeCode = AppPreferences.defaultLocaleCode;
 
   @override
   void initState() {
     super.initState();
-    _loadDark();
+    _loadLocale();
     if (AppEnvironment.useAcpecLiveData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadAcpecProfile());
     }
   }
 
-  Future<void> _loadDark() async {
-    final d = await AppPreferences.darkMode();
+  Future<void> _loadLocale() async {
     final locale = await AppPreferences.localeCode();
     if (mounted) {
-      setState(() {
-        _darkPref = d;
-        _localeCode = locale;
-      });
+      setState(() => _localeCode = locale);
     }
   }
 
@@ -59,27 +53,15 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
     final l10n = AppLocalizations.of(context);
     final choice = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text(l10n.settingsFrench),
-              trailing: _localeCode == 'fr'
-                  ? const Icon(Icons.check_rounded, color: AppColors.primary)
-                  : null,
-              onTap: () => Navigator.pop(sheetContext, 'fr'),
-            ),
-            ListTile(
-              title: Text(l10n.settingsArabic),
-              trailing: _localeCode == 'ar'
-                  ? const Icon(Icons.check_rounded, color: AppColors.primary)
-                  : null,
-              onTap: () => Navigator.pop(sheetContext, 'ar'),
-            ),
-          ],
-        ),
+      backgroundColor: Colors.transparent,
+      barrierColor: AppColors.ink.withValues(alpha: 0.58),
+      isScrollControlled: true,
+      builder: (sheetContext) => _StationLanguageSheet(
+        selectedCode: _localeCode,
+        title: l10n.settingsLanguage,
+        frenchLabel: l10n.settingsFrench,
+        arabicLabel: l10n.settingsArabic,
+        onSelected: (code) => Navigator.pop(sheetContext, code),
       ),
     );
     if (choice == null || choice == _localeCode) return;
@@ -89,14 +71,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
     await context
         .findAncestorStateOfType<FuelTokenAppState>()
         ?.reloadPreferences();
-  }
-
-  Future<void> _persistTheme(bool dark) async {
-    await AppPreferences.setDarkMode(dark);
-    if (!mounted) return;
-    setState(() => _darkPref = dark);
-    final app = context.findAncestorStateOfType<FuelTokenAppState>();
-    await app?.reloadPreferences();
   }
 
   String _briefError(Object e) {
@@ -118,7 +92,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
     }
 
     setState(() {
-      _profileLoading = true;
       _profileError = null;
     });
 
@@ -128,7 +101,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
       if (!mounted) return;
       setState(() {
         _acpecProfile = p;
-        _profileLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
@@ -140,7 +112,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
       setState(() {
         _acpecProfile = fallback;
         _profileError = fallback == null ? _briefError(e) : null;
-        _profileLoading = false;
       });
     }
   }
@@ -171,16 +142,18 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
       appBar: AppBar(
         backgroundColor: pageBg,
         foregroundColor: scheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: false,
-        toolbarHeight: 66,
+        toolbarHeight: 72,
         title: Text(
           l10n.stationProfileTitle,
           style: TextStyle(
             fontWeight: FontWeight.w900,
-            fontSize: 24,
+            fontSize: 26,
             color: scheme.onSurface,
-            letterSpacing: -0.8,
+            letterSpacing: -0.7,
           ),
         ),
       ),
@@ -191,57 +164,9 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
             stationTitle: stationTitle,
             operatorSubtitle: operatorSubtitle,
             inService: inService,
-            iconColor: scheme.primary,
           ),
-          const SizedBox(height: 16),
-          if (ap != null) ...[
-            _SectionLabel(l10n.stationInformation),
-            const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: scheme.outline.withValues(alpha: 0.24),
-                ),
-                boxShadow: Theme.of(context).brightness == Brightness.dark
-                    ? null
-                    : AppColors.softShadow,
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  _ProfileSubCard(
-                    title: l10n.station,
-                    icon: Icons.local_gas_station_outlined,
-                    compact: true,
-                    rows: [
-                      _ProfileRow(l10n.stationNameLabel, ap.stationName),
-                      _ProfileRow(
-                        l10n.stationCodeLabel,
-                        ap.stationCode,
-                        mono: true,
-                      ),
-                      _ProfileRow(l10n.stationAddressLabel, ap.stationAddress),
-                      _ProfileRow(
-                        l10n.stationStatusLabel,
-                        ap.stationActive
-                            ? l10n.stationInService
-                            : l10n.stationOutOfService,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 14),
           if (useAcpec) ...[
-            if (_profileLoading && ap == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: AppLoadingLottie(size: 100)),
-              ),
             if (_profileError != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -259,8 +184,12 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
           Container(
             decoration: BoxDecoration(
               color: scheme.surface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: scheme.outline.withValues(alpha: 0.24)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? scheme.outline.withValues(alpha: 0.28)
+                    : AppColors.line,
+              ),
               boxShadow: Theme.of(context).brightness == Brightness.dark
                   ? null
                   : AppColors.softShadow,
@@ -268,8 +197,10 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
             child: Column(
               children: [
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                  leading: const Icon(Icons.language_rounded),
+                  contentPadding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+                  leading: const _ProfileSettingIcon(
+                    icon: Icons.language_rounded,
+                  ),
                   title: Text(
                     l10n.settingsLanguage,
                     style: TextStyle(
@@ -282,33 +213,13 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                         ? l10n.settingsArabic
                         : l10n.settingsFrench,
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(
+                    Directionality.of(context) == TextDirection.rtl
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
+                    color: AppColors.muted,
+                  ),
                   onTap: _pickLanguage,
-                ),
-                Divider(
-                  height: 1,
-                  color: scheme.outline.withValues(alpha: 0.18),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                  title: Text(
-                    l10n.settingsDarkMode,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  subtitle: Text(
-                    l10n.stationDarkModeSubtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  value: _darkPref,
-                  activeTrackColor: scheme.primary,
-                  activeThumbColor: scheme.onPrimary,
-                  onChanged: _persistTheme,
                 ),
               ],
             ),
@@ -326,9 +237,10 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger,
                 foregroundColor: Colors.white,
+                elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
             ),
@@ -344,43 +256,44 @@ class _ProfileHeroCard extends StatelessWidget {
     required this.stationTitle,
     required this.operatorSubtitle,
     required this.inService,
-    required this.iconColor,
   });
 
   final String stationTitle;
   final String operatorSubtitle;
   final bool inService;
-  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
-        boxShadow: Theme.of(context).brightness == Brightness.dark
-            ? null
-            : AppColors.softShadow,
+        gradient: AppColors.validGradient,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.leaderGreen.withValues(alpha: 0.22),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
             ),
             alignment: Alignment.center,
-            child: Icon(
+            child: const Icon(
               Icons.local_gas_station_rounded,
-              color: iconColor,
-              size: 27,
+              color: Colors.white,
+              size: 29,
             ),
           ),
           const SizedBox(width: 14),
@@ -393,7 +306,7 @@ class _ProfileHeroCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: scheme.onSurface,
+                    color: Colors.white,
                     height: 1.05,
                     letterSpacing: -0.5,
                   ),
@@ -402,24 +315,39 @@ class _ProfileHeroCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: inService ? AppColors.success : scheme.outline,
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      inService
-                          ? l10n.stationInService
-                          : l10n.stationOutOfService,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: inService
-                            ? scheme.primary
-                            : scheme.onSurfaceVariant,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: inService
+                                  ? const Color(0xFFB7F7C4)
+                                  : Colors.white70,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            inService
+                                ? l10n.stationInService
+                                : l10n.stationOutOfService,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -431,7 +359,7 @@ class _ProfileHeroCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13,
-                    color: scheme.onSurfaceVariant,
+                    color: Colors.white.withValues(alpha: 0.82),
                     height: 1.25,
                   ),
                 ),
@@ -454,10 +382,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.9,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.75,
+        color: AppColors.leaderGreenDark,
       ),
     );
   }
@@ -569,7 +497,11 @@ class _AcpecStationProfilePanel extends StatelessWidget {
               l10n.stationPhoneLabel,
               profile.operatorPhone.isEmpty ? '—' : profile.operatorPhone,
             ),
-            _ProfileRow('ID', profile.operatorId, mono: true),
+            _ProfileRow(
+              l10n.stationOperatorIdentifier,
+              profile.operatorId,
+              mono: true,
+            ),
           ],
         ),
       ],
@@ -582,33 +514,41 @@ class _ProfileSubCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.rows,
-    this.compact = false,
   });
 
   final String title;
   final IconData icon;
   final List<Widget> rows;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: EdgeInsets.all(compact ? 12 : 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.24)),
-        boxShadow: Theme.of(context).brightness == Brightness.dark
-            ? null
-            : AppColors.softShadow,
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? scheme.outline.withValues(alpha: 0.24)
+              : AppColors.lineSoft,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: scheme.primary),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.successSurface,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 18, color: AppColors.leaderGreen),
+              ),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -623,6 +563,196 @@ class _ProfileSubCard extends StatelessWidget {
           Divider(height: 22, color: scheme.outline.withValues(alpha: 0.25)),
           ...rows,
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileSettingIcon extends StatelessWidget {
+  const _ProfileSettingIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppColors.successSurface,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, color: AppColors.leaderGreen, size: 21),
+    );
+  }
+}
+
+class _StationLanguageSheet extends StatelessWidget {
+  const _StationLanguageSheet({
+    required this.selectedCode,
+    required this.title,
+    required this.frenchLabel,
+    required this.arabicLabel,
+    required this.onSelected,
+  });
+
+  final String selectedCode;
+  final String title;
+  final String frenchLabel;
+  final String arabicLabel;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.line),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.ink.withValues(alpha: 0.16),
+                blurRadius: 34,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(27),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.validGradient,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.line,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: AppColors.successSurface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.language_rounded,
+                              color: AppColors.leaderGreen,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.ink,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      _StationLanguageOption(
+                        label: frenchLabel,
+                        selected: selectedCode == 'fr',
+                        onTap: () => onSelected('fr'),
+                      ),
+                      const SizedBox(height: 10),
+                      _StationLanguageOption(
+                        label: arabicLabel,
+                        selected: selectedCode == 'ar',
+                        onTap: () => onSelected('ar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StationLanguageOption extends StatelessWidget {
+  const _StationLanguageOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.successSurface : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.leaderGreen : AppColors.line,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? AppColors.leaderGreenDark : AppColors.ink,
+                  ),
+                ),
+              ),
+              if (selected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.leaderGreen,
+                  size: 23,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

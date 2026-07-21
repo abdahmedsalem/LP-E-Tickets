@@ -89,10 +89,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
 
   String _errorMessage(Object error) {
     final l10n = AppLocalizations.of(context);
-    final message = ErrorPresenter.message(error);
-    if (Localizations.localeOf(context).languageCode == 'ar') {
-      return l10n.stationQrNotConsumableMessage;
-    }
+    final message = ErrorPresenter.localizedMessage(context, error);
     if (message.isEmpty) return l10n.stationQrNotConsumableMessage;
     if (message.contains('debug_reason') || message.contains('Traceback')) {
       return l10n.stationQrNotConsumableMessage;
@@ -254,9 +251,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       if (!result.canConsume) {
         await _showManualFailureDialog(
           title: l10n.stationQrNotConsumable,
-          message: Localizations.localeOf(context).languageCode == 'ar'
-              ? l10n.stationQrNotConsumableMessage
-              : result.reason ?? l10n.stationQrNotConsumableMessage,
+          message: l10n.stationQrNotConsumableMessage,
           actionLabel: l10n.stationBackHome,
         );
         if (mounted) context.go('/station/home');
@@ -305,14 +300,9 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       return;
     }
     if (!_boolAny(_checkData, const ['can_consume', 'canConsume'])) {
-      final reason = _stringAny(_checkData, const ['reason', 'message']);
       await _showManualFailureDialog(
         title: l10n.stationQrNotConsumable,
-        message: Localizations.localeOf(context).languageCode == 'ar'
-            ? l10n.stationQrNotConsumableMessage
-            : reason.isEmpty
-            ? l10n.stationQrNotConsumableMessage
-            : reason,
+        message: l10n.stationQrNotConsumableMessage,
         actionLabel: l10n.stationBackHome,
       );
       if (mounted) context.go('/station/home');
@@ -524,7 +514,7 @@ class _ManualCodeCard extends StatelessWidget {
             inputFormatters: const [_ManualQrCodeInputFormatter()],
             onSubmitted: (_) => checking ? null : onCheck(),
             decoration: InputDecoration(
-              hintText: 'Ex. 1234-5678-9012',
+              hintText: l10n.stationManualExample,
               helperText: l10n.stationManualFormat,
               prefixIcon: const Icon(Icons.pin_outlined),
               border: OutlineInputBorder(

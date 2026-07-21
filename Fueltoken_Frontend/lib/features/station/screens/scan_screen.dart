@@ -165,6 +165,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final route = showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: AppColors.ink.withValues(alpha: 0.58),
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
@@ -281,9 +282,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       if (!result.canConsume) {
         await _showFailureDialog(
           title: l10n.stationQrNotConsumable,
-          message: Localizations.localeOf(context).languageCode == 'ar'
-              ? l10n.stationQrNotConsumableMessage
-              : result.reason ?? l10n.stationQrNotConsumableMessage,
+          message: l10n.stationQrNotConsumableMessage,
           actionLabel: l10n.stationBackHome,
         );
         if (mounted) _goStationHome();
@@ -293,6 +292,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       await showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
+        barrierColor: AppColors.ink.withValues(alpha: 0.58),
         isScrollControlled: true,
         isDismissible: true,
         enableDrag: true,
@@ -816,13 +816,27 @@ class _StationQrCheckLoadingSheet extends StatelessWidget {
           height: 88,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: Colors.white,
             shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.leaderGreen.withValues(alpha: 0.28),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.ink.withValues(alpha: 0.16),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
           ),
           child: const SizedBox(
             width: 34,
             height: 34,
-            child: CircularProgressIndicator(strokeWidth: 3),
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: AppColors.leaderGreen,
+            ),
           ),
         ),
       ),
@@ -853,120 +867,163 @@ class _StationQrCheckSheetState extends State<_StationQrCheckSheet> {
     final l10n = AppLocalizations.of(context);
     final result = widget.result;
     final bottom = MediaQuery.paddingOf(context).bottom;
-    final scheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: EdgeInsets.only(top: 8, bottom: bottom + 8),
       child: Center(
-        child: Material(
-          borderRadius: BorderRadius.circular(24),
-          color: scheme.surface,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.line),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.ink.withValues(alpha: 0.16),
+                  blurRadius: 34,
+                  offset: const Offset(0, 18),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(27),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: scheme.outline.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
+                  Container(
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      gradient: AppColors.validGradient,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    l10n.stationQrVerificationTitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: scheme.onSurface,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l10n.stationQrVerificationSubtitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Center(
-                    child: MiniQR(
-                      data: widget.publicCode,
-                      state: QrState.active,
-                      size: 128,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _InfoLine(
-                    label: l10n.stationTotalAmount,
-                    value: result.totalAmount != null
-                        ? Formatters.money(result.totalAmount!)
-                        : l10n.commonNotProvided,
-                    highlighted: true,
-                  ),
-                  const SizedBox(height: 8),
-                  _InfoLine(
-                    label: l10n.stationClient,
-                    value: result.clientName ?? l10n.commonNotProvided,
-                  ),
-                  const SizedBox(height: 12),
-                  _QrStatePill(
-                    label: l10n.stationConsumptionAllowed,
-                    color: AppColors.success,
-                    icon: Icons.check_circle_outline,
-                    subtitle: l10n.stationConsumptionAllowedMessage,
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 48,
-                          child: OutlinedButton(
-                            onPressed: _confirming
-                                ? null
-                                : () => Navigator.pop(context),
-                            child: Text(l10n.commonCancel),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SizedBox(
-                          height: 48,
-                          child: FilledButton(
-                            onPressed: _confirming
-                                ? null
-                                : () async {
-                                    setState(() => _confirming = true);
-                                    try {
-                                      await widget.onConfirmConsume.call();
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => _confirming = false);
-                                      }
-                                    }
-                                  },
-                            child: Text(
-                              _confirming
-                                  ? l10n.stationValidating
-                                  : l10n.commonContinue,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.line,
+                              borderRadius: BorderRadius.circular(99),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        Text(
+                          l10n.stationQrVerificationTitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.ink,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          l10n.stationQrVerificationSubtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        Center(
+                          child: MiniQR(
+                            data: widget.publicCode,
+                            state: QrState.active,
+                            size: 128,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoLine(
+                          label: l10n.stationTotalAmount,
+                          value: result.totalAmount != null
+                              ? Formatters.money(result.totalAmount!)
+                              : l10n.commonNotProvided,
+                          highlighted: true,
+                        ),
+                        const SizedBox(height: 8),
+                        _InfoLine(
+                          label: l10n.stationClient,
+                          value: result.clientName ?? l10n.commonNotProvided,
+                        ),
+                        const SizedBox(height: 12),
+                        _QrStatePill(
+                          label: l10n.stationConsumptionAllowed,
+                          color: AppColors.success,
+                          icon: Icons.check_circle_outline,
+                          subtitle: l10n.stationConsumptionAllowedMessage,
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 50,
+                                child: OutlinedButton(
+                                  onPressed: _confirming
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.ink,
+                                    side: const BorderSide(
+                                      color: AppColors.line,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                  child: Text(l10n.commonCancel),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SizedBox(
+                                height: 50,
+                                child: FilledButton(
+                                  onPressed: _confirming
+                                      ? null
+                                      : () async {
+                                          setState(() => _confirming = true);
+                                          try {
+                                            await widget.onConfirmConsume
+                                                .call();
+                                          } finally {
+                                            if (mounted) {
+                                              setState(
+                                                () => _confirming = false,
+                                              );
+                                            }
+                                          }
+                                        },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.leaderGreen,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _confirming
+                                        ? l10n.stationValidating
+                                        : l10n.commonContinue,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

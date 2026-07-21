@@ -7,6 +7,7 @@ import '../../features/purchases/screens/purchase_confirmation_screen.dart';
 import '../../features/qr/screens/transfer_confirmation_screen.dart';
 import '../../l10n/app_localizations.dart';
 import 'amount_inline.dart';
+import 'operation_success_summary_card.dart';
 import 'quantity_circle_badge.dart';
 import 'qr_generation_carnet_line.dart';
 import 'transfer_line_row.dart';
@@ -110,12 +111,12 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _PurchasedLinesSection(lines: lines),
       rows: [
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.totalAmount,
           value: _totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
@@ -162,17 +163,17 @@ class TransferSuccessScreen extends StatelessWidget {
               showQuantity: showQuantity,
             ),
       rows: [
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.beneficiary,
           value: recipientName,
           valueColor: AppColors.ink,
         ),
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.totalAmount,
           value: totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
@@ -206,12 +207,12 @@ class QrGenerationSuccessScreen extends StatelessWidget {
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _GeneratedQrLinesSection(lines: lines),
       rows: [
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.totalAmount,
           value: totalAmount.toString(),
           valueColor: const Color(0xFF2B8F3A),
         ),
-        _SuccessRowData(
+        OperationSuccessSummaryData(
           label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
@@ -235,7 +236,7 @@ class _SuccessScaffold extends StatelessWidget {
   final String? message;
   final IconData icon;
   final Color accentColor;
-  final List<_SuccessRowData> rows;
+  final List<OperationSuccessSummaryData> rows;
   final Widget? details;
 
   @override
@@ -296,27 +297,7 @@ class _SuccessScaffold extends StatelessWidget {
                       details!,
                       const SizedBox(height: 18),
                     ],
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < rows.length; i++) ...[
-                            _SummaryRow(
-                              label: rows[i].label,
-                              value: rows[i].value,
-                              valueColor: rows[i].valueColor,
-                            ),
-                            if (i < rows.length - 1) const SizedBox(height: 12),
-                          ],
-                        ],
-                      ),
-                    ),
+                    OperationSuccessSummaryCard(rows: rows),
                   ],
                 ),
               ),
@@ -611,66 +592,6 @@ class _PurchasedLineRow extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SuccessRowData {
-  const _SuccessRowData({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-  });
-
-  final String label;
-  final String value;
-  final Color valueColor;
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-  });
-
-  final String label;
-  final String value;
-  final Color valueColor;
-
-  bool _isAmountRow() => RegExp(r'^\d+$').hasMatch(value.trim());
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: _isAmountRow()
-              ? AmountInline(amount: int.parse(value), textAlign: TextAlign.end)
-              : Text(
-                  value,
-                  textAlign: TextAlign.end,
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: valueColor,
-                  ),
-                ),
         ),
       ],
     );

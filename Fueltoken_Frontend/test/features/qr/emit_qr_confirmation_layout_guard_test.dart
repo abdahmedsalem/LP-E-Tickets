@@ -12,14 +12,27 @@ void main() {
     final cardSource = source.substring(cardStart, cardEnd);
 
     final titleStart = cardSource.indexOf('widget.title');
-    final titleEnd = cardSource.indexOf(
-      'const SizedBox(height: 16)',
-      titleStart,
-    );
+    final titleEnd = cardSource.indexOf('Align(', titleStart);
     final titleSource = cardSource.substring(titleStart, titleEnd);
 
     expect(cardSource, contains('SingleLineCardTitle('));
     expect(titleSource, isNot(contains('TextOverflow.ellipsis')));
+  });
+
+  test('QR generation card expiration date is never truncated', () {
+    final source = File(
+      'lib/features/qr/screens/emit_qr_screen.dart',
+    ).readAsStringSync();
+    final cardStart = source.indexOf('class _CompositionRowState');
+    final cardEnd = source.indexOf('class ', cardStart + 1);
+    final cardSource = source.substring(cardStart, cardEnd);
+    final dateStart = cardSource.indexOf('_expirationLabel(l10n),');
+    expect(dateStart, greaterThan(0));
+    final dateEnd = cardSource.indexOf('const SizedBox(height: 5)', dateStart);
+    final dateSource = cardSource.substring(dateStart, dateEnd);
+
+    expect(dateSource, isNot(contains('TextOverflow.ellipsis')));
+    expect(dateSource, isNot(contains('maxLines: 1')));
   });
 
   test('QR confirmation keeps line title and amount on one row', () {

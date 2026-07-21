@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>FuelToken</string>
+	<string>Leader Petroleum Tickets</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -53,10 +53,10 @@
 		<true/>
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
-	<string>FuelToken utilise Face ID pour sécuriser votre connexion.</string>
+	<string>Leader Petroleum Tickets utilise Face ID pour sécuriser votre connexion.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>FuelToken utilise la caméra pour scanner les codes QR FuelToken à la station.</string>
+	<string>Leader Petroleum Tickets utilise la caméra pour scanner les codes QR à la station.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FuelToken accède à vos photos pour joindre une preuve de paiement à une commande de carnets.</string>
+	<string>Leader Petroleum Tickets accède à vos photos pour joindre une preuve de paiement à une commande de carnets.</string>
 </dict>
 </plist>
