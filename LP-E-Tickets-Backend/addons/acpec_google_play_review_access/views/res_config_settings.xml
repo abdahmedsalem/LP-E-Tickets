@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_google_play_review_res_config_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.form.google.play.review.access</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="acpec_mobile_auth_otp.view_acpec_mobile_auth_otp_res_config_settings"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='acpec_sms_otp_settings']" position="inside">
+                <setting string="Acces de demonstration Google Play"
+                         help="Autorise uniquement les numeros configures a utiliser le code OTP fixe 000000 pour la connexion. Separez-les par des virgules."
+                         groups="base.group_system">
+                    <group>
+                        <field name="google_play_review_enabled"/>
+                        <field name="google_play_review_phone"
+                               invisible="not google_play_review_enabled"
+                               required="google_play_review_enabled"/>
+                        <div class="text-muted" invisible="not google_play_review_enabled">
+                            Code OTP reutilisable : 000000. Les inscriptions et les reinitialisations conservent leur OTP normal.
+                        </div>
+                    </group>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>
