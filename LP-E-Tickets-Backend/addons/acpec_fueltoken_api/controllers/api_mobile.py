@@ -103,11 +103,6 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
 
         return filename, compact_data, False
 
-    def _carnet_type_label(self, carnet):
-        if not carnet:
-            return False
-        return carnet.name or carnet.code or _('Carnet de tickets')
-
     def _mobile_wallet(self):
         user = self._require_trusted_mobile_auth()
         self._require_fuel_group(user, 'client')
@@ -181,6 +176,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'purchase': line.purchase_id.name,
             'carnet_type_id': line.face_line_id.carnet_type_id.id,
             'carnet_type_code': line.face_line_id.carnet_type_id.code,
+            'carnet_type_name': self._carnet_type_label(
+                line.face_line_id.carnet_type_id
+            ),
             'face_value': line.face_value,
             'qty': line.qty,
             'state': line.state,
@@ -552,7 +550,9 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         return {
             'id': rec.id,
             'code': rec.code or False,
-            'name': self._carnet_type_label(rec),
+            'name': rec.name or rec.code or _('Carnet de tickets'),
+            'name_ar': rec.name_ar or False,
+            'carnet_type_name': self._carnet_type_label(rec),
             'display_name': self._carnet_type_label(rec),
 
             'ticket_face_id': ticket_face.id if ticket_face else False,
@@ -1180,7 +1180,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'lot_short_code': line.face_line_id.lot_short_code,
                 'carnet_sequence': line.face_line_id.carnet_sequence,
                 'carnet_type_code': line.carnet_type_id.code,
-                'carnet_type_name': line.carnet_type_id.name,
+                'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
                 'face_value': line.face_value,
                 'face_count': line.face_count,
                 'carnet_qty': line.carnet_qty,
@@ -1213,7 +1213,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'dest_carnet_short_code': line.dest_face_line_id.carnet_short_code if line.dest_face_line_id else False,
                 'lot_short_code': line.source_face_line_id.lot_short_code,
                 'carnet_type_code': line.carnet_type_id.code,
-                'carnet_type_name': line.carnet_type_id.name,
+                'carnet_type_name': self._carnet_type_label(line.carnet_type_id),
                 'face_value': line.face_value,
                 'qty_tickets': line.qty_faces,
                 'qty_faces': line.qty_faces,

@@ -1,4 +1,4 @@
-from odoo import fields
+from odoo import _, fields
 from odoo.exceptions import AccessError, ValidationError
 from odoo.http import request
 
@@ -38,6 +38,24 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
         'token',
         'password',
     }
+
+    def _requested_language_code(self):
+        """Return the mobile UI language requested through HTTP headers."""
+        try:
+            headers = request.httprequest.headers
+            raw = headers.get('X-App-Language') or headers.get('Accept-Language') or ''
+        except (AttributeError, RuntimeError):
+            raw = ''
+        return 'ar' if str(raw).strip().lower().startswith('ar') else 'fr'
+
+    def _carnet_type_label(self, carnet, language_code=None):
+        if not carnet:
+            return False
+        language = str(language_code or self._requested_language_code()).strip().lower()
+        arabic_name = (getattr(carnet, 'name_ar', False) or '').strip()
+        if language.startswith('ar') and arabic_name:
+            return arabic_name
+        return carnet.name or carnet.code or _('Carnet de tickets')
 
     def _normalize_idempotency_hash_value(self, value):
         if isinstance(value, dict):

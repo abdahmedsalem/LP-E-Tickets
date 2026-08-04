@@ -6,6 +6,7 @@
             <list>
                 <field name="code"/>
                 <field name="name"/>
+                <field name="name_ar" optional="show"/>
                 <field name="face_count"/>
                 <field name="face_value"/>
                 <field name="carnet_amount"/>
@@ -25,6 +26,7 @@
                         <group>
                             <field name="code"/>
                             <field name="name"/>
+                            <field name="name_ar"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active" invisible="1"/>
                         </group>

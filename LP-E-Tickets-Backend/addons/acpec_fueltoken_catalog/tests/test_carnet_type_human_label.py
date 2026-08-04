@@ -22,16 +22,16 @@ class TestCarnetTypeHumanLabel(TransactionCase):
             'validity_days': 30,
         })
 
-    def _sql_name(self, carnet_type):
+    def _sql_names(self, carnet_type):
         self.env.cr.execute(
             """
-            SELECT name
+            SELECT name, name_ar
               FROM acpec_fuel_carnet_type
              WHERE id = %s
             """,
             [carnet_type.id],
         )
-        return self.env.cr.fetchone()[0]
+        return self.env.cr.fetchone()
 
     def test_carnet_type_name_uses_human_multiplication_label(self):
         carnet_type = self._create_carnet_type(10, 100)
@@ -47,6 +47,22 @@ class TestCarnetTypeHumanLabel(TransactionCase):
         self.assertEqual(
             carnet_type.name,
             'Carnet - 1 ticket x 250 %s' % self.currency.name,
+        )
+
+    def test_carnet_type_arabic_name_uses_matching_human_format(self):
+        carnet_type = self._create_carnet_type(10, 100)
+
+        self.assertEqual(
+            carnet_type.name_ar,
+            'دفتر - 10 تذاكر × 100 %s' % self.currency.name,
+        )
+
+    def test_carnet_type_arabic_name_uses_ticket_singular(self):
+        carnet_type = self._create_carnet_type(1, 250)
+
+        self.assertEqual(
+            carnet_type.name_ar,
+            'دفتر - 1 تذكرة × 250 %s' % self.currency.name,
         )
 
     def test_carnet_type_code_remains_short_technical_code_without_currency(self):
@@ -74,11 +90,16 @@ class TestCarnetTypeHumanLabel(TransactionCase):
             [legacy_name, carnet_type.id],
         )
 
-        self.assertEqual(self._sql_name(carnet_type), legacy_name)
+        current_name, _current_name_ar = self._sql_names(carnet_type)
+        self.assertEqual(current_name, legacy_name)
 
         self.env['acpec.fuel.carnet.type']._refresh_human_carnet_type_names()
 
-        self.assertEqual(self._sql_name(carnet_type), expected_name)
+        expected_name_ar = 'دفتر - 10 تذاكر × 300 %s' % self.currency.name
+        current_name, current_name_ar = self._sql_names(carnet_type)
+        self.assertEqual(current_name, expected_name)
+        self.assertEqual(current_name_ar, expected_name_ar)
 
-        carnet_type.invalidate_recordset(['name'])
+        carnet_type.invalidate_recordset(['name', 'name_ar'])
         self.assertEqual(carnet_type.name, expected_name)
+        self.assertEqual(carnet_type.name_ar, expected_name_ar)
