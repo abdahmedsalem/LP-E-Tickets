@@ -325,7 +325,6 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                     child: _QuickActionCard(
                                       title: l10n.homeGenerateQr,
                                       icon: Icons.qr_code_scanner_rounded,
-                                      highlighted: true,
                                       onTap: () => context.push('/qr/emit'),
                                     ),
                                   ),
@@ -461,13 +460,11 @@ class _QuickActionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.onTap,
-    this.highlighted = false,
   });
 
   final String title;
   final IconData icon;
   final VoidCallback onTap;
-  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -490,10 +487,8 @@ class _QuickActionCard extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: highlighted
-                      ? AppColors.leaderGreen.withValues(alpha: 0.32)
-                      : const Color(0xFFE9ECEF),
-                  width: highlighted ? 1.3 : 1,
+                  color: const Color(0xFFE9ECEF),
+                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -502,13 +497,6 @@ class _QuickActionCard extends StatelessWidget {
                     offset: const Offset(0, 6),
                     spreadRadius: -10,
                   ),
-                  if (highlighted)
-                    BoxShadow(
-                      color: AppColors.leaderGreen.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                      spreadRadius: -10,
-                    ),
                 ],
               ),
               child: Padding(
