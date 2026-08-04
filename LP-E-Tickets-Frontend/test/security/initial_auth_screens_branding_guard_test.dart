@@ -6,30 +6,31 @@ String _read(String path) => File(path).readAsStringSync();
 
 void main() {
   group('Patch2J initial auth screens branding guard', () {
-    test(
-      'authentication screens use the Leader Petroleum E-Tickets image',
-      () {
-        const paths = <String>[
-          'lib/features/auth/screens/login_screen.dart',
-          'lib/features/auth/screens/forgot_password_screen.dart',
-          'lib/features/auth/screens/forgot_otp_flow_screens.dart',
-          'lib/features/auth/screens/session_pin_lock_screen.dart',
-          'lib/features/auth/screens/register_verify_otp_screen.dart',
-        ];
+    test('authentication screens use the Leader Petroleum E-Tickets image', () {
+      const paths = <String>[
+        'lib/features/auth/screens/login_screen.dart',
+        'lib/features/auth/screens/forgot_password_screen.dart',
+        'lib/features/auth/screens/forgot_otp_flow_screens.dart',
+        'lib/features/auth/screens/session_pin_lock_screen.dart',
+        'lib/features/auth/screens/register_verify_otp_screen.dart',
+      ];
 
-        for (final path in paths) {
-          final source = _read(path);
-          expect(source, contains('AuthBrandImage'), reason: path);
-          expect(source, isNot(contains('designs/lplogo.jfif')), reason: path);
-        }
+      for (final path in paths) {
+        final source = _read(path);
+        expect(source, contains('AuthBrandImage'), reason: path);
+        expect(source, isNot(contains('designs/lplogo.jfif')), reason: path);
+      }
 
-        final sharedImage = _read('lib/shared/widgets/auth_brand_image.dart');
-        expect(sharedImage, contains('designs/lptickets.png'));
-        expect(sharedImage, contains('height: 184'));
-        expect(sharedImage, contains('height: 176'));
-        expect(sharedImage, contains('scale: 1.12'));
-      },
-    );
+      final sharedImage = _read('lib/shared/widgets/auth_brand_image.dart');
+      expect(sharedImage, contains('assets/images/lp_e_ticket.jpg'));
+      expect(sharedImage, contains('height: 184'));
+      expect(sharedImage, contains('height: 176'));
+      expect(sharedImage, contains('scale: 1.12'));
+
+      expect(File('assets/images/lp_e_ticket.jpg').existsSync(), isTrue);
+      expect(File('assets/images/lptickets.png').existsSync(), isTrue);
+      expect(_read('pubspec.yaml'), isNot(contains('- designs/')));
+    });
 
     test('splash keeps visual branding without an external brand name', () {
       final source = _read('lib/features/auth/screens/splash_screen.dart');

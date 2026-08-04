@@ -13,7 +13,7 @@ class AuthBrandImage extends StatelessWidget {
           child: Transform.scale(
             scale: 1.12,
             child: Image.asset(
-              'designs/lptickets.png',
+              'assets/images/lp_e_ticket.jpg',
               height: 176,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
