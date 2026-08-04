@@ -457,6 +457,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonGenericError => 'Une erreur est survenue. Réessayez.';
 
   @override
+  String get commonPinIncorrect =>
+      'PIN incorrect. L’opération n’a pas été effectuée.';
+
+  @override
+  String get commonTooManyAttempts =>
+      'Trop de tentatives. Réessayez plus tard.';
+
+  @override
   String get commonNetworkError =>
       'Impossible de joindre le serveur. Vérifiez votre connexion.';
 

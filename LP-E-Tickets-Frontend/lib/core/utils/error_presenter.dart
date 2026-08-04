@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../data/services/acpec_public_api_error.dart';
 import '../../data/services/odoo_jsonrpc_client.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -18,7 +19,20 @@ class ErrorPresenter {
       if (isBackendUnavailable(error)) {
         return backendUnavailable();
       }
-      return _withReference(_sanitize(error.message), error.reference);
+      final publicCode = error.normalizedPublicCode;
+      if (publicCode != null) {
+        return _withReference(
+          AcpecPublicApiError.publicMessageForCode(publicCode),
+          error.reference,
+        );
+      }
+      if (_isHttpStatus(error.code)) {
+        return _withReference(_sanitize(error.message), error.reference);
+      }
+      return _withReference(
+        'Une erreur est survenue. Réessayez.',
+        error.reference,
+      );
     }
     final raw = error
         .toString()
@@ -38,6 +52,16 @@ class ErrorPresenter {
     }
     if (isBackendUnavailable(error)) {
       return l10n.commonServerUnavailable;
+    }
+    if (error is OdooJsonRpcException) {
+      final code = error.normalizedPublicCode;
+      final message = switch (code) {
+        'INVALID_ACTION_CODE' ||
+        'SECRET_CODE_INVALID' => l10n.commonPinIncorrect,
+        'ACTION_CODE_LOCKED' || 'RATE_LIMITED' => l10n.commonTooManyAttempts,
+        _ => l10n.commonGenericError,
+      };
+      return _localizedWithReference(l10n, message, error.reference);
     }
     return l10n.commonGenericError;
   }
@@ -76,10 +100,33 @@ class ErrorPresenter {
   }
 
   static String _withReference(String message, String? reference) {
-    final ref = reference?.trim();
+    final ref = _safeReference(reference);
     if (ref == null || ref.isEmpty) return message;
     if (message.contains(ref)) return message;
     return '$message\nRéférence support : $ref';
+  }
+
+  static String _localizedWithReference(
+    AppLocalizations l10n,
+    String message,
+    String? reference,
+  ) {
+    final ref = _safeReference(reference);
+    if (ref == null || message.contains(ref)) return message;
+    return <String>[
+      message,
+      l10n.supportReference(ref),
+    ].join(String.fromCharCode(10));
+  }
+
+  static bool _isHttpStatus(int? code) =>
+      code != null && code >= 400 && code <= 599;
+
+  static String? _safeReference(String? reference) {
+    final ref = reference?.trim();
+    if (ref == null || ref.isEmpty) return null;
+    if (!RegExp(r'^(SEC|ERR)-[A-Za-z0-9_.:/-]+$').hasMatch(ref)) return null;
+    return ref;
   }
 
   static String _sanitize(String raw) {

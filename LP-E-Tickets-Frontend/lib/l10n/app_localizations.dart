@@ -890,6 +890,18 @@ abstract class AppLocalizations {
   /// **'Une erreur est survenue. Réessayez.'**
   String get commonGenericError;
 
+  /// No description provided for @commonPinIncorrect.
+  ///
+  /// In fr, this message translates to:
+  /// **'PIN incorrect. L’opération n’a pas été effectuée.'**
+  String get commonPinIncorrect;
+
+  /// No description provided for @commonTooManyAttempts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Trop de tentatives. Réessayez plus tard.'**
+  String get commonTooManyAttempts;
+
   /// No description provided for @commonNetworkError.
   ///
   /// In fr, this message translates to:

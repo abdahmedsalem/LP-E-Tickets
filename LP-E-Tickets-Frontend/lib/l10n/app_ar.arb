@@ -167,6 +167,8 @@
   "commonPinVerification": "التحقق من الرقم السري",
   "commonPinConfirmationDescription": "أدخل رقمك السري لتأكيد هذه العملية.",
   "commonGenericError": "حدث خطأ. حاول مرة أخرى.",
+  "commonPinIncorrect": "الرقم السري غير صحيح. لم يتم تنفيذ العملية.",
+  "commonTooManyAttempts": "محاولات كثيرة جدًا. حاول مرة أخرى لاحقًا.",
   "commonNetworkError": "تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.",
   "commonServerUnavailable": "الخادم غير متاح مؤقتاً. تحقق من اتصالك أو حاول لاحقاً.",
   "commonSessionRequired": "يرجى تسجيل الدخول للمتابعة.",

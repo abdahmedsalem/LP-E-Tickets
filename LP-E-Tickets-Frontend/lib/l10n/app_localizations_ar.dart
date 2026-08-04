@@ -458,6 +458,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonGenericError => 'حدث خطأ. حاول مرة أخرى.';
 
   @override
+  String get commonPinIncorrect =>
+      'الرقم السري غير صحيح. لم يتم تنفيذ العملية.';
+
+  @override
+  String get commonTooManyAttempts =>
+      'محاولات كثيرة جدًا. حاول مرة أخرى لاحقًا.';
+
+  @override
   String get commonNetworkError =>
       'تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.';
 

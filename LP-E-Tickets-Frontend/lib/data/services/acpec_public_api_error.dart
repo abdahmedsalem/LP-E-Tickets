@@ -76,8 +76,12 @@ class AcpecPublicApiError {
 
   bool get hasKnownCode => _publicMessages.containsKey(code);
 
-  String get publicMessage =>
-      _publicMessages[code] ?? _publicMessages[_unknownCode]!;
+  static String publicMessageForCode(String? rawCode) {
+    final code = _normalizeCode(rawCode);
+    return _publicMessages[code] ?? _publicMessages[_unknownCode]!;
+  }
+
+  String get publicMessage => publicMessageForCode(code);
 
   String get displayMessage {
     final ref = normalizedReference;

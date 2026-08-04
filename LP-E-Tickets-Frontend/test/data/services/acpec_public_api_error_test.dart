@@ -79,5 +79,39 @@ void main() {
         );
       },
     );
+
+    test('known business code wins over a generic screen fallback', () {
+      expect(
+        () => acpecRpcMapOrThrow(
+          {
+            'ok': false,
+            'error': {
+              'code': 'INVALID_ACTION_CODE',
+              'message': 'technical backend wording',
+            },
+          },
+          fallbackMessage: 'fallback',
+          publicErrorMessage: 'La génération du QR a échoué.',
+        ),
+        throwsA(
+          isA<OdooJsonRpcException>()
+              .having(
+                (error) => error.publicCode,
+                'publicCode',
+                'INVALID_ACTION_CODE',
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('PIN incorrect'),
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                isNot(contains('technical backend wording')),
+              ),
+        ),
+      );
+    });
   });
 }

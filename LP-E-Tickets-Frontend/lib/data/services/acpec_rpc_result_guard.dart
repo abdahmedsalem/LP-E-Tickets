@@ -41,9 +41,13 @@ void _throwIfBusinessError(
   if (!AcpecPublicApiError.hasBusinessError(m)) return;
 
   final publicError = AcpecPublicApiError.fromBusinessEnvelope(m);
+  if (publicError.hasKnownCode) {
+    throw publicError.toException();
+  }
+
   final preferredMessage = publicErrorMessage?.trim();
   if (preferredMessage == null || preferredMessage.isEmpty) {
-    if (!publicError.hasKnownCode && fallbackMessage.trim().isNotEmpty) {
+    if (fallbackMessage.trim().isNotEmpty) {
       throw OdooJsonRpcException(
         _withReference(fallbackMessage.trim(), publicError.normalizedReference),
         publicCode: publicError.code,

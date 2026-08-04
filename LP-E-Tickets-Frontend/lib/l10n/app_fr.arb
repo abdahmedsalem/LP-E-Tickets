@@ -222,6 +222,8 @@
   "commonPinVerification": "Vérification du PIN",
   "commonPinConfirmationDescription": "Saisissez votre PIN pour confirmer cette opération.",
   "commonGenericError": "Une erreur est survenue. Réessayez.",
+  "commonPinIncorrect": "PIN incorrect. L’opération n’a pas été effectuée.",
+  "commonTooManyAttempts": "Trop de tentatives. Réessayez plus tard.",
   "commonNetworkError": "Impossible de joindre le serveur. Vérifiez votre connexion.",
   "commonServerUnavailable": "Serveur momentanément indisponible. Vérifiez votre connexion ou réessayez plus tard.",
   "commonSessionRequired": "Session requise.",

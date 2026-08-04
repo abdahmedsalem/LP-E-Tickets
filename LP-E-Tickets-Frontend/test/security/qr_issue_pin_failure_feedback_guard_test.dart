@@ -9,36 +9,48 @@ void main() {
     test('QR issue backend errors are not swallowed silently', () {
       final source = _read('lib/features/qr/screens/emit_qr_screen.dart');
 
-      expect(source, contains('ErrorPresenter.message(error)'));
       expect(source, contains('ErrorPresenter.isBackendUnavailable(error)'));
-      expect(source, contains('PIN incorrect. L’opération n’a pas été effectuée.'));
-      expect(source, contains('Action non confirmée. Vérifiez la liste des QR'));
-      expect(source, contains('AppMessage.error(context, _qrIssueErrorMessage(err))'));
+      expect(
+        source,
+        contains('ErrorPresenter.localizedMessage(context, error)'),
+      );
+      expect(source, contains('AppLocalizations.of(context).qrUnconfirmed'));
+      expect(
+        source,
+        contains('AppMessage.error(context, _qrIssueErrorMessage(err))'),
+      );
+      expect(source, isNot(contains("lower.contains('action_code')")));
 
-      expect(source, isNot(contains('} on OdooJsonRpcException {\n      return;')));
+      expect(
+        source,
+        isNot(contains('} on OdooJsonRpcException {\n      return;')),
+      );
       expect(source, isNot(contains('} catch (err) {\n      return;')));
     });
 
-    test('QR confirmation locks before PIN dialog to avoid duplicate dialogs', () {
-      final source = _read(
-        'lib/features/qr/screens/qr_action_confirmation_screen.dart',
-      );
+    test(
+      'QR confirmation locks before PIN dialog to avoid duplicate dialogs',
+      () {
+        final source = _read(
+          'lib/features/qr/screens/qr_action_confirmation_screen.dart',
+        );
 
-      final confirmIndex = source.indexOf('Future<void> _confirm()');
-      final lockIndex = source.indexOf(
-        'setState(() => _confirming = true);',
-        confirmIndex,
-      );
-      final pinIndex = source.indexOf(
-        'showSensitiveActionCodeDialog',
-        confirmIndex,
-      );
+        final confirmIndex = source.indexOf('Future<void> _confirm()');
+        final lockIndex = source.indexOf(
+          'setState(() => _confirming = true);',
+          confirmIndex,
+        );
+        final pinIndex = source.indexOf(
+          'showSensitiveActionCodeDialog',
+          confirmIndex,
+        );
 
-      expect(confirmIndex, greaterThanOrEqualTo(0));
-      expect(lockIndex, greaterThanOrEqualTo(0));
-      expect(pinIndex, greaterThanOrEqualTo(0));
-      expect(lockIndex, lessThan(pinIndex));
-    });
+        expect(confirmIndex, greaterThanOrEqualTo(0));
+        expect(lockIndex, greaterThanOrEqualTo(0));
+        expect(pinIndex, greaterThanOrEqualTo(0));
+        expect(lockIndex, lessThan(pinIndex));
+      },
+    );
 
     test('QR issue success path still refreshes QR and read models', () {
       final source = _read('lib/features/qr/screens/emit_qr_screen.dart');

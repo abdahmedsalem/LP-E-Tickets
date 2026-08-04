@@ -52,9 +52,6 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   List<CarnetType> _offerTypes = [];
   List<FaceLine> _liveFaceLines = [];
 
-  static const String _unconfirmedQrIssueMessage =
-      'Action non confirmée. Vérifiez la liste des QR avant de réessayer.';
-
   @override
   void initState() {
     super.initState();
@@ -105,36 +102,11 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   String _qrIssueErrorMessage(Object error) {
-    if (Localizations.localeOf(context).languageCode == 'ar') {
-      return ErrorPresenter.localizedMessage(context, error);
-    }
     if (ErrorPresenter.isBackendUnavailable(error)) {
-      return Localizations.localeOf(context).languageCode == 'ar'
-          ? AppLocalizations.of(context).qrUnconfirmed
-          : _unconfirmedQrIssueMessage;
+      return AppLocalizations.of(context).qrUnconfirmed;
     }
 
-    final message = ErrorPresenter.message(error).trim();
-    final lower = message.toLowerCase();
-
-    final looksLikeInvalidPin =
-        (lower.contains('pin') ||
-            lower.contains('action_code') ||
-            lower.contains('action code') ||
-            lower.contains('code action')) &&
-        (lower.contains('incorrect') ||
-            lower.contains('invalide') ||
-            lower.contains('invalid') ||
-            lower.contains('refus'));
-
-    if (looksLikeInvalidPin) {
-      return 'PIN incorrect. L’opération n’a pas été effectuée.';
-    }
-
-    if (message.isEmpty) {
-      return "Le QR n'a pas été créé. Réessayez.";
-    }
-    return message;
+    return ErrorPresenter.localizedMessage(context, error);
   }
 
   int _lineCarnetSize(FaceLine line) {
