@@ -1,4 +1,4 @@
-package com.acpec.fueltoken_app
+package com.odoorim.acpec.lp_e_ticket
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

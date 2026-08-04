@@ -15,8 +15,12 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.acpec.fueltoken_app"
-    compileSdk = flutter.compileSdkVersion
+    // Identité Android définitive imposée pour la fiche Google Play.
+    // Elle ne doit plus être modifiée après la première publication.
+    namespace = "com.odoorim.acpec.lp_e_ticket"
+    // Google Play exige Android 16 / API 36 à partir du 31 août 2026.
+    // Valeur explicite pour garantir un build reproductible sur toutes les CI.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -30,9 +34,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.acpec.fueltoken_app"
+        applicationId = "com.odoorim.acpec.lp_e_ticket"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
