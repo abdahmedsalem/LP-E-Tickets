@@ -5,6 +5,7 @@ import '../../core/config/app_environment.dart';
 import '../../core/config/diagnostic_config.dart';
 import '../../core/debug/acpec_rpc_debug.dart';
 import '../../core/config/odoo_fueltoken_rpc_config.dart';
+import '../../core/settings/app_preferences.dart';
 import '../../core/utils/error_presenter.dart';
 import '../models/carnet_type.dart';
 import 'acpec_carnet_types_mapper.dart';
@@ -353,6 +354,7 @@ class AcpecCarnetCatalogService {
     bool preferAdminList = false,
   }) async {
     String? preview;
+    final languageCode = await AppPreferences.localeCode();
 
     if (preferAdminList) {
       try {
@@ -365,6 +367,7 @@ class AcpecCarnetCatalogService {
           raw,
           companyId: companyId,
           includeInactiveRows: true,
+          languageCode: languageCode,
         );
         if (list != null) {
           return (
@@ -400,6 +403,7 @@ class AcpecCarnetCatalogService {
       final list = AcpecCarnetTypesMapper.tryListFromRpc(
         raw,
         companyId: companyId,
+        languageCode: languageCode,
       );
       return (list: list, err: null, preview: preview, usedAdminRoute: false);
     } on OdooJsonRpcException catch (e) {

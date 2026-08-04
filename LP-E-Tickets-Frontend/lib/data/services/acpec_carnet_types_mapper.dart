@@ -39,6 +39,30 @@ class AcpecCarnetTypesMapper {
     return true;
   }
 
+  static String _localizedName(Map<String, dynamic> row, String languageCode) {
+    final isArabic = languageCode.trim().toLowerCase().startsWith('ar');
+    final candidates = isArabic
+        ? [
+            row['name_ar'],
+            row['name_arabic'],
+            row['carnet_type_name'],
+            row['display_name'],
+            row['name'],
+            row['label'],
+          ]
+        : [
+            row['name'],
+            row['carnet_type_name'],
+            row['display_name'],
+            row['label'],
+          ];
+    for (final candidate in candidates) {
+      final value = candidate?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
   static Map<String, dynamic>? _unwrapEnvelope(dynamic result) {
     if (result is! Map) return null;
     var m = Map<String, dynamic>.from(result);
@@ -97,6 +121,7 @@ class AcpecCarnetTypesMapper {
     Map<String, dynamic> row,
     String companyId, {
     required bool includeInactiveRows,
+    required String languageCode,
   }) {
     final active = _isActiveRow(row);
     if (!includeInactiveRows && !active) return null;
@@ -110,12 +135,7 @@ class AcpecCarnetTypesMapper {
     var code = codeRaw?.toString().trim() ?? '';
     if (code.isEmpty) code = 'T$idStr';
 
-    final nameRaw =
-        row['carnet_type_name'] ??
-        row['name'] ??
-        row['display_name'] ??
-        row['label'];
-    var name = nameRaw?.toString().trim() ?? '';
+    var name = _localizedName(row, languageCode);
 
     final faceValue = _int(
       row['face_value'] ??
@@ -191,6 +211,7 @@ class AcpecCarnetTypesMapper {
     dynamic result, {
     required String companyId,
     bool includeInactiveRows = false,
+    String languageCode = 'fr',
   }) {
     try {
       final rows = _extractRows(result);
@@ -201,6 +222,7 @@ class AcpecCarnetTypesMapper {
           row,
           companyId,
           includeInactiveRows: includeInactiveRows,
+          languageCode: languageCode,
         );
         if (t != null) out.add(t);
       }
