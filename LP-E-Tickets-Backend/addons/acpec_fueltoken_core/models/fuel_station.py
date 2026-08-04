@@ -33,6 +33,18 @@ class AcpecFuelStation(models.Model):
     )
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     active = fields.Boolean(default=True)
+    address = fields.Char(string='Adresse', tracking=True)
+    phone = fields.Char(string='Téléphone', tracking=True)
+    latitude = fields.Float(
+        string='Latitude',
+        digits=(10, 7),
+        tracking=True,
+    )
+    longitude = fields.Float(
+        string='Longitude',
+        digits=(10, 7),
+        tracking=True,
+    )
 
     create_idempotency_key = fields.Char(string='Cle idempotence creation admin', index=True, copy=False)
     create_request_hash = fields.Char(string='Hash requête creation admin', index=True, copy=False)
@@ -49,6 +61,14 @@ class AcpecFuelStation(models.Model):
         'UNIQUE(code, company_id)',
         'Le code station doit être unique par société.',
     )
+
+    @api.constrains('latitude', 'longitude')
+    def _check_geographic_coordinates(self):
+        for station in self:
+            if not -90 <= station.latitude <= 90:
+                raise ValidationError(_('La latitude doit être comprise entre -90 et 90.'))
+            if not -180 <= station.longitude <= 180:
+                raise ValidationError(_('La longitude doit être comprise entre -180 et 180.'))
 
     @api.model
     def _user_has_group_xmlid(self, user, xmlid):

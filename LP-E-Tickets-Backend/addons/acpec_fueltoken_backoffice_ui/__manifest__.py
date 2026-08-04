@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Back-office UI',
-    'version': '19.0.1.3.9',
+    'version': '19.0.1.4.3',
     'category': 'ACPEC/FuelToken',
     'summary': 'Menus et libellés métier pour le back-office Tickets Carburant',
     'author': 'ACPEC SARL',
@@ -26,6 +26,8 @@
         # définies dans backoffice_action_views.xml et mobile_users_backoffice_views.xml.
         'views/backoffice_menu_views.xml',
         'views/ticket_label_views.xml',
+        'views/station_map_templates.xml',
+        'views/station_map_menu.xml',
     ],
     'installable': True,
     'application': False,

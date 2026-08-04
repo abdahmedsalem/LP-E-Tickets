@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_station_map" model="ir.actions.act_url">
+        <field name="name">Carte des stations</field>
+        <field name="url">/fueltoken/stations/map</field>
+        <field name="target">self</field>
+    </record>
+
+    <menuitem
+        id="menu_station_map"
+        name="Carte des stations"
+        parent="menu_fueltoken_stations"
+        action="action_station_map"
+        sequence="15"
+        groups="acpec_fueltoken_base.group_fuel_admin"
+    />
+</odoo>

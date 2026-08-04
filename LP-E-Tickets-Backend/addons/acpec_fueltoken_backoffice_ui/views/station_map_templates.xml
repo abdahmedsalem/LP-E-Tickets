@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="station_map_page" name="Carte des stations">
+        <html lang="fr">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title>Carte des stations</title>
+                <link
+                    rel="stylesheet"
+                    href="/acpec_fueltoken_backoffice_ui/static/lib/leaflet/leaflet.css"
+                />
+                <link
+                    rel="stylesheet"
+                    href="/acpec_fueltoken_backoffice_ui/static/src/css/station_map.css?v=1.4.3"
+                />
+                <script
+                    defer="defer"
+                    src="/acpec_fueltoken_backoffice_ui/static/lib/leaflet/leaflet.js"
+                />
+                <script
+                    defer="defer"
+                    src="/acpec_fueltoken_backoffice_ui/static/src/js/station_map.js?v=1.4.3"
+                />
+            </head>
+            <body class="lp-station-map-page">
+                <header class="lp-station-map-header">
+                    <div>
+                        <p class="lp-station-map-eyebrow">Leader Petroleum E-Tickets</p>
+                        <h1>Carte des stations</h1>
+                        <p id="station-map-count" class="lp-station-map-count">
+                            Chargement des stations...
+                        </p>
+                    </div>
+                    <a class="lp-station-map-back" href="/odoo">
+                        Retour au back-office
+                    </a>
+                </header>
+
+                <main class="lp-station-map-shell">
+                    <div
+                        id="station-map"
+                        class="lp-station-map"
+                        t-att-data-stations="stations_json"
+                    />
+                    <div id="station-map-empty" class="lp-station-map-empty" hidden="hidden">
+                        <strong>Aucune station localisée</strong>
+                        <span>
+                            Renseignez la latitude et la longitude dans les fiches stations.
+                        </span>
+                    </div>
+                </main>
+            </body>
+        </html>
+    </template>
+</odoo>
