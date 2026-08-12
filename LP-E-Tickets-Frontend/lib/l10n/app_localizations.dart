@@ -893,7 +893,7 @@ abstract class AppLocalizations {
   /// No description provided for @commonPinIncorrect.
   ///
   /// In fr, this message translates to:
-  /// **'PIN incorrect. L’opération n’a pas été effectuée.'**
+  /// **'Code PIN incorrect.'**
   String get commonPinIncorrect;
 
   /// No description provided for @commonTooManyAttempts.

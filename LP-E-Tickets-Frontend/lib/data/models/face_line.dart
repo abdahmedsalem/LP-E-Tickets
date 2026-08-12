@@ -68,6 +68,7 @@ class FaceLine extends Equatable {
           transferredOutQty;
 
   FaceLine copyWith({
+    String? carnetTypeName,
     int? availableQty,
     int? qrActiveQty,
     int? qrBlockedQty,
@@ -82,7 +83,7 @@ class FaceLine extends Equatable {
       purchaseLineId: purchaseLineId,
       carnetTypeId: carnetTypeId,
       carnetTypeCode: carnetTypeCode,
-      carnetTypeName: carnetTypeName,
+      carnetTypeName: carnetTypeName ?? this.carnetTypeName,
       carnetNo: carnetNo,
       lotShortCode: lotShortCode,
       carnetShortCode: carnetShortCode,

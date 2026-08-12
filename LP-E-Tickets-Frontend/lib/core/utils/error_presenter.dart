@@ -21,6 +21,10 @@ class ErrorPresenter {
       }
       final publicCode = error.normalizedPublicCode;
       if (publicCode != null) {
+        if (publicCode == 'INVALID_ACTION_CODE' ||
+            publicCode == 'SECRET_CODE_INVALID') {
+          return AcpecPublicApiError.publicMessageForCode(publicCode);
+        }
         return _withReference(
           AcpecPublicApiError.publicMessageForCode(publicCode),
           error.reference,
@@ -55,6 +59,9 @@ class ErrorPresenter {
     }
     if (error is OdooJsonRpcException) {
       final code = error.normalizedPublicCode;
+      if (code == 'INVALID_ACTION_CODE' || code == 'SECRET_CODE_INVALID') {
+        return l10n.commonPinIncorrect;
+      }
       final message = switch (code) {
         'INVALID_ACTION_CODE' ||
         'SECRET_CODE_INVALID' => l10n.commonPinIncorrect,

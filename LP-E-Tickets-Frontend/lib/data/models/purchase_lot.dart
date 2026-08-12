@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 
@@ -43,6 +43,18 @@ class PurchaseLine extends Equatable {
 
   int get faceCount => carnetCount * carnetSize;
   int get lineAmount => faceCount * faceValue;
+
+  PurchaseLine copyWith({String? carnetTypeName}) {
+    return PurchaseLine(
+      id: id,
+      carnetTypeId: carnetTypeId,
+      carnetTypeCode: carnetTypeCode,
+      carnetTypeName: carnetTypeName ?? this.carnetTypeName,
+      carnetCount: carnetCount,
+      carnetSize: carnetSize,
+      faceValue: faceValue,
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -181,6 +193,7 @@ class PurchaseLot extends Equatable {
     String? paymentProofPath,
     String? paymentReference,
     List<PurchaseProofSummary>? proofs,
+    List<PurchaseLine>? lines,
   }) {
     return PurchaseLot(
       id: id,
@@ -192,7 +205,7 @@ class PurchaseLot extends Equatable {
       paymentProofPath: paymentProofPath ?? this.paymentProofPath,
       paymentReference: paymentReference ?? this.paymentReference,
       proofs: proofs ?? this.proofs,
-      lines: lines,
+      lines: lines ?? this.lines,
       state: state ?? this.state,
       validatorId: validatorId ?? this.validatorId,
       validatorName: validatorName ?? this.validatorName,

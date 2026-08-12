@@ -46,6 +46,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   Map<String, String> _carnetCurrencyById = {};
   Map<String, String> _carnetCurrencyByCode = {};
   Map<int, String> _carnetCurrencyByFaceValue = {};
+  String? _loadedLanguageCode;
 
   late final VoidCallback _facesBusListener;
 
@@ -56,12 +57,20 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       if (mounted && AppEnvironment.useAcpecLiveData) _loadLiveFaces();
     };
     FacesRefreshBus.instance.revision.addListener(_facesBusListener);
-    if (AppEnvironment.useAcpecLiveData) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadLiveFaces();
-        _loadCarnetSizes();
-      });
-    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!AppEnvironment.useAcpecLiveData) return;
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode == languageCode) return;
+    _loadedLanguageCode = languageCode;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadLiveFaces();
+      _loadCarnetSizes();
+    });
   }
 
   @override
@@ -75,9 +84,11 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
     try {
+      final languageCode = Localizations.localeOf(context).languageCode;
       final result = await AcpecCarnetCatalogService.instance
           .loadMobileCatalogFacesOnly(
             companyId: AppEnvironment.companyIdForUser(user),
+            languageCode: languageCode,
           );
       if (!mounted) return;
       final byId = <String, int>{};
@@ -145,8 +156,23 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
       _liveError = null;
     });
     try {
-      final raw = await OdooFueltokenFacade().faces(const <String, dynamic>{});
-      final lines = AcpecFacesMapper.fromRpcResult(raw, ownerId: user.id);
+      final companyId = AppEnvironment.companyIdForUser(user);
+      final languageCode = Localizations.localeOf(context).languageCode;
+      final facesFuture = OdooFueltokenFacade().faces(
+        const <String, dynamic>{},
+      );
+      final catalogFuture = AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(
+            companyId: companyId,
+            languageCode: languageCode,
+          )
+          .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
+      final raw = await facesFuture;
+      final catalogResult = await catalogFuture;
+      final lines = AcpecCarnetCatalogService.localizeFaceLinesByCarnetTypes(
+        lines: AcpecFacesMapper.fromRpcResult(raw, ownerId: user.id),
+        types: catalogResult.types,
+      );
       if (!mounted) return;
       setState(() {
         _liveLines = lines;
@@ -216,9 +242,6 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
   }
 
   String _carnetTypeLabelFor(FaceLine line) {
-    final rawName = line.carnetTypeName.trim();
-    if (rawName.isNotEmpty) return rawName;
-
     final byId = _carnetNameById[line.carnetTypeId.trim()];
     if (byId != null && byId.trim().isNotEmpty) return byId.trim();
 
@@ -228,6 +251,13 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     final byFaceValue = _carnetNameByFaceValue[line.faceValue];
     if (byFaceValue != null && byFaceValue.trim().isNotEmpty) {
       return byFaceValue.trim();
+    }
+
+    final rawName = line.carnetTypeName.trim();
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    if (rawName.isNotEmpty &&
+        (!isArabic || RegExp(r'[\u0600-\u06FF]').hasMatch(rawName))) {
+      return rawName;
     }
 
     final rawCode = line.carnetTypeCode.trim();
@@ -622,17 +652,20 @@ class _CarnetsSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return AppCard(
+      color: theme.colorScheme.primary,
+      borderColor: theme.colorScheme.primary,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.carnetsSummaryTitle,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: AppColors.ink,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 12),

@@ -77,7 +77,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           .catchError((_) => <CarnetType>[]);
       final raw = await facesFuture;
       final offerTypes = await typesFuture;
-      final lines = AcpecFacesMapper.fromRpcResult(raw, ownerId: user.id);
+      final lines = AcpecCarnetCatalogService.localizeFaceLinesByCarnetTypes(
+        lines: AcpecFacesMapper.fromRpcResult(raw, ownerId: user.id),
+        types: offerTypes,
+      );
       if (!mounted) return;
       setState(() {
         _liveFaceLines = lines;

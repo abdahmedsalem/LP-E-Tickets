@@ -218,7 +218,10 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       final catalogResult = await AcpecCarnetCatalogService.instance
           .loadMobileCatalogFacesOnly(companyId: companyId);
 
-      final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
+      final faces = AcpecCarnetCatalogService.localizeFaceLinesByCarnetTypes(
+        lines: AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id),
+        types: catalogResult.types,
+      );
       final byId = <String, int>{};
       final byCode = <String, int>{};
       final byName = <String, int>{};

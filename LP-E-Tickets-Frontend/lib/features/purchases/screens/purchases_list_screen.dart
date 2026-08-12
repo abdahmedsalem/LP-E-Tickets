@@ -10,6 +10,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../data/models/purchase_lot.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
@@ -70,15 +71,24 @@ class _PurchasesListScreenState extends State<PurchasesListScreen> {
         _error = null;
       });
       try {
+        final companyId = AppEnvironment.companyIdForUser(user);
+        final catalogFuture = AcpecCarnetCatalogService.instance
+            .loadMobileCatalogFacesOnly(companyId: companyId)
+            .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
         final raw = await OdooFueltokenFacade().purchasesList(
           const <String, dynamic>{},
         );
-        final lots = AcpecPurchasesMapper.fromRpcResult(
-          raw,
-          clientId: user.id,
-          clientName: user.name,
-          companyId: AppEnvironment.companyIdForUser(user),
-        );
+        final catalog = await catalogFuture;
+        final lots =
+            AcpecCarnetCatalogService.localizePurchaseLotsByCarnetTypes(
+              lots: AcpecPurchasesMapper.fromRpcResult(
+                raw,
+                clientId: user.id,
+                clientName: user.name,
+                companyId: companyId,
+              ),
+              types: catalog.types,
+            );
         if (!mounted) return;
         setState(() {
           _lots = lots;

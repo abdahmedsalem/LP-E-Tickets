@@ -15,6 +15,7 @@ import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/business_transaction.dart';
 import '../../../data/models/user_role.dart';
 import '../../../shared/widgets/api_required_view.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -304,6 +305,29 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
+  Future<AcpecCarnetCatalogLoadResult> _localizedCarnetCatalog(
+    dynamic user,
+  ) async {
+    try {
+      return await AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(
+            companyId: AppEnvironment.companyIdForUser(user),
+          );
+    } catch (_) {
+      return const AcpecCarnetCatalogLoadResult(types: []);
+    }
+  }
+
+  List<BusinessTransaction> _localizeTransactionsWithCatalog(
+    List<BusinessTransaction> transactions,
+    AcpecCarnetCatalogLoadResult catalog,
+  ) {
+    return AcpecCarnetCatalogService.localizeTransactionsByCarnetTypes(
+      transactions: transactions,
+      types: catalog.types,
+    );
+  }
+
   Future<void> _loadAcpec({required bool reset}) async {
     if (!AppEnvironment.useAcpecLiveData) return;
     if (!reset && (_acpecLoadingMore || !_acpecHasMore || _acpecLoading)) {
@@ -333,6 +357,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final offset = reset ? 0 : _acpecItems.length;
 
     try {
+      final catalogFuture = _localizedCarnetCatalog(user);
       final dynamic raw;
       if (user.role == UserRole.station) {
         raw = await OdooFueltokenFacade().stationTransactions(
@@ -350,11 +375,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         requestedLimit: _pageSize,
         requestedOffset: offset,
       );
+      final catalogResult = await catalogFuture;
       if (!mounted) return;
-      final batch = page.items.where(_matchesTypeFilter).toList();
-      final submitted = reset && !_isWalletMode
+      final batch = _localizeTransactionsWithCatalog(
+        page.items,
+        catalogResult,
+      ).where(_matchesTypeFilter).toList();
+      final submittedRaw = reset && !_isWalletMode
           ? await _submittedPurchasesHistory(user)
           : const <BusinessTransaction>[];
+      final submitted = _localizeTransactionsWithCatalog(
+        submittedRaw,
+        catalogResult,
+      );
       setState(() {
         if (reset) {
           _acpecItems = _mergeHistory(batch, submitted);
@@ -417,6 +450,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     int? totalHint;
 
     try {
+      final catalogFuture = _localizedCarnetCatalog(user);
       while (true) {
         final dynamic raw;
         if (user.role == UserRole.station) {
@@ -441,12 +475,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         if (!page.hasMore || page.items.isEmpty) break;
         if (offset >= _pageSize * _maxPagesFullRange) break;
       }
-      final submitted = _isWalletMode
+      final submittedRaw = _isWalletMode
           ? const <BusinessTransaction>[]
           : await _submittedPurchasesHistory(user);
+      final catalogResult = await catalogFuture;
+      final localizedAll = _localizeTransactionsWithCatalog(all, catalogResult);
+      final submitted = _localizeTransactionsWithCatalog(
+        submittedRaw,
+        catalogResult,
+      );
       if (!mounted) return;
       setState(() {
-        _acpecItems = _mergeHistory(all, submitted);
+        _acpecItems = _mergeHistory(localizedAll, submitted);
         _lastRefreshRevision = _revisionNotifier.value;
         _acpecTotal = totalHint ?? all.length;
         _acpecHasMore = false;

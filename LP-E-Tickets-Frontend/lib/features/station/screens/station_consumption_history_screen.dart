@@ -9,6 +9,7 @@ import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/business_transaction.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_transactions_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart'
@@ -102,6 +103,11 @@ class _StationConsumptionHistoryScreenState
     });
 
     try {
+      final catalogFuture = AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(
+            companyId: AppEnvironment.companyIdForUser(user),
+          )
+          .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
       final raw = await OdooFueltokenFacade().stationTransactions({
         'limit': _pageSize,
         'offset': 0,
@@ -113,8 +119,16 @@ class _StationConsumptionHistoryScreenState
         requestedLimit: _pageSize,
         requestedOffset: 0,
       );
+      final catalog = await catalogFuture;
+      final localizedItems =
+          AcpecCarnetCatalogService.localizeTransactionsByCarnetTypes(
+            transactions: page.items,
+            types: catalog.types,
+          );
       final list =
-          page.items.where((t) => t.type == TxType.stationConsumption).toList()
+          localizedItems
+              .where((t) => t.type == TxType.stationConsumption)
+              .toList()
             ..sort((a, b) => b.date.compareTo(a.date));
       if (!mounted) return;
       setState(() {

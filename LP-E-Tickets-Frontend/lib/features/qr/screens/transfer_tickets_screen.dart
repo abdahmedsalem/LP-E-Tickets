@@ -11,6 +11,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
 import '../../../data/models/face_line.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_faces_mapper.dart';
 import '../../../data/services/acpec_rpc_result_guard.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
@@ -180,11 +181,17 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
     });
 
     try {
+      final companyId = AppEnvironment.companyIdForUser(user);
       final facesRaw = await OdooFueltokenFacade().faces(
         const <String, dynamic>{},
       );
+      final catalogResult = await AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(companyId: companyId);
 
-      final faces = AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id);
+      final faces = AcpecCarnetCatalogService.localizeFaceLinesByCarnetTypes(
+        lines: AcpecFacesMapper.fromRpcResult(facesRaw, ownerId: user.id),
+        types: catalogResult.types,
+      );
 
       if (!mounted) return;
       setState(() {

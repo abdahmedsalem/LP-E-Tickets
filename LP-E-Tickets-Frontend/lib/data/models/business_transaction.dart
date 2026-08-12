@@ -109,6 +109,23 @@ class TransactionLine extends Equatable {
     this.qrId,
   });
 
+  TransactionLine copyWith({String? carnetTypeName}) {
+    return TransactionLine(
+      id: id,
+      carnetTypeId: carnetTypeId,
+      carnetTypeCode: carnetTypeCode,
+      carnetTypeName: carnetTypeName ?? this.carnetTypeName,
+      faceValue: faceValue,
+      qty: qty,
+      amount: amount,
+      carnetSize: carnetSize,
+      expirationDate: expirationDate,
+      lotId: lotId,
+      faceLineId: faceLineId,
+      qrId: qrId,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,
@@ -184,6 +201,37 @@ class BusinessTransaction extends Equatable {
     this.transferParty,
     this.transferPartyPhone,
   });
+
+  BusinessTransaction copyWith({List<TransactionLine>? lines}) {
+    return BusinessTransaction(
+      id: id,
+      txReference: txReference,
+      type: type,
+      date: date,
+      userId: userId,
+      userName: userName,
+      lines: lines ?? this.lines,
+      lotId: lotId,
+      lotInternalRef: lotInternalRef,
+      qrId: qrId,
+      qrName: qrName,
+      qrPublicCode: qrPublicCode,
+      stationId: stationId,
+      stationName: stationName,
+      note: note,
+      regularizationState: regularizationState,
+      regularizationReference: regularizationReference,
+      regularizationDate: regularizationDate,
+      transferIsIncoming: transferIsIncoming,
+      transferUsesTickets: transferUsesTickets,
+      actorUserId: actorUserId,
+      counterpartyUserId: counterpartyUserId,
+      actorUserName: actorUserName,
+      counterpartyUserName: counterpartyUserName,
+      transferParty: transferParty,
+      transferPartyPhone: transferPartyPhone,
+    );
+  }
 
   int get totalAmount => lines.fold(0, (s, l) => s + l.amount);
 

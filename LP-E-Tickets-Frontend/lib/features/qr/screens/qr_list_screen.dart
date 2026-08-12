@@ -10,6 +10,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/qr_refresh_bus.dart';
 import '../../../data/models/qr_token.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_qr_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
@@ -102,12 +103,21 @@ class _QrListScreenState extends State<QrListScreen> {
       _liveError = null;
     });
     try {
-      final raw = await OdooFueltokenFacade().qrList(_listRpcParams());
-      final list = AcpecQrMapper.listFromRpc(
-        raw,
-        ownerId: user.id,
-        ownerName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
+      final companyId = AppEnvironment.companyIdForUser(user);
+      final listFuture = OdooFueltokenFacade().qrList(_listRpcParams());
+      final catalogFuture = AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(companyId: companyId)
+          .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
+      final raw = await listFuture;
+      final catalogResult = await catalogFuture;
+      final list = AcpecCarnetCatalogService.localizeQrTokensByCarnetTypes(
+        qrs: AcpecQrMapper.listFromRpc(
+          raw,
+          ownerId: user.id,
+          ownerName: user.name,
+          companyId: companyId,
+        ),
+        types: catalogResult.types,
       );
       if (!mounted) return;
       setState(() {

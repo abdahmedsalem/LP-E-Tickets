@@ -67,6 +67,23 @@ class QrLine extends Equatable {
   int get amount => qty * faceValue;
   bool get isExpired => DateTime.now().isAfter(expirationDate);
 
+  QrLine copyWith({String? carnetTypeName}) {
+    return QrLine(
+      id: id,
+      qrId: qrId,
+      lotId: lotId,
+      lotInternalRef: lotInternalRef,
+      faceLineId: faceLineId,
+      carnetTypeId: carnetTypeId,
+      carnetTypeCode: carnetTypeCode,
+      carnetTypeName: carnetTypeName ?? this.carnetTypeName,
+      carnetSize: carnetSize,
+      faceValue: faceValue,
+      qty: qty,
+      expirationDate: expirationDate,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,
@@ -153,6 +170,7 @@ class QrToken extends Equatable {
 
   QrToken copyWith({
     QrState? state,
+    List<QrLine>? lines,
     DateTime? expiresAt,
     DateTime? consumedAt,
     String? consumedByStationId,
@@ -169,7 +187,7 @@ class QrToken extends Equatable {
       companyId: companyId,
       state: state ?? this.state,
       parentQrId: parentQrId,
-      lines: lines,
+      lines: lines ?? this.lines,
       createdAt: createdAt,
       expiresAt: expiresAt ?? this.expiresAt,
       consumedAt: consumedAt ?? this.consumedAt,

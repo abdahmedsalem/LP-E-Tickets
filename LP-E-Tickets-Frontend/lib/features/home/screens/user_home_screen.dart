@@ -28,19 +28,27 @@ class UserHomeScreen extends StatefulWidget {
 class _UserHomeScreenState extends State<UserHomeScreen> {
   WalletCubit? _walletCubit;
   String? _walletOwnerId;
+  String? _walletCompanyId;
 
   void _syncWalletCubit() {
     final user = context.read<AuthBloc>().state.user;
     if (user == null) {
+      _walletCubit?.close();
       _walletCubit = null;
       _walletOwnerId = null;
+      _walletCompanyId = null;
       return;
     }
-    if (_walletCubit != null && _walletOwnerId == user.id) {
+    final companyId = AppEnvironment.companyIdForUser(user);
+    if (_walletCubit != null &&
+        _walletOwnerId == user.id &&
+        _walletCompanyId == companyId) {
       return;
     }
-    _walletCubit = WalletCubit(ownerId: user.id);
+    _walletCubit?.close();
+    _walletCubit = WalletCubit(ownerId: user.id, companyId: companyId);
     _walletOwnerId = user.id;
+    _walletCompanyId = companyId;
   }
 
   @override
@@ -486,10 +494,7 @@ class _QuickActionCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: const Color(0xFFE9ECEF),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFFE9ECEF), width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.10),

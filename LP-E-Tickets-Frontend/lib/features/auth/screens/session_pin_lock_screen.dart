@@ -21,6 +21,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
   final _pin = TextEditingController();
   bool _obscure = true;
   bool _openForgotPasswordAfterLogout = false;
+  bool _unlockSubmitting = false;
 
   @override
   void dispose() {
@@ -32,6 +33,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final bloc = context.read<AuthBloc>();
     final pin = _pin.text.trim();
+    setState(() => _unlockSubmitting = true);
     bloc.add(AuthUnlockRequested(pin: pin));
   }
 
@@ -41,6 +43,12 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage || a.status != b.status,
       listener: (ctx, state) {
+        if (_unlockSubmitting && state.status != AuthStatus.authenticating) {
+          if (mounted) {
+            setState(() => _unlockSubmitting = false);
+          }
+        }
+
         if (_openForgotPasswordAfterLogout &&
             state.status == AuthStatus.unauthenticated) {
           _openForgotPasswordAfterLogout = false;
@@ -60,7 +68,7 @@ class _SessionPinLockScreenState extends State<SessionPinLockScreen> {
       },
       builder: (ctx, state) {
         final l10n = AppLocalizations.of(ctx);
-        final busy = state.status == AuthStatus.authenticating;
+        final busy = state.status == AuthStatus.authenticating || _unlockSubmitting;
         final userName = state.user?.name.trim();
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.dark,

@@ -37,6 +37,15 @@ void main() {
       },
     );
 
+    test('register screen starts fresh instead of resuming old input', () {
+      final source = _read('lib/features/auth/screens/register_screen.dart');
+
+      expect(source, contains('int _activeStep = 1;'));
+      expect(source, contains('unawaited(PendingSignupStore.clear())'));
+      expect(source, isNot(contains('PendingSignupStore.loadUsable()')));
+      expect(source, isNot(contains('loadDraftUsable')));
+    });
+
     test('router allows register verify OTP route without extra args', () {
       final source = _read('lib/core/router/app_router.dart');
 
@@ -46,7 +55,7 @@ void main() {
     });
 
     test(
-      'verify screen resumes pending signup and asks PIN again if needed',
+      'verify screen resumes pending signup and returns to fresh register',
       () {
         final source = _read(
           'lib/features/auth/screens/register_verify_otp_screen.dart',
@@ -62,8 +71,9 @@ void main() {
         expect(source, contains('pin: pin'));
         expect(source, contains('class _MissingRegisterOtpScreen'));
         expect(source, contains('Future<void> _leaveVerification()'));
-        expect(source, contains('context.canPop()'));
         expect(source, contains("context.go('/register')"));
+        expect(source, isNot(contains('context.canPop()')));
+        expect(source, isNot(contains('context.pop()')));
       },
     );
 

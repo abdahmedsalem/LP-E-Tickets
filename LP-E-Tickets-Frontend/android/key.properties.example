@@ -1,5 +1,5 @@
 # Copy to android/key.properties (gitignored) before store release builds.
-storePassword=your-keystore-password
-keyPassword=your-key-password
+storePassword=123456
+keyPassword=123456
 keyAlias=upload
-storeFile=../upload-keystore.jks
+storeFile=C:/Users/x1/upload-keystore.jks

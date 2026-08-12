@@ -15,8 +15,8 @@ void main() {
         ),
       );
 
-      expect(message, contains('PIN incorrect'));
-      expect(message, contains('SEC-PIN-1'));
+      expect(message, contains('Code PIN incorrect'));
+      expect(message, isNot(contains('SEC-PIN-1')));
       expect(message, isNot(contains('psycopg2')));
       expect(message, isNot(contains('private_table')));
     });

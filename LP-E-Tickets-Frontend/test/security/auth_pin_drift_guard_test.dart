@@ -105,6 +105,8 @@ void main() {
       expect(source, contains('AuthUnlockRequested(pin: pin)'));
       expect(source, contains('l10n.authUnlock'));
       expect(source, contains('l10n.authPinFourDigits'));
+      expect(source, contains('_unlockSubmitting'));
+      expect(source, contains('CircularProgressIndicator'));
       expect(source, isNot(contains('AuthLocalPinSetupRequested(pin: pin)')));
       expect(
         source,

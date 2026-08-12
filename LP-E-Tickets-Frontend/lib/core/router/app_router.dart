@@ -195,8 +195,8 @@ class AppRouter {
         GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
         GoRoute(
           path: '/register/verify-otp',
-          builder: (_, st) {
-            final x = st.extra;
+          builder: (ctx, state) {
+            final x = state.extra;
             return RegisterVerifyOtpScreen(
               args: x is RegisterOtpRouteArgs ? x : null,
             );

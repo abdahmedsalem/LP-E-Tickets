@@ -9,6 +9,7 @@ import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/purchase_lot.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
@@ -67,14 +68,21 @@ class _AdminSubmittedPurchasesScreenState
       final user = context.read<AuthBloc>().state.user;
       if (user == null) throw Exception('Session requise.');
       final companyId = AppEnvironment.companyIdForUser(user);
+      final catalogFuture = AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(companyId: companyId)
+          .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
       final raw = await OdooFueltokenFacade().adminPurchasesPending({
         'state': 'submitted',
       });
-      final lots = AcpecPurchasesMapper.fromRpcResult(
-        raw,
-        clientId: user.id,
-        clientName: user.name,
-        companyId: companyId,
+      final catalog = await catalogFuture;
+      final lots = AcpecCarnetCatalogService.localizePurchaseLotsByCarnetTypes(
+        lots: AcpecPurchasesMapper.fromRpcResult(
+          raw,
+          clientId: user.id,
+          clientName: user.name,
+          companyId: companyId,
+        ),
+        types: catalog.types,
       );
       if (!mounted) return;
       setState(() {

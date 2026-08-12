@@ -22,6 +22,7 @@ import '../../../core/utils/payment_proof.dart';
 import '../../../data/services/payment_proof_loader.dart';
 import '../../../data/models/purchase_lot.dart';
 import '../../../data/models/user_role.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
@@ -122,6 +123,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _loadError = null;
       });
       try {
+        final companyId = AppEnvironment.companyIdForUser(user);
+        final catalogFuture = AcpecCarnetCatalogService.instance
+            .loadMobileCatalogFacesOnly(companyId: companyId)
+            .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
         final params = <String, dynamic>{'purchase_id': purchaseId};
         final useAdminApi = widget.adminMode;
         final route = useAdminApi
@@ -137,7 +142,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           raw,
           clientId: user.id,
           clientName: user.name,
-          companyId: AppEnvironment.companyIdForUser(user),
+          companyId: companyId,
           requestedPurchaseId: purchaseId,
         );
         if (lot.proofs.isEmpty) {
@@ -148,7 +153,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 rawMobile,
                 clientId: user.id,
                 clientName: user.name,
-                companyId: AppEnvironment.companyIdForUser(user),
+                companyId: companyId,
                 requestedPurchaseId: purchaseId,
               );
               if (mobileLot.proofs.isNotEmpty) {
@@ -167,7 +172,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 rawList,
                 clientId: user.id,
                 clientName: user.name,
-                companyId: AppEnvironment.companyIdForUser(user),
+                companyId: companyId,
               );
               final idStr = '$purchaseId';
               PurchaseLot? match;
@@ -186,6 +191,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           }
         }
         lot = await _enrichProofsFromUrls(lot);
+        final catalog = await catalogFuture;
+        lot = AcpecCarnetCatalogService.localizePurchaseLotByCarnetTypes(
+          lot: lot,
+          types: catalog.types,
+        );
         if (!mounted) return;
         setState(() {
           _lot = lot;
@@ -261,6 +271,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       return Localizations.localeOf(context).languageCode == 'ar'
           ? AppLocalizations.of(context).purchaseUnconfirmed
           : _unconfirmedPurchaseActionMessage;
+    }
+    if (e is OdooJsonRpcException) {
+      final code = e.normalizedPublicCode;
+      if (code == 'INVALID_ACTION_CODE' || code == 'SECRET_CODE_INVALID') {
+        return AppLocalizations.of(context).commonPinIncorrect;
+      }
     }
     final message = ErrorPresenter.message(e).trim();
     if (message.length > 160 ||

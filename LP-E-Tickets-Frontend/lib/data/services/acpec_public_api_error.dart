@@ -43,7 +43,7 @@ class AcpecPublicApiError {
     'DEVICE_NOT_ALLOWED':
         'Cet appareil n’est pas autorisé à utiliser Tickets Carburant.',
     'ACTION_REFUSED': 'Action refusée. Vérifiez votre code puis réessayez.',
-    'INVALID_ACTION_CODE': 'PIN incorrect.',
+    'INVALID_ACTION_CODE': 'Code PIN incorrect.',
     'ACTION_CODE_LOCKED': 'Trop de tentatives. Réessayez plus tard.',
     'PIN_RESET_REQUIRED': 'PIN à réinitialiser. Utilisez PIN oublié.',
     'MISSING_ACTION_CODE': 'PIN requis pour confirmer cette opération.',
@@ -70,7 +70,7 @@ class AcpecPublicApiError {
         'La connexion par PIN legacy est désactivée. Utilisez le flux SMS.',
     'NAME_REQUIRED': 'Le nom est obligatoire.',
     'SECRET_CODE_REQUIRED': 'Le PIN est obligatoire.',
-    'SECRET_CODE_INVALID': 'PIN invalide.',
+    'SECRET_CODE_INVALID': 'Code PIN incorrect.',
     'PHONE_REQUIRED': 'Le numéro de téléphone est obligatoire.',
   };
 
@@ -85,7 +85,7 @@ class AcpecPublicApiError {
 
   String get displayMessage {
     final ref = normalizedReference;
-    if (ref == null) return publicMessage;
+    if (ref == null || code == 'INVALID_ACTION_CODE' || code == 'SECRET_CODE_INVALID') return publicMessage;
     return '$publicMessage\nRéférence support : $ref';
   }
 

@@ -14,6 +14,7 @@ import '../../data/models/business_transaction.dart';
 import '../../data/models/purchase_lot.dart';
 import '../../data/models/user_role.dart';
 import '../../data/models/qr_token.dart';
+import '../../data/services/acpec_carnet_catalog_service.dart';
 import '../../data/services/acpec_purchases_mapper.dart';
 import '../../data/services/acpec_qr_mapper.dart';
 import '../../data/services/acpec_transactions_mapper.dart';
@@ -158,14 +159,20 @@ class PurchaseValidationNotificationService {
     required bool emitNew,
   }) async {
     try {
+      final companyId = AppEnvironment.companyIdForUser(user);
+      final catalogFuture = _localizedCarnetCatalog(user);
       final raw = await OdooFueltokenFacade().purchasesList(
         const <String, dynamic>{'state': 'terminal'},
       );
-      final lots = AcpecPurchasesMapper.fromRpcResult(
-        raw,
-        clientId: user.id,
-        clientName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
+      final catalog = await catalogFuture;
+      final lots = AcpecCarnetCatalogService.localizePurchaseLotsByCarnetTypes(
+        lots: AcpecPurchasesMapper.fromRpcResult(
+          raw,
+          clientId: user.id,
+          clientName: user.name,
+          companyId: companyId,
+        ),
+        types: catalog.types,
       );
       final terminalLots = lots.where(
         (lot) =>
@@ -256,12 +263,18 @@ class PurchaseValidationNotificationService {
     required bool emitNew,
   }) async {
     try {
+      final companyId = AppEnvironment.companyIdForUser(user);
+      final catalogFuture = _localizedCarnetCatalog(user);
       final raw = await OdooFueltokenFacade().qrList(const <String, dynamic>{});
-      final qrs = AcpecQrMapper.listFromRpc(
-        raw,
-        ownerId: user.id,
-        ownerName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
+      final catalog = await catalogFuture;
+      final qrs = AcpecCarnetCatalogService.localizeQrTokensByCarnetTypes(
+        qrs: AcpecQrMapper.listFromRpc(
+          raw,
+          ownerId: user.id,
+          ownerName: user.name,
+          companyId: companyId,
+        ),
+        types: catalog.types,
       );
 
       final now = DateTime.now().toLocal();
@@ -728,6 +741,7 @@ class PurchaseValidationNotificationService {
     final seen = <String>{};
     final now = DateTime.now();
     final dateFrom = now.subtract(const Duration(days: 30));
+    final catalogFuture = _localizedCarnetCatalog(user);
     const pageSize = 50;
     const maxPages = 6;
 
@@ -760,7 +774,11 @@ class PurchaseValidationNotificationService {
     }
 
     out.sort((a, b) => b.date.compareTo(a.date));
-    return out;
+    final catalog = await catalogFuture;
+    return AcpecCarnetCatalogService.localizeTransactionsByCarnetTypes(
+      transactions: out,
+      types: catalog.types,
+    );
   }
 
   String _stationConsumptionKey(BusinessTransaction tx) {
@@ -772,6 +790,7 @@ class PurchaseValidationNotificationService {
     final seen = <String>{};
     final now = DateTime.now();
     final dateFrom = DateTime(now.year, 1, 1);
+    final catalogFuture = _localizedCarnetCatalog(user);
     const pageSize = 50;
     const maxPages = 6;
 
@@ -802,7 +821,24 @@ class PurchaseValidationNotificationService {
     }
 
     out.sort((a, b) => b.date.compareTo(a.date));
-    return out;
+    final catalog = await catalogFuture;
+    return AcpecCarnetCatalogService.localizeTransactionsByCarnetTypes(
+      transactions: out,
+      types: catalog.types,
+    );
+  }
+
+  Future<AcpecCarnetCatalogLoadResult> _localizedCarnetCatalog(
+    AppUser user,
+  ) async {
+    try {
+      return await AcpecCarnetCatalogService.instance
+          .loadMobileCatalogFacesOnly(
+            companyId: AppEnvironment.companyIdForUser(user),
+          );
+    } catch (_) {
+      return const AcpecCarnetCatalogLoadResult(types: []);
+    }
   }
 
   int _notificationIdFor(PurchaseLot lot) {

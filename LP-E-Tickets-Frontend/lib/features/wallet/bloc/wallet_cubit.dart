@@ -8,6 +8,7 @@ import '../../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../data/models/face_line.dart';
 import '../../../data/models/wallet_breakdown_extras.dart';
+import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../data/services/acpec_wallet_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/odoo_jsonrpc_client.dart';
@@ -61,11 +62,13 @@ class WalletState extends Equatable {
 }
 
 class WalletCubit extends Cubit<WalletState> {
-  WalletCubit({required this.ownerId}) : super(const WalletState()) {
+  WalletCubit({required this.ownerId, required this.companyId})
+    : super(const WalletState()) {
     refresh();
   }
 
   final String ownerId;
+  final String companyId;
 
   Future<void> refresh() async {
     if (isClosed) return;
@@ -87,16 +90,34 @@ class WalletCubit extends Cubit<WalletState> {
           OdooFueltokenRpcConfig.walletCurrent,
           params,
         );
+        final catalogFuture = AcpecCarnetCatalogService.instance
+            .loadMobileCatalogFacesOnly(companyId: companyId)
+            .catchError((_) => const AcpecCarnetCatalogLoadResult(types: []));
         final raw = await OdooFueltokenFacade().walletCurrent(params);
         if (isClosed) return;
         final mapped = AcpecWalletMapper.fromRpcResult(raw, ownerId: ownerId);
+        final catalog = await catalogFuture;
+        final localizedFaceLines =
+            AcpecCarnetCatalogService.localizeFaceLinesByCarnetTypes(
+              lines: mapped.faceLines,
+              types: catalog.types,
+            );
+        final localizedBreakdown =
+            AcpecCarnetCatalogService.localizeCarnetTypeBreakdownByCarnetTypes(
+              value: mapped.extras?.breakdownByCarnetType,
+              types: catalog.types,
+            );
+        final localizedExtras = mapped.extras?.copyWith(
+          breakdownByCarnetType:
+              localizedBreakdown ?? mapped.extras?.breakdownByCarnetType,
+        );
         if (isClosed) return;
         emit(
           WalletState(
             amount: mapped.amount,
             byFaceValue: mapped.byFaceValue,
-            faceLines: mapped.faceLines,
-            breakdownExtras: mapped.extras,
+            faceLines: localizedFaceLines,
+            breakdownExtras: localizedExtras,
             loading: false,
           ),
         );
