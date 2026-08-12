@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -412,149 +411,117 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     final l10n = AppLocalizations.of(context);
     if (!_hasSelection || _submitting) return;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) {
-        return StatefulBuilder(
-          builder: (context, modalSetState) {
-            final selectedTypes = _offerTypes
-                .where((type) => (_qty[type.id] ?? 0) > 0)
-                .toList();
-            final currency = _selectedCurrency;
-            final hasProof = _proofPath != null;
-            final canSubmit = hasProof && !_submitting;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (routeContext) {
+          return StatefulBuilder(
+            builder: (context, modalSetState) {
+              final selectedTypes = _offerTypes
+                  .where((type) => (_qty[type.id] ?? 0) > 0)
+                  .toList();
+              final currency = _selectedCurrency;
+              final hasProof = _proofPath != null;
+              final canSubmit = hasProof && !_submitting;
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 42,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE0E3E8),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.purchaseAddProof,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                            height: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          l10n.purchaseProofInstruction,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.muted,
-                            height: 1.35,
-                          ),
-                        ),
-                        _buildBankilyMerchantCodeWidget(context),
-                        const SizedBox(height: 16),
-                        _PurchaseLinesSummaryCard(
-                          lines: selectedTypes
-                              .map(
-                                (type) => _PurchaseLinesSummaryLine(
-                                  label: type.name,
-                                  qty: _qty[type.id] ?? 0,
-                                  amount:
-                                      (_qty[type.id] ?? 0) * type.totalAmount,
-                                  currency: currency,
+              return Scaffold(
+                backgroundColor: Colors.white,
+                body: SafeArea(
+                  child: Column(
+                    children: [
+                      ScreenHeader(
+                        title: l10n.purchaseAddProof,
+                        onBack: () => Navigator.of(routeContext).pop(),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildBankilyMerchantCodeWidget(context),
+                              const SizedBox(height: 16),
+                              _PurchaseLinesSummaryCard(
+                                lines: selectedTypes
+                                    .map(
+                                      (type) => _PurchaseLinesSummaryLine(
+                                        label: type.name,
+                                        qty: _qty[type.id] ?? 0,
+                                        amount:
+                                            (_qty[type.id] ?? 0) * type.totalAmount,
+                                        currency: currency,
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.purchaseProofTitle,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
+                                  height: 1.1,
                                 ),
-                              )
-                              .toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.purchaseProofTitle,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                            height: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _ProofPicker(
-                          path: _proofPath,
-                          onTap: () async {
-                            await _pickProof();
-                            if (mounted) {
-                              modalSetState(() {});
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: canSubmit
-                                ? () async {
-                                    Navigator.of(bottomSheetContext).pop();
-                                    await _submit();
+                              ),
+                              const SizedBox(height: 10),
+                              _ProofPicker(
+                                path: _proofPath,
+                                onTap: () async {
+                                  await _pickProof();
+                                  if (mounted) {
+                                    modalSetState(() {});
                                   }
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF43A047),
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: const Color(
-                                0xFF43A047,
-                              ).withValues(alpha: 0.35),
-                              disabledForegroundColor: Colors.white.withValues(
-                                alpha: 0.7,
+                                },
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: _submitting
-                                ? const AppInlineLoading(size: 20)
-                                : Text(
-                                    l10n.purchaseSendOrder,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: canSubmit
+                                      ? () async {
+                                          Navigator.of(routeContext).pop();
+                                          await _submit();
+                                        }
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF43A047),
+                                    foregroundColor: Colors.white,
+                                    disabledBackgroundColor: const Color(
+                                      0xFF43A047,
+                                    ).withValues(alpha: 0.35),
+                                    disabledForegroundColor: Colors.white.withValues(
+                                      alpha: 0.7,
                                     ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    elevation: 0,
                                   ),
+                                  child: _submitting
+                                      ? const AppInlineLoading(size: 20)
+                                      : Text(
+                                          l10n.purchaseSendOrder,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
