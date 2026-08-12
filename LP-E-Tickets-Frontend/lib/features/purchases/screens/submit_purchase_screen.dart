@@ -54,6 +54,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
+  String _selectedPaymentMethod = 'Bankily';
 
   @override
   void initState() {
@@ -439,7 +440,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildBankilyMerchantCodeWidget(context),
+                              _buildPaymentMethodSelectorWidget(context, modalSetState),
                               const SizedBox(height: 16),
                               _PurchaseLinesSummaryCard(
                                 lines: selectedTypes
@@ -525,119 +526,168 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     );
   }
 
-  Widget _buildBankilyMerchantCodeWidget(BuildContext context) {
-    const bankilyCode = '123456'; // Remplacez par votre code commercial Bankily réel de 6 chiffres
+  Widget _buildPaymentMethodSelectorWidget(BuildContext context, StateSetter modalSetState) {
+    final codes = {
+      'Bankily': '123456',
+      'Sedad': '222222',
+      'Masrivi': '333333',
+    };
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF43A047).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet,
-                  color: Color(0xFF43A047),
-                  size: 20,
+    final selectedCode = codes[_selectedPaymentMethod] ?? '123456';
+
+    Color themeColor;
+    switch (_selectedPaymentMethod) {
+      case 'Bankily':
+        themeColor = const Color(0xFF43A047);
+        break;
+      case 'Sedad':
+        themeColor = const Color(0xFF0284C7);
+        break;
+      case 'Masrivi':
+        themeColor = const Color(0xFFD97706);
+        break;
+      default:
+        themeColor = const Color(0xFF43A047);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'MODE DE PAIEMENT',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF94A3B8),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: ['Bankily', 'Sedad', 'Masrivi'].map((method) {
+            final isSelected = _selectedPaymentMethod == method;
+
+            Color methodColor;
+            IconData icon;
+            if (method == 'Bankily') {
+              methodColor = const Color(0xFF43A047);
+              icon = Icons.account_balance_wallet;
+            } else if (method == 'Sedad') {
+              methodColor = const Color(0xFF0284C7);
+              icon = Icons.payment;
+            } else {
+              methodColor = const Color(0xFFD97706);
+              icon = Icons.mobile_friendly;
+            }
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  modalSetState(() {
+                    _selectedPaymentMethod = method;
+                  });
+                  setState(() {
+                    _selectedPaymentMethod = method;
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? methodColor.withValues(alpha: 0.08) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? methodColor : const Color(0xFFE2E8F0),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        color: isSelected ? methodColor : const Color(0xFF64748B),
+                        size: 20,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        method,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: isSelected ? methodColor : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'Paiement par Bankily',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CODE COMMERCIAL $_selectedPaymentMethod'.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    selectedCode,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: selectedCode));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Code $_selectedPaymentMethod copié !'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: themeColor,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('Copier'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: themeColor,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Effectuez votre transfert vers le code marchand ci-dessous, puis importez la capture d\'écran du reçu comme preuve de paiement.',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF64748B),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'CODE COMMERCIAL',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF94A3B8),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      bankilyCode,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(const ClipboardData(text: bankilyCode));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Code Bankily copié !'),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: Color(0xFF43A047),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.copy, size: 16),
-                  label: const Text('Copier'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF43A047),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
