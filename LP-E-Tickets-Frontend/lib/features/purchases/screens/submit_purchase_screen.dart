@@ -430,7 +430,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   child: Column(
                     children: [
                       ScreenHeader(
-                        title: Localizations.localeOf(context).languageCode == 'ar' ? 'الدفع' : 'Payer',
+                        title: Localizations.localeOf(context).languageCode == 'ar' ? 'الدفع' : 'Paiement',
                         onBack: () => Navigator.of(routeContext).pop(),
                       ),
                       const SizedBox(height: 12),
