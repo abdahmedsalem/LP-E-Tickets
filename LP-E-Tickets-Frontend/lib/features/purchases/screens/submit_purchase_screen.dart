@@ -1599,74 +1599,67 @@ class _ProofPicker extends StatelessWidget {
                 )
               : Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                  padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1.5,
+                      color: AppColors.line,
+                      width: 1.2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0x08000000),
+                        blurRadius: 18,
+                        spreadRadius: -6,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
                     children: [
                       Container(
-                        width: 64,
-                        height: 64,
+                        width: 54,
+                        height: 54,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF43A047).withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
+                          color: const Color(0xFFF2F4F7),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Container(
-                          margin: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF43A047).withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.cloud_upload_outlined,
-                            color: Color(0xFF43A047),
-                            size: 28,
-                          ),
+                        child: Icon(
+                          Icons.upload_file_outlined,
+                          color: AppColors.muted,
+                          size: 26,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        l10n.purchaseAddProof,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        l10n.purchaseProofFormats(
-                          PurchasePaymentProofGuard.maxSizeLabel,
-                        ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF43A047),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'Choisir un reçu',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.purchaseAddProof,
+                              style: TextStyle(
+                                color: AppColors.ink,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              l10n.purchaseProofFormats(
+                                PurchasePaymentProofGuard.maxSizeLabel,
+                              ),
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                height: 1.25,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
                     ],
