@@ -132,9 +132,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
         : (user.stationName?.trim().isNotEmpty == true
               ? user.stationName!.trim()
               : l10n.station);
-    final operatorSubtitle = useAcpec && ap != null
-        ? ap.operatorName
-        : user.name;
     final inService = !useAcpec || ap == null || ap.stationActive;
 
     return Scaffold(
@@ -162,7 +159,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
         children: [
           _ProfileHeroCard(
             stationTitle: stationTitle,
-            operatorSubtitle: operatorSubtitle,
             inService: inService,
           ),
           const SizedBox(height: 14),
@@ -208,11 +204,6 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
                       color: scheme.onSurface,
                     ),
                   ),
-                  subtitle: Text(
-                    _localeCode == 'ar'
-                        ? l10n.settingsArabic
-                        : l10n.settingsFrench,
-                  ),
                   trailing: Icon(
                     Directionality.of(context) == TextDirection.rtl
                         ? Icons.chevron_left_rounded
@@ -254,12 +245,10 @@ class _StationProfileScreenState extends State<StationProfileScreen> {
 class _ProfileHeroCard extends StatelessWidget {
   const _ProfileHeroCard({
     required this.stationTitle,
-    required this.operatorSubtitle,
     required this.inService,
   });
 
   final String stationTitle;
-  final String operatorSubtitle;
   final bool inService;
 
   @override
@@ -351,17 +340,6 @@ class _ProfileHeroCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  operatorSubtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.82),
-                    height: 1.25,
-                  ),
                 ),
               ],
             ),

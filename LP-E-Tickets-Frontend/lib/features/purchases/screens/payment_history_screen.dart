@@ -528,10 +528,10 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
       future: _bytesFuture,
       builder: (context, snapshot) {
         final bytes = snapshot.data;
-        final hasImage =
-            bytes != null &&
-            bytes.isNotEmpty &&
-            (widget.proof?.hasImagePreview ?? true);
+        final isImage = bytes != null && bytes.isNotEmpty
+            ? _looksLikeImageBytes(bytes)
+            : (widget.proof?.hasImagePreview ?? true);
+        final hasImage = bytes != null && bytes.isNotEmpty && isImage;
         return SizedBox(
           height: 185,
           child: Stack(
@@ -701,6 +701,44 @@ bool _isFetchableProofUrl(String? value) {
   return raw.startsWith('http://') ||
       raw.startsWith('https://') ||
       raw.startsWith('/');
+}
+
+bool _looksLikeImageBytes(Uint8List bytes) {
+  if (bytes.length < 3) {
+    return false;
+  }
+  // JPEG: FF D8 FF
+  if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
+    return true;
+  }
+  // PNG: 89 50 4E 47
+  if (bytes.length >= 4 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47) {
+    return true;
+  }
+  // GIF: GIF
+  if (bytes.length >= 3 &&
+      bytes[0] == 0x47 &&
+      bytes[1] == 0x49 &&
+      bytes[2] == 0x46) {
+    return true;
+  }
+  // WEBP: WEBP
+  if (bytes.length >= 12 &&
+      bytes[0] == 0x52 &&
+      bytes[1] == 0x49 &&
+      bytes[2] == 0x46 &&
+      bytes[3] == 0x46 &&
+      bytes[8] == 0x57 &&
+      bytes[9] == 0x45 &&
+      bytes[10] == 0x42 &&
+      bytes[11] == 0x50) {
+    return true;
+  }
+  return false;
 }
 
 Color _stateColor(PurchaseLotState state) => switch (state) {

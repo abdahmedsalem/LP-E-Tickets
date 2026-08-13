@@ -246,10 +246,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   color: scheme.onSurface,
                 ),
               ),
-              subtitle: Text(
-                'Appliqué à toute l’app sur cet appareil.',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              ),
               value: _darkPref,
               activeTrackColor: scheme.primary,
               activeThumbColor: scheme.onPrimary,

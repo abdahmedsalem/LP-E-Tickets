@@ -328,14 +328,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           context,
                           icon: Icons.payments_outlined,
                           title: l10n.settingsPaymentHistory,
-                          subtitle: l10n.settingsPaymentHistorySubtitle,
                           onTap: () => context.push('/payment-history'),
                         ),
                         _prefTile(
                           context,
                           icon: Icons.language_rounded,
                           title: l10n.settingsLanguage,
-                          subtitle: AppPreferences.labelForCode(_localeCode),
                           onTap: _pickLanguage,
                         ),
                       ],
@@ -353,7 +351,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           context,
                           icon: Icons.fingerprint_rounded,
                           title: l10n.settingsQuickUnlock,
-                          subtitle: l10n.settingsQuickUnlockSubtitle,
                           trailing: Switch.adaptive(
                             value: _bioPref,
                             activeTrackColor: scheme.primary,
@@ -401,7 +398,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           context,
                           icon: Icons.person_remove_outlined,
                           title: l10n.settingsDeleteAccount,
-                          subtitle: l10n.settingsDeleteAccountSubtitle,
                           onTap: _showDeleteAccountInfo,
                           iconColor: AppColors.muted,
                         ),
@@ -490,7 +486,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String subtitle,
     VoidCallback? onTap,
     Widget? trailing,
     Color? iconColor,
@@ -505,31 +500,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(icon, color: iconColor ?? AppColors.ink2, size: 25),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SingleLineCardTitle(
-                    text: title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15.5,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurfaceVariant,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
-                ],
+              child: SingleLineCardTitle(
+                text: title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15.5,
+                  color: scheme.onSurface,
+                ),
               ),
             ),
             const SizedBox(width: 8),
