@@ -2366,6 +2366,72 @@ abstract class AppLocalizations {
   /// **'Mon compte'**
   String get settingsTitle;
 
+  /// No description provided for @settingsQuickAccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès rapide'**
+  String get settingsQuickAccess;
+
+  /// No description provided for @settingsPaymentHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique des paiements'**
+  String get settingsPaymentHistory;
+
+  /// No description provided for @settingsPaymentHistorySubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consultez vos opérations et règlements.'**
+  String get settingsPaymentHistorySubtitle;
+
+  /// No description provided for @settingsAccountSecurity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte & sécurité'**
+  String get settingsAccountSecurity;
+
+  /// No description provided for @settingsDeleteAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer mon compte'**
+  String get settingsDeleteAccount;
+
+  /// No description provided for @settingsDeleteAccountSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contactez le support pour la suppression'**
+  String get settingsDeleteAccountSubtitle;
+
+  /// No description provided for @settingsDeleteAccountTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande de suppression du compte'**
+  String get settingsDeleteAccountTitle;
+
+  /// No description provided for @settingsDeleteAccountMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression est irréversible. Consultez la procédure officielle ACPEC pour envoyer votre demande et vérifier votre identité.'**
+  String get settingsDeleteAccountMessage;
+
+  /// No description provided for @settingsDeletionGuide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copier le lien de la procédure'**
+  String get settingsDeletionGuide;
+
+  /// No description provided for @settingsDeletionLinkCopied.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien de suppression copié.'**
+  String get settingsDeletionLinkCopied;
+
+  /// No description provided for @settingsMemberSince.
+  ///
+  /// In fr, this message translates to:
+  /// **'Membre depuis {date}'**
+  String settingsMemberSince(String date);
+
   /// No description provided for @settingsPreferences.
   ///
   /// In fr, this message translates to:
@@ -3673,6 +3739,66 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Ex. 1234-5678-9012'**
   String get stationManualExample;
+
+  /// No description provided for @paymentHistoryScreenSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos achats et leurs justificatifs de paiement'**
+  String get paymentHistoryScreenSubtitle;
+
+  /// No description provided for @paymentHistoryEmptyTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun paiement'**
+  String get paymentHistoryEmptyTitle;
+
+  /// No description provided for @paymentHistoryEmptyMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vos achats effectués apparaîtront ici avec leur preuve de paiement.'**
+  String get paymentHistoryEmptyMessage;
+
+  /// No description provided for @paymentHistoryPurchaseDetails.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détails de l’achat'**
+  String get paymentHistoryPurchaseDetails;
+
+  /// No description provided for @paymentHistoryPurchaseReference.
+  ///
+  /// In fr, this message translates to:
+  /// **'Référence de l’achat'**
+  String get paymentHistoryPurchaseReference;
+
+  /// No description provided for @paymentHistoryCarnetsCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nombre de carnets'**
+  String get paymentHistoryCarnetsCount;
+
+  /// No description provided for @paymentHistoryTicketsCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nombre de tickets'**
+  String get paymentHistoryTicketsCount;
+
+  /// No description provided for @paymentHistoryOpenProof.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir'**
+  String get paymentHistoryOpenProof;
+
+  /// No description provided for @paymentHistoryProofDownloaded.
+  ///
+  /// In fr, this message translates to:
+  /// **'La preuve de paiement a été téléchargée.'**
+  String get paymentHistoryProofDownloaded;
+
+  /// No description provided for @paymentHistoryProofUnavailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'La preuve de paiement est temporairement indisponible.'**
+  String get paymentHistoryProofUnavailable;
 }
 
 class _AppLocalizationsDelegate

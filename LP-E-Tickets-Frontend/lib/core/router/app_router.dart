@@ -26,6 +26,7 @@ import '../../features/home/screens/client_shell_scaffold.dart';
 import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/user_home_screen.dart';
 import '../../features/purchases/screens/purchase_detail_screen.dart';
+import '../../features/purchases/screens/payment_history_screen.dart';
 import '../../features/purchases/screens/purchases_list_screen.dart';
 import '../../features/purchases/screens/submit_purchase_screen.dart';
 import '../../features/qr/screens/emit_qr_screen.dart';
@@ -282,6 +283,10 @@ class AppRouter {
           builder: (_, _) => const PurchasesListScreen(),
         ),
         GoRoute(
+          path: '/payment-history',
+          builder: (_, _) => const PaymentHistoryScreen(),
+        ),
+        GoRoute(
           path: '/purchases/new',
           builder: (_, _) => const SubmitPurchaseScreen(),
         ),
@@ -443,7 +448,10 @@ class AppRouter {
 
   /// Screens reserved for the client profile. Admins should not land here.
   static bool _isClientAppPath(String loc) {
-    if (loc == '/home' || loc == '/faces' || loc == '/transactions') {
+    if (loc == '/home' ||
+        loc == '/faces' ||
+        loc == '/transactions' ||
+        loc == '/payment-history') {
       return true;
     }
     if (loc.startsWith('/settings')) return true;

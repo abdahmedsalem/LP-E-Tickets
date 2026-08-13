@@ -1311,6 +1311,44 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsTitle => 'Mon compte';
 
   @override
+  String get settingsQuickAccess => 'Accès rapide';
+
+  @override
+  String get settingsPaymentHistory => 'Historique des paiements';
+
+  @override
+  String get settingsPaymentHistorySubtitle =>
+      'Consultez vos opérations et règlements.';
+
+  @override
+  String get settingsAccountSecurity => 'Compte & sécurité';
+
+  @override
+  String get settingsDeleteAccount => 'Supprimer mon compte';
+
+  @override
+  String get settingsDeleteAccountSubtitle =>
+      'Contactez le support pour la suppression';
+
+  @override
+  String get settingsDeleteAccountTitle => 'Demande de suppression du compte';
+
+  @override
+  String get settingsDeleteAccountMessage =>
+      'La suppression est irréversible. Consultez la procédure officielle ACPEC pour envoyer votre demande et vérifier votre identité.';
+
+  @override
+  String get settingsDeletionGuide => 'Copier le lien de la procédure';
+
+  @override
+  String get settingsDeletionLinkCopied => 'Lien de suppression copié.';
+
+  @override
+  String settingsMemberSince(String date) {
+    return 'Membre depuis $date';
+  }
+
+  @override
   String get settingsPreferences => 'Préférences';
 
   @override
@@ -2072,4 +2110,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get stationManualExample => 'Ex. 1234-5678-9012';
+
+  @override
+  String get paymentHistoryScreenSubtitle =>
+      'Vos achats et leurs justificatifs de paiement';
+
+  @override
+  String get paymentHistoryEmptyTitle => 'Aucun paiement';
+
+  @override
+  String get paymentHistoryEmptyMessage =>
+      'Vos achats effectués apparaîtront ici avec leur preuve de paiement.';
+
+  @override
+  String get paymentHistoryPurchaseDetails => 'Détails de l’achat';
+
+  @override
+  String get paymentHistoryPurchaseReference => 'Référence de l’achat';
+
+  @override
+  String get paymentHistoryCarnetsCount => 'Nombre de carnets';
+
+  @override
+  String get paymentHistoryTicketsCount => 'Nombre de tickets';
+
+  @override
+  String get paymentHistoryOpenProof => 'Ouvrir';
+
+  @override
+  String get paymentHistoryProofDownloaded =>
+      'La preuve de paiement a été téléchargée.';
+
+  @override
+  String get paymentHistoryProofUnavailable =>
+      'La preuve de paiement est temporairement indisponible.';
 }

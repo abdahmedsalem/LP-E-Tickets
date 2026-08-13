@@ -326,6 +326,7 @@ class AcpecPurchasesMapper {
       'proof',
       'preuve_paiement',
       'preuve',
+      'proof_attachments',
     ]) {
       final v = m[k];
       if (v is List && v.isNotEmpty) return true;
@@ -791,7 +792,8 @@ class AcpecPurchasesMapper {
         row['attachments'] ??
         row['payment_proofs'] ??
         row['documents'] ??
-        row['attachment_list'];
+        row['attachment_list'] ??
+        row['proof_attachments'];
     if (raw is Map) {
       final single = _proofFromMap(
         Map<String, dynamic>.from(raw),

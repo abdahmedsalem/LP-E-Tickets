@@ -7,6 +7,7 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../../core/auth/login_session_cache.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/config/odoo_api_config.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
@@ -20,14 +21,9 @@ import '../../../data/services/odoo_jsonrpc_client.dart'
     show OdooJsonRpcException;
 import '../../../main.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/widgets/app_bar_header.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../../shared/widgets/app_message.dart';
-
-const _settingsHeaderPadding = EdgeInsets.fromLTRB(24, 0, 24, 0);
-const _settingsHeaderGap = 4.0;
-const _settingsHeaderTitleSize = 24.0;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -206,12 +202,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _showDeleteAccountInfo() async {
+    final l10n = AppLocalizations.of(context);
+    final baseUrl = OdooApiConfig.baseUrlTrimmed;
+    final deletionUrl = baseUrl.isEmpty
+        ? 'https://acpec2.odoo.com/account-deletion'
+        : '$baseUrl/account-deletion';
+    final copyLink = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: Text(l10n.settingsDeleteAccountTitle),
+        content: Text(l10n.settingsDeleteAccountMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.link_rounded),
+            label: Text(l10n.settingsDeletionGuide),
+          ),
+        ],
+      ),
+    );
+    if (copyLink != true) return;
+    await Clipboard.setData(ClipboardData(text: deletionUrl));
+    if (!mounted) return;
+    AppMessage.info(context, l10n.settingsDeletionLinkCopied);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final user = context.watch<AuthBloc>().state.user;
     final scheme = Theme.of(context).colorScheme;
-    final pageBg = Colors.white;
+    const pageBg = Color(0xFFF7F9FC);
     final cardBg = scheme.surface;
     final borderColor = scheme.outline.withValues(
       alpha: scheme.brightness == Brightness.dark ? 0.5 : 0.35,
@@ -248,30 +275,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppBarHeader(
-                title: l10n.settingsTitle,
-                showBack: context.canPop(),
-                onBack: () => popOrGoClientHome(context),
-                largeTitle: true,
-                largeTitlePadding: _settingsHeaderPadding,
-                largeTitleGap: _settingsHeaderGap,
-                largeTitleFontSize: _settingsHeaderTitleSize,
-              ),
               Expanded(
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(
                     parent: BouncingScrollPhysics(),
                   ),
-                  padding: const EdgeInsets.fromLTRB(26, 16, 26, 120),
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 120),
                   children: [
+                    if (context.canPop())
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: IconButton(
+                          onPressed: () => popOrGoClientHome(context),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                        ),
+                      ),
                     if (user != null) ...[
                       _CompanyHeaderCard(
                         name: user.name,
                         initials: _initials(user.name),
                         verified: true,
-                        nifLabel: l10n.homeVerifiedAccount,
+                        verifiedLabel: l10n.homeVerifiedAccount,
+                        identifier: user.phone.isNotEmpty
+                            ? user.phone
+                            : user.id,
+                        memberSince: l10n.settingsMemberSince(
+                          DateFormat.yMMMM(
+                            Localizations.localeOf(context).toLanguageTag(),
+                          ).format(user.createdAt),
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
                       _StatsRow(
                         lotsText: lotsText,
                         qrsText: qrsText,
@@ -280,70 +314,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderColor: borderColor,
                         labelColor: scheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 24),
                     ],
                     _sectionTitle(
-                      l10n.settingsPreferences.toUpperCase(),
+                      l10n.settingsQuickAccess.toUpperCase(),
                       scheme,
                     ),
-                    _prefTile(
-                      context,
-                      icon: Icons.language_rounded,
-                      title: l10n.settingsLanguage,
-                      subtitle: AppPreferences.labelForCode(_localeCode),
+                    _ProfileMenuCard(
                       cardBg: cardBg,
                       borderColor: borderColor,
-                      onTap: _pickLanguage,
+                      children: [
+                        _prefTile(
+                          context,
+                          icon: Icons.payments_outlined,
+                          title: l10n.settingsPaymentHistory,
+                          subtitle: l10n.settingsPaymentHistorySubtitle,
+                          onTap: () => context.push('/payment-history'),
+                        ),
+                        _prefTile(
+                          context,
+                          icon: Icons.language_rounded,
+                          title: l10n.settingsLanguage,
+                          subtitle: AppPreferences.labelForCode(_localeCode),
+                          onTap: _pickLanguage,
+                        ),
+                      ],
                     ),
-                    _prefTile(
-                      context,
-                      icon: Icons.fingerprint_rounded,
-                      title: l10n.settingsQuickUnlock,
-                      subtitle: l10n.settingsQuickUnlockSubtitle,
+                    const SizedBox(height: 26),
+                    _sectionTitle(
+                      l10n.settingsAccountSecurity.toUpperCase(),
+                      scheme,
+                    ),
+                    _ProfileMenuCard(
                       cardBg: cardBg,
                       borderColor: borderColor,
-                      trailing: Switch.adaptive(
-                        value: _bioPref,
-                        activeTrackColor: scheme.primary,
-                        activeThumbColor: scheme.onPrimary,
-                        onChanged: (v) async {
-                          if (v) {
-                            try {
-                              final deviceOk = await _localAuth
-                                  .isDeviceSupported();
-                              final bioOk = await _localAuth.canCheckBiometrics;
-                              if (!deviceOk && !bioOk) {
-                                if (!context.mounted) return;
-                                AppMessage.warning(
-                                  context,
-                                  l10n.settingsBiometricUnavailable,
-                                );
-                                return;
+                      children: [
+                        _prefTile(
+                          context,
+                          icon: Icons.fingerprint_rounded,
+                          title: l10n.settingsQuickUnlock,
+                          subtitle: l10n.settingsQuickUnlockSubtitle,
+                          trailing: Switch.adaptive(
+                            value: _bioPref,
+                            activeTrackColor: scheme.primary,
+                            activeThumbColor: scheme.onPrimary,
+                            onChanged: (v) async {
+                              if (v) {
+                                try {
+                                  final deviceOk = await _localAuth
+                                      .isDeviceSupported();
+                                  final bioOk =
+                                      await _localAuth.canCheckBiometrics;
+                                  if (!deviceOk && !bioOk) {
+                                    if (!context.mounted) return;
+                                    AppMessage.warning(
+                                      context,
+                                      l10n.settingsBiometricUnavailable,
+                                    );
+                                    return;
+                                  }
+                                  final ok = await _localAuth.authenticate(
+                                    localizedReason:
+                                        l10n.settingsBiometricReason,
+                                    options: const AuthenticationOptions(
+                                      biometricOnly: true,
+                                      stickyAuth: true,
+                                      useErrorDialogs: true,
+                                    ),
+                                  );
+                                  if (!ok) return;
+                                } on PlatformException {
+                                  if (!context.mounted) return;
+                                  AppMessage.info(
+                                    context,
+                                    l10n.settingsActivationCancelled,
+                                  );
+                                  return;
+                                }
                               }
-                              final ok = await _localAuth.authenticate(
-                                localizedReason: l10n.settingsBiometricReason,
-                                options: const AuthenticationOptions(
-                                  biometricOnly: true,
-                                  stickyAuth: true,
-                                  useErrorDialogs: true,
-                                ),
-                              );
-                              if (!ok) return;
-                            } on PlatformException {
-                              if (!context.mounted) return;
-                              AppMessage.info(
-                                context,
-                                l10n.settingsActivationCancelled,
-                              );
-                              return;
-                            }
-                          }
-                          await LoginSessionCache.setBiometricPreferred(v);
-                          if (mounted) setState(() => _bioPref = v);
-                        },
-                      ),
+                              await LoginSessionCache.setBiometricPreferred(v);
+                              if (mounted) setState(() => _bioPref = v);
+                            },
+                          ),
+                        ),
+                        _prefTile(
+                          context,
+                          icon: Icons.person_remove_outlined,
+                          title: l10n.settingsDeleteAccount,
+                          subtitle: l10n.settingsDeleteAccountSubtitle,
+                          onTap: _showDeleteAccountInfo,
+                          iconColor: AppColors.muted,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 30),
                     _LogoutTile(
                       onLogout: () async {
                         final ok = await showDialog<bool>(
@@ -376,6 +440,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           context.go('/login');
                         }
                       },
+                    ),
+                    const SizedBox(height: 28),
+                    const Text(
+                      'Version 1.0.0 • ACPEC',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.hint,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -417,75 +491,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
-    required Color cardBg,
-    required Color borderColor,
     VoidCallback? onTap,
     Widget? trailing,
+    Color? iconColor,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    final iconBg = scheme.brightness == Brightness.dark
-        ? scheme.primary.withValues(alpha: 0.24)
-        : AppColors.primarySoft;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: cardBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: borderColor.withValues(alpha: 0.95)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor ?? AppColors.ink2, size: 25),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SingleLineCardTitle(
+                    text: title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15.5,
+                      color: scheme.onSurface,
+                    ),
                   ),
-                  child: Icon(icon, color: scheme.primary, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SingleLineCardTitle(
-                        text: title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: scheme.onSurface,
-                        ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: scheme.onSurfaceVariant,
+                        height: 1.25,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                          height: 1.25,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                trailing ??
-                    (onTap != null
-                        ? Icon(
-                            Icons.chevron_right_rounded,
-                            color: scheme.onSurfaceVariant,
-                          )
-                        : const SizedBox.shrink()),
-              ],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            trailing ??
+                (onTap != null
+                    ? Icon(Icons.chevron_right_rounded, color: AppColors.hint)
+                    : const SizedBox.shrink()),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileMenuCard extends StatelessWidget {
+  const _ProfileMenuCard({
+    required this.cardBg,
+    required this.borderColor,
+    required this.children,
+  });
+
+  final Color cardBg;
+  final Color borderColor;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+        side: BorderSide(color: borderColor.withValues(alpha: 0.75)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i != children.length - 1)
+              const Divider(
+                height: 1,
+                thickness: 1,
+                indent: 58,
+                endIndent: 18,
+                color: AppColors.lineSoft,
+              ),
+          ],
+        ],
       ),
     );
   }
@@ -496,94 +588,96 @@ class _CompanyHeaderCard extends StatelessWidget {
     required this.name,
     required this.initials,
     required this.verified,
-    required this.nifLabel,
+    required this.verifiedLabel,
+    required this.identifier,
+    required this.memberSince,
   });
 
   final String name;
   final String initials;
   final bool verified;
-  final String nifLabel;
+  final String verifiedLabel;
+  final String identifier;
+  final String memberSince;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
-        boxShadow: AppColors.softShadow,
+        gradient: AppColors.clientHomeWalletGradient,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x332EA043),
+            blurRadius: 22,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 82,
+            height: 82,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.brandBlue,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
             ),
             alignment: Alignment.center,
             child: Text(
               initials,
               style: const TextStyle(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: 28,
               ),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
+          const SizedBox(height: 13),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                verified ? Icons.verified_rounded : Icons.info_outline,
+                size: 15,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                verifiedLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.successSurface,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        verified ? Icons.verified_rounded : Icons.info_outline,
-                        size: 15,
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          nifLabel,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.leaderGreenDark,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          Text(
+            '$identifier  •  $memberSince',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.82),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -617,7 +711,7 @@ class _StatsRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: borderColor.withValues(alpha: 0.9)),
       ),
       child: Row(
@@ -687,62 +781,33 @@ class _LogoutTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+    return Center(
       child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: AppColors.danger.withValues(alpha: 0.22)),
-        ),
+        color: AppColors.dangerSurface.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(999),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onLogout,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.dangerSurface.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.logout_rounded,
+                const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.danger,
+                  size: 21,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  l10n.authLogout,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
                     color: AppColors.danger,
-                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.authLogout,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        l10n.settingsLogoutSubtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: cs.onSurfaceVariant,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
               ],
             ),
           ),

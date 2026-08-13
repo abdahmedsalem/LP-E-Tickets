@@ -18,6 +18,10 @@ void main() {
 
     expect(source, contains('l10n.settingsLanguage'));
     expect(source, contains('l10n.settingsQuickUnlock'));
+    expect(source, contains('l10n.settingsPaymentHistory'));
+    expect(source, contains("context.push('/payment-history')"));
+    expect(source, contains('l10n.settingsDeleteAccount'));
+    expect(source, contains('/account-deletion'));
     expect(source, contains('_LogoutTile('));
   });
 }

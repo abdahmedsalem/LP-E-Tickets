@@ -1280,6 +1280,42 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settingsTitle => 'حسابي';
 
   @override
+  String get settingsQuickAccess => 'وصول سريع';
+
+  @override
+  String get settingsPaymentHistory => 'سجل المدفوعات';
+
+  @override
+  String get settingsPaymentHistorySubtitle => 'راجع عملياتك ومدفوعاتك.';
+
+  @override
+  String get settingsAccountSecurity => 'الحساب والأمان';
+
+  @override
+  String get settingsDeleteAccount => 'حذف حسابي';
+
+  @override
+  String get settingsDeleteAccountSubtitle => 'تواصل مع الدعم لطلب الحذف';
+
+  @override
+  String get settingsDeleteAccountTitle => 'طلب حذف الحساب';
+
+  @override
+  String get settingsDeleteAccountMessage =>
+      'الحذف نهائي. راجع إجراء ACPEC الرسمي لإرسال طلبك والتحقق من هويتك.';
+
+  @override
+  String get settingsDeletionGuide => 'نسخ رابط الإجراء';
+
+  @override
+  String get settingsDeletionLinkCopied => 'تم نسخ رابط الحذف.';
+
+  @override
+  String settingsMemberSince(String date) {
+    return 'عضو منذ $date';
+  }
+
+  @override
   String get settingsPreferences => 'التفضيلات';
 
   @override
@@ -2023,4 +2059,36 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get stationManualExample => 'مثال: 1234-5678-9012';
+
+  @override
+  String get paymentHistoryScreenSubtitle =>
+      'مشترياتك وإثباتات الدفع الخاصة بها';
+
+  @override
+  String get paymentHistoryEmptyTitle => 'لا توجد مدفوعات';
+
+  @override
+  String get paymentHistoryEmptyMessage =>
+      'ستظهر مشترياتك هنا مع إثبات الدفع الخاص بها.';
+
+  @override
+  String get paymentHistoryPurchaseDetails => 'تفاصيل الشراء';
+
+  @override
+  String get paymentHistoryPurchaseReference => 'مرجع الشراء';
+
+  @override
+  String get paymentHistoryCarnetsCount => 'عدد الدفاتر';
+
+  @override
+  String get paymentHistoryTicketsCount => 'عدد التذاكر';
+
+  @override
+  String get paymentHistoryOpenProof => 'فتح';
+
+  @override
+  String get paymentHistoryProofDownloaded => 'تم تنزيل إثبات الدفع.';
+
+  @override
+  String get paymentHistoryProofUnavailable => 'إثبات الدفع غير متاح مؤقتًا.';
 }
