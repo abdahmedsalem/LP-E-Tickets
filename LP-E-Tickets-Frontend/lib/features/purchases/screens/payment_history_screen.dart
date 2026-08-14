@@ -99,7 +99,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   }) async {
     return Future.wait(
       purchases.map((purchase) async {
-        if (_hasLoadableProof(purchase)) return purchase;
+        if (_hasInlineProofBytes(purchase)) return purchase;
         final purchaseId = AcpecPurchasesMapper.resolvePurchaseId(purchase.id);
         if (purchaseId == null) return purchase;
         try {
@@ -113,7 +113,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
             companyId: companyId,
             requestedPurchaseId: purchaseId,
           );
-          return _hasLoadableProof(detail) ? detail : purchase;
+          if (_hasInlineProofBytes(detail)) return detail;
+          return !_hasLoadableProof(purchase) && _hasLoadableProof(detail)
+              ? detail
+              : purchase;
         } catch (_) {
           // L'historique reste utilisable même si un détail est indisponible.
           return purchase;
@@ -453,6 +456,14 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
     _bytesFuture = _loadBytes();
   }
 
+  @override
+  void didUpdateWidget(covariant _PaymentProofPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.proof != widget.proof) {
+      _bytesFuture = _loadBytes();
+    }
+  }
+
   Future<Uint8List?> _loadBytes() async {
     final proof = widget.proof;
     if (proof == null) return null;
@@ -528,10 +539,17 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
       future: _bytesFuture,
       builder: (context, snapshot) {
         final bytes = snapshot.data;
+        final hasBytes = bytes != null && bytes.isNotEmpty;
+        final proofExists = widget.proof?.isDisplayable == true;
+        final isWaiting = snapshot.connectionState == ConnectionState.waiting;
         final isImage = bytes != null && bytes.isNotEmpty
             ? _looksLikeImageBytes(bytes)
             : (widget.proof?.hasImagePreview ?? true);
-        final hasImage = bytes != null && bytes.isNotEmpty && isImage;
+        final hasImage = hasBytes && isImage;
+        final canDownload =
+            proofExists &&
+            !isWaiting &&
+            (hasBytes || _isFetchableProofUrl(widget.proof?.url));
         return SizedBox(
           height: 185,
           child: Stack(
@@ -543,7 +561,7 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
                   onTap: hasImage
                       ? () => _openFullScreen(context, bytes)
                       : null,
-                  child: snapshot.connectionState == ConnectionState.waiting
+                  child: isWaiting
                       ? const Center(
                           child: CircularProgressIndicator(
                             color: AppColors.leaderGreen,
@@ -557,24 +575,26 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
                         ),
                 ),
               ),
-              if (hasImage)
+              if (hasImage || canDownload)
                 PositionedDirectional(
                   end: 12,
                   bottom: 12,
                   child: Row(
                     children: [
-                      _ProofAction(
-                        icon: Icons.fullscreen_rounded,
-                        label: l10n.paymentHistoryOpenProof,
-                        onTap: () => _openFullScreen(context, bytes),
-                      ),
-                      const SizedBox(width: 8),
-                      _ProofAction(
-                        icon: Icons.download_rounded,
-                        label: l10n.commonDownload,
-                        filled: true,
-                        onTap: () => _download(context, bytes),
-                      ),
+                      if (hasImage)
+                        _ProofAction(
+                          icon: Icons.fullscreen_rounded,
+                          label: l10n.paymentHistoryOpenProof,
+                          onTap: () => _openFullScreen(context, bytes),
+                        ),
+                      if (hasImage && canDownload) const SizedBox(width: 8),
+                      if (canDownload)
+                        _ProofAction(
+                          icon: Icons.download_rounded,
+                          label: l10n.commonDownload,
+                          filled: true,
+                          onTap: () => _download(context, bytes),
+                        ),
                     ],
                   ),
                 ),
@@ -693,6 +713,13 @@ bool _hasLoadableProof(PurchaseLot purchase) {
     }
   }
   return _isFetchableProofUrl(purchase.paymentProofPath);
+}
+
+bool _hasInlineProofBytes(PurchaseLot purchase) {
+  for (final proof in purchase.proofs) {
+    if (proof.bytes?.isNotEmpty == true) return true;
+  }
+  return false;
 }
 
 bool _isFetchableProofUrl(String? value) {
