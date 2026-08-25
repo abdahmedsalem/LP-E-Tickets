@@ -4,6 +4,7 @@ import logging
 import re
 import secrets
 
+from datetime import timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError, UserError
 
@@ -58,6 +59,9 @@ class AcpecFuelQr(models.Model):
         readonly=True,
         copy=False,
     )
+    station_lock_until = fields.Datetime(string='Verrouillage station jusqu’à', copy=False, index=True)
+    station_lock_user_id = fields.Many2one('res.users', string='Agent station verrouilleur', copy=False)
+    station_lock_station_id = fields.Many2one('acpec.fuel.station', string='Station verrouilleuse', copy=False)
 
     _public_code_unique = models.Constraint(
         'UNIQUE(public_code)',
@@ -90,6 +94,9 @@ class AcpecFuelQr(models.Model):
         'consumed_user_id',
         'consumed_partner_id',
         'consumed_at',
+        'station_lock_until',
+        'station_lock_user_id',
+        'station_lock_station_id',
     ))
     _qr_numeric_hash_fields = frozenset((
         'qr_numeric_code_hash',
@@ -431,6 +438,41 @@ class AcpecFuelQr(models.Model):
             request_hash=request_hash,
             actor_user=actor,
         )
+
+    def _is_station_locked_now(self):
+        self.ensure_one()
+        if self.station_lock_until:
+            now = fields.Datetime.now()
+            if self.station_lock_until > now:
+                return True
+        return False
+
+    def _assert_not_station_locked(self, user=False):
+        self.ensure_one()
+        if self._is_station_locked_now():
+            if user and self.station_lock_user_id and self.station_lock_user_id.id == user.id:
+                return True
+            raise UserError(_("Ce QR Code est actuellement en cours d'utilisation dans une station. Veuillez patienter."))
+
+    def _set_station_scan_lock(self, station_user, station, duration_seconds=120):
+        self.ensure_one()
+        now = fields.Datetime.now()
+        if self.station_lock_until and self.station_lock_until <= now:
+            self._write_state_internal({
+                'station_lock_until': False,
+                'station_lock_user_id': False,
+                'station_lock_station_id': False,
+            })
+        if self.station_lock_until and self.station_lock_until > now:
+            if self.station_lock_user_id and self.station_lock_user_id.id != station_user.id:
+                raise UserError(_("Ce QR Code est déjà en cours de vérification dans une autre station."))
+        lock_until = now + timedelta(seconds=duration_seconds)
+        self._write_state_internal({
+            'station_lock_until': lock_until,
+            'station_lock_user_id': station_user.id,
+            'station_lock_station_id': station.id,
+        })
+        return True
 
     @api.model
     def _qr_internal_context_is_valid(self, operation):
@@ -859,6 +901,9 @@ class AcpecFuelQr(models.Model):
                 'consumed_user_id': actor_user.id,
                 'consumed_partner_id': actor_partner.id if actor_partner else False,
                 'consumed_at': fields.Datetime.now(),
+                'station_lock_until': False,
+                'station_lock_user_id': False,
+                'station_lock_station_id': False,
             })
             return Tx.log(
                 'consommation_station', self.company_id,
@@ -882,6 +927,7 @@ class AcpecFuelQr(models.Model):
             'retirer',
             actor,
         )
+        self._assert_not_station_locked(actor)
         Tx = self.env['acpec.fuel.transaction'].sudo()
         if idempotency_key:
             existing = Tx.search([
@@ -1001,6 +1047,7 @@ class AcpecFuelQr(models.Model):
             'separer',
             actor,
         )
+        self._assert_not_station_locked(actor)
         Tx = self.env['acpec.fuel.transaction'].sudo()
         if idempotency_key:
             existing = Tx.search([

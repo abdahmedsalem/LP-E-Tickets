@@ -2,6 +2,7 @@ import base64
 import binascii
 import os
 import time
+import psycopg2
 from odoo import http, _, fields
 from odoo.exceptions import ValidationError
 from odoo.http import request
@@ -289,6 +290,40 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'expiration_date': fields.Datetime.to_string(expiration) if expiration else False,
         }
 
+    def _purchase_proof_attachments(self, purchase):
+        attachments = purchase.sudo().proof_attachment_ids
+        if not attachments:
+            attachments = request.env['ir.attachment'].sudo().search([
+                ('res_model', '=', purchase._name),
+                ('res_id', '=', purchase.id),
+            ])
+        return attachments
+
+    def _purchase_proof_attachment_payload(self, attachment, include_data=False):
+        mimetype = attachment.mimetype or False
+        payload = {
+            'id': attachment.id,
+            'name': attachment.name,
+            'filename': attachment.name,
+            'mimetype': mimetype,
+            'file_size': attachment.file_size or 0,
+            'size': attachment.file_size or 0,
+            'url': '/web/content/%s' % attachment.id,
+            'download_url': '/web/content/%s?download=true' % attachment.id,
+        }
+        if include_data:
+            proof_data = attachment.sudo().datas or False
+            if isinstance(proof_data, bytes):
+                proof_data = proof_data.decode('ascii')
+            payload.update({
+                'proof_data': proof_data,
+                'payment_proof_data': proof_data,
+                'attachment_data': proof_data,
+                'image_data': proof_data,
+                'proof_image_data': proof_data,
+            })
+        return payload
+
     def _purchase_event_state(self, tx):
         # Patch43M14: rejection is carried by acpec.fuel.purchase, not by a
         # dedicated purchase_rejected transaction_type. A rejected purchase keeps
@@ -426,6 +461,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             'purchase_id': purchase.id,
             'purchase_name': purchase.name,
             'purchase_public_code': purchase.public_code,
+            'payment_method_id': purchase.payment_method_id.id if purchase.payment_method_id else False,
+            'payment_method_code': purchase.payment_method_code or False,
+            'payment_method_name': purchase.payment_method_name or False,
+            'payment_merchant_code': purchase.payment_merchant_code or False,
             'state': 'submitted',
             'purchase_state': 'submitted',
             'purchase_current_state': purchase.state,
@@ -594,6 +633,32 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
+    def _mobile_payment_method_payload(self, record):
+        return {
+            'id': record.id,
+            'code': record.code,
+            'name': record.name,
+            'display_name': record.name,
+            'merchant_code': record.merchant_code,
+            'logo_data': record.image_128 or False,
+            'image_128': record.image_128 or False,
+            'instructions': record.instructions or False,
+            'color_hex': record.color_hex or False,
+            'sequence': record.sequence,
+            'company_id': record.company_id.id if record.company_id else False,
+            'company_name': record.company_id.name if record.company_id else False,
+        }
+
+    @http.route('/api/acpec/fueltoken/v1/mobile/payment-methods', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    def payment_methods(self, **kwargs):
+        try:
+            wallet = self._mobile_wallet()
+            records = request.env['acpec.fuel.payment.method'].sudo().available_for_company(wallet.company_id)
+            items = [self._mobile_payment_method_payload(record) for record in records]
+            return self._json_response({'items': items, 'count': len(items)})
+        except Exception as exc:
+            return self._handle_exception_response(exc)
+
     @http.route('/api/acpec/fueltoken/v1/mobile/wallet/current', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def current_wallet(self, **kwargs):
         try:
@@ -684,6 +749,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     payment_reference=kwargs.get('payment_reference'),
                     idempotency_key=idempotency_key,
                     request_hash=request_hash,
+                    payment_method_id=kwargs.get('payment_method_id'),
+                    payment_method_code=kwargs.get('payment_method_code'),
                 )
                 purchase_txs = request.env['acpec.fuel.transaction'].sudo().search([
                     ('purchase_id', '=', purchase.id),
@@ -696,6 +763,10 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'public_code': purchase.public_code,
                     'state': purchase.state,
                     'amount_total': purchase.amount_total,
+                    'payment_method_id': purchase.payment_method_id.id if purchase.payment_method_id else False,
+                    'payment_method_code': purchase.payment_method_code or False,
+                    'payment_method_name': purchase.payment_method_name or False,
+                    'payment_merchant_code': purchase.payment_merchant_code or False,
                 })
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -706,6 +777,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             wallet = self._mobile_wallet()
             limit, offset = self._pagination_params(kwargs, default_limit=50, max_limit=100)
             include_meta = self._include_pagination_meta(kwargs)
+            include_proof_data = self._as_bool_param(kwargs.get('include_proof_data'))
             date_from, date_to = self._date_range_params(kwargs)
             state = self._get_clean_str(kwargs, 'state')
 
@@ -734,6 +806,22 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         'carnet_qty': line.carnet_qty,
                         'amount_total': line.amount_total,
                     })
+                proof_payloads = []
+                for index, attachment in enumerate(self._purchase_proof_attachments(p)):
+                    proof_payloads.append(
+                        self._purchase_proof_attachment_payload(
+                            attachment,
+                            include_data=include_proof_data and index == 0,
+                        )
+                    )
+                first_proof = proof_payloads[0] if proof_payloads else {}
+                first_proof_data = (
+                    first_proof.get('proof_image_data')
+                    or first_proof.get('image_data')
+                    or first_proof.get('payment_proof_data')
+                    or first_proof.get('proof_data')
+                    or False
+                )
                 result.append({
                     'id': p.id,
                     'name': p.name,
@@ -741,6 +829,24 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'state': p.state,
                     'amount_total': p.amount_total,
                     'face_qty_total': p.face_qty_total,
+                    'payment_reference': p.payment_reference or False,
+                    'payment_method_id': p.payment_method_id.id if p.payment_method_id else False,
+                    'payment_method_code': p.payment_method_code or False,
+                    'payment_method_name': p.payment_method_name or False,
+                    'payment_merchant_code': p.payment_merchant_code or False,
+                    'payment_proof_path': first_proof.get('url') or False,
+                    'payment_proof_url': first_proof.get('url') or False,
+                    'proof_filename': first_proof.get('filename') or False,
+                    'proof_mimetype': first_proof.get('mimetype') or False,
+                    'proof_attachment_id': first_proof.get('id') or False,
+                    **({
+                        'proof_data': first_proof_data,
+                        'payment_proof_data': first_proof_data,
+                        'image_data': first_proof_data,
+                        'proof_image_data': first_proof_data,
+                    } if first_proof_data else {}),
+                    'proof_attachments': proof_payloads,
+                    'proofs': proof_payloads,
                     'submitted_at': fields.Datetime.to_string(p.submitted_at) if p.submitted_at else False,
                     'approved_at': fields.Datetime.to_string(p.approved_at) if p.approved_at else False,
                     'rejected_at': fields.Datetime.to_string(p.rejected_at) if p.rejected_at else False,
@@ -769,15 +875,24 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             ], limit=1)
             if not purchase:
                 raise ValidationError(_('Lot d’achat introuvable.'))
-            attachments = []
-            for attachment in purchase.proof_attachment_ids:
-                attachments.append({
-                    'id': attachment.id,
-                    'name': attachment.name,
-                    'mimetype': attachment.mimetype or False,
-                    'file_size': attachment.file_size or 0,
-                    'create_date': fields.Datetime.to_string(attachment.create_date) if attachment.create_date else False,
-                })
+            attachments = [
+                dict(
+                    self._purchase_proof_attachment_payload(
+                        attachment,
+                        include_data=True,
+                    ),
+                    create_date=fields.Datetime.to_string(attachment.create_date) if attachment.create_date else False,
+                )
+                for attachment in self._purchase_proof_attachments(purchase)
+            ]
+            first_proof = attachments[0] if attachments else {}
+            first_proof_data = (
+                first_proof.get('proof_image_data')
+                or first_proof.get('image_data')
+                or first_proof.get('payment_proof_data')
+                or first_proof.get('proof_data')
+                or False
+            )
             lines = []
             for line in purchase.line_ids:
                 lines.append(self._purchase_history_line_payload(purchase, line))
@@ -789,13 +904,29 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 'amount_total': purchase.amount_total,
                 'face_qty_total': purchase.face_qty_total,
                 'payment_reference': purchase.payment_reference or False,
+                'payment_method_id': purchase.payment_method_id.id if purchase.payment_method_id else False,
+                'payment_method_code': purchase.payment_method_code or False,
+                'payment_method_name': purchase.payment_method_name or False,
+                'payment_merchant_code': purchase.payment_merchant_code or False,
                 'submitted_at': fields.Datetime.to_string(purchase.submitted_at) if purchase.submitted_at else False,
                 'approved_at': fields.Datetime.to_string(purchase.approved_at) if purchase.approved_at else False,
                 'approved_by': purchase.approved_by.name if purchase.approved_by else False,
                 'rejected_at': fields.Datetime.to_string(purchase.rejected_at) if purchase.rejected_at else False,
                 'rejected_by': purchase.rejected_by.name if purchase.rejected_by else False,
                 'rejection_reason': purchase.rejection_reason or False,
+                'payment_proof_path': first_proof.get('url') or False,
+                'payment_proof_url': first_proof.get('url') or False,
+                'proof_filename': first_proof.get('filename') or False,
+                'proof_mimetype': first_proof.get('mimetype') or False,
+                'proof_attachment_id': first_proof.get('id') or False,
+                **({
+                    'proof_data': first_proof_data,
+                    'payment_proof_data': first_proof_data,
+                    'image_data': first_proof_data,
+                    'proof_image_data': first_proof_data,
+                } if first_proof_data else {}),
                 'proof_attachments': attachments,
+                'proofs': attachments,
                 'lines': lines,
             })
         except Exception as exc:
@@ -1222,6 +1353,24 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             } for line in transfer.line_ids],
         }
 
+    def _finalize_idempotent_transfer_replay(self, transfer, source_user, request_hash, purpose, kwargs):
+        if transfer.request_hash and transfer.request_hash != request_hash:
+            self._raise_sensitive_action_error(
+                code='IDEMPOTENCY_PAYLOAD_MISMATCH',
+                public_code='REQUEST_REFUSED',
+                purpose=purpose,
+                debug_reason='idempotency_payload_mismatch',
+                user=source_user,
+                params=kwargs,
+            )
+        if transfer.state != 'confirmed':
+            mobile_session = self._get_mobile_session(required=True)
+            transfer._confirm_mobile_internal(
+                actor_user=source_user,
+                mobile_session=mobile_session,
+            )
+        return transfer
+
     @http.route(
         '/api/acpec/fueltoken/v1/mobile/tickets/transfer',
         type='jsonrpc', auth='public', methods=['POST'], csrf=False,
@@ -1328,21 +1477,42 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         'qty_faces': qty_tickets,
                     })
 
-                with request.env.cr.savepoint():
-                    transfer = request.env['acpec.fuel.ticket.transfer']._create_internal({
-                        'source_wallet_id': source_wallet.id,
-                        'dest_wallet_id': dest_wallet.id,
-                        'company_id': source_wallet.company_id.id,
-                        'note': note or False,
-                        'idempotency_key': idempotency_key,
-                        'request_hash': request_hash,
-                        'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
-                    })
-                    mobile_session = self._get_mobile_session(required=True)
-                    transfer._confirm_mobile_internal(
-                        actor_user=source_user,
-                        mobile_session=mobile_session,
-                    )
+                transfer = False
+                try:
+                    with request.env.cr.savepoint():
+                        transfer = request.env['acpec.fuel.ticket.transfer']._create_internal({
+                            'source_wallet_id': source_wallet.id,
+                            'dest_wallet_id': dest_wallet.id,
+                            'company_id': source_wallet.company_id.id,
+                            'note': note or False,
+                            'idempotency_key': idempotency_key,
+                            'request_hash': request_hash,
+                            'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
+                        })
+                        mobile_session = self._get_mobile_session(required=True)
+                        transfer._confirm_mobile_internal(
+                            actor_user=source_user,
+                            mobile_session=mobile_session,
+                        )
+                except psycopg2.IntegrityError as error:
+                    if getattr(error.diag, 'constraint_name', False) not in (
+                        'acpec_fuel_ticket_transfer_idempotency_source_wallet_unique',
+                    ):
+                        raise
+                    transfer = request.env['acpec.fuel.ticket.transfer'].sudo().search([
+                        ('source_wallet_id', '=', source_wallet.id),
+                        ('idempotency_key', '=', idempotency_key),
+                    ], limit=1)
+                    if not transfer:
+                        raise
+
+                transfer = self._finalize_idempotent_transfer_replay(
+                    transfer,
+                    source_user,
+                    request_hash,
+                    'ticket_transfer',
+                    kwargs,
+                )
 
                 response = self._json_response(self._ticket_transfer_payload(transfer))
                 self._log_api_diagnostic_out(endpoint, response, operation=operation, started_at=started_at)
@@ -1503,17 +1673,14 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         ('idempotency_key', '=', idempotency_key),
                     ], limit=1)
                     if existing:
-                        if existing.request_hash and existing.request_hash != request_hash:
-                            self._raise_sensitive_action_error(
-                                code='IDEMPOTENCY_PAYLOAD_MISMATCH',
-                                public_code='REQUEST_REFUSED',
-                                purpose='carnet_transfer',
-                                debug_reason='idempotency_payload_mismatch',
-                                user=source_user,
-                                params=kwargs,
-                            )
-                        if existing.state == 'confirmed':
-                            return self._json_response(self._transfer_payload(existing))
+                        existing = self._finalize_idempotent_transfer_replay(
+                            existing,
+                            source_user,
+                            request_hash,
+                            'carnet_transfer',
+                            kwargs,
+                        )
+                        return self._json_response(self._transfer_payload(existing))
 
                 # ── 3. Wallet destinataire (find or create) ──────────────────────
                 dest_wallet = request.env['acpec.fuel.wallet'].sudo().get_or_create(
@@ -1539,21 +1706,43 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     })
 
                 # ── 5. Créer et confirmer le transfert ───────────────────────────
-                with request.env.cr.savepoint():
-                    transfer = request.env['acpec.fuel.carnet.transfer']._create_internal({
-                        'source_wallet_id': wallet.id,
-                        'dest_wallet_id': dest_wallet.id,
-                        'company_id': wallet.company_id.id,
-                        'note': self._get_clean_str(kwargs, 'note') or False,
-                        'idempotency_key': idempotency_key or False,
-                        'request_hash': request_hash,
-                        'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
-                    })
-                    mobile_session = self._get_mobile_session(required=True)
-                    transfer._confirm_mobile_internal(
-                        actor_user=source_user,
-                        mobile_session=mobile_session,
-                    )
+                transfer = False
+                try:
+                    with request.env.cr.savepoint():
+                        transfer = request.env['acpec.fuel.carnet.transfer']._create_internal({
+                            'source_wallet_id': wallet.id,
+                            'dest_wallet_id': dest_wallet.id,
+                            'company_id': wallet.company_id.id,
+                            'note': self._get_clean_str(kwargs, 'note') or False,
+                            'idempotency_key': idempotency_key or False,
+                            'request_hash': request_hash,
+                            'line_ids': [(0, 0, vals) for vals in transfer_line_vals],
+                        })
+                        mobile_session = self._get_mobile_session(required=True)
+                        transfer._confirm_mobile_internal(
+                            actor_user=source_user,
+                            mobile_session=mobile_session,
+                        )
+                except psycopg2.IntegrityError as error:
+                    if getattr(error.diag, 'constraint_name', False) not in (
+                        'acpec_fuel_carnet_transfer_idempotency_source_wallet_unique',
+                        'acpec_fuel_carnet_transfer_idempotency_unique',
+                    ):
+                        raise
+                    transfer = request.env['acpec.fuel.carnet.transfer'].sudo().search([
+                        ('source_wallet_id', '=', wallet.id),
+                        ('idempotency_key', '=', idempotency_key),
+                    ], limit=1)
+                    if not transfer:
+                        raise
+
+                transfer = self._finalize_idempotent_transfer_replay(
+                    transfer,
+                    source_user,
+                    request_hash,
+                    'carnet_transfer',
+                    kwargs,
+                )
 
                 return self._json_response(self._transfer_payload(transfer))
         except Exception as exc:

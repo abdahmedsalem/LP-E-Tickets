@@ -223,6 +223,8 @@ class AcpecFuelPurchaseLineSnapshotRepairM21E(models.Model):
                 MAX(face_value) AS max_face_value
               FROM acpec_fuel_face_line
              WHERE purchase_line_id IS NOT NULL
+               AND COALESCE(is_transfer_fragment, FALSE) = FALSE
+               AND origin_face_line_id IS NULL
              GROUP BY purchase_line_id
         """)
         repaired = 0

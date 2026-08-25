@@ -194,6 +194,7 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 qr._lock_records()
                 qr.invalidate_recordset()
                 qr._refresh_expiration_state_internal()
+                qr._set_station_scan_lock(user, station, duration_seconds=120)
             payload = self._qr_check_payload(qr, station)
             if not payload.get('can_consume'):
                 return self._sensitive_refusal_response(

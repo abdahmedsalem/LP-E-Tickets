@@ -22,6 +22,7 @@
         'views/mobile_users_backoffice_views.xml',
         'views/mobile_user_human_code_views.xml',
         'views/mobile_auth_french_views.xml',
+        'views/login_templates.xml',
         # Les menus sont chargés en dernier : ils référencent des actions
         # définies dans backoffice_action_views.xml et mobile_users_backoffice_views.xml.
         'views/backoffice_menu_views.xml',

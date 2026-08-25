@@ -8,7 +8,7 @@
                 <title>Carte des stations</title>
                 <link
                     rel="stylesheet"
-                    href="/acpec_fueltoken_backoffice_ui/static/lib/leaflet/leaflet.css"
+                    href="https://api.mapbox.com/mapbox-gl-js/v3.6.2/mapbox-gl.css"
                 />
                 <link
                     rel="stylesheet"
@@ -16,7 +16,7 @@
                 />
                 <script
                     defer="defer"
-                    src="/acpec_fueltoken_backoffice_ui/static/lib/leaflet/leaflet.js"
+                    src="https://api.mapbox.com/mapbox-gl-js/v3.6.2/mapbox-gl.js"
                 />
                 <script
                     defer="defer"
@@ -41,6 +41,8 @@
                     <div
                         id="station-map"
                         class="lp-station-map"
+                        t-att-data-mapbox-token="mapbox_token"
+                        t-att-data-mapbox-style="mapbox_style"
                         t-att-data-stations="stations_json"
                     />
                     <div id="station-map-empty" class="lp-station-map-empty" hidden="hidden">

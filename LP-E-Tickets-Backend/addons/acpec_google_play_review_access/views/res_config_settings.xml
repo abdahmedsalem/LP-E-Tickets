@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//block[@id='acpec_sms_otp_settings']" position="inside">
                 <setting string="Acces de demonstration Google Play"
-                         help="Autorise uniquement les numeros configures a utiliser le code OTP fixe 000000 pour la connexion. Separez-les par des virgules."
+                         help="Autorise uniquement les numeros configures a utiliser le code OTP fixe 000000 pour la connexion et a passer automatiquement la validation device. Separez-les par des virgules."
                          groups="base.group_system">
                     <group>
                         <field name="google_play_review_enabled"/>
@@ -15,7 +15,7 @@
                                invisible="not google_play_review_enabled"
                                required="google_play_review_enabled"/>
                         <div class="text-muted" invisible="not google_play_review_enabled">
-                            Code OTP reutilisable : 000000. Les inscriptions et les reinitialisations conservent leur OTP normal.
+                            Code OTP reutilisable pour la connexion : 000000. Le device du compte configure est approuve automatiquement a la creation de session.
                         </div>
                     </group>
                 </setting>

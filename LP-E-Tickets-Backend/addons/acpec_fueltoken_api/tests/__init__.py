@@ -29,6 +29,7 @@ from . import test_station_qr_contract
 from . import test_role_based_smoke_h3
 from . import test_purchase_create_pin_failure_endpoint
 from . import test_purchase_payment_proof_guard
+from . import test_mobile_purchase_payment_proof_payload
 from . import test_mobile_transaction_report_runtime_policy
 from . import test_client_mobile_role_exclusive_guard
 from . import test_client_mobile_only_endpoint_guard

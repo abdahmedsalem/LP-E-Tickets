@@ -36,6 +36,10 @@ class AcpecFuelPurchase(models.Model):
         string='Preuves de paiement',
     )
     payment_reference = fields.Char(string='Reference paiement')
+    payment_method_id = fields.Many2one('acpec.fuel.payment.method', string='Mode de paiement', readonly=True)
+    payment_method_code = fields.Char(string='Code mode paiement', readonly=True)
+    payment_method_name = fields.Char(string='Mode paiement', readonly=True)
+    payment_merchant_code = fields.Char(string='Code commerçant', readonly=True)
     idempotency_key = fields.Char(string='Cle idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     approval_idempotency_key = fields.Char(string='Cle idempotence validation', index=True, copy=False)
@@ -478,6 +482,27 @@ class AcpecFuelPurchase(models.Model):
             },
         }
 
+    def action_open_reject_wizard(self):
+        self.ensure_one()
+        actor = self._purchase_action_actor(False)
+        self._assert_purchase_action_allowed(
+            'reject',
+            actor,
+        )
+        if self.state == 'approved':
+            raise UserError(_('Un lot valide ne peut pas etre rejete.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Rejeter le lot achat'),
+            'res_model': 'acpec.fuel.purchase.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_purchase_id': self.id,
+                'default_rejection_reason': self.rejection_reason or '',
+            },
+        }
+
 
 
     def _check_before_submit(self):
@@ -527,6 +552,17 @@ class AcpecFuelPurchase(models.Model):
 
         return True
 
+    @api.model
+    def _normalize_rejection_reason(self, reason):
+        if reason is None or reason is False:
+            reason = ''
+        if isinstance(reason, bytes):
+            reason = reason.decode('utf-8', errors='ignore')
+        reason = str(reason).strip()
+        if not reason:
+            raise ValidationError(_('Le motif de rejet est obligatoire.'))
+        return reason
+
     def action_reject(
         self,
         reason=False,
@@ -547,6 +583,9 @@ class AcpecFuelPurchase(models.Model):
                 reason
                 if reason not in (False, None)
                 else rec.rejection_reason or False
+            )
+            rejection_reason = rec._normalize_rejection_reason(
+                rejection_reason
             )
             rec._write_rejection_internal({
                 'state': 'rejected',
@@ -659,6 +698,9 @@ class AcpecFuelPurchase(models.Model):
                 raise UserError(_('Seuls les lots brouillon ou soumis peuvent etre valides.'))
 
         elif operation == 'rejection_write':
+            vals['rejection_reason'] = self._normalize_rejection_reason(
+                vals.get('rejection_reason')
+            )
             if (
                 vals.get('state') != 'rejected'
                 or not vals.get('rejected_at')
@@ -721,7 +763,19 @@ class AcpecFuelPurchase(models.Model):
         })
 
     @api.model
-    def create_from_api(self, partner, company, lines, proof_filename, proof_data, payment_reference=False, idempotency_key=False, request_hash=False):
+    def create_from_api(
+        self,
+        partner,
+        company,
+        lines,
+        proof_filename,
+        proof_data,
+        payment_reference=False,
+        idempotency_key=False,
+        request_hash=False,
+        payment_method_id=False,
+        payment_method_code=False,
+    ):
         if idempotency_key:
             existing = self.sudo().search([
                 ('partner_id', '=', partner.id),
@@ -732,11 +786,22 @@ class AcpecFuelPurchase(models.Model):
                     raise ValidationError(_('idempotency_conflict: même idempotency_key avec payload différent.'))
                 return existing
         proof_filename, proof_data, proof_mimetype = self._validate_purchase_proof(proof_filename, proof_data)
+        payment_method = self.env['acpec.fuel.payment.method'].sudo().find_available_for_company(
+            company,
+            payment_method_id=payment_method_id,
+            payment_method_code=payment_method_code,
+        )
+        if (payment_method_id or payment_method_code) and not payment_method:
+            raise ValidationError(_('Mode de paiement indisponible.'))
         with self.env.cr.savepoint():
             purchase = self._create_internal({
                 'partner_id': partner.id,
                 'company_id': company.id,
                 'payment_reference': payment_reference or False,
+                'payment_method_id': payment_method.id if payment_method else False,
+                'payment_method_code': payment_method.code if payment_method else False,
+                'payment_method_name': payment_method.name if payment_method else False,
+                'payment_merchant_code': payment_method.merchant_code if payment_method else False,
                 'idempotency_key': idempotency_key or False,
                 'request_hash': request_hash or False,
             })

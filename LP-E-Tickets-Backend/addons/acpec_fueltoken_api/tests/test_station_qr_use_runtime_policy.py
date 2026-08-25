@@ -886,8 +886,9 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertEqual(pending_totals.get('regularization_state'), 'pending')
         self.assertEqual(pending_totals.get('qr_count'), 1)
         self.assertAlmostEqual(pending_totals.get('amount_total'), pending_tx.amount_total)
-        self.assertIn(str(pending_tx.id), repr(pending_response))
-        self.assertNotIn(str(regularized_tx.id), repr(pending_response))
+        pending_ids = [item.get('id') for item in pending_payload.get('items') or []]
+        self.assertIn(pending_tx.id, pending_ids)
+        self.assertNotIn(regularized_tx.id, pending_ids)
 
         regularized_response = self._call_station_transactions(controller, {
             'regularization_state': 'regularized',

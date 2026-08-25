@@ -40,11 +40,11 @@ class AcpecFuelTokenWebApp(http.Controller):
             headers.append((
                 'Content-Security-Policy',
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; "
+                "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://www.gstatic.com https://unpkg.com; "
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: blob:; "
-                "font-src 'self' data:; "
-                "connect-src 'self' https://lpft.odoorim.com; "
+                "font-src 'self' data: https://fonts.gstatic.com; "
+                "connect-src 'self' https://lpft.odoorim.com https://www.gstatic.com https://fonts.gstatic.com https://unpkg.com; "
                 "worker-src 'self' blob:; "
                 "manifest-src 'self'; "
                 "base-uri 'self'; "

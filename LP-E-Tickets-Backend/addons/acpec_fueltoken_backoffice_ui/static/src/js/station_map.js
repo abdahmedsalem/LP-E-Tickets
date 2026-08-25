@@ -9,8 +9,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    if (!window.L) {
-        countElement.textContent = 'La carte ne peut pas être chargée.';
+    const token = (mapElement.dataset.mapboxToken || '').trim();
+    const style = (mapElement.dataset.mapboxStyle || '').trim()
+        || 'mapbox://styles/mapbox/standard';
+
+    if (!window.mapboxgl) {
+        countElement.textContent = 'La carte ne peut pas etre chargee.';
+        emptyElement.hidden = false;
+        return;
+    }
+
+    if (!token) {
+        countElement.textContent = 'Configurez le jeton Mapbox pour afficher la carte.';
         emptyElement.hidden = false;
         return;
     }
@@ -19,46 +29,44 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         stations = JSON.parse(mapElement.dataset.stations || '[]');
     } catch {
-        countElement.textContent = 'Les données des stations sont invalides.';
+        countElement.textContent = 'Les donnees des stations sont invalides.';
         emptyElement.hidden = false;
         return;
     }
 
-    const map = window.L.map(mapElement, {
-        zoomControl: true,
-    }).setView([18.0858, -15.9785], 11);
+    window.mapboxgl.accessToken = token;
 
-    window.L.tileLayer(
-        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19,
-        },
-    ).addTo(map);
+    const map = new window.mapboxgl.Map({
+        container: mapElement,
+        style,
+        center: [-15.9785, 18.0858],
+        zoom: 11,
+    });
 
-    const markerIcon = window.L.divIcon({
-        className: 'lp-station-marker-wrapper',
-        html: [
+    map.addControl(new window.mapboxgl.NavigationControl(), 'top-right');
+
+    const bounds = new window.mapboxgl.LngLatBounds();
+    const validStations = stations.filter((station) => {
+        const latitude = Number(station.latitude);
+        const longitude = Number(station.longitude);
+        return Number.isFinite(latitude) && Number.isFinite(longitude)
+            && !(latitude === 0 && longitude === 0);
+    });
+
+    const createMarkerElement = () => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'lp-station-marker-wrapper';
+        wrapper.innerHTML = [
             '<span class="lp-station-marker">',
             '<img ',
             'src="/acpec_fueltoken_backoffice_ui/static/src/img/lp_e_tickets_marker.png?v=1.4.3" ',
             'alt="" aria-hidden="true">',
             '</span>',
-        ].join(''),
-        iconSize: [48, 56],
-        iconAnchor: [24, 53],
-        popupAnchor: [0, -50],
-    });
-    const bounds = [];
+        ].join('');
+        return wrapper;
+    };
 
-    for (const station of stations) {
-        const latitude = Number(station.latitude);
-        const longitude = Number(station.longitude);
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            continue;
-        }
-
-        const position = [latitude, longitude];
+    const createPopupContent = (station, latitude, longitude) => {
         const popup = document.createElement('div');
         popup.className = 'lp-station-popup';
 
@@ -84,32 +92,55 @@ document.addEventListener('DOMContentLoaded', () => {
             `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
         directions.target = '_blank';
         directions.rel = 'noopener noreferrer';
-        directions.textContent = 'Afficher l’itinéraire';
+        directions.textContent = 'Afficher l itineraire';
         directions.className = 'lp-station-popup-directions';
         popup.appendChild(directions);
 
-        window.L.marker(position, {icon: markerIcon})
-            .addTo(map)
-            .bindPopup(popup);
-        bounds.push(position);
-    }
+        return popup;
+    };
 
-    const count = bounds.length;
-    countElement.textContent = count === 1
-        ? '1 station localisée'
-        : `${count} stations localisées`;
+    map.on('load', () => {
+        for (const station of validStations) {
+            const latitude = Number(station.latitude);
+            const longitude = Number(station.longitude);
 
-    if (count === 0) {
-        emptyElement.hidden = false;
-        return;
-    }
+            const position = [longitude, latitude];
+            const marker = new window.mapboxgl.Marker({
+                element: createMarkerElement(),
+                anchor: 'bottom',
+            })
+                .setLngLat(position)
+                .setPopup(
+                    new window.mapboxgl.Popup({offset: 25}).setDOMContent(
+                        createPopupContent(station, latitude, longitude),
+                    ),
+                )
+                .addTo(map);
 
-    if (count === 1) {
-        map.setView(bounds[0], 15);
-    } else {
-        map.fitBounds(bounds, {
-            padding: [48, 48],
-            maxZoom: 15,
-        });
-    }
+            marker.getElement().setAttribute('aria-label', station.name || 'Station');
+            bounds.extend(position);
+        }
+
+        const count = validStations.length;
+
+        countElement.textContent = count === 1
+            ? '1 station localisee'
+            : `${count} stations localisees`;
+
+        if (count === 0) {
+            emptyElement.hidden = false;
+            return;
+        }
+
+        if (count === 1) {
+            const first = validStations[0];
+            map.setCenter([Number(first.longitude), Number(first.latitude)]);
+            map.setZoom(15);
+        } else {
+            map.fitBounds(bounds, {
+                padding: 48,
+                maxZoom: 15,
+            });
+        }
+    });
 });

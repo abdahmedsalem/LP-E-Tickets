@@ -305,8 +305,16 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                     'message': 'Compte mobile créé. Appareil en attente de validation.',
                 })
                 return self._json_response(payload)
-            payload = self._create_mobile_session_payload(user, kwargs)
-            payload['auth_method'] = 'otp'
+            try:
+                with request.env.cr.savepoint():
+                    payload = self._create_mobile_session_payload(user, kwargs)
+                    payload['auth_method'] = 'otp'
+            except Exception:
+                challenge._write_internal({
+                    'state': 'pending',
+                    'verified_at': False,
+                })
+                raise
             return self._json_response(payload)
         except Exception as exc:
             return self._handle_exception_response(

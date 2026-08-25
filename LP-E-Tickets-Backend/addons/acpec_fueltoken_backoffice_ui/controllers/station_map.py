@@ -45,6 +45,18 @@ class FuelStationMapController(http.Controller):
         return request.render(
             'acpec_fueltoken_backoffice_ui.station_map_page',
             {
+                'mapbox_token': request.env['ir.config_parameter']
+                    .sudo()
+                    .get_param(
+                        'acpec_fueltoken_backoffice_ui.mapbox_token',
+                        '',
+                    ),
+                'mapbox_style': request.env['ir.config_parameter']
+                    .sudo()
+                    .get_param(
+                        'acpec_fueltoken_backoffice_ui.mapbox_style',
+                        'mapbox://styles/mapbox/standard',
+                    ),
                 'stations_json': json.dumps(
                     station_data,
                     ensure_ascii=False,
@@ -52,3 +64,4 @@ class FuelStationMapController(http.Controller):
                 ),
             },
         )
+

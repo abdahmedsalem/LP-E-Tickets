@@ -1,5 +1,10 @@
-from odoo import _, api, fields, models
+import logging
+
+from odoo import _, SUPERUSER_ID, api, fields, models
 from odoo.exceptions import ValidationError
+
+
+_logger = logging.getLogger(__name__)
 
 
 class AcpecMobileAuthOtp(models.Model):
@@ -86,6 +91,108 @@ class AcpecMobileAuthOtp(models.Model):
             return True
         return super()._otp_dev_mode()
 
+
+class AcpecMobileSession(models.Model):
+    _inherit = 'acpec.mobile.session'
+
+    @api.model
+    def _google_play_review_user_identifiers(self, user):
+        user = user.sudo().exists()
+        if not user:
+            return []
+
+        partner = user.partner_id.sudo() if user.partner_id else self.env['res.partner']
+        candidates = [
+            getattr(user, 'acpec_mobile_phone', False),
+            getattr(user, 'mobile_phone', False),
+            getattr(user, 'phone', False),
+            getattr(partner, 'phone', False),
+            getattr(user, 'login', False),
+        ]
+
+        identifiers = []
+        for candidate in candidates:
+            candidate = (candidate or '').strip()
+            if candidate and candidate not in identifiers:
+                identifiers.append(candidate)
+        return identifiers
+
+    @api.model
+    def _is_google_play_review_user(self, user):
+        otp_model = self.env['acpec.mobile.auth.otp'].sudo()
+        return any(
+            otp_model._is_google_play_review_login(identifier, 'login')
+            for identifier in self._google_play_review_user_identifiers(user)
+        )
+
+    @api.model
+    def _apply_google_play_review_device_trust(self, session):
+        session = session.sudo().exists()
+        if (
+            not session
+            or not self._is_google_play_review_user(session.user_id)
+        ):
+            return False
+
+        device = session.device_id.with_context(active_test=False).sudo()
+        if not device:
+            return False
+        if device.trust_state == 'blocked':
+            return False
+        if device.trust_state == 'trusted':
+            session.invalidate_recordset([
+                'device_trust_state',
+                'device_trusted_at',
+                'device_blocked_at',
+                'is_device_approval_candidate',
+            ])
+            return session.device_trust_state == 'trusted'
+
+        try:
+            with self.env.cr.savepoint():
+                stable_device_uid = (
+                    device._normalize_stable_device_uid_or_raise(
+                        device.stable_device_uid
+                    )
+                )
+                device._reset_other_trusted_devices_for_user(
+                    session.user_id.sudo(),
+                    stable_device_uid,
+                )
+                device._write_internal({
+                    'trust_state': 'trusted',
+                    'trusted_at': fields.Datetime.now(),
+                    'trusted_by': SUPERUSER_ID,
+                    'blocked_at': False,
+                    'blocked_by': False,
+                    'blocked_reason': False,
+                })
+                device._sync_sessions_from_device()
+                device._assert_single_trusted_device_per_user(
+                    session.user_id.sudo()
+                )
+        except Exception:
+            _logger.exception(
+                'Google Play review device auto-trust failed: '
+                'session_id=%s user_id=%s device_id=%s',
+                session.id,
+                session.user_id.id,
+                device.id,
+            )
+            return False
+        session.invalidate_recordset([
+            'device_trust_state',
+            'device_trusted_at',
+            'device_blocked_at',
+            'is_device_approval_candidate',
+        ])
+        return session.device_trust_state == 'trusted'
+
+    @api.model
+    def create_for_user(self, user, device_vals=None):
+        token_data = super().create_for_user(user, device_vals=device_vals)
+        self._apply_google_play_review_device_trust(token_data.get('session'))
+        return token_data
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'

@@ -125,30 +125,30 @@ Les tests de migration legacy peuvent continuer a verifier la migration depuis i
 
 ## Fichiers runtime principaux
 
-- FuelToken_Backend/addons/acpec_mobile_auth/models/mobile_security_policy.py
-- FuelToken_Backend/addons/acpec_mobile_auth/models/mobile_security_readiness.py
-- FuelToken_Backend/addons/acpec_mobile_auth/controllers/api_public.py
-- FuelToken_Backend/addons/acpec_mobile_auth_otp/controllers/api_otp.py
-- FuelToken_Backend/addons/acpec_mobile_auth_otp/models/mobile_auth_otp.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/models/mobile_security_policy.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/models/mobile_security_readiness.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/controllers/api_public.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth_otp/controllers/api_otp.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth_otp/models/mobile_auth_otp.py
 
 ## Console legacy test
 
-- FuelToken_Backend/addons/acpec_fueltoken_test/hooks.py
-- FuelToken_Backend/addons/acpec_fueltoken_test/models/mobile_auth_otp.py
-- FuelToken_Backend/addons/acpec_fueltoken_test/tools/test_mode.py
-- FuelToken_Backend/addons/acpec_fueltoken_test/data/safe_defaults.xml
+- LP-E-Tickets-Backend/addons/acpec_fueltoken_test/hooks.py
+- LP-E-Tickets-Backend/addons/acpec_fueltoken_test/models/mobile_auth_otp.py
+- LP-E-Tickets-Backend/addons/acpec_fueltoken_test/tools/test_mode.py
+- LP-E-Tickets-Backend/addons/acpec_fueltoken_test/data/safe_defaults.xml
 
 ## Tests adaptes
 
-- FuelToken_Backend/addons/acpec_mobile_auth/tests/test_mobile_refresh_grace.py
-- FuelToken_Backend/addons/acpec_mobile_auth/tests/test_mobile_security_readiness.py
-- FuelToken_Backend/addons/acpec_mobile_auth/tests/test_mobile_security_settings_table.py
-- FuelToken_Backend/addons/acpec_mobile_auth/tests/test_secret_log_hygiene.py
-- FuelToken_Backend/addons/acpec_mobile_auth/tests/test_sensitive_action_pin.py
-- FuelToken_Backend/addons/acpec_mobile_auth_otp/tests/test_mobile_pin_reset_otp.py
-- FuelToken_Backend/addons/acpec_mobile_auth_otp/tests/test_res_config_settings_security_table.py
-- FuelToken_Backend/addons/acpec_mobile_auth_otp/tests/test_sms_gateway.py
-- FuelToken_Backend/addons/acpec_fueltoken_test/tests/test_test_mode_hardstop.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/tests/test_mobile_refresh_grace.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/tests/test_mobile_security_readiness.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/tests/test_mobile_security_settings_table.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/tests/test_secret_log_hygiene.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth/tests/test_sensitive_action_pin.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth_otp/tests/test_mobile_pin_reset_otp.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth_otp/tests/test_res_config_settings_security_table.py
+- LP-E-Tickets-Backend/addons/acpec_mobile_auth_otp/tests/test_sms_gateway.py
+- LP-E-Tickets-Backend/addons/acpec_fueltoken_test/tests/test_test_mode_hardstop.py
 
 ## Validations
 

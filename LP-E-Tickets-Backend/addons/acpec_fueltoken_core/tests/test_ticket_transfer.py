@@ -161,6 +161,48 @@ class TestTicketTransfer(TransactionCase):
         self.assertEqual(self.FaceLine.search_count([('origin_ticket_transfer_line_id', '=', line.id)]), 1)
         self.assertEqual(self.Tx.search_count([('transaction_type', '=', 'transfert_ticket'), ('ticket_transfer_id', '=', transfer.id)]), 2)
 
+    def test_i1_snapshot_repair_ignores_ticket_transfer_fragments(self):
+        suffix = uuid.uuid4().hex[:8]
+        source_partner, source_wallet = self._create_partner_wallet(
+            'I1 Repair Source %s' % suffix
+        )
+        _dest_partner, dest_wallet = self._create_partner_wallet(
+            'I1 Repair Destination %s' % suffix
+        )
+        _purchase, purchase_line, face_line = self._create_purchase_with_face_line(
+            source_partner,
+            suffix,
+        )
+
+        transfer = self._create_ticket_transfer(
+            source_wallet,
+            dest_wallet,
+            face_line,
+            3,
+            suffix,
+        )
+        transfer._confirm_internal(self.env.user)
+
+        self.env.cr.execute(
+            """
+                UPDATE acpec_fuel_purchase_line
+                   SET face_count = 0,
+                       face_value = 0
+                 WHERE id = %s
+            """,
+            [purchase_line.id],
+        )
+        purchase_line.invalidate_recordset(['face_count', 'face_value'])
+
+        repaired = self.env[
+            'acpec.fuel.purchase.line'
+        ]._repair_m21e_snapshots_from_face_lines()
+        purchase_line.invalidate_recordset(['face_count', 'face_value'])
+
+        self.assertGreaterEqual(repaired, 1)
+        self.assertEqual(purchase_line.face_count, face_line.qty_initial)
+        self.assertEqual(purchase_line.face_value, face_line.face_value)
+
     def test_i1_ticket_transfer_rejects_non_available_quantity_and_accepts_empty_note(self):
         suffix = uuid.uuid4().hex[:8]
         source_partner, source_wallet = self._create_partner_wallet('I1 Source guard %s' % suffix)

@@ -1,6 +1,6 @@
 import base64
 
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -83,8 +83,36 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
         with self.assertRaises(UserError):
             purchase.write({'state': 'draft'})
 
-        purchase.action_reject()
+        with self.assertRaises(ValidationError):
+            purchase.action_reject()
+
+        purchase.action_reject(reason='Motif de rejet H13')
         self.assertEqual(purchase.state, 'rejected')
+
+    def test_h13_reject_wizard_requires_and_stores_reason(self):
+        purchase = self._submitted_purchase()
+        action = purchase.action_open_reject_wizard()
+
+        self.assertEqual(
+            action['res_model'],
+            'acpec.fuel.purchase.reject.wizard',
+        )
+        self.assertEqual(
+            action['context']['default_purchase_id'],
+            purchase.id,
+        )
+
+        wizard = self.env['acpec.fuel.purchase.reject.wizard'].create({
+            'purchase_id': purchase.id,
+            'rejection_reason': 'Preuve de paiement illisible H13',
+        })
+        wizard.action_confirm_reject()
+
+        self.assertEqual(purchase.state, 'rejected')
+        self.assertEqual(
+            purchase.rejection_reason,
+            'Preuve de paiement illisible H13',
+        )
 
     def test_h13_submitted_purchase_lines_are_immutable(self):
         purchase = self._submitted_purchase()
@@ -149,7 +177,7 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
         for button_name in (
             'action_submit',
             'action_approve',
-            'action_reject',
+            'action_open_reject_wizard',
         ):
             self.assertIn(
                 'name="%s"' % button_name,
@@ -164,7 +192,7 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
             list_view.arch_db or '',
         )
 
-    def test_h13_view_warns_before_approve_or_reject(self):
+    def test_h13_view_uses_reject_wizard_with_required_reason(self):
         view = self.env.ref('acpec_fueltoken_purchase.view_fuel_purchase_form')
         arch = view.arch_db or ''
 
@@ -172,9 +200,13 @@ class TestPurchaseSubmissionImmutabilityH13(TransactionCase):
         self.assertIn('confirm="Valider ce lot d\'achat ?', arch)
         self.assertIn('Les lignes, le client, la référence paiement et les preuves resteront verrouillés', arch)
 
-        self.assertIn('name="action_reject"', arch)
-        self.assertIn('confirm="Rejeter ce lot d\'achat ?', arch)
-        self.assertIn('Le lot restera verrouillé économiquement', arch)
+        self.assertIn('name="action_open_reject_wizard"', arch)
+        wizard_view = self.env.ref(
+            'acpec_fueltoken_purchase.view_fuel_purchase_reject_wizard_form'
+        )
+        wizard_arch = wizard_view.arch_db or ''
+        self.assertIn('name="rejection_reason"', wizard_arch)
+        self.assertIn('name="action_confirm_reject"', wizard_arch)
 
     def test_h13_approval_idempotency_fields_require_model_helper(self):
         purchase = self._submitted_purchase()

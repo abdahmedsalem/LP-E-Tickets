@@ -55,6 +55,12 @@ class AcpecFuelCarnetTransfer(models.Model):
         string='Nombre total de tickets', compute='_compute_totals', store=True,
     )
 
+    _sql_constraints = [
+        ('idempotency_source_wallet_unique',
+         'UNIQUE(source_wallet_id, idempotency_key)',
+         "Cette opération de transfert a déjà été enregistrée pour ce compte source."),
+    ]
+
     _idempotency_source_wallet_unique = models.Constraint(
         'UNIQUE(source_wallet_id, idempotency_key)',
         "Cette operation de transfert a deja ete enregistree pour ce compte source.",
@@ -258,10 +264,7 @@ class AcpecFuelCarnetTransfer(models.Model):
         return True
 
     def init(self):
-        self.env.cr.execute(
-            'ALTER TABLE acpec_fuel_carnet_transfer '
-            'DROP CONSTRAINT IF EXISTS acpec_fuel_carnet_transfer_idempotency_unique'
-        )
+        super().init()
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -5,3 +5,7 @@ access_fuel_purchase_admin,acpec.fuel.purchase admin,model_acpec_fuel_purchase,a
 access_fuel_purchase_line_user,acpec.fuel.purchase.line user,model_acpec_fuel_purchase_line,acpec_fueltoken_base.group_fuel_user,1,0,0,0
 access_fuel_purchase_line_manager,acpec.fuel.purchase.line manager,model_acpec_fuel_purchase_line,acpec_fueltoken_base.group_fuel_manager,1,0,0,0
 access_fuel_purchase_line_admin,acpec.fuel.purchase.line admin,model_acpec_fuel_purchase_line,acpec_fueltoken_base.group_fuel_admin,1,0,0,0
+access_fuel_payment_method_user,acpec.fuel.payment.method user,model_acpec_fuel_payment_method,acpec_fueltoken_base.group_fuel_user,1,0,0,0
+access_fuel_payment_method_manager,acpec.fuel.payment.method manager,model_acpec_fuel_payment_method,acpec_fueltoken_base.group_fuel_manager,1,0,0,0
+access_fuel_payment_method_admin,acpec.fuel.payment.method admin,model_acpec_fuel_payment_method,acpec_fueltoken_base.group_fuel_admin,1,1,1,0
+access_fuel_purchase_reject_wizard_admin,acpec.fuel.purchase.reject.wizard admin,model_acpec_fuel_purchase_reject_wizard,acpec_fueltoken_base.group_fuel_admin,1,1,1,0

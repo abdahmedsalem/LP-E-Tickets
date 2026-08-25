@@ -1,0 +1,28 @@
+<odoo noupdate="1">
+    <record id="payment_method_bankily" model="acpec.fuel.payment.method">
+        <field name="name">Bankily</field>
+        <field name="code">bankily</field>
+        <field name="merchant_code">123456</field>
+        <field name="instructions">Payez le montant via Bankily, puis joignez la capture de paiement.</field>
+        <field name="color_hex">#43A047</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="payment_method_sedad" model="acpec.fuel.payment.method">
+        <field name="name">Sedad</field>
+        <field name="code">sedad</field>
+        <field name="merchant_code">222222</field>
+        <field name="instructions">Payez le montant via Sedad, puis joignez la capture de paiement.</field>
+        <field name="color_hex">#0284C7</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="payment_method_masrivi" model="acpec.fuel.payment.method">
+        <field name="name">Masrivi</field>
+        <field name="code">masrivi</field>
+        <field name="merchant_code">333333</field>
+        <field name="instructions">Payez le montant via Masrivi, puis joignez la capture de paiement.</field>
+        <field name="color_hex">#D97706</field>
+        <field name="sequence">30</field>
+    </record>
+</odoo>
