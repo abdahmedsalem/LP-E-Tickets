@@ -18,8 +18,10 @@ import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/purchase_payment_proof_guard.dart';
 import '../../../data/models/carnet_type.dart';
+import '../../../data/models/payment_method_config.dart';
 import '../../../data/models/acpec_purchase_create_result.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
+import '../../../data/services/acpec_payment_methods_service.dart';
 import '../../../data/services/acpec_purchases_mapper.dart';
 import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../l10n/app_localizations.dart';
@@ -54,12 +56,18 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
-  String _selectedPaymentMethod = 'Bankily';
+  List<PaymentMethodConfig> _paymentMethods =
+      PaymentMethodConfig.fallbackMethods;
+  String _selectedPaymentMethodCode =
+      PaymentMethodConfig.fallbackMethods.first.code;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reloadOffers());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reloadOffers();
+      _reloadPaymentMethods();
+    });
   }
 
   @override
@@ -138,6 +146,28 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   bool get _hasSelection => _totalTickets() > 0;
 
+  PaymentMethodConfig get _selectedPaymentMethodConfig {
+    for (final method in _paymentMethods) {
+      if (method.code == _selectedPaymentMethodCode) return method;
+    }
+    return _paymentMethods.isNotEmpty
+        ? _paymentMethods.first
+        : PaymentMethodConfig.fallbackMethods.first;
+  }
+
+  Future<void> _reloadPaymentMethods() async {
+    final methods = await AcpecPaymentMethodsService.listActive();
+    if (!mounted) return;
+    setState(() {
+      _paymentMethods = methods;
+      if (!_paymentMethods.any(
+        (method) => method.code == _selectedPaymentMethodCode,
+      )) {
+        _selectedPaymentMethodCode = _paymentMethods.first.code;
+      }
+    });
+  }
+
   void _setQty(String typeId, int v) {
     final cap = _maxAllowedFor(typeId);
     final clamped = math.max(0, math.min(v, cap));
@@ -188,8 +218,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         type: FileType.custom,
         allowedExtensions: PurchasePaymentProofGuard.allowedExtensions,
         allowMultiple: false,
-        // Sur mobile, on évite de charger le fichier en mémoire avant d'avoir
-        // contrôlé extension + taille. Sur web, FilePicker a besoin des bytes.
+        // Sur mobile, on Ã©vite de charger le fichier en mÃ©moire avant d'avoir
+        // contrÃ´lÃ© extension + taille. Sur web, FilePicker a besoin des bytes.
         withData: kIsWeb,
       );
 
@@ -316,7 +346,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         );
         return;
       }
-      // Naviguer vers l'écran de confirmation
+      // Naviguer vers l'Ã©cran de confirmation
       final result = await Navigator.of(context, rootNavigator: true)
           .push<AcpecPurchaseCreateResult>(
             MaterialPageRoute(
@@ -326,7 +356,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   proofPath: proofPath,
                   proofBytes: proofBytes,
                   onConfirm: (actionCode) async {
-                    // Appel API réel: les erreurs remontent au confirmation screen
+                    // Appel API rÃ©el: les erreurs remontent au confirmation screen
                     if (!AppEnvironment.useAcpecLiveData) {
                       throw Exception(
                         'Connexion serveur ACPEC requise pour soumettre une commande de carnets.',
@@ -334,7 +364,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     }
                     if (kIsWeb) {
                       throw Exception(
-                        "L'envoi de lot ACPEC avec preuve nécessite l'application mobile.",
+                        "L'envoi de lot ACPEC avec preuve nÃ©cessite l'application mobile.",
                       );
                     }
                     final rpcLines = <Map<String, dynamic>>[];
@@ -345,8 +375,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       final idOdoo = int.tryParse(line.carnetType.id);
                       if (idOdoo == null) {
                         throw Exception(
-                          'Type « ${t.code} » : identifiant serveur inconnu. '
-                          'Rafraîchissez la liste des offres.',
+                          'Type Â« ${t.code} Â» : identifiant serveur inconnu. '
+                          'RafraÃ®chissez la liste des offres.',
                         );
                       }
                       final cq = line.qty;
@@ -357,7 +387,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       });
                     }
                     if (rpcLines.isEmpty) {
-                      throw Exception('Aucune ligne valide à envoyer.');
+                      throw Exception('Aucune ligne valide Ã  envoyer.');
                     }
                     final fileName = _proofFilename?.trim() ?? '';
                     if (fileName.isEmpty) {
@@ -366,11 +396,16 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     final payRef =
                         'MOBL-${DateTime.now().millisecondsSinceEpoch}';
                     final idem = const Uuid().v4();
+                    final paymentMethod = _selectedPaymentMethodConfig;
                     final raw = await OdooFueltokenFacade().purchasesCreate({
                       'lines': rpcLines,
                       'proof_filename': fileName,
                       'proof_data': base64Encode(proofBytes),
                       'payment_reference': payRef,
+                      if (paymentMethod.id != null)
+                        'payment_method_id': paymentMethod.id,
+                      'payment_method_code': paymentMethod.code,
+                      'payment_merchant_code': paymentMethod.merchantCode,
                       'action_code': actionCode,
                       'idempotency_key': idem,
                     });
@@ -430,7 +465,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   child: Column(
                     children: [
                       ScreenHeader(
-                        title: Localizations.localeOf(context).languageCode == 'ar' ? 'الدفع' : 'Paiement',
+                        title:
+                            Localizations.localeOf(context).languageCode == 'ar'
+                            ? 'Ø§Ù„Ø¯ÙØ¹'
+                            : 'Paiement',
                         onBack: () => Navigator.of(routeContext).pop(),
                       ),
                       const SizedBox(height: 12),
@@ -440,7 +478,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildPaymentMethodSelectorWidget(context, modalSetState),
+                              _buildPaymentMethodSelectorWidget(
+                                context,
+                                modalSetState,
+                              ),
                               const SizedBox(height: 16),
                               _PurchaseLinesSummaryCard(
                                 lines: selectedTypes
@@ -449,7 +490,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                         label: type.name,
                                         qty: _qty[type.id] ?? 0,
                                         amount:
-                                            (_qty[type.id] ?? 0) * type.totalAmount,
+                                            (_qty[type.id] ?? 0) *
+                                            type.totalAmount,
                                         currency: currency,
                                       ),
                                     )
@@ -492,9 +534,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                     disabledBackgroundColor: const Color(
                                       0xFF43A047,
                                     ).withValues(alpha: 0.35),
-                                    disabledForegroundColor: Colors.white.withValues(
-                                      alpha: 0.7,
-                                    ),
+                                    disabledForegroundColor: Colors.white
+                                        .withValues(alpha: 0.7),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(18),
                                     ),
@@ -526,29 +567,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     );
   }
 
-  Widget _buildPaymentMethodSelectorWidget(BuildContext context, StateSetter modalSetState) {
-    final codes = {
-      'Bankily': '123456',
-      'Sedad': '222222',
-      'Masrivi': '333333',
-    };
-
-    final selectedCode = codes[_selectedPaymentMethod] ?? '123456';
-
-    Color themeColor;
-    switch (_selectedPaymentMethod) {
-      case 'Bankily':
-        themeColor = const Color(0xFF43A047);
-        break;
-      case 'Sedad':
-        themeColor = const Color(0xFF0284C7);
-        break;
-      case 'Masrivi':
-        themeColor = const Color(0xFFD97706);
-        break;
-      default:
-        themeColor = const Color(0xFF43A047);
-    }
+  Widget _buildPaymentMethodSelectorWidget(
+    BuildContext context,
+    StateSetter modalSetState,
+  ) {
+    final selectedMethod = _selectedPaymentMethodConfig;
+    final selectedCode = selectedMethod.merchantCode;
+    final themeColor = selectedMethod.color;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,67 +588,120 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: ['Bankily', 'Sedad', 'Masrivi'].map((method) {
-            final isSelected = _selectedPaymentMethod == method;
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxColumns = constraints.maxWidth < 340 ? 2 : 3;
+            final columnCount = math.max(
+              1,
+              math.min(_paymentMethods.length, maxColumns),
+            );
+            final itemWidth =
+                (constraints.maxWidth - ((columnCount - 1) * 6)) / columnCount;
+            return Wrap(
+              spacing: 6,
+              runSpacing: 8,
+              children: _paymentMethods.map((method) {
+                final isSelected = _selectedPaymentMethodCode == method.code;
+                final methodColor = method.color;
+                final logoBytes = method.logoBytes;
 
-            Color methodColor;
-            IconData icon;
-            if (method == 'Bankily') {
-              methodColor = const Color(0xFF43A047);
-              icon = Icons.account_balance_wallet;
-            } else if (method == 'Sedad') {
-              methodColor = const Color(0xFF0284C7);
-              icon = Icons.payment;
-            } else {
-              methodColor = const Color(0xFFD97706);
-              icon = Icons.mobile_friendly;
-            }
-
-            return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  modalSetState(() {
-                    _selectedPaymentMethod = method;
-                  });
-                  setState(() {
-                    _selectedPaymentMethod = method;
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? methodColor.withValues(alpha: 0.08) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected ? methodColor : const Color(0xFFE2E8F0),
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        icon,
-                        color: isSelected ? methodColor : const Color(0xFF64748B),
-                        size: 20,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        method,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                          color: isSelected ? methodColor : const Color(0xFF0F172A),
+                return SizedBox(
+                  width: itemWidth,
+                  child: GestureDetector(
+                    onTap: () {
+                      modalSetState(() {
+                        _selectedPaymentMethodCode = method.code;
+                      });
+                      setState(() {
+                        _selectedPaymentMethodCode = method.code;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? methodColor.withValues(alpha: 0.08)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? methodColor
+                              : const Color(0xFFE2E8F0),
+                          width: isSelected ? 2 : 1,
                         ),
                       ),
-                    ],
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: logoBytes == null
+                                ? Container(
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: methodColor.withValues(
+                                        alpha: isSelected ? 0.14 : 0.08,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      method.initial,
+                                      style: TextStyle(
+                                        color: methodColor,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  )
+                                : Image.memory(
+                                    logoBytes,
+                                    fit: BoxFit.contain,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              alignment: Alignment.center,
+                                              decoration: BoxDecoration(
+                                                color: methodColor.withValues(
+                                                  alpha: 0.08,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Text(
+                                                method.initial,
+                                                style: TextStyle(
+                                                  color: methodColor,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ),
+                                  ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            method.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? methodColor
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         ),
         const SizedBox(height: 16),
         Container(
@@ -637,36 +715,45 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CODE COMMERCIAL $_selectedPaymentMethod'.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF94A3B8),
-                      letterSpacing: 0.5,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'CODE COMMERÇANT ${selectedMethod.name}'.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF94A3B8),
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    selectedCode,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: 1.5,
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(
+                        selectedCode,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: 1.5,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: selectedCode));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Code $_selectedPaymentMethod copié !'),
+                      content: Text('Code ${selectedMethod.name} copié !'),
                       duration: const Duration(seconds: 2),
                       backgroundColor: themeColor,
                     ),
@@ -678,7 +765,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   backgroundColor: themeColor,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1479,7 +1569,8 @@ class _ProofPicker extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final hasFile = path != null;
 
-    final isImage = path != null &&
+    final isImage =
+        path != null &&
         !kIsWeb &&
         (path!.toLowerCase().endsWith('.jpg') ||
             path!.toLowerCase().endsWith('.jpeg') ||
@@ -1590,10 +1681,7 @@ class _ProofPicker extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const Icon(
-                        Icons.chevron_right,
-                        color: Color(0xFF94A3B8),
-                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
                     ],
                   ),
                 )
@@ -1603,10 +1691,7 @@ class _ProofPicker extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppColors.line,
-                      width: 1.2,
-                    ),
+                    border: Border.all(color: AppColors.line, width: 1.2),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0x08000000),

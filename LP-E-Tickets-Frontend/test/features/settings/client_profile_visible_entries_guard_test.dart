@@ -23,5 +23,11 @@ void main() {
     expect(source, contains('l10n.settingsDeleteAccount'));
     expect(source, contains('/account-deletion'));
     expect(source, contains('_LogoutTile('));
+    expect(source, contains('l10n.settingsDevelopedBy'));
+    expect(
+      source,
+      contains('l10n.settingsVersionBuild(_appVersion, _buildNumber)'),
+    );
+    expect(source, contains('PackageInfo.fromPlatform()'));
   });
 }

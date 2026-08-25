@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_environment.dart';
+import '../../../core/auth/payment_proof_http_headers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/formatters.dart';
@@ -16,6 +17,7 @@ import '../../../data/services/payment_proof_loader.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
+import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -62,7 +64,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       }
       final companyId = AppEnvironment.companyIdForUser(user);
       final facade = OdooFueltokenFacade();
-      final raw = await facade.purchasesList(const <String, dynamic>{});
+      final raw = await facade.purchasesList(const <String, dynamic>{
+        'include_proof_data': true,
+      });
       var purchases = AcpecPurchasesMapper.fromRpcResult(
         raw,
         clientId: user.id,
@@ -129,7 +133,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F5),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -148,7 +152,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   Widget _buildContent(AppLocalizations l10n) {
     if (_loading && _purchases.isEmpty) {
       return const SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16, 18, 16, 32),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 120),
         child: AppLoadingSkeleton(
           style: AppLoadingSkeletonStyle.qrCards,
           itemCount: 4,
@@ -161,7 +165,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         onRefresh: _refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           children: [
             if (_error != null)
               BackendUnavailableBanner(message: _error!, onRetry: _refresh)
@@ -181,9 +185,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       onRefresh: _refresh,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         itemCount: _purchases.length + (_error == null ? 0 : 1),
-        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           if (_error != null && index == 0) {
             return BackendUnavailableBanner(
@@ -207,189 +211,133 @@ class _PaymentPurchaseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final proof = _primaryProof(purchase);
-    final accent = _stateColor(purchase.state);
     final purchaseDate = purchase.submittedAt ?? purchase.createdAt;
+    final rejectionReason = purchase.rejectionReason?.trim();
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.lineSoft),
-        boxShadow: AppColors.softShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _PaymentProofPreview(proof: proof),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 15, 16, 12),
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: StatusBadge.lot(
-                          purchase.state,
-                          label: _stateLabel(l10n, purchase.state),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        Formatters.money(purchase.totalAmount),
-                        style: TextStyle(
-                          color: accent,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 16,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 7),
-                      Text(
-                        Formatters.dateTime(purchaseDate),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Theme(
-              data: Theme.of(
-                context,
-              ).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionPanelList.radio(
-                elevation: 0,
-                expandedHeaderPadding: EdgeInsets.zero,
-                expansionCallback: (_, _) {},
-                children: [
-                  ExpansionPanelRadio(
-                    value: purchase.id,
-                    canTapOnHeader: true,
-                    backgroundColor: AppColors.brandBlueTint,
-                    headerBuilder: (_, isExpanded) => Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(
-                        16,
-                        2,
-                        8,
-                        2,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            size: 20,
-                            color: isExpanded
-                                ? AppColors.brandBlue
-                                : AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              l10n.paymentHistoryPurchaseDetails,
-                              style: const TextStyle(
-                                color: AppColors.ink,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    body: _PurchaseDetails(purchase: purchase),
-                  ),
-                ],
-              ),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line.withValues(alpha: 0.9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PurchaseDetails extends StatelessWidget {
-  const _PurchaseDetails({required this.purchase});
-
-  final PurchaseLot purchase;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final rows = <({String label, String value})>[
-      (
-        label: l10n.paymentHistoryPurchaseReference,
-        value: purchase.internalRef,
-      ),
-      (label: l10n.referenceCode, value: purchase.publicCode),
-      if (purchase.paymentReference?.trim().isNotEmpty == true)
-        (
-          label: l10n.paymentReference,
-          value: purchase.paymentReference!.trim(),
-        ),
-      (label: l10n.status, value: _stateLabel(l10n, purchase.state)),
-      (
-        label: l10n.purchaseTotal,
-        value: Formatters.money(purchase.totalAmount),
-      ),
-      (
-        label: l10n.submittedOn,
-        value: Formatters.dateTime(purchase.submittedAt ?? purchase.createdAt),
-      ),
-      if (purchase.validationDate != null)
-        (
-          label: l10n.purchasesValidationDate,
-          value: Formatters.dateTime(purchase.validationDate!),
-        ),
-      if (purchase.validatorName?.trim().isNotEmpty == true)
-        (label: l10n.validatedBy, value: purchase.validatorName!.trim()),
-      if (purchase.rejectionReason?.trim().isNotEmpty == true)
-        (label: l10n.rejectionReason, value: purchase.rejectionReason!.trim()),
-      (
-        label: l10n.paymentHistoryCarnetsCount,
-        value:
-            '${purchase.lines.fold<int>(0, (sum, line) => sum + line.carnetCount)}',
-      ),
-      (label: l10n.paymentHistoryTicketsCount, value: '${purchase.totalFaces}'),
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      color: AppColors.brandBlueTint,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.line),
-        ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 12, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                _DetailRow(label: rows[i].label, value: rows[i].value),
-                if (i != rows.length - 1)
-                  const Divider(height: 18, color: AppColors.lineSoft),
-              ],
+              _PaymentProofThumbnail(proof: proof, purchase: purchase),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Flexible(
+                          child: StatusBadge.lot(
+                            purchase.state,
+                            label: _stateLabel(l10n, purchase.state),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AmountInline(
+                            amount: purchase.totalAmount,
+                            semanticsLabel: Formatters.money(purchase.totalAmount),
+                            textAlign: TextAlign.end,
+                            valueStyle: const TextStyle(
+                              fontSize: 14.2,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryDeep,
+                            ),
+                            unitStyle: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryDeep,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      Formatters.dateTime(purchaseDate),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.muted,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (purchase.state == PurchaseLotState.rejected &&
+                        rejectionReason != null &&
+                        rejectionReason.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1F2),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFFECACA)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.report_gmailerrorred_outlined,
+                              color: scheme.error,
+                              size: 17,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.rejectionReason,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: scheme.error,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    rejectionReason,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      height: 1.3,
+                                      color: scheme.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -398,69 +346,33 @@ class _PurchaseDetails extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 4,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 5,
-          child: SelectableText(
-            value.isEmpty ? '—' : value,
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: AppColors.ink,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PaymentProofPreview extends StatefulWidget {
-  const _PaymentProofPreview({required this.proof});
+class _PaymentProofThumbnail extends StatefulWidget {
+  const _PaymentProofThumbnail({required this.proof, required this.purchase});
 
   final PurchaseProofSummary? proof;
+  final PurchaseLot purchase;
 
   @override
-  State<_PaymentProofPreview> createState() => _PaymentProofPreviewState();
+  State<_PaymentProofThumbnail> createState() => _PaymentProofThumbnailState();
 }
 
-class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
+class _PaymentProofThumbnailState extends State<_PaymentProofThumbnail> {
   Future<Uint8List?>? _bytesFuture;
+  Future<Map<String, String>>? _headersFuture;
 
   @override
   void initState() {
     super.initState();
     _bytesFuture = _loadBytes();
+    _headersFuture = paymentProofHttpHeaders();
   }
 
   @override
-  void didUpdateWidget(covariant _PaymentProofPreview oldWidget) {
+  void didUpdateWidget(covariant _PaymentProofThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.proof != widget.proof) {
       _bytesFuture = _loadBytes();
+      _headersFuture = paymentProofHttpHeaders();
     }
   }
 
@@ -502,8 +414,15 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
     }
   }
 
-  Future<void> _openFullScreen(BuildContext context, Uint8List? bytes) async {
-    if (bytes == null || bytes.isEmpty) return;
+  Future<void> _openFullScreen(
+    BuildContext context, {
+    Uint8List? bytes,
+    String? url,
+    Map<String, String>? headers,
+  }) async {
+    final hasBytes = bytes != null && bytes.isNotEmpty;
+    final hasUrl = url != null && url.isNotEmpty;
+    if (!hasBytes && !hasUrl) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (pageContext) => Scaffold(
@@ -524,7 +443,21 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
             child: InteractiveViewer(
               minScale: 0.7,
               maxScale: 5,
-              child: Center(child: Image.memory(bytes, fit: BoxFit.contain)),
+              child: Center(
+                child: hasBytes
+                    ? Image.memory(bytes, fit: BoxFit.contain)
+                    : Image.network(
+                        url!,
+                        headers: headers?.isEmpty == true ? null : headers,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => Text(
+                          AppLocalizations.of(
+                            pageContext,
+                          ).paymentHistoryProofUnavailable,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+              ),
             ),
           ),
         ),
@@ -540,65 +473,110 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
       builder: (context, snapshot) {
         final bytes = snapshot.data;
         final hasBytes = bytes != null && bytes.isNotEmpty;
-        final proofExists = widget.proof?.isDisplayable == true;
         final isWaiting = snapshot.connectionState == ConnectionState.waiting;
-        final isImage = bytes != null && bytes.isNotEmpty
-            ? _looksLikeImageBytes(bytes)
-            : (widget.proof?.hasImagePreview ?? true);
-        final hasImage = hasBytes && isImage;
-        final canDownload =
-            proofExists &&
-            !isWaiting &&
-            (hasBytes || _isFetchableProofUrl(widget.proof?.url));
-        return SizedBox(
-          height: 185,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Material(
-                color: AppColors.surfaceAlt,
-                child: InkWell(
-                  onTap: hasImage
-                      ? () => _openFullScreen(context, bytes)
-                      : null,
-                  child: isWaiting
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.leaderGreen,
-                            strokeWidth: 2.4,
-                          ),
-                        )
-                      : hasImage
-                      ? Image.memory(bytes, fit: BoxFit.cover)
-                      : _NoProofPlaceholder(
+        final resolvedUrl = PaymentProofLoader.resolveProofUrl(
+          widget.proof?.url,
+        );
+        final hasUrl = resolvedUrl != null && resolvedUrl.isNotEmpty;
+
+        return Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: hasBytes || hasUrl
+                ? () async {
+                    final headers = hasBytes
+                        ? null
+                        : await (_headersFuture ??= paymentProofHttpHeaders());
+                    if (!context.mounted) return;
+                    await _openFullScreen(
+                      context,
+                      bytes: bytes,
+                      url: resolvedUrl,
+                      headers: headers,
+                    );
+                  }
+                : null,
+            child: Ink(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.lineSoft),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasBytes)
+                    Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                        errorBuilder: (_, _, _) => _ProofThumbnailPlaceholder(
                           label: l10n.paymentHistoryProofUnavailable,
                         ),
-                ),
+                      ),
+                    )
+                  else if (isWaiting)
+                    const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.leaderGreen,
+                        ),
+                      ),
+                    )
+                  else if (hasUrl)
+                    FutureBuilder<Map<String, String>>(
+                      future: _headersFuture,
+                      builder: (context, headerSnapshot) {
+                        final headers = headerSnapshot.data;
+                        return Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Image.network(
+                            resolvedUrl,
+                            headers: headers?.isEmpty == true ? null : headers,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            errorBuilder: (_, _, _) =>
+                                _ProofThumbnailPlaceholder(
+                                  label: l10n.paymentHistoryProofUnavailable,
+                                ),
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    _ProofThumbnailPlaceholder(
+                      label: l10n.paymentHistoryProofUnavailable,
+                    ),
+                  if (hasBytes || hasUrl)
+                    PositionedDirectional(
+                      end: 4,
+                      bottom: 4,
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.48),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.fullscreen_rounded,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              if (hasImage || canDownload)
-                PositionedDirectional(
-                  end: 12,
-                  bottom: 12,
-                  child: Row(
-                    children: [
-                      if (hasImage)
-                        _ProofAction(
-                          icon: Icons.fullscreen_rounded,
-                          label: l10n.paymentHistoryOpenProof,
-                          onTap: () => _openFullScreen(context, bytes),
-                        ),
-                      if (hasImage && canDownload) const SizedBox(width: 8),
-                      if (canDownload)
-                        _ProofAction(
-                          icon: Icons.download_rounded,
-                          label: l10n.commonDownload,
-                          filled: true,
-                          onTap: () => _download(context, bytes),
-                        ),
-                    ],
-                  ),
-                ),
-            ],
+            ),
           ),
         );
       },
@@ -606,76 +584,26 @@ class _PaymentProofPreviewState extends State<_PaymentProofPreview> {
   }
 }
 
-class _NoProofPlaceholder extends StatelessWidget {
-  const _NoProofPlaceholder({required this.label});
+class _ProofThumbnailPlaceholder extends StatelessWidget {
+  const _ProofThumbnailPlaceholder({required this.label});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.image_not_supported_outlined,
-            color: AppColors.hint,
-            size: 38,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProofAction extends StatelessWidget {
-  const _ProofAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.filled = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: filled
-          ? AppColors.leaderGreen
-          : Colors.white.withValues(alpha: 0.94),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: filled ? Colors.white : AppColors.brandBlueDeep,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: filled ? Colors.white : AppColors.brandBlueDeep,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        child: Text(
+          label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            height: 1.05,
           ),
         ),
       ),
@@ -729,51 +657,6 @@ bool _isFetchableProofUrl(String? value) {
       raw.startsWith('https://') ||
       raw.startsWith('/');
 }
-
-bool _looksLikeImageBytes(Uint8List bytes) {
-  if (bytes.length < 3) {
-    return false;
-  }
-  // JPEG: FF D8 FF
-  if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
-    return true;
-  }
-  // PNG: 89 50 4E 47
-  if (bytes.length >= 4 &&
-      bytes[0] == 0x89 &&
-      bytes[1] == 0x50 &&
-      bytes[2] == 0x4E &&
-      bytes[3] == 0x47) {
-    return true;
-  }
-  // GIF: GIF
-  if (bytes.length >= 3 &&
-      bytes[0] == 0x47 &&
-      bytes[1] == 0x49 &&
-      bytes[2] == 0x46) {
-    return true;
-  }
-  // WEBP: WEBP
-  if (bytes.length >= 12 &&
-      bytes[0] == 0x52 &&
-      bytes[1] == 0x49 &&
-      bytes[2] == 0x46 &&
-      bytes[3] == 0x46 &&
-      bytes[8] == 0x57 &&
-      bytes[9] == 0x45 &&
-      bytes[10] == 0x42 &&
-      bytes[11] == 0x50) {
-    return true;
-  }
-  return false;
-}
-
-Color _stateColor(PurchaseLotState state) => switch (state) {
-  PurchaseLotState.approved => AppColors.success,
-  PurchaseLotState.submitted => AppColors.info,
-  PurchaseLotState.rejected => AppColors.danger,
-  PurchaseLotState.draft => AppColors.textMuted,
-};
 
 String _stateLabel(AppLocalizations l10n, PurchaseLotState state) =>
     switch (state) {

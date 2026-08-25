@@ -10,6 +10,7 @@ class AmountInline extends StatelessWidget {
     this.unitStyle,
     this.currency,
     this.textAlign = TextAlign.start,
+    this.semanticsLabel,
   });
 
   static const double unitFontSize = 9.5;
@@ -19,6 +20,7 @@ class AmountInline extends StatelessWidget {
   final TextStyle? unitStyle;
   final String? currency;
   final TextAlign textAlign;
+  final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +62,7 @@ class AmountInline extends StatelessWidget {
       textAlign: textAlign,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
+      semanticsLabel: semanticsLabel,
     );
   }
 }

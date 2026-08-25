@@ -88,19 +88,16 @@ class PurchaseProofSummary extends Equatable {
 
   bool get hasImagePreview {
     if (bytes != null && bytes!.isNotEmpty) {
-      if (_looksLikeImageBytes(bytes!)) {
-        return true;
-      }
-      final imageLike =
-          isImageMimeType(mimeType, filename: filename) ||
-          looksLikeImageFilename(filename);
-      return mimeType == null || imageLike;
+      return _looksLikeImageBytes(bytes!);
     }
     final imageLike =
         isImageMimeType(mimeType, filename: filename) ||
         looksLikeImageFilename(filename);
     if (url != null && url!.isNotEmpty) {
-      return imageLike;
+      final cleanMime = mimeType?.toLowerCase().trim();
+      return cleanMime == null ||
+          cleanMime == 'application/octet-stream' ||
+          imageLike;
     }
     return false;
   }
@@ -122,10 +119,7 @@ class PurchaseProofSummary extends Equatable {
       return true;
     }
     // GIF: GIF
-    if (bytes.length >= 3 &&
-        bytes[0] == 0x47 &&
-        bytes[1] == 0x49 &&
-        bytes[2] == 0x46) {
+    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) {
       return true;
     }
     // WEBP: WEBP
@@ -138,6 +132,19 @@ class PurchaseProofSummary extends Equatable {
         bytes[9] == 0x45 &&
         bytes[10] == 0x42 &&
         bytes[11] == 0x50) {
+      return true;
+    }
+    // BMP: BM
+    if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
+      return true;
+    }
+    // PDF Magic Header: %PDF-
+    final isPdf = bytes.length >= 4 &&
+        bytes[0] == 0x25 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x44 &&
+        bytes[3] == 0x46;
+    if (!isPdf && bytes.length >= 8) {
       return true;
     }
     return false;

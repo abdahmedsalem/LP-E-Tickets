@@ -57,6 +57,7 @@ const _allowedFlutterAcpecEndpoints = <String>{
   '/api/acpec/fueltoken/v1/mobile/purchases/create',
   '/api/acpec/fueltoken/v1/mobile/purchases',
   '/api/acpec/fueltoken/v1/mobile/purchases/detail',
+  '/api/acpec/fueltoken/v1/mobile/payment-methods',
   '/api/acpec/fueltoken/v1/mobile/faces',
   '/api/acpec/fueltoken/v1/mobile/carnet-types',
   '/api/acpec/fueltoken/v1/mobile/qr/issue',

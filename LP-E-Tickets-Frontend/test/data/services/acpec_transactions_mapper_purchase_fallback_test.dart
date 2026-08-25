@@ -56,6 +56,36 @@ void main() {
       expect(txs, isEmpty);
     });
   });
+
+  group('AcpecTransactionsMapper purchase rejection', () {
+    test('maps rejection_reason as transaction note', () {
+      final page = AcpecTransactionsMapper.parsePage(
+        {
+          'ok': true,
+          'data': {
+            'items': [
+              {
+                'id': 301,
+                'transaction_type': 'purchase_rejected',
+                'created_at': '2026-08-22 09:30:00',
+                'purchase_id': 901,
+                'purchase_name': 'ACH/2026/00901',
+                'partner_id': 7,
+                'partner_name': 'Client Test',
+                'rejection_reason': 'Preuve de paiement illisible',
+              },
+            ],
+          },
+        },
+        userId: '7',
+        userName: 'Client Test',
+      );
+
+      expect(page.items, hasLength(1));
+      expect(page.items.single.type, TxType.purchaseRejected);
+      expect(page.items.single.note, 'Preuve de paiement illisible');
+    });
+  });
 }
 
 PurchaseLot _lot({

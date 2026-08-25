@@ -18,6 +18,9 @@ class ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final responsiveTitleFontSize = (screenWidth * 0.072).clamp(22.0, 26.0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -41,7 +44,7 @@ class ScreenHeader extends StatelessWidget {
               else
                 const SizedBox(width: 34, height: 34),
               const Spacer(),
-              ?trailing,
+              if (trailing != null) trailing!,
             ],
           ),
         ),
@@ -50,11 +53,16 @@ class ScreenHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             title,
+            maxLines: 2,
+            softWrap: true,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.start,
             style: TextStyle(
-              fontSize: 26,
+              fontSize: responsiveTitleFontSize,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF111827),
               height: 1.08,
+              letterSpacing: -0.3,
             ),
           ),
         ),
@@ -64,10 +72,15 @@ class ScreenHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               subtitle!,
-              style: TextStyle(
+              maxLines: 2,
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.start,
+              style: const TextStyle(
                 fontSize: 13,
-                color: const Color(0xFF4B5563),
+                color: Color(0xFF4B5563),
                 fontWeight: FontWeight.w500,
+                height: 1.35,
               ),
             ),
           ),

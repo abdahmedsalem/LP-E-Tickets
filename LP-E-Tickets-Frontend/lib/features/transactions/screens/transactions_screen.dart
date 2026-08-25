@@ -1473,7 +1473,10 @@ List<_TxDetailRow> _transactionDetailRows(
             lotRef.isNotEmpty)
           _TxDetailRow(label: l10n.carnet, value: lotRef),
         _TxDetailRow(label: l10n.buyer, value: tx.userName),
-        if (pendingPurchaseDecision != null)
+        if (tx.type == TxType.purchaseRejected &&
+            (tx.note ?? '').trim().isNotEmpty)
+          _TxDetailRow(label: l10n.rejectionReason, value: tx.note!.trim())
+        else if (pendingPurchaseDecision != null)
           _TxDetailRow(label: l10n.note, value: pendingPurchaseDecision),
       ];
     case TxType.qrEmission:

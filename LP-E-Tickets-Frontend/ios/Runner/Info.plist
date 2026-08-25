@@ -58,5 +58,11 @@
 	<string>Leader Petroleum E-Tickets utilise la caméra pour scanner les codes QR à la station.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Leader Petroleum E-Tickets accède à vos photos pour joindre une preuve de paiement à une commande de carnets.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Leader Petroleum E-Tickets enregistre les reçus et preuves de paiement dans votre galerie de photos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Leader Petroleum E-Tickets utilise la géolocalisation pour vérifier la présence à la station lors du service de carburant.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Leader Petroleum E-Tickets utilise la géolocalisation pour sécuriser les transactions en station.</string>
 </dict>
 </plist>

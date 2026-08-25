@@ -209,30 +209,40 @@ class _SummaryRow extends StatelessWidget {
             ),
           ),
         ),
-        if (_looksLikeAmount(value))
-          _AmountInline(
-            amount: int.parse(value.replaceAll(RegExp(r'[^0-9]'), '').trim()),
-            textAlign: TextAlign.end,
-            valueStyle: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2E7D32),
-            ),
-            unitStyle: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
-            ),
-          )
-        else
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: valueColor,
-            ),
+        Flexible(
+          flex: 2,
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: _looksLikeAmount(value)
+                ? _AmountInline(
+                    amount: int.parse(
+                      value.replaceAll(RegExp(r'[^0-9]'), '').trim(),
+                    ),
+                    textAlign: TextAlign.end,
+                    valueStyle: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF2E7D32),
+                    ),
+                    unitStyle: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+                    ),
+                  )
+                : Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: valueColor,
+                    ),
+                  ),
           ),
+        ),
       ],
     );
   }

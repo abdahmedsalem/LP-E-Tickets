@@ -254,12 +254,7 @@ class _FacesDetailScreenState extends State<FacesDetailScreen> {
     }
 
     final rawName = line.carnetTypeName.trim();
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    if (rawName.isNotEmpty &&
-        (!isArabic || RegExp(r'[\u0600-\u06FF]').hasMatch(rawName))) {
-      return rawName;
-    }
-
+    if (rawName.isNotEmpty) return rawName;
     final rawCode = line.carnetTypeCode.trim();
     if (rawCode.isNotEmpty) return rawCode;
     return AppLocalizations.of(context).carnet;

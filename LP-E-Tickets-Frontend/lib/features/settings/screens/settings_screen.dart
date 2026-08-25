@@ -4,21 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/auth/login_session_cache.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/config/odoo_api_config.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../data/models/app_user.dart';
-import '../../../data/models/business_transaction.dart';
-import '../../../data/services/acpec_purchases_mapper.dart';
-import '../../../data/services/acpec_qr_mapper.dart';
-import '../../../data/services/acpec_transactions_mapper.dart';
-import '../../../data/services/odoo_fueltoken_facade.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart'
-    show OdooJsonRpcException;
 import '../../../main.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
@@ -35,117 +27,31 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _bioPref = false;
   String _localeCode = 'fr';
+  String _appVersion = '—';
+  String _buildNumber = '—';
   final _localAuth = LocalAuthentication();
-
-  int? _acpecStatLots;
-  int? _acpecStatQrs;
-  int? _acpecStatConsumed;
-  bool _acpecStatsRefreshing = false;
-  bool _acpecStatsLoaded = false;
-
-  static const int _acpecTxPageSize = 40;
-  static const int _acpecTxMaxPages = 80;
 
   @override
   void initState() {
     super.initState();
     _load();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _refreshAcpecAccountStats();
-    });
-  }
-
-  Future<int> _countAcpecStationConsumptions(AppUser user) async {
-    final facade = OdooFueltokenFacade();
-    final df = DateFormat('yyyy-MM-dd HH:mm:ss');
-    final from = DateTime(2020, 1, 1);
-    final to = DateTime.now().add(const Duration(days: 365));
-    var offset = 0;
-    var count = 0;
-    for (var page = 0; page < _acpecTxMaxPages; page++) {
-      final raw = await facade.transactions({
-        'date_from': df.format(from),
-        'date_to': df.format(to),
-        'limit': _acpecTxPageSize,
-        'offset': offset,
-      });
-      final parsed = AcpecTransactionsMapper.parsePage(
-        raw,
-        userId: user.id,
-        userName: user.name,
-        requestedLimit: _acpecTxPageSize,
-        requestedOffset: offset,
-      );
-      for (final t in parsed.items) {
-        if (t.type == TxType.stationConsumption) count++;
-      }
-      offset += parsed.items.length;
-      if (!parsed.hasMore || parsed.items.isEmpty) break;
-    }
-    return count;
-  }
-
-  Future<void> _refreshAcpecAccountStats() async {
-    if (!AppEnvironment.useAcpecLiveData) return;
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) return;
-
-    setState(() => _acpecStatsRefreshing = true);
-    try {
-      final facade = OdooFueltokenFacade();
-      final lotsRaw = await facade.purchasesList(const <String, dynamic>{});
-      final qrsRaw = await facade.qrList(const <String, dynamic>{});
-      final lots = AcpecPurchasesMapper.fromRpcResult(
-        lotsRaw,
-        clientId: user.id,
-        clientName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
-      ).length;
-      final qrs = AcpecQrMapper.listFromRpc(
-        qrsRaw,
-        ownerId: user.id,
-        ownerName: user.name,
-        companyId: AppEnvironment.companyIdForUser(user),
-      ).length;
-      final consumed = await _countAcpecStationConsumptions(user);
-      if (!mounted) return;
-      setState(() {
-        _acpecStatLots = lots;
-        _acpecStatQrs = qrs;
-        _acpecStatConsumed = consumed;
-        _acpecStatsLoaded = true;
-        _acpecStatsRefreshing = false;
-      });
-    } on OdooJsonRpcException {
-      if (!mounted) return;
-      setState(() {
-        _acpecStatsRefreshing = false;
-        if (!_acpecStatsLoaded) {
-          _acpecStatLots = 0;
-          _acpecStatQrs = 0;
-          _acpecStatConsumed = 0;
-        }
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _acpecStatsRefreshing = false;
-        if (!_acpecStatsLoaded) {
-          _acpecStatLots = 0;
-          _acpecStatQrs = 0;
-          _acpecStatConsumed = 0;
-        }
-      });
-    }
   }
 
   Future<void> _load() async {
-    final bio = await LoginSessionCache.biometricPreferred();
-    final loc = await AppPreferences.localeCode();
+    final results = await Future.wait<dynamic>([
+      LoginSessionCache.biometricPreferred(),
+      AppPreferences.localeCode(),
+      PackageInfo.fromPlatform(),
+    ]);
+    final bio = results[0] as bool;
+    final loc = results[1] as String;
+    final packageInfo = results[2] as PackageInfo;
     if (mounted) {
       setState(() {
         _bioPref = bio;
         _localeCode = loc;
+        _appVersion = packageInfo.version;
+        _buildNumber = packageInfo.buildNumber;
       });
     }
   }
@@ -233,6 +139,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     AppMessage.info(context, l10n.settingsDeletionLinkCopied);
   }
 
+  Future<void> _showPrivacyPolicyInfo() async {
+    const privacyUrl = 'https://lpft.odoorim.com/privacy';
+    final copyLink = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Text('Politique de confidentialité'),
+        content: const Text(
+          'Leader Petroleum E-Tickets s’engage à protéger vos données personnelles. '
+          'La géolocalisation et l’appareil mobile servent uniquement à la sécurité et à la validation des opérations de carburant.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Fermer'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.link_rounded),
+            label: const Text('Copier le lien'),
+          ),
+        ],
+      ),
+    );
+    if (copyLink != true) return;
+    await Clipboard.setData(const ClipboardData(text: privacyUrl));
+    if (!mounted) return;
+    AppMessage.info(context, 'Lien de la politique de confidentialité copié.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -244,26 +180,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       alpha: scheme.brightness == Brightness.dark ? 0.5 : 0.35,
     );
 
-    final useLiveStats = user != null && AppEnvironment.useAcpecLiveData;
-    final showStatPlaceholder =
-        useLiveStats && _acpecStatsRefreshing && !_acpecStatsLoaded;
-
-    String lotsText;
-    String qrsText;
-    String consText;
-    if (!useLiveStats || showStatPlaceholder) {
-      lotsText = '—';
-      qrsText = '—';
-      consText = '—';
-    } else {
-      lotsText = '${_acpecStatLots ?? 0}';
-      qrsText = '${_acpecStatQrs ?? 0}';
-      consText = '${_acpecStatConsumed ?? 0}';
-    }
-
     Future<void> onPullRefresh() async {
       await _load();
-      await _refreshAcpecAccountStats();
     }
 
     return Scaffold(
@@ -304,15 +222,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Localizations.localeOf(context).toLanguageTag(),
                           ).format(user.createdAt),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      _StatsRow(
-                        lotsText: lotsText,
-                        qrsText: qrsText,
-                        consumedText: consText,
-                        cardBg: cardBg,
-                        borderColor: borderColor,
-                        labelColor: scheme.onSurfaceVariant,
                       ),
                       const SizedBox(height: 24),
                     ],
@@ -396,6 +305,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _prefTile(
                           context,
+                          icon: Icons.privacy_tip_outlined,
+                          title: 'Politique de confidentialité',
+                          onTap: _showPrivacyPolicyInfo,
+                        ),
+                        _prefTile(
+                          context,
                           icon: Icons.person_remove_outlined,
                           title: l10n.settingsDeleteAccount,
                           onTap: _showDeleteAccountInfo,
@@ -438,10 +353,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                     const SizedBox(height: 28),
-                    const Text(
-                      'Version 1.0.0 • ACPEC',
+                    Text(
+                      l10n.settingsDevelopedBy,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      l10n.settingsVersionBuild(_appVersion, _buildNumber),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
                         color: AppColors.hint,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -655,94 +580,6 @@ class _CompanyHeaderCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.82),
               fontSize: 12.5,
               fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({
-    required this.lotsText,
-    required this.qrsText,
-    required this.consumedText,
-    required this.cardBg,
-    required this.borderColor,
-    required this.labelColor,
-  });
-
-  final String lotsText;
-  final String qrsText;
-  final String consumedText;
-  final Color cardBg;
-  final Color borderColor;
-  final Color labelColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final valueColor = Theme.of(context).colorScheme.onSurface;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: borderColor.withValues(alpha: 0.9)),
-      ),
-      child: Row(
-        children: [
-          _statCell(l10n.settingsCarnets, lotsText, labelColor, valueColor),
-          _divider(labelColor),
-          _statCell(l10n.settingsQr, qrsText, labelColor, valueColor),
-          _divider(labelColor),
-          _statCell(
-            l10n.settingsConsumptions,
-            consumedText,
-            labelColor,
-            valueColor,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _divider(Color c) {
-    return Container(
-      width: 1,
-      height: 36,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      color: c.withValues(alpha: 0.2),
-    );
-  }
-
-  Widget _statCell(
-    String label,
-    String value,
-    Color labelColor,
-    Color valueColor,
-  ) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              letterSpacing: -0.3,
-              color: valueColor,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: labelColor,
             ),
           ),
         ],

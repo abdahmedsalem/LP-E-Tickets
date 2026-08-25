@@ -1349,6 +1349,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get settingsDevelopedBy => 'Développée par ACPEC Sarl';
+
+  @override
+  String settingsVersionBuild(String version, String build) {
+    return 'Version $version • Build $build';
+  }
+
+  @override
   String get settingsPreferences => 'Préférences';
 
   @override

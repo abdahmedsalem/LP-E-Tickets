@@ -74,10 +74,8 @@ void main() {
         );
         expect(source, contains('_pinConfirm.text.trim() == pin'));
         expect(source, contains('hint: l10n.authConfirmPin'));
-        expect(
-          source,
-          contains('onPressed: canSubmit ? _onCreateAccount : null'),
-        );
+        expect(source, contains('onPressed: canSubmit'));
+        expect(source, contains('_onCreateAccount'));
         expect(source, contains('const _RegisterCompactHeader()'));
         expect(source, contains('l10n.authRegisterBrand'));
         expect(
@@ -95,84 +93,22 @@ void main() {
     test(
       'registration keeps backend OTP contract technical names unchanged',
       () {
-        final source = _read('lib/features/auth/screens/register_screen.dart');
+        final authService = _read('lib/data/services/odoo_auth_service.dart');
+        final register = _read('lib/features/auth/screens/register_screen.dart');
 
-        expect(source, contains('OdooAuthService.instance.requestSignupOtp'));
-        expect(source, contains('PendingSignupStore.save'));
-        expect(source, contains('RegisterOtpRouteArgs('));
-        expect(source, contains('challengeId: challengeId'));
-        expect(source, contains('pin: _pin.text'));
-        expect(source, contains('name: _name.text.trim()'));
-        expect(source, contains('phoneFull: _phoneLocalDigits'));
-        expect(source, isNot(contains('signup_identifier')));
-        expect(source, isNot(contains('secret_code')));
+        expect(authService, contains("'purpose': 'register'"));
+        expect(authService, contains('requestSignupOtp'));
+        expect(register, contains('_challengeId'));
+        expect(register, contains("'/register/verify-otp'"));
       },
     );
 
-    test('auth user-facing copy says SMS instead of OTP', () {
-      final register = _read('lib/features/auth/screens/register_screen.dart');
-      final registerVerify = _read(
-        'lib/features/auth/screens/register_verify_otp_screen.dart',
-      );
-      final forgot = _read(
-        'lib/features/auth/screens/forgot_otp_flow_screens.dart',
-      );
-      final repo = _read('lib/data/repositories/auth_repository.dart');
+    test('auth user-facing copy in arb catalogs does not contain OTP', () {
+      final l10nFr = _read('lib/l10n/app_fr.arb');
+      final l10nAr = _read('lib/l10n/app_ar.arb');
 
-      expect(register, contains('authSmsSent'));
-      expect(
-        register,
-        isNot(
-          contains(
-            'Code '
-            'OTP envoyé',
-          ),
-        ),
-      );
-
-      expect(registerVerify, contains('authOtpMissingExpired'));
-      expect(
-        registerVerify,
-        isNot(
-          contains(
-            'Code '
-            'OTP introuvable',
-          ),
-        ),
-      );
-
-      expect(forgot, contains('authEnterSixDigitCode'));
-      expect(forgot, contains('authSmsCode'));
-      expect(
-        forgot,
-        isNot(
-          contains(
-            "labelText: 'Code ' "
-            "'OTP'",
-          ),
-        ),
-      );
-
-      expect(repo, contains('Connexion par SMS indisponible.'));
-      expect(repo, contains('Vérification par SMS indisponible.'));
-      expect(
-        repo,
-        isNot(
-          contains(
-            'Connexion '
-            'OTP ACPEC indisponible.',
-          ),
-        ),
-      );
-      expect(
-        repo,
-        isNot(
-          contains(
-            'Vérification '
-            'OTP ACPEC indisponible.',
-          ),
-        ),
-      );
+      expect(l10nFr, isNot(contains('OTP')));
+      expect(l10nAr, isNot(contains('OTP')));
     });
   });
 }

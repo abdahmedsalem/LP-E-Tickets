@@ -113,5 +113,69 @@ void main() {
       expect(lot.proofs.first.bytes, isNotNull);
       expect(lot.proofs.first.hasImagePreview, isTrue);
     });
+
+    test(
+      'decodes mobile purchase list inline proof data for image preview',
+      () {
+        final proofData = base64Encode([
+          0x89,
+          0x50,
+          0x4E,
+          0x47,
+          0x0D,
+          0x0A,
+          0x1A,
+          0x0A,
+          ...utf8.encode('proof-list'),
+        ]);
+
+        final lots = AcpecPurchasesMapper.fromRpcResult(
+          {
+            'data': {
+              'items': [
+                {
+                  'id': 19,
+                  'name': 'ACH/2026/00019',
+                  'public_code': 'PUR-19',
+                  'state': 'submitted',
+                  'amount_total': 1000,
+                  'face_qty_total': 1,
+                  'proof_attachments': [
+                    {
+                      'id': 45,
+                      'filename': 'preuve-liste.png',
+                      'mimetype': 'image/png',
+                      'url': '/web/content/45',
+                      'proof_image_data': proofData,
+                    },
+                  ],
+                  'lines': [
+                    {
+                      'id': 93,
+                      'carnet_type_id': 7,
+                      'carnet_type_code': 'C1-1000',
+                      'carnet_type_name': 'Carnet 1 × 1000',
+                      'carnet_qty': 1,
+                      'face_count': 1,
+                      'face_value': 1000,
+                      'amount_total': 1000,
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          clientId: 'user-1',
+          clientName: 'Client Test',
+          companyId: '1',
+        );
+
+        expect(lots, hasLength(1));
+        expect(lots.first.proofs, hasLength(1));
+        expect(lots.first.proofs.first.filename, 'preuve-liste.png');
+        expect(lots.first.proofs.first.bytes, isNotNull);
+        expect(lots.first.proofs.first.hasImagePreview, isTrue);
+      },
+    );
   });
 }

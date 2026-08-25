@@ -2432,6 +2432,18 @@ abstract class AppLocalizations {
   /// **'Membre depuis {date}'**
   String settingsMemberSince(String date);
 
+  /// No description provided for @settingsDevelopedBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Développée par ACPEC Sarl'**
+  String get settingsDevelopedBy;
+
+  /// No description provided for @settingsVersionBuild.
+  ///
+  /// In fr, this message translates to:
+  /// **'Version {version} • Build {build}'**
+  String settingsVersionBuild(String version, String build);
+
   /// No description provided for @settingsPreferences.
   ///
   /// In fr, this message translates to:

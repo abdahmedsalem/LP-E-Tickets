@@ -31,7 +31,13 @@ class AppEnvironment {
 
   /// Builds store / Play : toutes les bases API doivent être en **HTTPS**.
   static bool get releaseRequiresHttps =>
-      kReleaseMode && !allowOfflineDemoInRelease;
+      kReleaseMode && !allowOfflineDemoInRelease && !isLocalWebHttpBuild;
+
+  /// Build web local servi par Odoo (`/app`) : hors stores, HTTP localhost permis.
+  static bool get isLocalWebHttpBuild =>
+      kIsWeb &&
+      OdooApiConfig.isLocalHostBase &&
+      OdooApiConfig.baseUrlTrimmed.toLowerCase().startsWith('http://');
 
   static bool _urlUsesHttps(String url) {
     final uri = Uri.tryParse(url);

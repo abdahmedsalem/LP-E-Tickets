@@ -349,7 +349,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                         Text(
                           l10n.qrGenerationChooseInstruction,
                           style: TextStyle(
-                            fontSize: 15,
+                    fontSize: 15,
                             fontWeight: FontWeight.w400,
                             color: AppColors.muted,
                             height: 1.35,
@@ -641,32 +641,38 @@ class _BottomBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            height: 52,
-            child: ElevatedButton(
-              onPressed: disabled ? null : onEmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF43A047),
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(
-                  0xFF43A047,
-                ).withValues(alpha: 0.35),
-                disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 112, maxWidth: 154),
+            child: SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: disabled ? null : onEmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF43A047),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(
+                    0xFF43A047,
+                  ).withValues(alpha: 0.35),
+                  disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  elevation: 0,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                elevation: 0,
-              ),
-              child: emitting
-                  ? const AppInlineLoading(size: 20)
-                  : Text(
-                      l10n.qrGenerate,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                child: emitting
+                    ? const AppInlineLoading(size: 20)
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          l10n.qrGenerate,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ],

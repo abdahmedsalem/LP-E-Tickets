@@ -208,6 +208,13 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
       if (code == 'SIGNUP_NOT_ALLOWED') {
         return l10n.authRegistrationFailed;
       }
+      final ref = error.reference;
+      if (ref != null && ref.trim().isNotEmpty) {
+        return [
+          l10n.authOtpMissingExpired,
+          l10n.supportReference(ref),
+        ].join('\n');
+      }
       return l10n.authOtpMissingExpired;
     }
     return l10n.authOtpMissingExpired;
@@ -812,7 +819,7 @@ class _OtpInputWidgetState extends State<_OtpInputWidget> {
                 focusNode: _focusNode,
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
-                textAlign: TextAlign.left,
+                textAlign: TextAlign.start,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(widget.length),

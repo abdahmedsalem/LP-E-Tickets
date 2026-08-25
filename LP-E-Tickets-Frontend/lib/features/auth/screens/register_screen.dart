@@ -1058,7 +1058,7 @@ class _OtpInputWidgetState extends State<_OtpInputWidget> {
                 focusNode: _focusNode,
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
-                textAlign: TextAlign.left,
+                textAlign: TextAlign.start,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(widget.length),

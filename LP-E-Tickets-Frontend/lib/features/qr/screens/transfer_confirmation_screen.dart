@@ -289,18 +289,24 @@ class _TransferTotalRow extends StatelessWidget {
             ),
           ),
         ),
-        _AmountInline(
-          amount: totalAmount,
-          textAlign: TextAlign.end,
-          valueStyle: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF2E7D32),
-          ),
-          unitStyle: TextStyle(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+        Flexible(
+          flex: 2,
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: _AmountInline(
+              amount: totalAmount,
+              textAlign: TextAlign.end,
+              valueStyle: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF2E7D32),
+              ),
+              unitStyle: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+              ),
+            ),
           ),
         ),
       ],

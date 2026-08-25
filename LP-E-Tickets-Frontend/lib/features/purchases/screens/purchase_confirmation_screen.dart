@@ -144,24 +144,27 @@ class _PurchaseConfirmationScreenState
                             color: Colors.white,
                           ),
                         )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.check_circle_outline_rounded,
-                              color: Colors.white,
-                              size: 19,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              l10n.purchaseConfirmTitle,
-                              style: const TextStyle(
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline_rounded,
                                 color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
+                                size: 19,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Text(
+                                l10n.purchaseConfirmTitle,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                 ),
               ),

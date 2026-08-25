@@ -306,6 +306,7 @@ class AcpecPurchasesMapper {
       'attachment_data',
       'file_data',
       'image_data',
+      'proof_image_data',
       'binary',
       'base64',
     ]) {
@@ -723,6 +724,7 @@ class AcpecPurchasesMapper {
           p['contenu'] ??
           p['image'] ??
           p['image_data'] ??
+          p['proof_image_data'] ??
           p['file'] ??
           p['binary'] ??
           p['base64'] ??
@@ -741,6 +743,7 @@ class AcpecPurchasesMapper {
     var url =
         (p['url'] ??
                 p['download_url'] ??
+                p['payment_proof_url'] ??
                 p['href'] ??
                 p['link'] ??
                 p['public_url'])
@@ -1035,7 +1038,9 @@ class AcpecPurchasesMapper {
     final proofs = _proofsFromRow(row);
     final paymentRef = row['payment_reference']?.toString().trim();
     final String? paymentProofPath =
-        row['payment_proof_path']?.toString() ?? row['proof_path']?.toString();
+        row['payment_proof_path']?.toString() ??
+        row['payment_proof_url']?.toString() ??
+        row['proof_path']?.toString();
 
     final lines =
         _mapLines(row['lines']) ??

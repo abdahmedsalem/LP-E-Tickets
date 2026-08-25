@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_fueltoken_rpc_config.dart';
@@ -46,7 +46,7 @@ class OdooFueltokenFacade {
   }
 
   void _ensureRemoteHostForQrActions() {
-    if (OdooApiConfig.isLocalHostBase && kReleaseMode) {
+    if (OdooApiConfig.isLocalHostBase && kReleaseMode && !kIsWeb) {
       throw OdooFuelRpcLocalHostConfigured(
         'ODOO_JSONRPC_BASE_URL doit pointer vers le serveur Odoo distant '
         'en production, pas localhost / 127.0.0.1 / 10.0.2.2.',
@@ -99,6 +99,12 @@ class OdooFueltokenFacade {
   Future<dynamic> purchasesDetail(Map<String, dynamic> params) => _call(
     OdooFueltokenRpcConfig.purchasesDetail,
     'ODOO_RPC_FUEL_PURCHASES_DETAIL_PATH',
+    params,
+  );
+
+  Future<dynamic> paymentMethods([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.paymentMethods,
+    'ODOO_RPC_FUEL_PAYMENT_METHODS_PATH',
     params,
   );
 

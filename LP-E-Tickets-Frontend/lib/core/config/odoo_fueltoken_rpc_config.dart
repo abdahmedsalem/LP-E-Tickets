@@ -49,6 +49,11 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/fueltoken/v1/mobile/purchases/detail',
   );
 
+  static const String paymentMethods = String.fromEnvironment(
+    'ODOO_RPC_FUEL_PAYMENT_METHODS_PATH',
+    defaultValue: '/api/acpec/fueltoken/v1/mobile/payment-methods',
+  );
+
   /// Achats en attente côté admin.
   static const String adminPurchasesPending = String.fromEnvironment(
     'ODOO_RPC_FUEL_ADMIN_PURCHASES_PENDING_PATH',

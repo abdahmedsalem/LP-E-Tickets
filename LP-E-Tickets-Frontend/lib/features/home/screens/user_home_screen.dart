@@ -10,7 +10,6 @@ import '../../../l10n/app_localizations.dart';
 import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/config/app_environment.dart';
-import '../../settings/data/notifications_store.dart';
 import '../../../shared/widgets/fuel_brand_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
@@ -159,6 +158,11 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
             bottom: false,
             child: BlocBuilder<WalletCubit, WalletState>(
               builder: (ctx, wallet) {
+                final viewportWidth = MediaQuery.sizeOf(ctx).width;
+                final horizontalPadding = viewportWidth < 340 ? 12.0 : 16.0;
+                final actionGap = viewportWidth < 340 ? 10.0 : 12.0;
+                final walletHeight = viewportWidth < 340 ? 112.0 : 106.0;
+
                 return RefreshIndicator(
                   color: AppColors.leaderGreen,
                   onRefresh: () async => ctx.read<WalletCubit>().refresh(),
@@ -169,10 +173,10 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                     padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
                     children: [
                       Padding(
-                        padding: const EdgeInsetsDirectional.fromSTEB(
-                          16,
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          horizontalPadding,
                           4,
-                          12,
+                          horizontalPadding,
                           0,
                         ),
                         child: Row(
@@ -212,7 +216,10 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const Padding(
+                              padding: EdgeInsetsDirectional.only(start: 6),
+                              child: SizedBox(width: 6),
+                            ),
                             Expanded(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -240,14 +247,18 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                         color: AppColors.leaderGreen,
                                       ),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        l10n.homeVerifiedAccount,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
+                                      Flexible(
+                                        child: Text(
+                                          l10n.homeVerifiedAccount,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -255,26 +266,16 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            ValueListenableBuilder<int>(
-                              valueListenable:
-                                  NotificationsStore.instance.unreadCount,
-                              builder: (context, unread, _) {
-                                return _HomeTopAction(
-                                  icon: Icons.notifications_outlined,
-                                  badge: unread,
-                                  onTap: () => ctx.push('/notifications'),
-                                );
-                              },
-                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 14),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
                         child: SizedBox(
-                          height: 106,
+                          height: walletHeight,
                           child: ClientHomeWalletCard(
                             amount: wallet.amount,
                             currency: _walletCurrency,
@@ -286,7 +287,9 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                           wallet.loadError!.trim().isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding,
+                          ),
                           child: _BackendUnavailableBanner(
                             message:
                                 Localizations.localeOf(ctx).languageCode == 'ar'
@@ -298,7 +301,9 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                       ],
                       const SizedBox(height: 22),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
                         child: Text(
                           l10n.homeQuickActions,
                           style: TextStyle(
@@ -310,7 +315,9 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                       ),
                       const SizedBox(height: 12),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
                         child: Column(
                           children: [
                             Row(
@@ -326,7 +333,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: actionGap),
                                 Expanded(
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
@@ -339,7 +346,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: actionGap),
                             Row(
                               children: [
                                 Expanded(
@@ -353,7 +360,7 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: actionGap),
                                 Expanded(
                                   child: AspectRatio(
                                     aspectRatio: 1.18,
@@ -404,24 +411,9 @@ class _BackendUnavailableBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: scheme.error.withValues(alpha: 0.28)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.cloud_off_rounded, color: scheme.error, size: 22),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                  height: 1.25,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            TextButton(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final retryButton = TextButton(
               onPressed: onRetry,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.leaderGreenDark,
@@ -430,8 +422,49 @@ class _BackendUnavailableBanner extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(AppLocalizations.of(context).commonRetry),
-            ),
-          ],
+            );
+            final messageRow = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.cloud_off_rounded, color: scheme.error, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+              ],
+            );
+
+            if (constraints.maxWidth < 330) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  messageRow,
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: retryButton,
+                  ),
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: messageRow),
+                const SizedBox(width: 8),
+                retryButton,
+              ],
+            );
+          },
         ),
       ),
     );
@@ -479,8 +512,26 @@ class _QuickActionCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = constraints.maxWidth;
-        final circleDiameter = math.min(52.0, math.max(46.0, cardWidth * 0.38));
+        final cardHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : cardWidth / 1.18;
+        final compact = cardHeight < 112 || cardWidth < 130;
+        final circleDiameter = compact
+            ? math.min(46.0, math.max(38.0, cardWidth * 0.36))
+            : math.min(52.0, math.max(46.0, cardWidth * 0.38));
         final iconSize = circleDiameter * 0.44;
+        final horizontalPadding = compact
+            ? math.max(8.0, cardWidth * 0.06)
+            : math.max(10.0, cardWidth * 0.08);
+        final verticalPadding = compact
+            ? math.max(8.0, cardHeight * 0.065)
+            : math.max(10.0, cardWidth * 0.07);
+        final titleGap = compact
+            ? math.max(6.0, cardHeight * 0.055)
+            : math.max(8.0, cardWidth * 0.055);
+        final titleFontSize = compact
+            ? math.min(11.4, math.max(10.0, cardWidth * 0.095))
+            : math.min(12.0, math.max(10.8, cardWidth * 0.102));
 
         return Material(
           color: Colors.transparent,
@@ -506,8 +557,8 @@ class _QuickActionCard extends StatelessWidget {
               ),
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: math.max(10.0, cardWidth * 0.08),
-                  vertical: math.max(10.0, cardWidth * 0.07),
+                  horizontal: horizontalPadding,
+                  vertical: verticalPadding,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -526,16 +577,13 @@ class _QuickActionCard extends StatelessWidget {
                         size: iconSize,
                       ),
                     ),
-                    SizedBox(height: math.max(8.0, cardWidth * 0.055)),
+                    SizedBox(height: titleGap),
                     SingleLineCardTitle(
                       text: title,
                       alignment: Alignment.center,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: math.min(
-                          12.0,
-                          math.max(10.8, cardWidth * 0.102),
-                        ),
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w700,
                         height: 1.14,
                         color: const Color(0xFF111111),
@@ -548,86 +596,6 @@ class _QuickActionCard extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _HomeTopAction extends StatelessWidget {
-  const _HomeTopAction({required this.icon, required this.onTap, this.badge});
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final int? badge;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 6),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Ink(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).colorScheme.surface,
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outline.withValues(alpha: 0.85),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Center(
-                  child: Icon(
-                    icon,
-                    size: 22,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                if (badge != null && badge! > 0)
-                  PositionedDirectional(
-                    top: 4,
-                    end: 4,
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 14,
-                        minHeight: 14,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.brandRed,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        badge! > 9 ? '9+' : badge.toString(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          height: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

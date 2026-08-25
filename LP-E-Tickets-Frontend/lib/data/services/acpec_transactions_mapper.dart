@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import '../../core/utils/rejection_reason.dart';
 import '../models/purchase_lot.dart';
 import '../models/business_transaction.dart';
 import '../models/qr_token.dart';
@@ -22,6 +23,7 @@ class AcpecTransactionsTotals {
   final String? scope;
   final String? regularizationState;
 }
+
 /// Page dâ€™historique des transactions (portefeuille ou station).
 class AcpecTransactionsPage {
   const AcpecTransactionsPage({
@@ -432,11 +434,7 @@ class AcpecTransactionsMapper {
       if (_stringField(row, 'station_name') == null && stationName != null) {
         row['station_name'] = stationName;
       }
-      final tx = _mapTransaction(
-        row,
-        userId: userId,
-        userName: userName,
-      );
+      final tx = _mapTransaction(row, userId: userId, userName: userName);
       if (tx != null) items.add(tx);
     }
 
@@ -630,11 +628,12 @@ class AcpecTransactionsMapper {
 
     // Affiner la direction du transfert depuis le champ backend
     if (type == TxType.carnetTransfer) {
-      final direction = (row['transfer_direction']?.toString() ??
-              row['ticket_transfer_direction']?.toString() ??
-              '')
-          .trim()
-          .toLowerCase();
+      final direction =
+          (row['transfer_direction']?.toString() ??
+                  row['ticket_transfer_direction']?.toString() ??
+                  '')
+              .trim()
+              .toLowerCase();
       if (direction == 'incoming' ||
           direction == 'received' ||
           direction == 'receive' ||
@@ -729,8 +728,9 @@ class AcpecTransactionsMapper {
     final actorUserId = row['actor_user_id']?.toString().trim();
     final counterpartyUserId = row['counterparty_user_id']?.toString().trim();
     final actorUserName = row['actor_user_name']?.toString().trim();
-    final counterpartyUserName =
-        row['counterparty_user_name']?.toString().trim();
+    final counterpartyUserName = row['counterparty_user_name']
+        ?.toString()
+        .trim();
 
     final lines = _finalizeLines(
       row,
@@ -748,7 +748,8 @@ class AcpecTransactionsMapper {
     String? transferParty;
     String? transferPartyPhone;
     if (type == TxType.carnetTransfer || type == TxType.carnetReceived) {
-      final fromField = row['transfer_other_party']?.toString().trim() ??
+      final fromField =
+          row['transfer_other_party']?.toString().trim() ??
           row['ticket_transfer_other_party']?.toString().trim() ??
           '';
       if (fromField.isNotEmpty && fromField != 'false') {
@@ -858,13 +859,13 @@ class AcpecTransactionsMapper {
       transferIsIncoming: transferIsIncoming,
       transferUsesTickets: transferUsesTickets,
       actorUserId: actorUserId?.isNotEmpty == true ? actorUserId : null,
-      counterpartyUserId:
-          counterpartyUserId?.isNotEmpty == true ? counterpartyUserId : null,
+      counterpartyUserId: counterpartyUserId?.isNotEmpty == true
+          ? counterpartyUserId
+          : null,
       actorUserName: actorUserName?.isNotEmpty == true ? actorUserName : null,
-      counterpartyUserName:
-          counterpartyUserName?.isNotEmpty == true
-              ? counterpartyUserName
-              : null,
+      counterpartyUserName: counterpartyUserName?.isNotEmpty == true
+          ? counterpartyUserName
+          : null,
       transferParty: transferParty,
       transferPartyPhone: transferPartyPhone,
     );
@@ -1138,6 +1139,9 @@ class AcpecTransactionsMapper {
   }
 
   static String? _noteForRow(Map<String, dynamic> row) {
+    final rejectionReason = rejectionReasonFromMap(row);
+    if (rejectionReason != null) return rejectionReason;
+
     final qr =
         row['qr_public_code']?.toString() ?? row['public_code']?.toString();
     for (final key in ['description', 'label', 'reference']) {
