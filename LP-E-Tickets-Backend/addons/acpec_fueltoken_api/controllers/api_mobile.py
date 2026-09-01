@@ -659,6 +659,31 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
+    @http.route('/api/acpec/fueltoken/v1/mobile/stations/list', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    def mobile_stations_list(self, **kwargs):
+        """Retourne la liste des stations actives avec leurs coordonnées GPS pour l'application mobile client."""
+        try:
+            stations = request.env['acpec.fuel.station'].sudo().search(
+                [('active', '=', True)],
+                order='name, id',
+            )
+            items = []
+            for st in stations:
+                items.append({
+                    'id': st.id,
+                    'name': st.name,
+                    'code': st.code or str(st.id),
+                    'address': st.address or '',
+                    'phone': st.phone or '',
+                    'latitude': st.latitude or 0.0,
+                    'longitude': st.longitude or 0.0,
+                    'company_id': st.company_id.id if st.company_id else False,
+                    'company_name': st.company_id.name if st.company_id else '',
+                })
+            return self._json_response({'items': items, 'count': len(items)})
+        except Exception as exc:
+            return self._handle_exception_response(exc)
+
     @http.route('/api/acpec/fueltoken/v1/mobile/wallet/current', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def current_wallet(self, **kwargs):
         try:

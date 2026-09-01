@@ -9,7 +9,10 @@ class AcpecFuelPaymentMethod(models.Model):
 
     name = fields.Char(string='Nom', required=True, translate=True)
     code = fields.Char(string='Code technique', required=True, index=True)
-    merchant_code = fields.Char(string='Code commerçant', required=True)
+    merchant_code = fields.Char(
+        string='Code commerçant / Numéro de téléphone',
+        required=True,
+    )
     image_1920 = fields.Image(string='Logo', max_width=1024, max_height=1024)
     image_128 = fields.Image(
         string='Logo mobile',
@@ -76,7 +79,9 @@ class AcpecFuelPaymentMethod(models.Model):
     def _check_merchant_code(self):
         for rec in self:
             if not (rec.merchant_code or '').strip():
-                raise ValidationError(_('Le code commerçant est obligatoire.'))
+                raise ValidationError(_(
+                    'Le code commerçant / numéro de téléphone est obligatoire.'
+                ))
 
     @api.constrains('color_hex')
     def _check_color_hex(self):

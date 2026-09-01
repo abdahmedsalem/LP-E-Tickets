@@ -1,6 +1,6 @@
 import base64
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -67,3 +67,43 @@ class TestAcpecFuelPurchaseProof(TransactionCase):
                 'preuve.pdf',
                 self._b64(b'%PDF-1.4\n' + b'123456789'),
             )
+
+    def test_open_payment_proof_opens_image_inline_in_new_tab(self):
+        purchase = self.Purchase._create_internal({
+            'partner_id': self.env.company.partner_id.id,
+            'company_id': self.env.company.id,
+        })
+        pdf = self.env['ir.attachment'].sudo().create({
+            'name': 'preuve.pdf',
+            'datas': self._b64(b'%PDF-1.4\n%test\n'),
+            'mimetype': 'application/pdf',
+            'res_model': purchase._name,
+            'res_id': purchase.id,
+        })
+        image = self.env['ir.attachment'].sudo().create({
+            'name': 'preuve.png',
+            'datas': self._b64(b'\x89PNG\r\n\x1a\nimage'),
+            'mimetype': 'image/png',
+            'res_model': purchase._name,
+            'res_id': purchase.id,
+        })
+        purchase._write_proof_internal({
+            'proof_attachment_ids': [(6, 0, (pdf | image).ids)],
+        })
+
+        action = purchase.action_open_payment_proof()
+
+        self.assertEqual(action['type'], 'ir.actions.act_window')
+        self.assertEqual(action['res_model'], 'acpec.fuel.purchase.proof.wizard')
+        self.assertEqual(action['target'], 'new')
+        wizard = self.env['acpec.fuel.purchase.proof.wizard'].browse(action['res_id'])
+        self.assertEqual(wizard.attachment_id, image)
+
+    def test_open_payment_proof_rejects_purchase_without_proof(self):
+        purchase = self.Purchase._create_internal({
+            'partner_id': self.env.company.partner_id.id,
+            'company_id': self.env.company.id,
+        })
+
+        with self.assertRaises(UserError):
+            purchase.action_open_payment_proof()

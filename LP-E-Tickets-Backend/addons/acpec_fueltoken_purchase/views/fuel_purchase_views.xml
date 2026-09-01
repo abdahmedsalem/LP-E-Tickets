@@ -16,6 +16,7 @@
             </list>
         </field>
     </record>
+
     <record id="view_fuel_purchase_form" model="ir.ui.view">
         <field name="name">acpec.fuel.purchase.form</field>
         <field name="model">acpec.fuel.purchase</field>
@@ -52,6 +53,12 @@
                     </group>
                     <notebook>
                         <page string="Preuves de paiement">
+                            <button name="action_open_payment_proof"
+                                    type="object"
+                                    string="Agrandir / Afficher la preuve"
+                                    icon="fa-expand"
+                                    class="btn-primary mb-3"
+                                    invisible="not proof_attachment_ids"/>
                             <field name="proof_attachment_ids" widget="many2many_binary" readonly="1"/>
                         </page>
                         <page string="Rejet">
@@ -63,6 +70,7 @@
             </form>
         </field>
     </record>
+
     <record id="action_fuel_purchase" model="ir.actions.act_window">
         <field name="name">Lots d’achat</field>
         <field name="res_model">acpec.fuel.purchase</field>
@@ -82,6 +90,27 @@
                 <footer>
                     <button name="action_confirm_reject" type="object" string="Confirmer le rejet" class="btn-primary"/>
                     <button string="Annuler" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_fuel_purchase_proof_wizard_form" model="ir.ui.view">
+        <field name="name">acpec.fuel.purchase.proof.wizard.form</field>
+        <field name="model">acpec.fuel.purchase.proof.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Preuve de paiement">
+                <sheet>
+                    <div class="text-center py-2">
+                        <field name="purchase_id" invisible="1"/>
+                        <field name="attachment_id" invisible="1"/>
+                        <field name="filename" invisible="1"/>
+                        <field name="proof_image" widget="image" options="{'zoom': true}" style="max-width: 100%; max-height: 520px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" readonly="1"/>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_download" type="object" string="Télécharger la preuve" icon="fa-download" class="btn-secondary"/>
+                    <button string="Fermer (Retour à la page d'achat)" special="cancel" class="btn-primary" icon="fa-times"/>
                 </footer>
             </form>
         </field>

@@ -39,7 +39,10 @@ class AcpecFuelPurchase(models.Model):
     payment_method_id = fields.Many2one('acpec.fuel.payment.method', string='Mode de paiement', readonly=True)
     payment_method_code = fields.Char(string='Code mode paiement', readonly=True)
     payment_method_name = fields.Char(string='Mode paiement', readonly=True)
-    payment_merchant_code = fields.Char(string='Code commerçant', readonly=True)
+    payment_merchant_code = fields.Char(
+        string='Code commerçant / Numéro de téléphone',
+        readonly=True,
+    )
     idempotency_key = fields.Char(string='Cle idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     approval_idempotency_key = fields.Char(string='Cle idempotence validation', index=True, copy=False)
@@ -480,6 +483,31 @@ class AcpecFuelPurchase(models.Model):
                 'default_purchase_id': self.id,
                 'group_by': 'carnet_type_id',
             },
+        }
+
+    def action_open_payment_proof(self):
+        """Open a modal preview wizard for payment proof with a Close button."""
+        self.ensure_one()
+        attachments = self.proof_attachment_ids.exists()
+        image = attachments.filtered(
+            lambda attachment: (attachment.mimetype or '').startswith('image/')
+        )[:1]
+        attachment = image or attachments[:1]
+        if not attachment:
+            raise UserError(_('Aucune preuve de paiement disponible.'))
+
+        wizard = self.env['acpec.fuel.purchase.proof.wizard'].create({
+            'purchase_id': self.id,
+            'attachment_id': attachment.id,
+        })
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Preuve de paiement — %s') % (attachment.name or self.name),
+            'res_model': 'acpec.fuel.purchase.proof.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
         }
 
     def action_open_reject_wizard(self):
