@@ -45,10 +45,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navQr => 'QR';
 
   @override
-  String get navWallet => 'Portefeuille';
+  String get navWallet => 'Opérations';
 
   @override
   String get navHistory => 'Historique';
+
+  @override
+  String get navPortfolio => 'Portefeuille';
 
   @override
   String get carnetsTitle => 'Mes carnets';

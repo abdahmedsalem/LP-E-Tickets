@@ -16,7 +16,6 @@ void main() {
 
   test('card-based screens use the shared single-line title', () {
     const paths = <String>[
-      'lib/features/admin/screens/admin_home_screen.dart',
       'lib/features/auth/screens/language_selection_screen.dart',
       'lib/features/home/screens/faces_detail_screen.dart',
       'lib/features/home/screens/user_home_screen.dart',

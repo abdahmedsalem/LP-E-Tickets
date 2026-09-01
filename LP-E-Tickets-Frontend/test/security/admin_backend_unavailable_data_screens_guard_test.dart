@@ -5,76 +5,45 @@ import 'package:flutter_test/flutter_test.dart';
 String _read(String path) => File(path).readAsStringSync();
 
 void main() {
-  group('Patch2L2B admin backend unavailable data screens guard', () {
-    test(
-      'admin home does not show false zero metrics on initial load failure',
-      () {
-        final source = _read(
-          'lib/features/admin/screens/admin_home_screen.dart',
-        );
-
-        expect(source, contains('bool _loading = false;'));
-        expect(source, contains('_loading && _summary == null'));
-        expect(source, contains('_error != null && _summary == null'));
-        expect(source, contains('BackendUnavailableBanner'));
-        expect(source, contains('ErrorPresenter.backendUnavailable()'));
-        expect(source, isNot(contains('OdooJsonRpcException')));
-      },
-    );
-
-    test('admin reports shows banner when stale summary remains visible', () {
-      final source = _read(
+  group('Admin frontend removal guard', () {
+    test('admin frontend screens are removed from the Flutter tree', () {
+      const removedFiles = <String>[
+        'lib/features/admin/screens/admin_home_screen.dart',
+        'lib/features/admin/screens/admin_lots_screen.dart',
+        'lib/features/admin/screens/admin_more_screen.dart',
+        'lib/features/admin/screens/admin_profile_screen.dart',
+        'lib/features/admin/screens/admin_purchase_detail_screen.dart',
         'lib/features/admin/screens/admin_reports_screen.dart',
-      );
+        'lib/features/admin/screens/admin_shell_scaffold.dart',
+        'lib/features/admin/screens/admin_submitted_purchases_screen.dart',
+      ];
 
-      expect(source, contains('BackendUnavailableBanner'));
-      expect(source, contains('if (_acpecError != null) ...['));
-      expect(source, contains('_acpecError != null && _summary == null'));
-      expect(source, contains('ErrorPresenter.backendUnavailable()'));
-      expect(source, isNot(contains('OdooJsonRpcException')));
+      for (final path in removedFiles) {
+        expect(
+          File(path).existsSync(),
+          isFalse,
+          reason: '$path should no longer exist in the frontend',
+        );
+      }
     });
 
-    test(
-      'admin lots keeps existing list visible with backend warning banner',
-      () {
-        final source = _read(
-          'lib/features/admin/screens/admin_lots_screen.dart',
-        );
+    test('router no longer exposes admin shell screens', () {
+      final router = _read('lib/core/router/app_router.dart');
 
-        expect(source, contains('BackendUnavailableBanner'));
-        expect(source, contains('_acpecLots!.isNotEmpty'));
-        expect(source, contains('onRetry: _loadAcpecPending'));
-        expect(source, contains('ErrorPresenter.backendUnavailable()'));
-        expect(source, isNot(contains('OdooJsonRpcException')));
-      },
-    );
-
-    test(
-      'admin submitted purchases keeps existing list visible with backend warning banner',
-      () {
-        final source = _read(
-          'lib/features/admin/screens/admin_submitted_purchases_screen.dart',
-        );
-
-        expect(source, contains('BackendUnavailableBanner'));
-        expect(source, contains('_acpecLots!.isNotEmpty'));
-        expect(source, contains('onRetry: _loadAcpecPending'));
-        expect(source, contains('ErrorPresenter.backendUnavailable()'));
-        expect(source, isNot(contains('OdooJsonRpcException')));
-      },
-    );
-
-    test(
-      'admin purchase detail remains delegated to purchase detail for Patch2L3',
-      () {
-        final source = _read(
-          'lib/features/admin/screens/admin_purchase_detail_screen.dart',
-        );
-
-        expect(source, contains('return PurchaseDetailScreen'));
-        expect(source, contains('adminMode: true'));
-        expect(source, isNot(contains('BackendUnavailableBanner')));
-      },
-    );
+      expect(router, isNot(contains('AdminShellScaffold')));
+      expect(router, isNot(contains('AdminHomeScreen')));
+      expect(router, isNot(contains('AdminSubmittedPurchasesScreen')));
+      expect(router, isNot(contains('AdminProfileScreen')));
+      expect(router, isNot(contains('AdminMoreScreen')));
+      expect(router, isNot(contains('AdminLotsScreen')));
+      expect(router, isNot(contains('AdminReportsScreen')));
+      expect(router, isNot(contains('AdminPurchaseDetailScreen')));
+      expect(router, isNot(contains("path: '/admin/achats'")));
+      expect(router, isNot(contains("path: '/admin/profile'")));
+      expect(router, isNot(contains("path: '/admin/more'")));
+      expect(router, isNot(contains("path: '/admin/lots'")));
+      expect(router, isNot(contains("path: '/admin/purchases/:id'")));
+      expect(router, isNot(contains("path: '/admin/reports'")));
+    });
   });
 }

@@ -22,24 +22,19 @@ class ClientShellScaffold extends StatelessWidget {
       selectedIcon: Icons.home_rounded,
     ),
     _ClientTabDestination(
-      label: l10n.navCarnets,
-      icon: Icons.confirmation_number_outlined,
-      selectedIcon: Icons.confirmation_number,
-    ),
-    _ClientTabDestination(
-      label: l10n.navQr,
-      icon: Icons.qr_code_2_outlined,
-      selectedIcon: Icons.qr_code_2,
-    ),
-    _ClientTabDestination(
       label: l10n.navWallet,
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet,
+      icon: Icons.sync_alt_outlined,
+      selectedIcon: Icons.sync_alt_rounded,
     ),
     _ClientTabDestination(
       label: l10n.navHistory,
       icon: Icons.receipt_long_outlined,
       selectedIcon: Icons.receipt_long,
+    ),
+    _ClientTabDestination(
+      label: l10n.navPortfolio,
+      icon: Icons.account_balance_wallet_outlined,
+      selectedIcon: Icons.account_balance_wallet,
     ),
   ];
 
@@ -56,17 +51,32 @@ class ClientShellScaffold extends StatelessWidget {
       case 0: // Accueil / Wallet
         WalletRefreshBus.instance.bump();
         break;
-      case 1: // Carnets / Faces
-        FacesRefreshBus.instance.bump();
-        break;
-      case 2: // QR
-        QrRefreshBus.instance.bump();
-        break;
-      case 3: // Portefeuille
+      case 1: // Opérations
         WalletRefreshBus.instance.bump();
         break;
-      case 4: // Historique
+      case 2: // Historique
         ClientHistoryRefreshBus.instance.bump();
+        break;
+      case 3: // Portefeuille : carnets + QR
+        FacesRefreshBus.instance.bump();
+        QrRefreshBus.instance.bump();
+        break;
+    }
+  }
+
+  void _onPortfolioDestinationSelected(
+    BuildContext context,
+    _PortfolioDestination destination,
+  ) {
+    HapticFeedback.selectionClick();
+    switch (destination) {
+      case _PortfolioDestination.carnets:
+        FacesRefreshBus.instance.bump();
+        context.go('/portfolio/faces');
+        break;
+      case _PortfolioDestination.qr:
+        QrRefreshBus.instance.bump();
+        context.go('/portfolio/qr');
         break;
     }
   }
@@ -104,11 +114,21 @@ class ClientShellScaffold extends StatelessWidget {
           children: [
             for (var i = 0; i < destinations.length; i++) ...[
               Expanded(
-                child: _ClientTabButton(
-                  destination: destinations[i],
-                  selected: i == navigationShell.currentIndex,
-                  onTap: () => _onTabTap(i),
-                ),
+                child: i == 3
+                    ? _PortfolioPopupTabButton(
+                        destination: destinations[i],
+                        selected: i == navigationShell.currentIndex,
+                        onSelected: (destination) =>
+                            _onPortfolioDestinationSelected(
+                              context,
+                              destination,
+                            ),
+                      )
+                    : _ClientTabButton(
+                        destination: destinations[i],
+                        selected: i == navigationShell.currentIndex,
+                        onTap: () => _onTabTap(i),
+                      ),
               ),
               if (i != destinations.length - 1) const SizedBox(width: 6),
             ],
@@ -118,6 +138,8 @@ class ClientShellScaffold extends StatelessWidget {
     );
   }
 }
+
+enum _PortfolioDestination { carnets, qr }
 
 class _ClientTabDestination {
   const _ClientTabDestination({
@@ -144,9 +166,6 @@ class _ClientTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = AppColors.leaderGreen;
-    final inactiveColor = AppColors.muted;
-
     return Semantics(
       button: true,
       selected: selected,
@@ -159,37 +178,129 @@ class _ClientTabButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: Colors.transparent,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  selected ? destination.selectedIcon : destination.icon,
-                  size: 26,
-                  color: selected ? activeColor : inactiveColor,
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    destination.label,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      height: 1.0,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                      color: selected ? activeColor : inactiveColor,
-                    ),
-                  ),
-                ),
-              ],
+            child: _ClientTabContent(
+              destination: destination,
+              selected: selected,
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PortfolioPopupTabButton extends StatelessWidget {
+  const _PortfolioPopupTabButton({
+    required this.destination,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final _ClientTabDestination destination;
+  final bool selected;
+  final ValueChanged<_PortfolioDestination> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return PopupMenuButton<_PortfolioDestination>(
+      tooltip: destination.label,
+      onSelected: onSelected,
+      color: AppColors.surface,
+      elevation: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      itemBuilder: (context) => [
+        PopupMenuItem<_PortfolioDestination>(
+          value: _PortfolioDestination.carnets,
+          child: _PortfolioPopupEntry(
+            icon: Icons.confirmation_number_outlined,
+            label: l10n.carnetsTitle,
+          ),
+        ),
+        PopupMenuItem<_PortfolioDestination>(
+          value: _PortfolioDestination.qr,
+          child: _PortfolioPopupEntry(
+            icon: Icons.qr_code_2_outlined,
+            label: l10n.qrsTitle,
+          ),
+        ),
+      ],
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: destination.label,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: _ClientTabContent(
+            destination: destination,
+            selected: selected,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PortfolioPopupEntry extends StatelessWidget {
+  const _PortfolioPopupEntry({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.leaderGreen, size: 22),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.ink,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ClientTabContent extends StatelessWidget {
+  const _ClientTabContent({required this.destination, required this.selected});
+
+  final _ClientTabDestination destination;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = AppColors.leaderGreen;
+    final inactiveColor = AppColors.muted;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          selected ? destination.selectedIcon : destination.icon,
+          size: 26,
+          color: selected ? activeColor : inactiveColor,
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            destination.label,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 10.5,
+              height: 1.0,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? activeColor : inactiveColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

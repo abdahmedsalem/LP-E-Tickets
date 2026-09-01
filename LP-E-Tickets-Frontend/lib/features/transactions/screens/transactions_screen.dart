@@ -714,7 +714,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     ),
                   )
                   .toList();
-
         final groups = _groupByDay(txs, l10n);
 
         if (acpec && _acpecLoading && _acpecError == null) {
@@ -1017,7 +1016,6 @@ class _TxCardState extends State<_TxCard> {
       mode: widget.mode,
       currentUserId: widget.currentUserId,
     );
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

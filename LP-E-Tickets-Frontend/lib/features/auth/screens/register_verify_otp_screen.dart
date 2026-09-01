@@ -368,7 +368,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
             if (state.status == AuthStatus.authenticated &&
                 state.user != null) {
               final path = switch (state.user!.role) {
-                UserRole.admin => '/admin',
+                UserRole.admin => '/home',
                 UserRole.station => '/station',
                 UserRole.user => '/home',
               };

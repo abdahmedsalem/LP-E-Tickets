@@ -45,10 +45,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navQr => 'QR';
 
   @override
-  String get navWallet => 'المحفظة';
+  String get navWallet => 'العمليات';
 
   @override
   String get navHistory => 'السجل';
+
+  @override
+  String get navPortfolio => 'المحفظة';
 
   @override
   String get carnetsTitle => 'دفاتري';

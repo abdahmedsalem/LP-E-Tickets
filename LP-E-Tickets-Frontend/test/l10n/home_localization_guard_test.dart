@@ -16,7 +16,10 @@ void main() {
     expect(arabic.homeTransferTickets, 'تحويل التذاكر');
     expect(arabic.commonRetry, 'إعادة المحاولة');
     expect(arabic.navHome, 'الرئيسية');
-    expect(arabic.navWallet, 'المحفظة');
+    expect(french.navWallet, 'Opérations');
+    expect(french.navPortfolio, 'Portefeuille');
+    expect(arabic.navWallet, 'العمليات');
+    expect(arabic.navPortfolio, 'المحفظة');
     expect(arabic.navHistory, 'السجل');
   });
 }

@@ -90,7 +90,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   void _handleBack() {
     if (widget.adminMode) {
-      context.go('/admin');
+      context.go('/home');
       return;
     }
     context.pop();

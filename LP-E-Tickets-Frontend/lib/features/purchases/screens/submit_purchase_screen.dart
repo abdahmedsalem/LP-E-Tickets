@@ -56,10 +56,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
-  List<PaymentMethodConfig> _paymentMethods =
-      PaymentMethodConfig.fallbackMethods;
-  String _selectedPaymentMethodCode =
-      PaymentMethodConfig.fallbackMethods.first.code;
+  List<PaymentMethodConfig> _paymentMethods = [];
+  String? _selectedPaymentMethodCode;
+  bool _loadingPaymentMethods = true;
 
   @override
   void initState() {
@@ -146,24 +145,28 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   bool get _hasSelection => _totalTickets() > 0;
 
-  PaymentMethodConfig get _selectedPaymentMethodConfig {
+  PaymentMethodConfig? get _selectedPaymentMethodConfig {
     for (final method in _paymentMethods) {
       if (method.code == _selectedPaymentMethodCode) return method;
     }
-    return _paymentMethods.isNotEmpty
-        ? _paymentMethods.first
-        : PaymentMethodConfig.fallbackMethods.first;
+    return _paymentMethods.isNotEmpty ? _paymentMethods.first : null;
   }
 
   Future<void> _reloadPaymentMethods() async {
+    if (mounted) {
+      setState(() => _loadingPaymentMethods = true);
+    }
     final methods = await AcpecPaymentMethodsService.listActive();
     if (!mounted) return;
     setState(() {
       _paymentMethods = methods;
+      _loadingPaymentMethods = false;
       if (!_paymentMethods.any(
         (method) => method.code == _selectedPaymentMethodCode,
       )) {
-        _selectedPaymentMethodCode = _paymentMethods.first.code;
+        _selectedPaymentMethodCode = _paymentMethods.isEmpty
+            ? null
+            : _paymentMethods.first.code;
       }
     });
   }
@@ -397,6 +400,11 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                         'MOBL-${DateTime.now().millisecondsSinceEpoch}';
                     final idem = const Uuid().v4();
                     final paymentMethod = _selectedPaymentMethodConfig;
+                    if (paymentMethod == null) {
+                      throw Exception(
+                        'Aucun moyen de paiement actif n’est disponible.',
+                      );
+                    }
                     final raw = await OdooFueltokenFacade().purchasesCreate({
                       'lines': rpcLines,
                       'proof_filename': fileName,
@@ -457,7 +465,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   .toList();
               final currency = _selectedCurrency;
               final hasProof = _proofPath != null;
-              final canSubmit = hasProof && !_submitting;
+              final canSubmit =
+                  hasProof &&
+                  !_submitting &&
+                  _selectedPaymentMethodConfig != null;
 
               return Scaffold(
                 backgroundColor: Colors.white,
@@ -572,21 +583,67 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     StateSetter modalSetState,
   ) {
     final selectedMethod = _selectedPaymentMethodConfig;
+    if (_loadingPaymentMethods) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PaymentMethodSectionTitle(),
+          SizedBox(height: 16),
+          Center(child: AppInlineLoading(size: 22)),
+        ],
+      );
+    }
+    if (selectedMethod == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _PaymentMethodSectionTitle(),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFED7AA)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Aucun moyen de paiement disponible.',
+                  style: TextStyle(
+                    color: Color(0xFF9A3412),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Les moyens de paiement doivent être configurés et activés dans Odoo.',
+                  style: TextStyle(color: Color(0xFF9A3412), fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () async {
+                    await _reloadPaymentMethods();
+                    modalSetState(() {});
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Réessayer'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     final selectedCode = selectedMethod.merchantCode;
     final themeColor = selectedMethod.color;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'MODE DE PAIEMENT',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF94A3B8),
-            letterSpacing: 0.5,
-          ),
-        ),
+        const _PaymentMethodSectionTitle(),
         const SizedBox(height: 10),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -633,50 +690,54 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: logoBytes == null
-                                ? Container(
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: methodColor.withValues(
-                                        alpha: isSelected ? 0.14 : 0.08,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(9),
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: logoBytes == null
+                                  ? Container(
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: methodColor.withValues(
+                                          alpha: isSelected ? 0.14 : 0.08,
+                                        ),
+                                        borderRadius: BorderRadius.circular(9),
                                       ),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      method.initial,
-                                      style: TextStyle(
-                                        color: methodColor,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w900,
+                                      child: Text(
+                                        method.initial,
+                                        style: TextStyle(
+                                          color: methodColor,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
+                                    )
+                                  : Image.memory(
+                                      logoBytes,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: methodColor.withValues(
+                                                    alpha: 0.08,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(9),
+                                                ),
+                                                child: Text(
+                                                  method.initial,
+                                                  style: TextStyle(
+                                                    color: methodColor,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
+                                              ),
                                     ),
-                                  )
-                                : Image.memory(
-                                    logoBytes,
-                                    fit: BoxFit.contain,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              alignment: Alignment.center,
-                                              decoration: BoxDecoration(
-                                                color: methodColor.withValues(
-                                                  alpha: 0.08,
-                                                ),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Text(
-                                                method.initial,
-                                                style: TextStyle(
-                                                  color: methodColor,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                              ),
-                                            ),
-                                  ),
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(
@@ -720,7 +781,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'CODE COMMERÇANT ${selectedMethod.name}'.toUpperCase(),
+                      '${selectedMethod.destinationLabel} ${selectedMethod.name}'
+                          .toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -753,7 +815,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   Clipboard.setData(ClipboardData(text: selectedCode));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Code ${selectedMethod.name} copié !'),
+                      content: Text(
+                        '${selectedMethod.destinationCopiedLabel} '
+                        '${selectedMethod.name} copié !',
+                      ),
                       duration: const Duration(seconds: 2),
                       backgroundColor: themeColor,
                     ),
@@ -905,6 +970,23 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PaymentMethodSectionTitle extends StatelessWidget {
+  const _PaymentMethodSectionTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      'MODE DE PAIEMENT',
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF94A3B8),
+        letterSpacing: 0.5,
       ),
     );
   }

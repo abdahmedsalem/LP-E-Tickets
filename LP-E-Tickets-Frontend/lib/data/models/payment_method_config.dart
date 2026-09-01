@@ -22,26 +22,26 @@ class PaymentMethodConfig {
   final String? colorHex;
   final String? logoData;
 
-  static const fallbackMethods = [
-    PaymentMethodConfig(
-      code: 'bankily',
-      name: 'Bankily',
-      merchantCode: '123456',
-      colorHex: '#43A047',
-    ),
-    PaymentMethodConfig(
-      code: 'sedad',
-      name: 'Sedad',
-      merchantCode: '222222',
-      colorHex: '#0284C7',
-    ),
-    PaymentMethodConfig(
-      code: 'masrivi',
-      name: 'Masrivi',
-      merchantCode: '333333',
-      colorHex: '#D97706',
-    ),
-  ];
+  String get _compactDestination =>
+      merchantCode.trim().replaceAll(RegExp(r'[\s-]'), '');
+
+  bool get destinationIsPhoneNumber =>
+      RegExp(r'^\d{8}$').hasMatch(_compactDestination);
+
+  bool get destinationIsMerchantCode =>
+      RegExp(r'^(?:\d{4}|\d{6})$').hasMatch(_compactDestination);
+
+  String get destinationLabel {
+    if (destinationIsPhoneNumber) return 'Numéro de téléphone';
+    if (destinationIsMerchantCode) return 'Code commerçant';
+    return 'Code commerçant / Numéro de téléphone';
+  }
+
+  String get destinationCopiedLabel {
+    if (destinationIsPhoneNumber) return 'Numéro';
+    if (destinationIsMerchantCode) return 'Code commerçant';
+    return 'Identifiant de paiement';
+  }
 
   factory PaymentMethodConfig.fromJson(Map<String, dynamic> json) {
     final code = _clean(json['code']);

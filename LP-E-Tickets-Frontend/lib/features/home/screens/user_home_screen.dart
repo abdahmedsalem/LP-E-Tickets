@@ -374,6 +374,22 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
                                 ),
                               ],
                             ),
+                            SizedBox(height: actionGap),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 2.45,
+                                    child: _QuickActionCard(
+                                      title: 'Carte des stations',
+                                      icon: Icons.map_outlined,
+                                      onTap: () =>
+                                          context.push('/stations-map'),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

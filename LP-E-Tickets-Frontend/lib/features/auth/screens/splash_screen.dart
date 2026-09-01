@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
             context.go('/home');
             break;
           case UserRole.admin:
-            context.go('/admin');
+            context.go('/home');
             break;
           case UserRole.station:
             context.go('/station');
@@ -74,7 +74,7 @@ class _SplashScreenState extends State<SplashScreen>
           context.go('/home');
           break;
         case UserRole.admin:
-          context.go('/admin');
+          context.go('/home');
           break;
         case UserRole.station:
           context.go('/station');

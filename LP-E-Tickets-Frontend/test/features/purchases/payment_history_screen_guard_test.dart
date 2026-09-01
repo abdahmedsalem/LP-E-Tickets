@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'payment history displays proof image inline without explanation panel',
+    'payment history keeps proofs inline and includes a status explanation panel',
     () {
       final source = File(
         'lib/features/purchases/screens/payment_history_screen.dart',
@@ -15,7 +15,11 @@ void main() {
       expect(source, contains('facade.purchasesDetail'));
       expect(source, contains('AcpecPurchasesMapper.parsePurchaseDetail'));
       expect(source, contains('_loadMissingProofs'));
-      expect(source, isNot(contains('ExpansionPanelList.radio')));
+      expect(source, contains('ExpansionPanelList'));
+      expect(source, contains('Comprendre les statuts de paiement'));
+      expect(source, contains('Achat validé'));
+      expect(source, contains('Achat en attente'));
+      expect(source, contains('Achat rejeté'));
       expect(source, isNot(contains('_PurchaseDetails')));
       expect(source, isNot(contains('purchase.internalRef')));
       expect(source, isNot(contains('purchase.publicCode')));

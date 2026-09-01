@@ -120,8 +120,6 @@ void main() {
             'EdgeInsetsDirectional.fromSTEB(14, 14, 12, 14)',
         'lib/features/station/screens/scan_screen.dart':
             'EdgeInsetsDirectional.fromSTEB(14, 12, 26, 0)',
-        'lib/features/admin/screens/admin_lots_screen.dart':
-            'EdgeInsetsDirectional.only(end: 8)',
       };
 
       for (final entry in expectations.entries) {

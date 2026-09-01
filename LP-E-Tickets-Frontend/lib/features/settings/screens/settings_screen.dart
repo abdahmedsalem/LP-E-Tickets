@@ -241,6 +241,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _prefTile(
                           context,
+                          icon: Icons.map_outlined,
+                          title: 'Carte des stations',
+                          onTap: () => context.push('/settings/stations-map'),
+                        ),
+                        _prefTile(
+                          context,
                           icon: Icons.language_rounded,
                           title: l10n.settingsLanguage,
                           onTap: _pickLanguage,

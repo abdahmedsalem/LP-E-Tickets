@@ -212,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
             }
             if (state.status == AuthStatus.authenticated) {
               // La navigation après connexion est gérée par [AppRouter] via
-              // `redirect` (`loggedIn && atAuthRoute` → `/home` | `/admin` | `/station`).
+              // `redirect` (`loggedIn && atAuthRoute` → `/home` | `/station`).
               // Ne pas utiliser GoRouterState.of / ctx.go ici : après un await, le
               // contexte du listener peut ne plus être sous le RouteMatch (GoError).
             }

@@ -13,7 +13,7 @@ class AcpecPaymentMethodsService {
         fallbackMessage: 'Moyens de paiement indisponibles.',
       );
       final rawItems = data['items'];
-      if (rawItems is! List) return PaymentMethodConfig.fallbackMethods;
+      if (rawItems is! List) return const [];
       final items = <PaymentMethodConfig>[];
       for (final item in rawItems) {
         if (item is! Map) continue;
@@ -25,9 +25,9 @@ class AcpecPaymentMethodsService {
           continue;
         }
       }
-      return items.isEmpty ? PaymentMethodConfig.fallbackMethods : items;
+      return items;
     } catch (_) {
-      return PaymentMethodConfig.fallbackMethods;
+      return const [];
     }
   }
 }

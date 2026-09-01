@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @navWallet.
   ///
   /// In fr, this message translates to:
-  /// **'Portefeuille'**
+  /// **'Opérations'**
   String get navWallet;
 
   /// No description provided for @navHistory.
@@ -181,6 +181,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Historique'**
   String get navHistory;
+
+  /// No description provided for @navPortfolio.
+  ///
+  /// In fr, this message translates to:
+  /// **'Portefeuille'**
+  String get navPortfolio;
 
   /// No description provided for @carnetsTitle.
   ///

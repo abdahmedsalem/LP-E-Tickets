@@ -4,14 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models/user_role.dart';
-import '../../features/admin/screens/admin_home_screen.dart';
-import '../../features/admin/screens/admin_lots_screen.dart';
-import '../../features/admin/screens/admin_more_screen.dart';
-import '../../features/admin/screens/admin_profile_screen.dart';
-import '../../features/admin/screens/admin_purchase_detail_screen.dart';
-import '../../features/admin/screens/admin_reports_screen.dart';
-import '../../features/admin/screens/admin_shell_scaffold.dart';
-import '../../features/admin/screens/admin_submitted_purchases_screen.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/screens/forgot_otp_flow_screens.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
@@ -23,6 +15,7 @@ import '../../features/auth/screens/register_verify_otp_screen.dart';
 import '../../features/auth/screens/session_pin_lock_screen.dart';
 import '../../features/auth/screens/activation_pending_screen.dart';
 import '../../features/home/screens/client_shell_scaffold.dart';
+import '../../features/home/screens/client_portfolio_screen.dart';
 import '../../features/home/screens/faces_detail_screen.dart';
 import '../../features/home/screens/user_home_screen.dart';
 import '../../features/purchases/screens/purchase_detail_screen.dart';
@@ -44,6 +37,7 @@ import '../../features/station/screens/station_manual_qr_screen.dart';
 import '../../features/station/screens/station_consumption_history_screen.dart';
 import '../../features/station/screens/station_home_screen.dart';
 import '../../features/station/screens/station_profile_screen.dart';
+import '../../features/station/screens/stations_map_screen.dart';
 import '../../features/station/screens/station_shell_scaffold.dart';
 import '../../features/transactions/screens/transactions_screen.dart';
 import '../../features/transactions/screens/wallet_screen.dart';
@@ -101,7 +95,7 @@ class AppRouter {
             case UserRole.user:
               return '/home';
             case UserRole.admin:
-              return '/admin';
+              return '/home';
             case UserRole.station:
               return '/station/home';
           }
@@ -109,11 +103,8 @@ class AppRouter {
 
         if (loggedIn) {
           final role = auth.user!.role;
-          if (role == UserRole.admin && loc.startsWith('/purchases/new')) {
-            return null;
-          }
-          if (role == UserRole.admin && _isClientAppPath(loc)) {
-            return '/admin';
+          if (role == UserRole.admin && loc.startsWith('/admin')) {
+            return '/home';
           }
           if (role == UserRole.station && loc == '/transactions') {
             return '/station/journal';
@@ -127,10 +118,11 @@ class AppRouter {
           if (loc == '/notifications' && role != UserRole.user) {
             return _homeFor(role);
           }
-          if (loc.startsWith('/admin') && role != UserRole.admin) {
-            return _homeFor(role);
+          if (loc.startsWith('/admin')) {
+            return '/home';
           }
-          if (loc.startsWith('/station') && role != UserRole.station) {
+          if ((loc == '/station' || loc.startsWith('/station/')) &&
+              role != UserRole.station) {
             return _homeFor(role);
           }
           if (loc == '/home' && role != UserRole.user) return _homeFor(role);
@@ -204,7 +196,7 @@ class AppRouter {
           },
         ),
 
-        // Client shell, 6 branches
+        // Client shell: 4 onglets visibles + la branche Réglages masquée.
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             return ClientShellScaffold(navigationShell: navigationShell);
@@ -216,24 +208,6 @@ class AppRouter {
                   path: '/home',
                   pageBuilder: (context, state) =>
                       const NoTransitionPage<void>(child: UserHomeScreen()),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/faces',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: FacesDetailScreen()),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/qr',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: QrListScreen()),
                 ),
               ],
             ),
@@ -258,6 +232,30 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
+                  path: '/portfolio',
+                  pageBuilder: (context, state) => const NoTransitionPage<void>(
+                    child: ClientPortfolioScreen(),
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'faces',
+                      pageBuilder: (context, state) =>
+                          const NoTransitionPage<void>(
+                            child: FacesDetailScreen(),
+                          ),
+                    ),
+                    GoRoute(
+                      path: 'qr',
+                      pageBuilder: (context, state) =>
+                          const NoTransitionPage<void>(child: QrListScreen()),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
                   path: '/settings',
                   pageBuilder: (context, state) =>
                       const NoTransitionPage<void>(child: SettingsScreen()),
@@ -266,6 +264,8 @@ class AppRouter {
             ),
           ],
         ),
+        GoRoute(path: '/faces', redirect: (_, _) => '/portfolio/faces'),
+        GoRoute(path: '/qr', redirect: (_, _) => '/portfolio/qr'),
         GoRoute(
           path: '/settings/acpec-step1',
           builder: (_, _) => const AcpecConnectionStep1Screen(),
@@ -285,6 +285,14 @@ class AppRouter {
         GoRoute(
           path: '/payment-history',
           builder: (_, _) => const PaymentHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/stations-map',
+          builder: (_, _) => const StationsMapScreen(),
+        ),
+        GoRoute(
+          path: '/settings/stations-map',
+          redirect: (_, _) => '/stations-map',
         ),
         GoRoute(
           path: '/purchases/new',
@@ -368,69 +376,7 @@ class AppRouter {
           ],
         ),
 
-        // Admin shell, 4 tabs
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) {
-            return AdminShellScaffold(navigationShell: navigationShell);
-          },
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: AdminHomeScreen()),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/achats',
-                  pageBuilder: (context, state) => const NoTransitionPage<void>(
-                    child: AdminSubmittedPurchasesScreen(),
-                  ),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/profile',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: AdminProfileScreen()),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/more',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: AdminMoreScreen()),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/lots',
-                  pageBuilder: (context, state) =>
-                      const NoTransitionPage<void>(child: AdminLotsScreen()),
-                ),
-              ],
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/admin/purchases/:id',
-          builder: (_, st) =>
-              AdminPurchaseDetailScreen(purchaseId: st.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/admin/reports',
-          builder: (_, _) => const AdminReportsScreen(),
-        ),
+        GoRoute(path: '/admin', redirect: (_, _) => '/home'),
       ],
     );
   }
@@ -440,7 +386,7 @@ class AppRouter {
       case UserRole.user:
         return '/home';
       case UserRole.admin:
-        return '/admin';
+        return '/home';
       case UserRole.station:
         return '/station/home';
     }
@@ -451,10 +397,12 @@ class AppRouter {
     if (loc == '/home' ||
         loc == '/faces' ||
         loc == '/transactions' ||
-        loc == '/payment-history') {
+        loc == '/payment-history' ||
+        loc == '/stations-map') {
       return true;
     }
     if (loc.startsWith('/settings')) return true;
+    if (loc.startsWith('/portfolio')) return true;
     if (loc == '/notifications') return true;
     if (loc.startsWith('/purchases')) return true;
     if (loc.startsWith('/transfer-')) return true;

@@ -16,9 +16,6 @@ void main() {
       'lib/features/home/screens/faces_detail_screen.dart',
       'lib/features/settings/screens/notifications_screen.dart',
       'lib/features/settings/screens/acpec_connection_step1_screen.dart',
-      'lib/features/admin/screens/admin_lots_screen.dart',
-      'lib/features/admin/screens/admin_submitted_purchases_screen.dart',
-      'lib/features/admin/screens/admin_reports_screen.dart',
       'lib/shared/widgets/wallet_breakdown_sheet.dart',
     ];
 

@@ -34,7 +34,7 @@ void popOrGoRoleHome(BuildContext context, UserRole role) {
       context.go('/station');
       return;
     case UserRole.admin:
-      context.go('/admin');
+      context.go('/home');
       return;
   }
 }

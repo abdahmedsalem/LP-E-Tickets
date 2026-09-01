@@ -16,6 +16,7 @@ import '../../../data/services/odoo_fueltoken_facade.dart';
 import '../../../data/services/payment_proof_loader.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
+import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/backend_unavailable_banner.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -167,6 +168,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           children: [
+            const _PaymentHistoryStatusExplanationCard(),
+            const SizedBox(height: 10),
+            _PaymentHistoryAveragesCard(purchases: _purchases),
+            const SizedBox(height: 10),
             if (_error != null)
               BackendUnavailableBanner(message: _error!, onRetry: _refresh)
             else
@@ -186,16 +191,22 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-        itemCount: _purchases.length + (_error == null ? 0 : 1),
+        itemCount: _purchases.length + (_error == null ? 0 : 1) + 2,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          if (_error != null && index == 0) {
+          if (index == 0) {
+            return const _PaymentHistoryStatusExplanationCard();
+          }
+          if (index == 1) {
+            return _PaymentHistoryAveragesCard(purchases: _purchases);
+          }
+          if (_error != null && index == 2) {
             return BackendUnavailableBanner(
               message: _error!,
               onRetry: _refresh,
             );
           }
-          final purchase = _purchases[_error == null ? index : index - 1];
+          final purchase = _purchases[index - (_error == null ? 2 : 3)];
           return _PaymentPurchaseCard(purchase: purchase);
         },
       ),
@@ -609,6 +620,343 @@ class _ProofThumbnailPlaceholder extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PaymentHistoryStatusExplanationCard extends StatefulWidget {
+  const _PaymentHistoryStatusExplanationCard();
+
+  @override
+  State<_PaymentHistoryStatusExplanationCard> createState() =>
+      _PaymentHistoryStatusExplanationCardState();
+}
+
+class _PaymentHistoryStatusExplanationCardState
+    extends State<_PaymentHistoryStatusExplanationCard> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AppCard(
+      padding: EdgeInsets.zero,
+      radius: 18,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionPanelList(
+          expandedHeaderPadding: EdgeInsets.zero,
+          elevation: 0,
+          materialGapSize: 0,
+          expansionCallback: (_, __) => setState(() => _expanded = !_expanded),
+          children: [
+            ExpansionPanel(
+              canTapOnHeader: true,
+              backgroundColor: Colors.transparent,
+              isExpanded: _expanded,
+              headerBuilder: (context, isExpanded) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFF16A34A),
+                          size: 21,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Comprendre les statuts de paiement',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Chaque statut résume l’avancement de votre commande',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        _expanded
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        color: AppColors.muted,
+                      ),
+                    ],
+                  ),
+                );
+              },
+              body: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                child: Column(
+                  children: const [
+                    _PaymentStatusExplanationTile(
+                      color: Color(0xFF16A34A),
+                      icon: Icons.check_circle_rounded,
+                      title: 'Achat validé',
+                      description:
+                          'La commande a été acceptée et traitée. Le paiement est reconnu et l’achat peut avancer dans le flux normal.',
+                    ),
+                    SizedBox(height: 10),
+                    _PaymentStatusExplanationTile(
+                      color: Color(0xFFF59E0B),
+                      icon: Icons.hourglass_bottom_rounded,
+                      title: 'Achat en attente',
+                      description:
+                          'La commande a été déposée mais n’a pas encore reçu de validation finale. Elle reste visible en attente de traitement.',
+                    ),
+                    SizedBox(height: 10),
+                    _PaymentStatusExplanationTile(
+                      color: Color(0xFFDC2626),
+                      icon: Icons.cancel_rounded,
+                      title: 'Achat rejeté',
+                      description:
+                          'La commande a été refusée. Cela signifie que l’opération ne sera pas poursuivie, généralement à cause d’une vérification ou d’une incohérence.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentStatusExplanationTile extends StatelessWidget {
+  const _PaymentStatusExplanationTile({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.32),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentHistoryAveragesCard extends StatelessWidget {
+  const _PaymentHistoryAveragesCard({required this.purchases});
+
+  final List<PurchaseLot> purchases;
+
+  @override
+  Widget build(BuildContext context) {
+    final allAverage = _averageAmount(
+      purchases.where((purchase) => purchase.state != PurchaseLotState.draft),
+    );
+    final submittedAverage = _averageAmount(
+      purchases.where((purchase) => purchase.state == PurchaseLotState.submitted),
+    );
+    final approvedAverage = _averageAmount(
+      purchases.where((purchase) => purchase.state == PurchaseLotState.approved),
+    );
+    final rejectedAverage = _averageAmount(
+      purchases.where((purchase) => purchase.state == PurchaseLotState.rejected),
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Moyenne des paiements',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.muted,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _AverageMetricRow(
+            label: 'Commandes de carnets',
+            amount: allAverage,
+            icon: Icons.shopping_bag_outlined,
+            color: AppColors.primaryDeep,
+          ),
+          const SizedBox(height: 10),
+          _AverageMetricRow(
+            label: 'Carnets commandés',
+            amount: approvedAverage,
+            icon: Icons.check_circle_outline_rounded,
+            color: AppColors.leaderGreen,
+          ),
+          const SizedBox(height: 10),
+          _AverageMetricRow(
+            label: 'Commandes rejetées',
+            amount: rejectedAverage,
+            icon: Icons.cancel_outlined,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          if (submittedAverage != null) ...[
+            const SizedBox(height: 10),
+            _AverageMetricRow(
+              label: 'Commandes en attente',
+              amount: submittedAverage,
+              icon: Icons.hourglass_bottom_rounded,
+              color: AppColors.muted,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AverageMetricRow extends StatelessWidget {
+  const _AverageMetricRow({
+    required this.label,
+    required this.amount,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final int? amount;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = amount == null ? '—' : Formatters.money(amount!);
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+int? _averageAmount(Iterable<PurchaseLot> purchases) {
+  var total = 0;
+  var count = 0;
+  for (final purchase in purchases) {
+    total += purchase.totalAmount;
+    count++;
+  }
+  if (count == 0) return null;
+  return (total / count).round();
 }
 
 PurchaseProofSummary? _primaryProof(PurchaseLot purchase) {
