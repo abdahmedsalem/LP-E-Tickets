@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="LP-E-Tickets-Frontend/assets/images/lptickets.png" alt="Leader Petroleum E-Tickets" width="520">
+</p>
+
 # LP E-Tickets
 
 LP E-Tickets est une solution mobile de gestion de carnets et tickets de carburant pour Leader Petroleum. Elle met en relation les clients, les stations et le système de gestion Odoo.
