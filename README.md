@@ -26,6 +26,71 @@ L’administration métier (validation des achats, gestion des comptes, carnets,
 | `LP-E-Tickets-Frontend` | Application Flutter mobile et web |
 | `LP-E-Tickets-Backend` | Modules et services Odoo du projet |
 
+## Présentation portfolio
+
+LP E-Tickets est une plateforme mobile et ERP qui remplace les carnets papier par des e-tickets sécurisés. Elle centralise les achats, paiements, carnets, tickets et consommations tout en donnant à chaque acteur une vue adaptée à son rôle.
+
+### Fonctionnalités clés
+
+- authentification téléphone/OTP et gestion de session ;
+- achat et validation de carnets ;
+- portefeuille numérique et historique complet ;
+- preuves de paiement avec prévisualisation et téléchargement ;
+- QR codes signés, expiration et contrôle côté serveur ;
+- scan en station et prévention des doubles consommations ;
+- transferts de carnets/tickets avec traçabilité ;
+- notifications et carte des stations ;
+- interface client/station en français et en arabe.
+
+### Architecture technique
+
+```text
+Flutter (Android / iOS / Web)
+              │ REST / JSON-RPC sécurisé
+              ▼
+Odoo (modules métier, API, droits et validations)
+              │
+              ▼
+PostgreSQL (données et historique)
+```
+
+Odoo est la source de vérité. L’administration des comptes, stations, carnets, paiements et rapports est réalisée dans Odoo ; le frontend ne contient pas d’espace d’administration autonome.
+
+### Workflow métier
+
+```text
+Achat → Preuve de paiement → Validation Odoo → Portefeuille
+      → QR code → Scan station → Consommation → Historique
+```
+
+### Stack
+
+| Domaine | Technologies |
+| --- | --- |
+| Mobile | Flutter, Dart, BLoC, GoRouter |
+| Backend | Odoo, Python, modules personnalisés |
+| API | REST, JSON-RPC |
+| Données | PostgreSQL |
+| Cartographie | Flutter Map, LatLng |
+| QR | Génération et scan mobile |
+| Déploiement | Docker, Android, iOS, Web |
+
+### Rôle et contributions
+
+**Développement Full-Stack Flutter & Odoo** : conception des workflows métier, développement de l’application mobile, intégration des APIs Odoo, modélisation des carnets et QR codes, implémentation des achats/transferts/consommations, intégration cartographique et tests frontend/backend.
+
+### Défis techniques
+
+- garantir l’idempotence des opérations sensibles ;
+- empêcher les doubles consommations d’un même QR code ;
+- conserver la cohérence du portefeuille lors des transferts ;
+- synchroniser les validations Odoo avec l’interface mobile ;
+- protéger les preuves de paiement et les données personnelles.
+
+### Confidentialité
+
+Les credentials, tokens, clés d’API, fichiers `.env`, données clients et informations de paiement réelles ne doivent jamais être ajoutés au dépôt. La configuration de production doit rester dans un gestionnaire de secrets.
+
 ## Architecture en bref
 
 L’application Flutter communique avec Odoo au moyen d’API sécurisées. Odoo reste la source de vérité pour les utilisateurs, achats, paiements, carnets, tickets, stations et consommations. Les QR codes sont vérifiés côté serveur avant toute consommation et les opérations sensibles utilisent des contrôles d’idempotence et de concurrence.
