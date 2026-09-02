@@ -27,9 +27,43 @@ LP E-Tickets est une solution mobile de gestion de carnets et tickets de carbura
 
 ## 5. Captures d’écran
 
-Les captures produit sont conservées dans la documentation du frontend afin de montrer les écrans réels : accueil, portefeuille, achat, QR, scan station, historique et carte des stations. Elles pourront être ajoutées ici au format PNG/WebP sans exposer de données de production.
+Les captures réelles de l’application seront placées dans les espaces ci-dessous. Utiliser uniquement des images anonymisées, sans données de production.
 
-L’identité visuelle de l’application est présentée par le logo en haut de ce README.
+### 1. Accueil
+
+<!-- Insérer ici la capture de l’écran d’accueil -->
+
+### 2. Achat d’un carnet
+
+<!-- Insérer ici la capture du parcours d’achat -->
+
+### 3. Mes carnets
+
+<!-- Insérer ici la capture du portefeuille / de la liste des carnets -->
+
+### 4. Mes QR
+
+<!-- Insérer ici la capture de la liste des QR codes -->
+
+### 5. Génération d’un QR code
+
+<!-- Insérer ici la capture de la génération ou du détail d’un QR code -->
+
+### 6. Transfert de carnets et de tickets
+
+<!-- Insérer ici la capture du parcours de transfert -->
+
+### 7. Historique des opérations client
+
+<!-- Insérer ici la capture de l’historique des opérations client -->
+
+### 8. Scan station
+
+<!-- Insérer ici la capture du scanner station -->
+
+### 9. Historique des consommations
+
+<!-- Insérer ici la capture de l’historique des consommations station -->
 
 L’administration métier (validation des achats, gestion des comptes, carnets, stations et rapports) est réalisée dans Odoo. L’application mobile ne contient pas d’espace d’administration autonome.
 
