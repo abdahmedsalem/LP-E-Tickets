@@ -4,6 +4,14 @@
 
 # LP E-Tickets
 
+## 1. Problème métier
+
+La gestion papier des carnets de carburant rend les achats, transferts et consommations difficiles à suivre. Elle augmente les risques de perte, de fraude, de double utilisation et de manque de visibilité entre clients et stations.
+
+## 2. Solution
+
+LP E-Tickets digitalise ce parcours avec un portefeuille mobile, des QR codes vérifiables et un back-office Odoo. Chaque opération suit un cycle contrôlé et reste disponible dans un historique auditable.
+
 LP E-Tickets est une solution mobile de gestion de carnets et tickets de carburant pour Leader Petroleum. Elle met en relation les clients, les stations et le système de gestion Odoo.
 
 ## Ce que permet la solution
@@ -16,6 +24,12 @@ LP E-Tickets est une solution mobile de gestion de carnets et tickets de carbura
 - scan en station, validation de consommation et prévention des doublons ;
 - transfert de carnets ou de tickets entre utilisateurs autorisés ;
 - consultation de la carte et des informations des stations.
+
+## 5. Captures d’écran
+
+Les captures produit sont conservées dans la documentation du frontend afin de montrer les écrans réels : accueil, portefeuille, achat, QR, scan station, historique et carte des stations. Elles pourront être ajoutées ici au format PNG/WebP sans exposer de données de production.
+
+L’identité visuelle de l’application est présentée par le logo en haut de ce README.
 
 L’administration métier (validation des achats, gestion des comptes, carnets, stations et rapports) est réalisée dans Odoo. L’application mobile ne contient pas d’espace d’administration autonome.
 
