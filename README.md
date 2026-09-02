@@ -25,7 +25,6 @@ L’administration métier (validation des achats, gestion des comptes, carnets,
 | --- | --- |
 | `LP-E-Tickets-Frontend` | Application Flutter mobile et web |
 | `LP-E-Tickets-Backend` | Modules et services Odoo du projet |
-| `FuelToken_Backend` | Modules métier complémentaires liés aux tickets carburant |
 
 ## Architecture en bref
 
