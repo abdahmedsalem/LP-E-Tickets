@@ -168,7 +168,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           children: [
-            const _PaymentHistoryStatusExplanationCard(),
+            _PaymentHistoryStatusExplanationCard(purchases: _purchases),
             const SizedBox(height: 10),
             _PaymentHistoryAveragesCard(purchases: _purchases),
             const SizedBox(height: 10),
@@ -195,7 +195,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           if (index == 0) {
-            return const _PaymentHistoryStatusExplanationCard();
+            return _PaymentHistoryStatusExplanationCard(purchases: _purchases);
           }
           if (index == 1) {
             return _PaymentHistoryAveragesCard(purchases: _purchases);
@@ -267,7 +267,9 @@ class _PaymentPurchaseCard extends StatelessWidget {
                         Expanded(
                           child: AmountInline(
                             amount: purchase.totalAmount,
-                            semanticsLabel: Formatters.money(purchase.totalAmount),
+                            semanticsLabel: Formatters.money(
+                              purchase.totalAmount,
+                            ),
                             textAlign: TextAlign.end,
                             valueStyle: const TextStyle(
                               fontSize: 14.2,
@@ -623,7 +625,9 @@ class _ProofThumbnailPlaceholder extends StatelessWidget {
 }
 
 class _PaymentHistoryStatusExplanationCard extends StatefulWidget {
-  const _PaymentHistoryStatusExplanationCard();
+  const _PaymentHistoryStatusExplanationCard({required this.purchases});
+
+  final List<PurchaseLot> purchases;
 
   @override
   State<_PaymentHistoryStatusExplanationCard> createState() =>
@@ -665,7 +669,9 @@ class _PaymentHistoryStatusExplanationCardState
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A).withValues(alpha: 0.12),
+                          color: const Color(
+                            0xFF16A34A,
+                          ).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -717,7 +723,7 @@ class _PaymentHistoryStatusExplanationCardState
               body: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
                 child: Column(
-                  children: const [
+                  children: [
                     _PaymentStatusExplanationTile(
                       color: Color(0xFF16A34A),
                       icon: Icons.check_circle_rounded,
@@ -732,6 +738,12 @@ class _PaymentHistoryStatusExplanationCardState
                       title: 'Achat en attente',
                       description:
                           'La commande a été déposée mais n’a pas encore reçu de validation finale. Elle reste visible en attente de traitement.',
+                      purchases: widget.purchases
+                          .where(
+                            (purchase) =>
+                                purchase.state == PurchaseLotState.submitted,
+                          )
+                          .toList(growable: false),
                     ),
                     SizedBox(height: 10),
                     _PaymentStatusExplanationTile(
@@ -740,6 +752,12 @@ class _PaymentHistoryStatusExplanationCardState
                       title: 'Achat rejeté',
                       description:
                           'La commande a été refusée. Cela signifie que l’opération ne sera pas poursuivie, généralement à cause d’une vérification ou d’une incohérence.',
+                      purchases: widget.purchases
+                          .where(
+                            (purchase) =>
+                                purchase.state == PurchaseLotState.rejected,
+                          )
+                          .toList(growable: false),
                     ),
                   ],
                 ),
@@ -758,12 +776,14 @@ class _PaymentStatusExplanationTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
+    this.purchases = const [],
   });
 
   final Color color;
   final IconData icon;
   final String title;
   final String description;
+  final List<PurchaseLot> purchases;
 
   @override
   Widget build(BuildContext context) {
@@ -811,10 +831,142 @@ class _PaymentStatusExplanationTile extends StatelessWidget {
                     color: AppColors.muted,
                   ),
                 ),
+                if (purchases.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  for (final purchase in purchases) ...[
+                    _PaymentProofExplanationRow(purchase: purchase),
+                    if (purchase != purchases.last) const SizedBox(height: 6),
+                  ],
+                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PaymentProofExplanationRow extends StatelessWidget {
+  const _PaymentProofExplanationRow({required this.purchase});
+
+  final PurchaseLot purchase;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final proof = _primaryProof(purchase);
+    final canOpen = proof != null && proof.isDisplayable;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            l10n.purchaseProofTitle,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _PaymentProofActionButton(
+          purchase: purchase,
+          proof: proof,
+          enabled: canOpen,
+        ),
+      ],
+    );
+  }
+}
+
+class _PaymentProofActionButton extends StatefulWidget {
+  const _PaymentProofActionButton({
+    required this.purchase,
+    required this.proof,
+    required this.enabled,
+  });
+
+  final PurchaseLot purchase;
+  final PurchaseProofSummary? proof;
+  final bool enabled;
+
+  @override
+  State<_PaymentProofActionButton> createState() =>
+      _PaymentProofActionButtonState();
+}
+
+class _PaymentProofActionButtonState extends State<_PaymentProofActionButton> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    final proof = widget.proof;
+    if (!widget.enabled || proof == null || _opening) return;
+
+    setState(() => _opening = true);
+    try {
+      final bytes = proof.bytes?.isNotEmpty == true
+          ? proof.bytes
+          : await PaymentProofLoader.fetchBytes(proof.url);
+      final resolvedUrl = PaymentProofLoader.resolveProofUrl(proof.url);
+      if (!mounted) return;
+      if ((bytes == null || bytes.isEmpty) && resolvedUrl == null) {
+        AppMessage.error(
+          context,
+          AppLocalizations.of(context).purchaseProofLoadFailed,
+        );
+        return;
+      }
+      final headers = bytes == null || bytes.isEmpty
+          ? await paymentProofHttpHeaders()
+          : null;
+      if (!mounted) return;
+      await _openPaymentProofDocument(
+        context,
+        bytes: bytes,
+        url: resolvedUrl,
+        headers: headers,
+      );
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SizedBox(
+      height: 32,
+      child: OutlinedButton.icon(
+        onPressed: widget.enabled ? _open : null,
+        icon: _opening
+            ? const SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.visibility_outlined, size: 15),
+        label: Text(
+          widget.enabled
+              ? l10n.paymentHistoryViewProof
+              : l10n.paymentHistoryProofUnavailable,
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primaryDeep,
+          disabledForegroundColor: AppColors.muted,
+          textStyle: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          side: BorderSide(
+            color: widget.enabled ? AppColors.primaryDeep : AppColors.line,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       ),
     );
   }
@@ -831,13 +983,19 @@ class _PaymentHistoryAveragesCard extends StatelessWidget {
       purchases.where((purchase) => purchase.state != PurchaseLotState.draft),
     );
     final submittedAverage = _averageAmount(
-      purchases.where((purchase) => purchase.state == PurchaseLotState.submitted),
+      purchases.where(
+        (purchase) => purchase.state == PurchaseLotState.submitted,
+      ),
     );
     final approvedAverage = _averageAmount(
-      purchases.where((purchase) => purchase.state == PurchaseLotState.approved),
+      purchases.where(
+        (purchase) => purchase.state == PurchaseLotState.approved,
+      ),
     );
     final rejectedAverage = _averageAmount(
-      purchases.where((purchase) => purchase.state == PurchaseLotState.rejected),
+      purchases.where(
+        (purchase) => purchase.state == PurchaseLotState.rejected,
+      ),
     );
 
     return Container(
@@ -1004,6 +1162,51 @@ bool _isFetchableProofUrl(String? value) {
   return raw.startsWith('http://') ||
       raw.startsWith('https://') ||
       raw.startsWith('/');
+}
+
+Future<void> _openPaymentProofDocument(
+  BuildContext context, {
+  Uint8List? bytes,
+  String? url,
+  Map<String, String>? headers,
+}) async {
+  final hasBytes = bytes != null && bytes.isNotEmpty;
+  final hasUrl = url != null && url.isNotEmpty;
+  if (!hasBytes && !hasUrl) return;
+
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (pageContext) => Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          title: Text(AppLocalizations.of(pageContext).purchaseProofTitle),
+        ),
+        body: SafeArea(
+          child: InteractiveViewer(
+            minScale: 0.7,
+            maxScale: 5,
+            child: Center(
+              child: hasBytes
+                  ? Image.memory(bytes, fit: BoxFit.contain)
+                  : Image.network(
+                      url!,
+                      headers: headers?.isEmpty == true ? null : headers,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => Text(
+                        AppLocalizations.of(
+                          pageContext,
+                        ).paymentHistoryProofUnavailable,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 String _stateLabel(AppLocalizations l10n, PurchaseLotState state) =>

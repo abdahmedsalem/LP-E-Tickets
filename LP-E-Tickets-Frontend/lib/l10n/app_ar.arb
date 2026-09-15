@@ -662,6 +662,7 @@
   "paymentHistoryCarnetsCount": "عدد الدفاتر",
   "paymentHistoryTicketsCount": "عدد التذاكر",
   "paymentHistoryOpenProof": "فتح",
+  "paymentHistoryViewProof": "عرض الإثبات",
   "paymentHistoryProofDownloaded": "تم تنزيل إثبات الدفع.",
   "paymentHistoryProofUnavailable": "إثبات الدفع غير متاح مؤقتًا."
 }

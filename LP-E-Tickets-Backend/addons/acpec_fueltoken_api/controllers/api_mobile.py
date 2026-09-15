@@ -704,6 +704,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
             ], order='expires_at desc, id desc', limit=near_limit)
             return self._json_response({
                 'wallet_id': wallet.id,
+                'qr_max_amount': wallet.qr_max_amount,
                 'balance': wallet.balance,
                 'qty_available': wallet.qty_available,
                 'qty_qr_active': wallet.qty_qr_active,
@@ -740,6 +741,26 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     'qty_expired': line.qty_expired,
                     'expires_at': fields.Datetime.to_string(line.expires_at) if line.expires_at else False,
                 } for line in expired_lines],
+            })
+        except Exception as exc:
+            return self._handle_exception_response(exc)
+
+    @http.route('/api/acpec/fueltoken/v1/mobile/wallet/qr-limit', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    def update_wallet_qr_limit(self, **kwargs):
+        try:
+            self._require_keys(kwargs, ['max_amount'])
+            wallet = self._mobile_wallet()
+            try:
+                max_amount = int(kwargs.get('max_amount'))
+            except (TypeError, ValueError):
+                raise ValidationError('Le plafond du QR doit être un montant valide.')
+            qr_model = request.env['acpec.fuel.qr']
+            if max_amount <= 0 or max_amount > qr_model.QR_MAX_AMOUNT:
+                raise ValidationError('Le plafond du QR ne peut pas dépasser 5 000 MRU.')
+            wallet._write_internal({'qr_max_amount': max_amount})
+            return self._json_response({
+                'wallet_id': wallet.id,
+                'qr_max_amount': wallet.qr_max_amount,
             })
         except Exception as exc:
             return self._handle_exception_response(exc)
@@ -1135,6 +1156,12 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 idempotency_key = self._require_idempotency_key(kwargs, purpose='qr_issue')
                 request_hash = self._compute_idempotency_request_hash(kwargs, purpose='qr_issue')
                 wallet = self._mobile_wallet()
+                try:
+                    max_amount = int(kwargs.get('max_amount', wallet.qr_max_amount))
+                except (TypeError, ValueError):
+                    raise ValidationError('Le plafond du QR doit être un montant valide.')
+                if max_amount <= 0 or max_amount > min(wallet.qr_max_amount, request.env['acpec.fuel.qr'].QR_MAX_AMOUNT):
+                    raise ValidationError('Le plafond du QR dépasse la limite autorisée pour ce client.')
                 mobile_session = self._get_mobile_session(required=True)
                 requests = []
                 has_explicit_lines = False
@@ -1162,6 +1189,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                         requests,
                         idempotency_key=idempotency_key,
                         request_hash=request_hash,
+                        max_amount=max_amount,
                     )
                     qr_txs = request.env['acpec.fuel.transaction'].sudo().search([
                         ('qr_id', '=', qr.id),

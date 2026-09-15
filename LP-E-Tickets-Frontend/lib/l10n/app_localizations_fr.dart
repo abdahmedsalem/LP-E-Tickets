@@ -2149,6 +2149,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentHistoryOpenProof => 'Ouvrir';
 
   @override
+  String get paymentHistoryViewProof => 'Voir la preuve';
+
+  @override
   String get paymentHistoryProofDownloaded =>
       'La preuve de paiement a été téléchargée.';
 

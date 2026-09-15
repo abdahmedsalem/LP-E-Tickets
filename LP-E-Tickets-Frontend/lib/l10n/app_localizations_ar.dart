@@ -2098,6 +2098,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentHistoryOpenProof => 'فتح';
 
   @override
+  String get paymentHistoryViewProof => 'عرض الإثبات';
+
+  @override
   String get paymentHistoryProofDownloaded => 'تم تنزيل إثبات الدفع.';
 
   @override

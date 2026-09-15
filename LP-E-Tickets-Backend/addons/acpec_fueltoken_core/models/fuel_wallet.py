@@ -14,6 +14,7 @@ class AcpecFuelWallet(models.Model):
     partner_id = fields.Many2one('res.partner', string='Client', required=True, index=True)
     company_id = fields.Many2one('res.company', string='Société', required=True, default=lambda self: self.env.company, index=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True, readonly=True)
+    qr_max_amount = fields.Monetary(string='Plafond QR client', default=5000, required=True)
     balance = fields.Monetary(string='Solde disponible', compute='_compute_quantities', store=False)
     qty_available = fields.Integer(string='Tickets disponibles', compute='_compute_quantities', store=False)
     qty_qr_active = fields.Integer(string='Tickets en QR actif', compute='_compute_quantities', store=False)

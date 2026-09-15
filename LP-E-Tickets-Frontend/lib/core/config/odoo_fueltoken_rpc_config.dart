@@ -12,6 +12,8 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/mobile_auth/v1/signup-companies',
   );
 
+  static const String walletQrLimit = String.fromEnvironment('ODOO_RPC_FUEL_WALLET_QR_LIMIT_PATH', defaultValue: '/api/acpec/fueltoken/v1/mobile/wallet/qr-limit');
+
   static const String walletCurrent = String.fromEnvironment(
     'ODOO_RPC_FUEL_WALLET_PATH',
     defaultValue: '/api/acpec/fueltoken/v1/mobile/wallet/current',

@@ -737,6 +737,7 @@
   "paymentHistoryCarnetsCount": "Nombre de carnets",
   "paymentHistoryTicketsCount": "Nombre de tickets",
   "paymentHistoryOpenProof": "Ouvrir",
+  "paymentHistoryViewProof": "Voir la preuve",
   "paymentHistoryProofDownloaded": "La preuve de paiement a été téléchargée.",
   "paymentHistoryProofUnavailable": "La preuve de paiement est temporairement indisponible."
 }

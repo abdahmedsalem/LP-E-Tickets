@@ -45,7 +45,9 @@ class EmitQrScreen extends StatefulWidget {
 }
 
 class _EmitQrScreenState extends State<EmitQrScreen> {
+  static const int _maxQrAmount = 5000;
   final Map<String, int> _request = {};
+  int _qrAmountLimit = _maxQrAmount;
   bool _emitting = false;
   bool _liveLoading = false;
   String? _liveError;
@@ -56,7 +58,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   void initState() {
     super.initState();
     if (AppEnvironment.useAcpecLiveData) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadLiveFaces());
+      WidgetsBinding.instance.addPostFrameCallback((_) async { await _loadLiveFaces(); await _loadQrAmountLimit(); });
     }
   }
 
@@ -104,12 +106,79 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     }
   }
 
+  Future<void> _loadQrAmountLimit() async {
+    try {
+      final raw = await OdooFueltokenFacade().walletCurrent(const {});
+      final outer = raw is Map ? raw : const <String, dynamic>{};
+      final data = outer['data'] is Map ? outer['data'] as Map : outer;
+      final saved = int.tryParse(data['qr_max_amount']?.toString() ?? '');
+      if (!mounted || saved == null) return;
+      setState(() => _qrAmountLimit = saved.clamp(1, _maxQrAmount));
+    } catch (_) {}
+  }
+
   String _qrIssueErrorMessage(Object error) {
     if (ErrorPresenter.isBackendUnavailable(error)) {
       return AppLocalizations.of(context).qrUnconfirmed;
     }
 
     return ErrorPresenter.localizedMessage(context, error);
+  }
+
+  Future<void> _chooseQrAmountLimit() async {
+    final controller = TextEditingController(text: '$_qrAmountLimit');
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Montant maximal du QR'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Montant en MRU',
+            hintText: 'Ex. 5 000',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final amount = int.tryParse(
+                controller.text.replaceAll(' ', '').trim(),
+              );
+              if (amount == null || amount <= 0) return;
+              Navigator.of(dialogContext).pop(amount.clamp(1, _maxQrAmount));
+            },
+            child: const Text('Appliquer'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || selected == null) return;
+    try {
+      final raw = await OdooFueltokenFacade().walletQrLimit({'max_amount': selected});
+      final outer = raw is Map ? raw : const <String, dynamic>{};
+      final data = outer['data'] is Map ? outer['data'] as Map : outer;
+      final confirmed = int.tryParse(data['qr_max_amount']?.toString() ?? '') ?? selected;
+      if (!mounted) return;
+      setState(() {
+        _qrAmountLimit = confirmed.clamp(1, _maxQrAmount);
+        if (_selectedAmount() > _qrAmountLimit) _request.clear();
+      });
+    } catch (error) {
+      if (mounted) AppMessage.error(context, _qrIssueErrorMessage(error));
+    }
+  }
+
+  int _selectedAmount() {
+    return _liveFaceLines.fold<int>(0, (sum, line) {
+      return sum + line.faceValue * (_request[line.id] ?? 0);
+    });
   }
 
   int _lineCarnetSize(FaceLine line) {
@@ -326,7 +395,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
               child: _BottomBar(
                 totalAmount: totalAmount,
                 emitting: _emitting,
-                onEmit: totalQty == 0 || _emitting
+                onEmit: totalQty == 0 || totalAmount > _qrAmountLimit || _emitting
                     ? null
                     : () => _confirmEmit(context),
               ),
@@ -356,7 +425,25 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                             letterSpacing: -0.2,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Limite actuelle : $_qrAmountLimit MRU',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _chooseQrAmountLimit,
+                  icon: const Icon(Icons.tune_rounded, size: 18),
+                  label: const Text('Definir le plafond'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
                         ...availableLines.map((line) {
                           final selected = _request[line.id] ?? 0;
                           return _CompositionRow(
@@ -370,13 +457,25 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                             qrActiveQty: line.qrActiveQty,
                             consumedQty: line.consumedQty,
                             selected: selected,
-                            onChange: (n) => setState(() {
-                              if (n <= 0) {
-                                _request.remove(line.id);
-                              } else {
-                                _request[line.id] = n;
+                            onChange: (n) {
+                              final nextAmount = totalAmount -
+                                  (line.faceValue * selected) +
+                                  (line.faceValue * n);
+                              if (nextAmount > _qrAmountLimit) {
+                                AppMessage.warning(
+                                  context,
+                                  'Le montant maximal de ce QR est de  MRU.',
+                                );
+                                return;
                               }
-                            }),
+                              setState(() {
+                                if (n <= 0) {
+                                  _request.remove(line.id);
+                                } else {
+                                  _request[line.id] = n;
+                                }
+                              });
+                            },
                           );
                         }),
                         const SizedBox(height: 8),
@@ -516,6 +615,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         final raw = await OdooFueltokenFacade().qrIssue(
           intent.withAuthParams({
             'lines': linesPayload,
+            'max_amount': _qrAmountLimit,
           }, actionCode: actionCode),
         );
         final guarded = acpecRpcMapOrThrow(

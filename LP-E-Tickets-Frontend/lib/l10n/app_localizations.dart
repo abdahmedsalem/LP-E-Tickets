@@ -3806,6 +3806,12 @@ abstract class AppLocalizations {
   /// **'Ouvrir'**
   String get paymentHistoryOpenProof;
 
+  /// No description provided for @paymentHistoryViewProof.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir la preuve'**
+  String get paymentHistoryViewProof;
+
   /// No description provided for @paymentHistoryProofDownloaded.
   ///
   /// In fr, this message translates to:

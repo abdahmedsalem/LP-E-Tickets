@@ -72,6 +72,12 @@ class OdooFueltokenFacade {
     params,
   );
 
+  Future<dynamic> walletQrLimit(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.walletQrLimit,
+    'ODOO_RPC_FUEL_WALLET_QR_LIMIT_PATH',
+    params,
+  );
+
   Future<dynamic> transactions(Map<String, dynamic> params) => _call(
     OdooFueltokenRpcConfig.transactions,
     'ODOO_RPC_FUEL_TRANSACTIONS_PATH',
