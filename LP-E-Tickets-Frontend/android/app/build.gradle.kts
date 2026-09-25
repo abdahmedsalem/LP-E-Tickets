@@ -35,6 +35,7 @@ android {
 
     defaultConfig {
         applicationId = "com.odoorim.acpec.lp_e_ticket"
+        // Android 6.0 (API 23) is the minimum supported device version.
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

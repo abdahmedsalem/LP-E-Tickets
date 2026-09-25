@@ -45,9 +45,11 @@ class EmitQrScreen extends StatefulWidget {
 }
 
 class _EmitQrScreenState extends State<EmitQrScreen> {
-  static const int _maxQrAmount = 5000;
   final Map<String, int> _request = {};
-  int _qrAmountLimit = _maxQrAmount;
+  int? _qrAmountLimit;
+  String? _qrCurrency;
+  bool _qrAmountLoading = true;
+  String? _qrAmountError;
   bool _emitting = false;
   bool _liveLoading = false;
   String? _liveError;
@@ -58,7 +60,10 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   void initState() {
     super.initState();
     if (AppEnvironment.useAcpecLiveData) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async { await _loadLiveFaces(); await _loadQrAmountLimit(); });
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _loadLiveFaces();
+        await _loadQrAmountLimit();
+      });
     }
   }
 
@@ -106,15 +111,48 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     }
   }
 
+  int? _qrAmountValue(dynamic value) {
+    if (value is num) return value.round();
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty) return null;
+    return int.tryParse(text) ?? double.tryParse(text)?.round();
+  }
+
+  Map<String, dynamic> _qrResponseData(dynamic raw) {
+    dynamic current = raw;
+    for (var depth = 0; depth < 5; depth++) {
+      if (current is! Map) return const <String, dynamic>{};
+      final map = Map<String, dynamic>.from(current);
+      if (map.containsKey('qr_max_amount')) return map;
+      final nested = map['data'] ?? map['result'];
+      if (nested is! Map) return const <String, dynamic>{};
+      current = nested;
+    }
+    return const <String, dynamic>{};
+  }
+
   Future<void> _loadQrAmountLimit() async {
     try {
       final raw = await OdooFueltokenFacade().walletCurrent(const {});
-      final outer = raw is Map ? raw : const <String, dynamic>{};
-      final data = outer['data'] is Map ? outer['data'] as Map : outer;
-      final saved = int.tryParse(data['qr_max_amount']?.toString() ?? '');
-      if (!mounted || saved == null) return;
-      setState(() => _qrAmountLimit = saved.clamp(1, _maxQrAmount));
-    } catch (_) {}
+      final data = _qrResponseData(raw);
+      final saved = _qrAmountValue(data['qr_max_amount']);
+      if (saved == null || saved <= 0) {
+        throw StateError('Plafond QR absent de la réponse backend.');
+      }
+      if (!mounted) return;
+      setState(() {
+        _qrAmountLimit = saved;
+        _qrCurrency = data['currency']?.toString();
+        _qrAmountLoading = false;
+        _qrAmountError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _qrAmountLoading = false;
+        _qrAmountError = ErrorPresenter.localizedMessage(context, error);
+      });
+    }
   }
 
   String _qrIssueErrorMessage(Object error) {
@@ -126,7 +164,27 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
   }
 
   Future<void> _chooseQrAmountLimit() async {
-    final controller = TextEditingController(text: '$_qrAmountLimit');
+    var currentLimit = _qrAmountLimit;
+    if (currentLimit == null) {
+      if (_qrAmountLoading) {
+        AppMessage.warning(
+          context,
+          'Chargement du plafond depuis le serveur...',
+        );
+        return;
+      }
+      await _loadQrAmountLimit();
+      currentLimit = _qrAmountLimit;
+      if (!mounted) return;
+      if (currentLimit == null) {
+        AppMessage.error(
+          context,
+          _qrAmountError ?? 'Le plafond QR est indisponible depuis le serveur.',
+        );
+        return;
+      }
+    }
+    final controller = TextEditingController(text: '$currentLimit');
     final selected = await showDialog<int>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -135,8 +193,8 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           controller: controller,
           autofocus: true,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Montant en MRU',
+          decoration: InputDecoration(
+            labelText: 'Montant en ${_qrCurrency ?? 'devise serveur'}',
             hintText: 'Ex. 5 000',
           ),
         ),
@@ -151,7 +209,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                 controller.text.replaceAll(' ', '').trim(),
               );
               if (amount == null || amount <= 0) return;
-              Navigator.of(dialogContext).pop(amount.clamp(1, _maxQrAmount));
+              Navigator.of(dialogContext).pop(amount);
             },
             child: const Text('Appliquer'),
           ),
@@ -161,14 +219,15 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     controller.dispose();
     if (!mounted || selected == null) return;
     try {
-      final raw = await OdooFueltokenFacade().walletQrLimit({'max_amount': selected});
-      final outer = raw is Map ? raw : const <String, dynamic>{};
-      final data = outer['data'] is Map ? outer['data'] as Map : outer;
-      final confirmed = int.tryParse(data['qr_max_amount']?.toString() ?? '') ?? selected;
+      final raw = await OdooFueltokenFacade().walletQrLimit({
+        'max_amount': selected,
+      });
+      final data = _qrResponseData(raw);
+      final confirmed = _qrAmountValue(data['qr_max_amount']) ?? selected;
       if (!mounted) return;
       setState(() {
-        _qrAmountLimit = confirmed.clamp(1, _maxQrAmount);
-        if (_selectedAmount() > _qrAmountLimit) _request.clear();
+        _qrAmountLimit = confirmed;
+        if (_selectedAmount() > confirmed) _request.clear();
       });
     } catch (error) {
       if (mounted) AppMessage.error(context, _qrIssueErrorMessage(error));
@@ -395,7 +454,12 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
               child: _BottomBar(
                 totalAmount: totalAmount,
                 emitting: _emitting,
-                onEmit: totalQty == 0 || totalAmount > _qrAmountLimit || _emitting
+                onEmit:
+                    totalQty == 0 ||
+                        totalAmount > (_qrAmountLimit ?? 0) ||
+                        _qrAmountLoading ||
+                        _qrAmountLimit == null ||
+                        _emitting
                     ? null
                     : () => _confirmEmit(context),
               ),
@@ -418,7 +482,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                         Text(
                           l10n.qrGenerationChooseInstruction,
                           style: TextStyle(
-                    fontSize: 15,
+                            fontSize: 15,
                             fontWeight: FontWeight.w400,
                             color: AppColors.muted,
                             height: 1.35,
@@ -426,24 +490,29 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                           ),
                         ),
                         Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Limite actuelle : $_qrAmountLimit MRU',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _chooseQrAmountLimit,
-                  icon: const Icon(Icons.tune_rounded, size: 18),
-                  label: const Text('Definir le plafond'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Limite actuelle : ${_qrAmountLimit ?? 'chargement...'} ${_qrCurrency ?? 'devise serveur'}',
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _chooseQrAmountLimit,
+                              icon: const Icon(Icons.tune_rounded, size: 18),
+                              label: const Text('Definir le plafond'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (_qrAmountError != null)
+                          Text(
+                            _qrAmountError!,
+                            style: const TextStyle(color: AppColors.danger),
+                          ),
                         ...availableLines.map((line) {
                           final selected = _request[line.id] ?? 0;
                           return _CompositionRow(
@@ -458,13 +527,15 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
                             consumedQty: line.consumedQty,
                             selected: selected,
                             onChange: (n) {
-                              final nextAmount = totalAmount -
+                              final nextAmount =
+                                  totalAmount -
                                   (line.faceValue * selected) +
                                   (line.faceValue * n);
-                              if (nextAmount > _qrAmountLimit) {
+                              if (_qrAmountLimit != null &&
+                                  nextAmount > _qrAmountLimit!) {
                                 AppMessage.warning(
                                   context,
-                                  'Le montant maximal de ce QR est de  MRU.',
+                                  'Le montant maximal de ce QR est de ${_qrAmountLimit!} ${_qrCurrency ?? 'devise serveur'}.',
                                 );
                                 return;
                               }
@@ -605,6 +676,16 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
     final l10n = AppLocalizations.of(context);
     final user = context.read<AuthBloc>().state.user;
     if (user == null) return;
+    final qrAmountLimit = _qrAmountLimit;
+    if (qrAmountLimit == null || qrAmountLimit <= 0) {
+      if (mounted) {
+        AppMessage.error(
+          context,
+          'Le plafond QR n est pas encore disponible depuis le serveur.',
+        );
+      }
+      return;
+    }
     setState(() => _emitting = true);
     try {
       if (AppEnvironment.useAcpecLiveData) {
@@ -615,7 +696,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
         final raw = await OdooFueltokenFacade().qrIssue(
           intent.withAuthParams({
             'lines': linesPayload,
-            'max_amount': _qrAmountLimit,
+            'max_amount': _qrAmountLimit!,
           }, actionCode: actionCode),
         );
         final guarded = acpecRpcMapOrThrow(

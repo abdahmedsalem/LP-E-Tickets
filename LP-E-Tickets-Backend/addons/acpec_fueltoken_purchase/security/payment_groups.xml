@@ -1,0 +1,17 @@
+<odoo>
+    <record id="module_category_payment_security" model="ir.module.category">
+        <field name="name">Sécurité LP E-Tickets</field>
+        <field name="sequence">45</field>
+    </record>
+
+    <record id="privilege_payment_security" model="res.groups.privilege">
+        <field name="name">Gestion des paiements</field>
+        <field name="category_id" ref="module_category_payment_security"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="group_payment_manager" model="res.groups">
+        <field name="name">Gestionnaire des moyens de paiement</field>
+        <field name="privilege_id" ref="privilege_payment_security"/>
+    </record>
+</odoo>

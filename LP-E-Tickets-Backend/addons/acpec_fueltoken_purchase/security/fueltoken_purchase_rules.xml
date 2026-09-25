@@ -36,4 +36,11 @@
         <field name="groups" eval="[(4, ref('acpec_fueltoken_base.group_fuel_manager')), (4, ref('acpec_fueltoken_base.group_fuel_admin'))]"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', user.company_ids.ids)]</field>
     </record>
+
+    <record id="rule_fuel_payment_method_payment_manager_company" model="ir.rule">
+        <field name="name">Moyens de paiement - gestionnaire dédié</field>
+        <field name="model_id" ref="model_acpec_fuel_payment_method"/>
+        <field name="groups" eval="[(4, ref('acpec_fueltoken_purchase.group_payment_manager'))]"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', user.company_ids.ids)]</field>
+    </record>
 </odoo>

@@ -8,6 +8,7 @@
     'license': 'OPL-1',
     'depends': ['acpec_fueltoken_catalog'],
     'data': [
+        'security/payment_groups.xml',
         'security/ir.model.access.csv',
         'security/fueltoken_purchase_rules.xml',
         'data/fuel_payment_method_data.xml',

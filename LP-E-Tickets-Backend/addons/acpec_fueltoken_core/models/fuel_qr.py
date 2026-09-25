@@ -371,6 +371,7 @@ class AcpecFuelQr(models.Model):
         requests,
         idempotency_key=False,
         request_hash=False,
+        max_amount=5000,
     ):
         actor = self._qr_internal_actor(actor_user)
 
@@ -383,6 +384,7 @@ class AcpecFuelQr(models.Model):
             idempotency_key=idempotency_key,
             request_hash=request_hash,
             actor_user=actor,
+            max_amount=max_amount,
         )
 
     def _consume_by_station_internal(
