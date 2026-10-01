@@ -26,6 +26,12 @@ Lancement :
 
 import base64
 import uuid
+import importlib.util
+from pathlib import Path
+from datetime import timedelta
+from unittest.mock import patch
+
+from psycopg2.errors import LockNotAvailable
 
 import odoo
 from odoo import SUPERUSER_ID, api, fields
@@ -54,7 +60,7 @@ class _ConsumeFixtureMixin:
         et contraint unique par societe. On cherche une valeur de face libre."""
         carnet_model = env['acpec.fuel.carnet.type'].sudo()
         face_count = 10
-        for face_value in range(900001, 900201):
+        for face_value in range(901, 1101):
             code = 'C%sT-%s' % (face_count, face_value)
             if not carnet_model.search(
                 [('company_id', '=', company.id), ('code', '=', code)], limit=1
@@ -227,10 +233,138 @@ class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
     def setUp(self):
         super().setUp()
         ids = self._build_consume_fixture(self.env)
+        self.client_user = self.env['res.users'].browse(ids['client_user_id'])
         self.qr = self.env['acpec.fuel.qr'].browse(ids['qr_id'])
         self.station = self.env['acpec.fuel.station'].browse(ids['station_id'])
         self.station_user = self.env['res.users'].browse(ids['station_user_id'])
         self.face_line = self.env['acpec.fuel.face.line'].browse(ids['face_line_id'])
+
+    def test_station_lock_persists_until_explicit_cancellation(self):
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        # Even an old deadline must never release ownership automatically.
+        self.qr._write_state_internal({
+            'station_lock_until': fields.Datetime.now() - timedelta(days=1),
+        })
+        self.assertTrue(self.qr._is_station_locked_now())
+        with self.assertRaises(UserError):
+            self.qr._retirer_to_child_internal(self.client_user, [{
+                'qr_line_id': self.qr.line_ids[0].id, 'qty': 1,
+            }])
+        with self.assertRaises(UserError):
+            self.qr._separer_valid_to_child_internal(self.client_user)
+        self.qr._cancel_station_scan_lock(self.station_user, self.station, self.qr.station_reservation_id)
+        self.assertFalse(self.qr._is_station_locked_now())
+        child = self.qr._retirer_to_child_internal(self.client_user, [{
+            'qr_line_id': self.qr.line_ids[0].id, 'qty': 1,
+        }])
+        self.assertTrue(child)
+
+    def test_old_cancellation_cannot_release_new_reservation(self):
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        old_id = self.qr.station_reservation_id
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        self.assertEqual(self.qr.station_reservation_id, old_id)
+        self.qr._cancel_station_scan_lock(self.station_user, self.station, old_id)
+        # Network retry after successful cancellation is harmless.
+        self.qr._cancel_station_scan_lock(self.station_user, self.station, old_id)
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        new_id = self.qr.station_reservation_id
+        self.assertNotEqual(new_id, old_id)
+        with self.assertRaises(UserError):
+            self.qr._cancel_station_scan_lock(self.station_user, self.station, old_id)
+        self.assertEqual(self.qr.station_reservation_id, new_id)
+        self.assertTrue(self.qr._is_station_locked_now())
+        with self.assertRaises(UserError):
+            self.qr._retirer_to_child_internal(self.client_user, [{
+                'qr_line_id': self.qr.line_ids[0].id, 'qty': 1,
+            }])
+
+    def test_missing_reservation_id_cannot_release_lock(self):
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        for invalid in (False, '', 42, 'ancienne-réservation'):
+            with self.assertRaises(UserError):
+                self.qr._cancel_station_scan_lock(self.station_user, self.station, invalid)
+            self.assertTrue(self.qr._is_station_locked_now())
+
+    def test_legacy_lock_migration_is_safe_and_repeatable(self):
+        path = Path(__file__).resolve().parents[1] / 'migrations/19.0.1.0.12/post-migrate.py'
+        spec = importlib.util.spec_from_file_location('station_lock_migration', path)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        now = fields.Datetime.now()
+        def prepare(qr, deadline, token=False):
+            qr._write_state_internal({
+                'station_lock_user_id': self.station_user.id,
+                'station_lock_station_id': self.station.id,
+                'station_lock_until': deadline,
+                'station_reservation_id': token,
+            })
+        qr_model = self.env['acpec.fuel.qr']
+        expired = self.qr
+        valid = qr_model.browse(self._build_consume_fixture(self.env)['qr_id'])
+        permanent = qr_model.browse(self._build_consume_fixture(self.env)['qr_id'])
+        modern = qr_model.browse(self._build_consume_fixture(self.env)['qr_id'])
+        prepare(expired, now - timedelta(days=1))
+        prepare(valid, now + timedelta(days=1))
+        prepare(permanent, False)
+        prepare(modern, now - timedelta(days=1), 'existing-reservation')
+        self.env.flush_all()
+        migration.migrate(self.env.cr, '19.0.1.0.11')
+        self.env.invalidate_all()
+        self.assertFalse(expired._is_station_locked_now())
+        for qr in (valid, permanent):
+            self.assertTrue(qr._is_station_locked_now())
+            self.assertTrue(qr.station_reservation_id)
+            self.assertFalse(qr.station_lock_until)
+        self.assertEqual(modern.station_reservation_id, 'existing-reservation')
+        self.assertTrue(modern._is_station_locked_now())
+        tokens = (valid.station_reservation_id, permanent.station_reservation_id)
+        migration.migrate(self.env.cr, '19.0.1.0.11')
+        self.env.invalidate_all()
+        self.assertEqual(tokens, (valid.station_reservation_id, permanent.station_reservation_id))
+        self.assertFalse(expired._is_station_locked_now())
+
+    def test_station_lock_is_released_by_consumption(self):
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        self._consume_qr_internal(self.qr, self.station, self.station_user)
+        self.assertEqual(self.qr.state, 'consumed')
+        self.assertFalse(self.qr._is_station_locked_now())
+
+    def test_other_agent_cannot_cancel_or_consume_reserved_qr(self):
+        other = self._build_consume_fixture(self.env)
+        other_user = self.env['res.users'].browse(other['station_user_id'])
+        other_station = self.env['acpec.fuel.station'].browse(other['station_id'])
+        self.qr._set_station_scan_lock(self.station_user, self.station)
+        with self.assertRaises(UserError):
+            self.qr._set_station_scan_lock(other_user, other_station)
+        with self.assertRaises(UserError):
+            self.qr._cancel_station_scan_lock(other_user, other_station)
+        with self.assertRaises(UserError):
+            self._consume_qr_internal(self.qr, other_station, other_user)
+        self.assertTrue(self.qr._is_station_locked_now())
+
+    def test_client_mutations_recheck_station_lock_after_database_lock(self):
+        # Simulate a scan becoming visible after the initial client check.
+        qr_type = type(self.qr)
+        original_lock = qr_type._lock_records
+        def lock_after_scan(records):
+            original_lock(records)
+            records._write_state_internal({
+                'station_lock_user_id': self.station_user.id,
+                'station_lock_station_id': self.station.id,
+            })
+        for operation in ('retirer', 'separer'):
+            with self.subTest(operation=operation):
+                with patch.object(qr_type, '_lock_records', lock_after_scan):
+                    with self.assertRaisesRegex(UserError, "en cours d'utilisation"):
+                        if operation == 'retirer':
+                            self.qr._retirer_to_child_internal(self.client_user, [{
+                                'qr_line_id': self.qr.line_ids[0].id, 'qty': 1,
+                            }])
+                        else:
+                            self.qr._separer_valid_to_child_internal(self.client_user)
+                self.qr.invalidate_recordset()
 
     def test_double_consume_is_blocked_by_state(self):
         """Une 2e consommation du meme QR doit echouer, sans double decrement."""
@@ -350,6 +484,51 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
     def _real_cursor(self, db_name):
         return odoo.sql_db.db_connect(db_name).cursor()
 
+    def test_concurrent_scan_blocks_client_withdrawal_and_separation(self):
+        db_name = self.env.cr.dbname
+        with self._real_cursor(db_name) as setup_cr:
+            ids = self._build_consume_fixture(api.Environment(setup_cr, SUPERUSER_ID, {}))
+            setup_cr.commit()
+        cr_a = self._real_cursor(db_name)
+        cr_b = self._real_cursor(db_name)
+        try:
+            env_a = api.Environment(cr_a, SUPERUSER_ID, {})
+            qr_a = env_a['acpec.fuel.qr'].browse(ids['qr_id'])
+            qr_a._set_station_scan_lock(
+                env_a['res.users'].browse(ids['station_user_id']),
+                env_a['acpec.fuel.station'].browse(ids['station_id']),
+            )
+            env_b = api.Environment(cr_b, SUPERUSER_ID, {})
+            qr_b = env_b['acpec.fuel.qr'].browse(ids['qr_id'])
+            client_b = env_b['res.users'].browse(ids['client_user_id'])
+            for operation in ('retirer', 'separer'):
+                cr_b.execute("SET lock_timeout = '300ms'")
+                with mute_logger('odoo.sql_db'), self.assertRaises(LockNotAvailable):
+                    if operation == 'retirer':
+                        qr_b._retirer_to_child_internal(client_b, [{
+                            'qr_line_id': qr_b.line_ids[0].id, 'qty': 1,
+                        }])
+                    else:
+                        qr_b._separer_valid_to_child_internal(client_b)
+                cr_b.rollback()
+            cr_a.commit()
+            # After the scan commits, the permanent business lock rejects both.
+            for operation in ('retirer', 'separer'):
+                with self.assertRaisesRegex(UserError, "en cours d'utilisation"):
+                    if operation == 'retirer':
+                        qr_b._retirer_to_child_internal(client_b, [{
+                            'qr_line_id': qr_b.line_ids[0].id, 'qty': 1,
+                        }])
+                    else:
+                        qr_b._separer_valid_to_child_internal(client_b)
+                cr_b.rollback()
+        finally:
+            cr_a.rollback()
+            cr_a.close()
+            cr_b.rollback()
+            cr_b.close()
+            self._cleanup_committed(db_name, ids)
+
     def test_concurrent_consume_is_serialized_and_spends_once(self):
         db_name = self.env.cr.dbname
 
@@ -392,7 +571,7 @@ class TestConsumeStationConcurrency(_ConsumeFixtureMixin, TransactionCase):
                 try:
                     self._consume_qr_internal(qr_b, station_b, user_b)
                     cr_b.commit()
-                except Exception:  # LockNotAvailable attendu (verrou indisponible)
+                except LockNotAvailable:  # Only the expected database lock refusal counts
                     blocked = True
                     cr_b.rollback()
             self.assertTrue(

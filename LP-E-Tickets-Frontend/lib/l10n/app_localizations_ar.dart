@@ -1298,7 +1298,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settingsDeleteAccount => 'حذف حسابي';
 
   @override
-  String get settingsDeleteAccountSubtitle => 'تواصل مع الدعم لطلب الحذف';
+  String get settingsDeleteAccountSubtitle => 'طلب حذف حسابك';
 
   @override
   String get settingsDeleteAccountTitle => 'طلب حذف الحساب';
@@ -2105,4 +2105,33 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get paymentHistoryProofUnavailable => 'إثبات الدفع غير متاح مؤقتًا.';
+
+  @override
+  String get settingsDeletionSubmit => 'إرسال طلبي';
+
+  @override
+  String get settingsDeletionSending => 'جارٍ التحقق من الطلب…';
+
+  @override
+  String settingsDeletionExplanation(int days) {
+    return 'سيتم تسجيل طلبك ومعالجته خلال $days يومًا. لن يُحذف حسابك فورًا. ستتم مراجعة تذاكرك ورصيدك قبل الإغلاق. الحذف النهائي لا رجعة فيه، ولن تُحتفظ إلا بالبيانات الملزم حفظها. سيصلك تأكيد بعد المعالجة.';
+  }
+
+  @override
+  String get settingsDeletionPinDescription =>
+      'أدخل رمز PIN لتأكيد طلب حذف حسابك.';
+
+  @override
+  String get settingsDeletionUnconfirmed =>
+      'تعذر تأكيد الطلب. تحقق من اتصالك ورمز PIN ثم افتح هذا القسم للتحقق من حالة الطلب قبل إعادة المحاولة.';
+
+  @override
+  String settingsDeletionReceipt(String reference, String date) {
+    return 'تم تسجيل الطلب: $reference. ستتم المعالجة في موعد أقصاه $date. لم يُحذف حسابك بعد. يمكنك متابعة الحالة في هذا القسم.';
+  }
+
+  @override
+  String settingsDeletionCompleted(String reference) {
+    return 'يشير فريق المعالجة إلى اكتمال الطلب $reference.';
+  }
 }

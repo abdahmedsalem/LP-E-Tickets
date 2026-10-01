@@ -4,6 +4,8 @@ import 'package:equatable/equatable.dart';
 class StationQrCheckResult extends Equatable {
   const StationQrCheckResult({
     required this.canConsume,
+    this.canCancel = false,
+    this.reservationId,
     this.reason,
     this.publicCode,
     this.clientName,
@@ -13,6 +15,8 @@ class StationQrCheckResult extends Equatable {
   });
 
   final bool canConsume;
+  final bool canCancel;
+  final String? reservationId;
   final String? reason;
   final String? publicCode;
   final String? clientName;
@@ -155,6 +159,10 @@ class StationQrCheckResult extends Equatable {
 
     return StationQrCheckResult(
       canConsume: can,
+      canCancel: _boolOrNull(m, const ['can_cancel']) ?? false,
+      reservationId: m['reservation_id'] is String
+          ? (m['reservation_id'] as String)
+          : null,
       reason: (reason != null && reason.isNotEmpty) ? reason : null,
       publicCode: (pub != null && pub.isNotEmpty) ? pub : null,
       clientName: (clientName != null && clientName.isNotEmpty)
@@ -209,6 +217,8 @@ class StationQrCheckResult extends Equatable {
   @override
   List<Object?> get props => [
     canConsume,
+    canCancel,
+    reservationId,
     reason,
     publicCode,
     clientName,

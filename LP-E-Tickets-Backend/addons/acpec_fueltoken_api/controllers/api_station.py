@@ -124,15 +124,15 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
         debug_reason = False
         if qr.state != 'active':
             can_consume = False
-            reason = _('QR introuvable ou non utilisable.')
+            reason = qr.env._('QR introuvable ou non utilisable.')
             debug_reason = 'qr_not_active'
         elif qr.company_id != station.company_id:
             can_consume = False
-            reason = _('QR introuvable ou non utilisable.')
+            reason = qr.env._('QR introuvable ou non utilisable.')
             debug_reason = 'qr_wrong_company'
         elif qr.expires_at and qr.expires_at <= fields.Datetime.now():
             can_consume = False
-            reason = _('QR introuvable ou non utilisable.')
+            reason = qr.env._('QR introuvable ou non utilisable.')
             debug_reason = 'qr_expired'
         return {
             'qr_id': qr.id,
@@ -194,9 +194,15 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                 qr._lock_records()
                 qr.invalidate_recordset()
                 qr._refresh_expiration_state_internal()
-                qr._set_station_scan_lock(user, station, duration_seconds=120)
+                if self._qr_check_payload(qr, station)['can_consume']:
+                    qr._set_station_scan_lock(user, station)
             payload = self._qr_check_payload(qr, station)
-            if not payload.get('can_consume'):
+            payload['can_cancel'] = bool(
+                qr._is_station_locked_now()
+                and qr.station_lock_user_id == user
+                and qr.station_lock_station_id == station
+            )
+            if not payload.get('can_consume') and not payload['can_cancel']:
                 return self._sensitive_refusal_response(
                     public_code='QR_NOT_USABLE',
                     debug_reason=payload.get('debug_reason') or 'qr_not_active',
@@ -206,8 +212,21 @@ class AcpecFuelTokenStationApi(AcpecFuelTokenApiCommon):
                     company=station.company_id,
                     audit_code='QR_NOT_USABLE',
                 )
+            payload['reservation_id'] = qr.station_reservation_id if payload['can_cancel'] else False
             payload.pop('debug_reason', None)
             return self._json_response(payload)
+        except Exception as exc:
+            return self._handle_exception_response(exc)
+
+    @http.route('/api/acpec/fueltoken/v1/station/qr/cancel', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    def cancel_qr(self, **kwargs):
+        try:
+            station, user = self._station_user()
+            qr = self._resolve_qr_from_payload(kwargs)
+            self._require_station_qr_company(qr, station)
+            with request.env.cr.savepoint():
+                qr._cancel_station_scan_lock(user, station, kwargs.get('reservation_id'))
+            return self._json_response({'qr_id': qr.id, 'cancelled': True})
         except Exception as exc:
             return self._handle_exception_response(exc)
 

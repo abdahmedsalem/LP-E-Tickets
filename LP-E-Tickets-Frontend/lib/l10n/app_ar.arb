@@ -421,7 +421,7 @@
   "settingsPaymentHistorySubtitle": "راجع عملياتك ومدفوعاتك.",
   "settingsAccountSecurity": "الحساب والأمان",
   "settingsDeleteAccount": "حذف حسابي",
-  "settingsDeleteAccountSubtitle": "تواصل مع الدعم لطلب الحذف",
+  "settingsDeleteAccountSubtitle": "طلب حذف حسابك",
   "settingsDeleteAccountTitle": "طلب حذف الحساب",
   "settingsDeleteAccountMessage": "الحذف نهائي. راجع إجراء ACPEC الرسمي لإرسال طلبك والتحقق من هويتك.",
   "settingsDeletionGuide": "نسخ رابط الإجراء",
@@ -664,5 +664,12 @@
   "paymentHistoryOpenProof": "فتح",
   "paymentHistoryViewProof": "عرض الإثبات",
   "paymentHistoryProofDownloaded": "تم تنزيل إثبات الدفع.",
-  "paymentHistoryProofUnavailable": "إثبات الدفع غير متاح مؤقتًا."
+  "paymentHistoryProofUnavailable": "إثبات الدفع غير متاح مؤقتًا.",
+  "settingsDeletionSubmit": "إرسال طلبي",
+  "settingsDeletionSending": "جارٍ التحقق من الطلب…",
+  "settingsDeletionExplanation": "سيتم تسجيل طلبك ومعالجته خلال {days} يومًا. لن يُحذف حسابك فورًا. ستتم مراجعة تذاكرك ورصيدك قبل الإغلاق. الحذف النهائي لا رجعة فيه، ولن تُحتفظ إلا بالبيانات الملزم حفظها. سيصلك تأكيد بعد المعالجة.",
+  "settingsDeletionPinDescription": "أدخل رمز PIN لتأكيد طلب حذف حسابك.",
+  "settingsDeletionUnconfirmed": "تعذر تأكيد الطلب. تحقق من اتصالك ورمز PIN ثم افتح هذا القسم للتحقق من حالة الطلب قبل إعادة المحاولة.",
+  "settingsDeletionReceipt": "تم تسجيل الطلب: {reference}. ستتم المعالجة في موعد أقصاه {date}. لم يُحذف حسابك بعد. يمكنك متابعة الحالة في هذا القسم.",
+  "settingsDeletionCompleted": "يشير فريق المعالجة إلى اكتمال الطلب {reference}."
 }

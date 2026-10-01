@@ -285,8 +285,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         await _showFailureDialog(
           title: l10n.stationQrNotConsumable,
           message: l10n.stationQrNotConsumableMessage,
-          actionLabel: l10n.stationBackHome,
+          actionLabel: result.canCancel
+              ? l10n.commonCancel
+              : l10n.stationBackHome,
         );
+        if (result.canCancel) {
+          await _cancelStationQr(publicCode, result.reservationId);
+        }
         if (mounted) _goStationHome();
         return;
       }
@@ -306,13 +311,16 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
             consumeRequested = true;
             Navigator.pop(ctx);
             if (mounted) {
-              await _consume(publicCode);
+              await _consume(publicCode, reservationId: result.reservationId);
             }
           },
         ),
       );
 
       await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (!consumeRequested) {
+        await _cancelStationQr(publicCode, result.reservationId);
+      }
       if (mounted && !consumeRequested && !_consuming) {
         _lastHandledCode = null;
         _lastHandledAt = null;
@@ -357,7 +365,19 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _consume(String code) async {
+  Future<void> _cancelStationQr(String code, String? reservationId) async {
+    final raw = await OdooFueltokenFacade().stationQrCancel({
+      'public_code': code,
+      'reservation_id': reservationId,
+    });
+    acpecRpcMapOrThrow(
+      raw,
+      fallbackMessage:
+          'Annulation non confirmée. Rescannez le QR pour réessayer.',
+    );
+  }
+
+  Future<void> _consume(String code, {String? reservationId}) async {
     final l10n = AppLocalizations.of(context);
     if (_consuming) return;
     final trimmed = code.trim();
@@ -381,6 +401,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         description: l10n.stationPinScanDescription,
       );
       if (actionCode == null || actionCode.isEmpty) {
+        await _cancelStationQr(trimmed, reservationId);
         if (mounted) await _restartScannerAfterModal();
         return;
       }

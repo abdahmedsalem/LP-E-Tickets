@@ -384,5 +384,20 @@
     "payload": {
       "carnet_type_id": 1
     }
+  },
+  {
+    "group": "Mobile Auth",
+    "label": "Account deletion status",
+    "route": "/api/acpec/mobile_auth/v1/account-deletion/status",
+    "payload": {}
+  },
+  {
+    "group": "Mobile Auth",
+    "label": "Request account deletion",
+    "route": "/api/acpec/mobile_auth/v1/account-deletion/request",
+    "payload": {
+      "confirmed": true,
+      "action_code": "<PIN>"
+    }
   }
 ]

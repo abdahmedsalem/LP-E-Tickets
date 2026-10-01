@@ -4,7 +4,6 @@ import logging
 import re
 import secrets
 
-from datetime import timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError, UserError
 
@@ -59,6 +58,7 @@ class AcpecFuelQr(models.Model):
         readonly=True,
         copy=False,
     )
+    station_reservation_id = fields.Char(string='Réservation station', readonly=True, copy=False)
     station_lock_until = fields.Datetime(string='Verrouillage station jusqu’à', copy=False, index=True)
     station_lock_user_id = fields.Many2one('res.users', string='Agent station verrouilleur', copy=False)
     station_lock_station_id = fields.Many2one('acpec.fuel.station', string='Station verrouilleuse', copy=False)
@@ -95,6 +95,7 @@ class AcpecFuelQr(models.Model):
         'consumed_user_id',
         'consumed_partner_id',
         'consumed_at',
+        'station_reservation_id',
         'station_lock_until',
         'station_lock_user_id',
         'station_lock_station_id',
@@ -444,36 +445,57 @@ class AcpecFuelQr(models.Model):
 
     def _is_station_locked_now(self):
         self.ensure_one()
-        if self.station_lock_until:
-            now = fields.Datetime.now()
-            if self.station_lock_until > now:
-                return True
-        return False
+        # Ownership persists until explicit cancellation or successful use.
+        # Keep the old deadline field for database compatibility only.
+        return bool(self.station_lock_user_id or self.station_lock_station_id)
 
     def _assert_not_station_locked(self, user=False):
         self.ensure_one()
         if self._is_station_locked_now():
-            if user and self.station_lock_user_id and self.station_lock_user_id.id == user.id:
-                return True
             raise UserError(_("Ce QR Code est actuellement en cours d'utilisation dans une station. Veuillez patienter."))
 
-    def _set_station_scan_lock(self, station_user, station, duration_seconds=120):
+    def _assert_station_lock_owner(self, station_user, station):
         self.ensure_one()
-        now = fields.Datetime.now()
-        if self.station_lock_until and self.station_lock_until <= now:
-            self._write_state_internal({
-                'station_lock_until': False,
-                'station_lock_user_id': False,
-                'station_lock_station_id': False,
-            })
-        if self.station_lock_until and self.station_lock_until > now:
-            if self.station_lock_user_id and self.station_lock_user_id.id != station_user.id:
-                raise UserError(_("Ce QR Code est déjà en cours de vérification dans une autre station."))
-        lock_until = now + timedelta(seconds=duration_seconds)
+        if self._is_station_locked_now() and (
+            self.station_lock_user_id != station_user
+            or self.station_lock_station_id != station
+        ):
+            raise UserError(_("Ce QR Code est déjà en cours d'utilisation par un autre pompiste."))
+
+    def _set_station_scan_lock(self, station_user, station, duration_seconds=None):
+        self.ensure_one()
+        self._assert_qr_station_allowed(station_user, station)
+        self._lock_records()
+        self.invalidate_recordset()
+        self._assert_station_lock_owner(station_user, station)
+        if self.state != 'active':
+            raise UserError(_("Ce QR Code n'est pas actif."))
         self._write_state_internal({
-            'station_lock_until': lock_until,
+            'station_reservation_id': self.station_reservation_id or secrets.token_urlsafe(32),
+            'station_lock_until': False,
             'station_lock_user_id': station_user.id,
             'station_lock_station_id': station.id,
+        })
+        return True
+
+    def _cancel_station_scan_lock(self, station_user, station, reservation_id=False):
+        self.ensure_one()
+        self._assert_qr_station_allowed(station_user, station)
+        self._lock_records()
+        self.invalidate_recordset()
+        self._assert_station_lock_owner(station_user, station)
+        if not isinstance(reservation_id, str) or not reservation_id:
+            raise ValidationError(_("Identifiant de réservation manquant. Vérifiez à nouveau le QR."))
+        if self._is_station_locked_now() and (
+            not self.station_reservation_id
+            or not secrets.compare_digest(self.station_reservation_id.encode('utf-8'), reservation_id.encode('utf-8'))
+        ):
+            raise UserError(_("Cette annulation concerne une ancienne réservation. Vérifiez à nouveau le QR."))
+        self._write_state_internal({
+            'station_reservation_id': False,
+            'station_lock_until': False,
+            'station_lock_user_id': False,
+            'station_lock_station_id': False,
         })
         return True
 
@@ -898,6 +920,7 @@ class AcpecFuelQr(models.Model):
                 ], limit=1)
                 if existing:
                     return existing
+            self._assert_station_lock_owner(actor_user, station)
             # Validate QR state
             if self.state != 'active':
                 raise UserError(_('Le QR n’est pas actif et ne peut pas être consommé.'))
@@ -927,6 +950,7 @@ class AcpecFuelQr(models.Model):
                 'consumed_user_id': actor_user.id,
                 'consumed_partner_id': actor_partner.id if actor_partner else False,
                 'consumed_at': fields.Datetime.now(),
+                'station_reservation_id': False,
                 'station_lock_until': False,
                 'station_lock_user_id': False,
                 'station_lock_station_id': False,
@@ -981,7 +1005,8 @@ class AcpecFuelQr(models.Model):
 
         with self.env.cr.savepoint():
             self._lock_records()
-            self.invalidate_recordset(['state'])
+            self.invalidate_recordset()
+            self._assert_not_station_locked()
             if idempotency_key:
                 existing = Tx.search([
                     ('transaction_type', '=', 'retirer_qr'),
@@ -1088,7 +1113,8 @@ class AcpecFuelQr(models.Model):
 
         with self.env.cr.savepoint():
             self._lock_records()
-            self.invalidate_recordset(['state'])
+            self.invalidate_recordset()
+            self._assert_not_station_locked()
             if idempotency_key:
                 existing = Tx.search([
                     ('transaction_type', '=', 'separer_qr'),

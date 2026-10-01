@@ -23,7 +23,7 @@ void main() {
     expect(source, contains('Carte des stations'));
     expect(source, contains("context.push('/settings/stations-map')"));
     expect(source, contains('l10n.settingsDeleteAccount'));
-    expect(source, contains('/account-deletion'));
+    expect(source, contains('_deletionService.submit(pin)'));
     expect(source, contains('_LogoutTile('));
     expect(source, contains('l10n.settingsDevelopedBy'));
     expect(

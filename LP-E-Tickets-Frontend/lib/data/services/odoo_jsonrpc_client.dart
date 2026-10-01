@@ -333,6 +333,7 @@ OdooJsonRpcException odooJsonRpcExceptionFromDio(DioException error) {
     case DioExceptionType.connectionTimeout:
     case DioExceptionType.sendTimeout:
     case DioExceptionType.receiveTimeout:
+    case DioExceptionType.transformTimeout:
       return OdooJsonRpcException(
         'Serveur momentanément indisponible. Réessayez plus tard.',
       );

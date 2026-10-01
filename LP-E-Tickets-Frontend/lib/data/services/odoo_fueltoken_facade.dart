@@ -231,6 +231,12 @@ class OdooFueltokenFacade {
     );
   }
 
+  Future<dynamic> stationQrCancel(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.stationQrCancel,
+    'ODOO_RPC_FUEL_STATION_QR_CANCEL_PATH',
+    params,
+  );
+
   Future<dynamic> stationQrUse(Map<String, dynamic> params) => _call(
     OdooFueltokenRpcConfig.stationQrUse,
     'ODOO_RPC_FUEL_STATION_QR_USE_PATH',

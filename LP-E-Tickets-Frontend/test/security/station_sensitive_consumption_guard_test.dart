@@ -30,7 +30,7 @@ void main() {
     test('scan consumption is locked before station PIN dialog', () {
       final source = _read('lib/features/station/screens/scan_screen.dart');
 
-      final consumeIndex = source.indexOf('Future<void> _consume(String code)');
+      final consumeIndex = source.indexOf('Future<void> _consume(');
       final lockIndex = source.indexOf(
         'setState(() => _consuming = true);',
         consumeIndex,

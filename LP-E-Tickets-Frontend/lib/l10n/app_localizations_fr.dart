@@ -1331,7 +1331,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsDeleteAccountSubtitle =>
-      'Contactez le support pour la suppression';
+      'Demander la suppression de votre compte';
 
   @override
   String get settingsDeleteAccountTitle => 'Demande de suppression du compte';
@@ -2158,4 +2158,33 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get paymentHistoryProofUnavailable =>
       'La preuve de paiement est temporairement indisponible.';
+
+  @override
+  String get settingsDeletionSubmit => 'Envoyer ma demande';
+
+  @override
+  String get settingsDeletionSending => 'Vérification de la demande…';
+
+  @override
+  String settingsDeletionExplanation(int days) {
+    return 'Votre demande sera enregistrée et traitée sous $days jours. Votre compte ne sera pas supprimé immédiatement. Le traitement de vos tickets et de votre solde sera vérifié avant la clôture. La suppression finale est irréversible ; seules les données soumises à une obligation de conservation seront conservées. Une confirmation vous sera adressée après traitement.';
+  }
+
+  @override
+  String get settingsDeletionPinDescription =>
+      'Saisissez votre PIN pour confirmer la demande de suppression de votre compte.';
+
+  @override
+  String get settingsDeletionUnconfirmed =>
+      'La demande n’a pas pu être confirmée. Vérifiez votre connexion et votre PIN, puis rouvrez cette rubrique pour vérifier son statut avant de réessayer.';
+
+  @override
+  String settingsDeletionReceipt(String reference, String date) {
+    return 'Demande enregistrée : $reference. Traitement prévu au plus tard le $date. Votre compte n’est pas encore supprimé. Vous pouvez retrouver le statut dans cette rubrique.';
+  }
+
+  @override
+  String settingsDeletionCompleted(String reference) {
+    return 'La demande $reference est indiquée comme terminée par le service chargé de sa suppression.';
+  }
 }

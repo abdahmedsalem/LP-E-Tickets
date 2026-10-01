@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC FuelToken Core',
-    'version': '1.0.11',
+    'version': '19.0.1.0.12',
     'category': 'ACPEC/FuelToken',
     'summary': 'Cœur FuelToken : carnets, tickets, comptes, QR, stations et transactions',
     'author': 'ACPEC SARL',

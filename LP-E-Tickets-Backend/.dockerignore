@@ -1,0 +1,8 @@
+**
+!addons/
+!addons/**
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+**/.env
+**/.git/

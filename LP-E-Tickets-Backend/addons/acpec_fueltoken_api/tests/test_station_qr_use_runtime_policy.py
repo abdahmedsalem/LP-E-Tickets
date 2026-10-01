@@ -37,7 +37,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
     def _create_unique_carnet_type(self):
         carnet_model = self.env["acpec.fuel.carnet.type"].sudo()
         face_count = 10
-        for face_value in range(950001, 950501):
+        for face_value in range(1001, 1501):
             code = "C%sT-%s" % (face_count, face_value)
             if not carnet_model.search([
                 ("company_id", "=", self.company.id),
@@ -275,6 +275,59 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             ("idempotency_key", "=", key),
         ])
 
+    def test_station_qr_expired_reservation_can_be_cancelled_by_owner(self):
+        controller, user, station, _, _, qr = self._controller_with_consumable_qr(
+            'expired-lock-cancel',
+        )
+        first = self._response_data(self._call_check_qr(controller, {
+            'public_code': qr.public_code,
+        }))
+        self.assertTrue(first['can_cancel'])
+        self.assertTrue(first['can_consume'])
+        qr._expire_all_lines(qr.line_ids)
+        expired = self._response_data(self._call_check_qr(controller, {
+            'public_code': qr.public_code,
+        }))
+        self.assertFalse(expired['can_consume'])
+        self.assertTrue(expired['can_cancel'])
+        with patch.object(api_station_module, 'request', SimpleNamespace(env=self.env)):
+            cancelled = self._response_data(controller.cancel_qr(public_code=qr.public_code, reservation_id=expired['reservation_id']))
+        self.assertTrue(cancelled['cancelled'])
+        self.assertFalse(qr._is_station_locked_now())
+        self.assertEqual(qr.state, 'expired')
+
+    def test_station_qr_cancel_rejects_other_agent_and_untrusted_device(self):
+        controller, user, station, _, _, qr = self._controller_with_consumable_qr(
+            'owner-lock-cancel',
+        )
+        self._call_check_qr(controller, {'public_code': qr.public_code})
+        other, _, _, _ = self._station_controller('other-lock-cancel')
+        untrusted, _, _, _ = self._station_controller('untrusted-lock-cancel', trusted=False)
+        for caller in (other, untrusted):
+            with patch.object(api_station_module, 'request', SimpleNamespace(env=self.env)):
+                response = caller.cancel_qr(public_code=qr.public_code, reservation_id=qr.station_reservation_id)
+            self.assertFalse(response.get('success'))
+            self.assertEqual(qr.station_lock_user_id, user)
+            self.assertTrue(qr._is_station_locked_now())
+
+    def test_station_cancel_requires_current_reservation_id(self):
+        controller, user, station, _, _, qr = self._controller_with_consumable_qr('cancel-generation')
+        first = self._response_data(self._call_check_qr(controller, {'public_code': qr.public_code}))
+        old_id = first['reservation_id']
+        with patch.object(api_station_module, 'request', SimpleNamespace(env=self.env)):
+            missing = controller.cancel_qr(public_code=qr.public_code)
+            self.assertFalse(missing['success'])
+            self.assertTrue(qr._is_station_locked_now())
+            response = controller.cancel_qr(public_code=qr.public_code, reservation_id=old_id)
+            self.assertTrue(response['success'])
+        second = self._response_data(self._call_check_qr(controller, {'public_code': qr.public_code}))
+        self.assertNotEqual(old_id, second['reservation_id'])
+        with patch.object(api_station_module, 'request', SimpleNamespace(env=self.env)):
+            stale = controller.cancel_qr(public_code=qr.public_code, reservation_id=old_id)
+        self.assertFalse(stale['success'])
+        self.assertEqual(qr.station_reservation_id, second['reservation_id'])
+        self.assertTrue(qr._is_station_locked_now())
+
     def test_station_qr_check_accepts_qr_numeric_code(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
             "numeric-check-37a",
@@ -371,7 +424,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         with patch.object(api_station_module, "request", fake_request):
             tx_response = controller.station_transactions()
 
-        self.assertNotIn(str(foreign_tx.id), repr(tx_response))
+        self.assertNotIn(foreign_tx.id, [item['id'] for item in self._response_data(tx_response)['items']])
 
     def test_station_qr_use_accepts_qr_numeric_code(self):
         controller, station_user, station, _session, client_user, qr = self._controller_with_consumable_qr(
@@ -717,9 +770,9 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertIn("pending", repr(response))
 
         default_list = self._call_station_transactions(controller)
-        self.assertIn(str(tx.id), repr(default_list))
+        self.assertIn(tx.id, [item['id'] for item in self._response_data(default_list)['items']])
         regularized_list = self._call_station_transactions(controller, {"regularization_state": "regularized"})
-        self.assertNotIn(str(tx.id), repr(regularized_list))
+        self.assertNotIn(tx.id, [item['id'] for item in self._response_data(regularized_list)['items']])
 
     def test_station_transactions_filter_pending_regularized_all(self):
         controller, _station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
@@ -739,12 +792,12 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         self.assertEqual(qr.state, "consumed")
 
         pending_list = self._call_station_transactions(controller, {"regularization_state": "pending"})
-        self.assertNotIn(str(tx.id), repr(pending_list))
+        self.assertNotIn(tx.id, [item['id'] for item in self._response_data(pending_list)['items']])
         regularized_list = self._call_station_transactions(controller, {"regularization_state": "regularized"})
-        self.assertIn(str(tx.id), repr(regularized_list))
+        self.assertIn(tx.id, [item['id'] for item in self._response_data(regularized_list)['items']])
         self.assertIn("REG-H3B-001", repr(regularized_list))
         all_list = self._call_station_transactions(controller, {"regularization_state": "all"})
-        self.assertIn(str(tx.id), repr(all_list))
+        self.assertIn(tx.id, [item['id'] for item in self._response_data(all_list)['items']])
 
     def test_station_mobile_user_cannot_regularize_transaction(self):
         controller, station_user, _station, _session, _client_user, qr = self._controller_with_consumable_qr(
@@ -908,7 +961,7 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
         )
         regularized_items = regularized_response.get('data', {}).get('items', [])
         self.assertNotIn(pending_tx.id, [item.get('id') for item in regularized_items])
-        self.assertIn(str(regularized_tx.id), repr(regularized_response))
+        self.assertIn(regularized_tx.id, [item['id'] for item in self._response_data(regularized_response)['items']])
 
     def test_station_transactions_totals_follow_date_and_regularization_m15(self):
         controller, _station_user, station, _session, _client_user, _qr = self._controller_with_consumable_qr(
@@ -969,8 +1022,8 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             pending_totals.get('amount_total'),
             current_pending_tx.amount_total,
         )
-        self.assertNotIn(str(old_tx.id), repr(pending_response))
-        self.assertNotIn(str(current_regularized_tx.id), repr(pending_response))
+        self.assertNotIn(old_tx.id, [item['id'] for item in self._response_data(pending_response)['items']])
+        self.assertNotIn(current_regularized_tx.id, [item['id'] for item in self._response_data(pending_response)['items']])
 
         all_response = self._call_station_transactions(controller, {
             'regularization_state': 'all',
@@ -990,4 +1043,4 @@ class TestStationQrUseRuntimePolicy(TransactionCase):
             all_totals.get('amount_total'),
             current_pending_tx.amount_total + current_regularized_tx.amount_total,
         )
-        self.assertNotIn(str(old_tx.id), repr(all_response))
+        self.assertNotIn(old_tx.id, [item['id'] for item in self._response_data(all_response)['items']])

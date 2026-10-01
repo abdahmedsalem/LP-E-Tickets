@@ -228,6 +228,31 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
     );
   }
 
+  Future<void> _cancelManualCode() async {
+    final code = _checkedNumericCode;
+    if (code == null || _checking || _consuming) return;
+    setState(() => _checking = true);
+    try {
+      final raw = await OdooFueltokenFacade().stationQrCancel({
+        ..._payloadFor(code),
+        'reservation_id': _checkData?['reservation_id'],
+      });
+      acpecRpcMapOrThrow(
+        raw,
+        fallbackMessage: 'Annulation non confirmée. Réessayez.',
+      );
+      if (!mounted) return;
+      setState(() {
+        _checkData = null;
+        _checkedNumericCode = null;
+      });
+    } catch (error) {
+      if (mounted) _showSnack(_errorMessage(error), error: true);
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
   Future<void> _checkManualCode() async {
     final l10n = AppLocalizations.of(context);
     final code = _numericCode;
@@ -235,7 +260,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
       _showSnack(l10n.stationEnterManualCode, error: true);
       return;
     }
-    if (_checking || _consuming) return;
+    if (_checking || _consuming || _checkedNumericCode != null) return;
 
     setState(() {
       _checking = true;
@@ -252,14 +277,27 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
         await _showManualFailureDialog(
           title: l10n.stationQrNotConsumable,
           message: l10n.stationQrNotConsumableMessage,
-          actionLabel: l10n.stationBackHome,
+          actionLabel: result.canCancel
+              ? l10n.commonCancel
+              : l10n.stationBackHome,
         );
+        if (result.canCancel) {
+          final cancelled = await OdooFueltokenFacade().stationQrCancel({
+            ..._payloadFor(code),
+            'reservation_id': result.reservationId,
+          });
+          acpecRpcMapOrThrow(
+            cancelled,
+            fallbackMessage: 'Annulation non confirmée. Réessayez.',
+          );
+        }
         if (mounted) context.go('/station/home');
         return;
       }
 
       final data = _dataMap(raw);
       data['can_consume'] = true;
+      data['reservation_id'] = result.reservationId;
       if (result.publicCode != null) {
         data.putIfAbsent('public_code', () => result.publicCode);
       }
@@ -449,7 +487,7 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
             const SizedBox(height: 22),
             _ManualCodeCard(
               controller: _codeController,
-              checking: _checking,
+              checking: _checking || _consuming || _checkedNumericCode != null,
               onCheck: _checkManualCode,
             ),
             const SizedBox(height: 18),
@@ -457,8 +495,13 @@ class _StationManualQrScreenState extends State<StationManualQrScreen> {
               _CheckResultCard(
                 owner: owner,
                 amount: amount,
-                consuming: _consuming,
+                consuming: _consuming || _checking,
                 onConsume: _consumeManualCode,
+              ),
+            if (_checkedNumericCode != null)
+              TextButton(
+                onPressed: _checking || _consuming ? null : _cancelManualCode,
+                child: Text(l10n.commonCancel),
               ),
           ],
         ),

@@ -14,6 +14,7 @@ Future<String?> showSensitiveActionCodeDialog(
   required String description,
 }) async {
   final controller = TextEditingController();
+  final focusNode = FocusNode();
   try {
     final state = context.read<AuthBloc>().state;
     final user = state.user;
@@ -45,7 +46,14 @@ Future<String?> showSensitiveActionCodeDialog(
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (dialogContext.mounted && !focusNode.hasFocus && !busy) {
+                focusNode.requestFocus();
+              }
+            });
+
             Future<void> closeDialog(String? value) async {
+              focusNode.unfocus();
               FocusManager.instance.primaryFocus?.unfocus();
               try {
                 await SystemChannels.textInput.invokeMethod<void>(
@@ -61,6 +69,7 @@ Future<String?> showSensitiveActionCodeDialog(
             }
 
             Future<void> submit() async {
+              focusNode.unfocus();
               FocusScope.of(dialogContext).unfocus();
               final pin = controller.text.trim();
               final validationError = validateFourDigitNumericPassword(pin);
@@ -135,6 +144,7 @@ Future<String?> showSensitiveActionCodeDialog(
                             const SizedBox(height: 18),
                             _PinCodeBoxes(
                               controller: controller,
+                              focusNode: focusNode,
                               enabled: !busy,
                               obscure: obscure,
                               errorText: errorText,
@@ -236,6 +246,7 @@ Future<String?> showSensitiveActionCodeDialog(
 
     return result;
   } finally {
+    focusNode.dispose();
     // PATCH6: controller.dispose() disabled here; Android IME/TextField may still read it while dialog closes.
   }
 }
@@ -270,6 +281,7 @@ Future<bool> showSensitiveActionPinDialog(
 class _PinCodeBoxes extends StatelessWidget {
   const _PinCodeBoxes({
     required this.controller,
+    required this.focusNode,
     required this.enabled,
     required this.obscure,
     required this.errorText,
@@ -278,6 +290,7 @@ class _PinCodeBoxes extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool enabled;
   final bool obscure;
   final String? errorText;
@@ -294,63 +307,79 @@ class _PinCodeBoxes extends StatelessWidget {
 
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Opacity(
-              opacity: 0.01,
-              child: TextField(
-                controller: controller,
-                autofocus: true,
-                enabled: enabled,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                maxLength: kSecretCodeLength,
-                obscureText: obscure,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (_) => onChanged(),
-                onSubmitted: (_) => onSubmitted(),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  counterText: '',
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            if (enabled) {
+              focusNode.requestFocus();
+            }
+          },
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Opacity(
+                opacity: 0.01,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    autofocus: true,
+                    enabled: enabled,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    maxLength: kSecretCodeLength,
+                    obscureText: obscure,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (_) => onChanged(),
+                    onSubmitted: (_) => onSubmitted(),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(kSecretCodeLength, (index) {
-                final filled = dots[index].isNotEmpty;
-                final active = value.length == index;
-                return Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    end: index == kSecretCodeLength - 1 ? 0 : 8,
-                  ),
-                  child: Container(
-                    width: 42,
-                    height: 58,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: active ? Colors.black : const Color(0xFFB8BDC6),
-                        width: active ? 2 : 1.6,
+              IgnorePointer(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(kSecretCodeLength, (index) {
+                    final filled = dots[index].isNotEmpty;
+                    final active = value.length == index;
+                    return Padding(
+                      padding: EdgeInsetsDirectional.only(
+                        end: index == kSecretCodeLength - 1 ? 0 : 8,
                       ),
-                    ),
-                    child: Text(
-                      filled ? (obscure ? '•' : dots[index]) : '',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
-                        height: 1,
+                      child: Container(
+                        width: 42,
+                        height: 58,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: active ? Colors.black : const Color(0xFFB8BDC6),
+                            width: active ? 2 : 1.6,
+                          ),
+                        ),
+                        child: Text(
+                          filled ? (obscure ? '•' : dots[index]) : '',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black,
+                            height: 1,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ],
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
         ),
         if (errorText != null) ...[
           const SizedBox(height: 12),

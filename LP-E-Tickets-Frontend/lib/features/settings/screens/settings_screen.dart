@@ -7,7 +7,8 @@ import 'package:local_auth/local_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/auth/login_session_cache.dart';
-import '../../../core/config/odoo_api_config.dart';
+import '../../../data/services/account_deletion_service.dart';
+import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
@@ -26,6 +27,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _bioPref = false;
+  bool _deletionBusy = false;
+  final _deletionService = AccountDeletionService();
   String _localeCode = 'fr';
   String _appVersion = '—';
   String _buildNumber = '—';
@@ -109,34 +112,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showDeleteAccountInfo() async {
+    if (_deletionBusy) return;
+    setState(() => _deletionBusy = true);
     final l10n = AppLocalizations.of(context);
-    final baseUrl = OdooApiConfig.baseUrlTrimmed;
-    final deletionUrl = baseUrl.isEmpty
-        ? 'https://acpec2.odoo.com/account-deletion'
-        : '$baseUrl/account-deletion';
-    final copyLink = await showDialog<bool>(
+    try {
+      final status = await _deletionService.status();
+      if (!mounted) return;
+      final existing = status['request'];
+      if (existing is Map) {
+        await _showDeletionReceipt(
+          AccountDeletionReceipt.fromJson(Map<String, dynamic>.from(existing)),
+        );
+        return;
+      }
+      final days = status['processing_days'];
+      if (days is! int || days < 1) {
+        throw const FormatException('Missing deletion processing policy');
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.settingsDeleteAccountTitle),
+          content: Text(l10n.settingsDeletionExplanation(days)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.settingsDeletionSubmit),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      final pin = await showSensitiveActionCodeDialog(
+        context,
+        title: l10n.commonPinVerification,
+        description: l10n.settingsDeletionPinDescription,
+      );
+      if (pin == null || pin.isEmpty || !mounted) return;
+      final receipt = await _deletionService.submit(pin);
+      if (mounted) await _showDeletionReceipt(receipt);
+    } catch (_) {
+      if (mounted) AppMessage.error(context, l10n.settingsDeletionUnconfirmed);
+    } finally {
+      if (mounted) setState(() => _deletionBusy = false);
+    }
+  }
+
+  Future<void> _showDeletionReceipt(AccountDeletionReceipt receipt) async {
+    final l10n = AppLocalizations.of(context);
+    await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: Text(l10n.settingsDeleteAccountTitle),
-        content: Text(l10n.settingsDeleteAccountMessage),
+        content: Text(
+          receipt.state == 'completed'
+              ? l10n.settingsDeletionCompleted(receipt.reference)
+              : l10n.settingsDeletionReceipt(
+                  receipt.reference,
+                  DateFormat.yMd(_localeCode).format(receipt.dueAt.toLocal()),
+                ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.link_rounded),
-            label: Text(l10n.settingsDeletionGuide),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonClose),
           ),
         ],
       ),
     );
-    if (copyLink != true) return;
-    await Clipboard.setData(ClipboardData(text: deletionUrl));
-    if (!mounted) return;
-    AppMessage.info(context, l10n.settingsDeletionLinkCopied);
   }
 
   Future<void> _showPrivacyPolicyInfo() async {
@@ -318,7 +365,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _prefTile(
                           context,
                           icon: Icons.person_remove_outlined,
-                          title: l10n.settingsDeleteAccount,
+                          title: _deletionBusy
+                              ? l10n.settingsDeletionSending
+                              : l10n.settingsDeleteAccount,
                           onTap: _showDeleteAccountInfo,
                           iconColor: AppColors.muted,
                         ),

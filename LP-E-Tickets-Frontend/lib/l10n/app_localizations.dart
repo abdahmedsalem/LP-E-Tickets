@@ -2405,7 +2405,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDeleteAccountSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Contactez le support pour la suppression'**
+  /// **'Demander la suppression de votre compte'**
   String get settingsDeleteAccountSubtitle;
 
   /// No description provided for @settingsDeleteAccountTitle.
@@ -3823,6 +3823,48 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'La preuve de paiement est temporairement indisponible.'**
   String get paymentHistoryProofUnavailable;
+
+  /// No description provided for @settingsDeletionSubmit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer ma demande'**
+  String get settingsDeletionSubmit;
+
+  /// No description provided for @settingsDeletionSending.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérification de la demande…'**
+  String get settingsDeletionSending;
+
+  /// No description provided for @settingsDeletionExplanation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre demande sera enregistrée et traitée sous {days} jours. Votre compte ne sera pas supprimé immédiatement. Le traitement de vos tickets et de votre solde sera vérifié avant la clôture. La suppression finale est irréversible ; seules les données soumises à une obligation de conservation seront conservées. Une confirmation vous sera adressée après traitement.'**
+  String settingsDeletionExplanation(int days);
+
+  /// No description provided for @settingsDeletionPinDescription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisissez votre PIN pour confirmer la demande de suppression de votre compte.'**
+  String get settingsDeletionPinDescription;
+
+  /// No description provided for @settingsDeletionUnconfirmed.
+  ///
+  /// In fr, this message translates to:
+  /// **'La demande n’a pas pu être confirmée. Vérifiez votre connexion et votre PIN, puis rouvrez cette rubrique pour vérifier son statut avant de réessayer.'**
+  String get settingsDeletionUnconfirmed;
+
+  /// No description provided for @settingsDeletionReceipt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande enregistrée : {reference}. Traitement prévu au plus tard le {date}. Votre compte n’est pas encore supprimé. Vous pouvez retrouver le statut dans cette rubrique.'**
+  String settingsDeletionReceipt(String reference, String date);
+
+  /// No description provided for @settingsDeletionCompleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'La demande {reference} est indiquée comme terminée par le service chargé de sa suppression.'**
+  String settingsDeletionCompleted(String reference);
 }
 
 class _AppLocalizationsDelegate
