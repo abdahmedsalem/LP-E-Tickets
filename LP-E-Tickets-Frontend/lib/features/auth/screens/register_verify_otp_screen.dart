@@ -5,19 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../controllers/auth_flow_controller.dart';
 import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
-import '../../../data/models/app_user.dart';
-import '../../../data/models/user_role.dart';
-import '../../../data/services/odoo_auth_service.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../domain/models/user_role.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_brand_image.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';
 
 /// Arguments [GoRouter.extra] pour `/register/verify-otp`.
@@ -154,7 +151,7 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
 
     setState(() => _busy = true);
     try {
-      final body = await OdooAuthService.instance.verifySignupOtp(
+      final result = await AuthFlowController.instance.verifySignupOtp(
         identifier: args.phoneFull,
         code: clean,
         name: args.name,
@@ -162,21 +159,19 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
         companyId: args.companyId,
         challengeId: _challengeId,
       );
-      final payload = body['data'] is Map
-          ? Map<String, dynamic>.from(body['data'] as Map)
-          : Map<String, dynamic>.from(body as Map);
-      final user = AppUser.fromOdooProfileMap(payload, envelope: body);
-      final tokens = _extractTokens(body);
-      final hasTokens = _hasSessionTokens(tokens);
-
-      if (!hasTokens) {
+      final tokens = result.tokens;
+      if (!result.hasSessionTokens) {
         throw Exception(l10n.authRegistrationIncomplete);
       }
 
       await PendingSignupStore.clear();
       if (!mounted) return;
       context.read<AuthBloc>().add(
-        AuthRemoteRegistrationCompleted(user: user, pin: pin, tokens: tokens),
+        AuthRemoteRegistrationCompleted(
+          user: result.user,
+          pin: pin,
+          tokens: tokens,
+        ),
       );
       return;
     } catch (e, st) {
@@ -200,15 +195,18 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     if (ErrorPresenter.isBackendUnavailable(error)) {
       return l10n.commonServerUnavailable;
     }
-    if (error is OdooJsonRpcException) {
-      final code = error.publicCode?.trim().toUpperCase();
+    if (ErrorPresenter.isRpcError(error)) {
+      final code = ErrorPresenter.publicErrorCode(
+        error,
+        normalized: false,
+      )?.trim().toUpperCase();
       if (code == 'RATE_LIMITED' || code == 'ACTION_CODE_LOCKED') {
         return l10n.commonTooManyAttempts;
       }
       if (code == 'SIGNUP_NOT_ALLOWED') {
         return l10n.authRegistrationFailed;
       }
-      final ref = error.reference;
+      final ref = ErrorPresenter.supportReference(error);
       if (ref != null && ref.trim().isNotEmpty) {
         return [
           l10n.authOtpMissingExpired,
@@ -225,55 +223,16 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     if (ErrorPresenter.isBackendUnavailable(error)) {
       return l10n.commonServerUnavailable;
     }
-    if (error is OdooJsonRpcException) {
-      final code = error.publicCode?.trim().toUpperCase();
+    if (ErrorPresenter.isRpcError(error)) {
+      final code = ErrorPresenter.publicErrorCode(
+        error,
+        normalized: false,
+      )?.trim().toUpperCase();
       if (code == 'RATE_LIMITED' || code == 'ACTION_CODE_LOCKED') {
         return l10n.commonTooManyAttempts;
       }
     }
     return l10n.authRestartToRequestCode;
-  }
-
-  bool _hasSessionTokens(Map<String, dynamic>? tokens) {
-    final access = tokens?['access']?.toString().trim() ?? '';
-    final refresh = tokens?['refresh']?.toString().trim() ?? '';
-    return access.isNotEmpty && refresh.isNotEmpty;
-  }
-
-  Map<String, dynamic>? _extractTokens(Map<String, dynamic> body) {
-    Map<String, dynamic>? pick(dynamic value) {
-      if (value is Map) return Map<String, dynamic>.from(value);
-      return null;
-    }
-
-    final top = pick(body);
-    if (top == null) return null;
-
-    final candidates = <Map<String, dynamic>>[
-      top,
-      if (top['data'] is Map) Map<String, dynamic>.from(top['data'] as Map),
-      if (top['user'] is Map) Map<String, dynamic>.from(top['user'] as Map),
-    ];
-
-    for (final map in candidates) {
-      final access =
-          map['access_token']?.toString().trim() ??
-          map['ACCESS_TOKEN']?.toString().trim() ??
-          map['accessToken']?.toString().trim() ??
-          '';
-      final refresh =
-          map['refresh_token']?.toString().trim() ??
-          map['REFRESH_TOKEN']?.toString().trim() ??
-          map['refreshToken']?.toString().trim() ??
-          '';
-      if (access.isNotEmpty || refresh.isNotEmpty) {
-        return <String, dynamic>{
-          if (access.isNotEmpty) 'access': access,
-          if (refresh.isNotEmpty) 'refresh': refresh,
-        };
-      }
-    }
-    return null;
   }
 
   Future<void> _leaveVerification() async {
@@ -293,26 +252,17 @@ class _RegisterVerifyOtpScreenState extends State<RegisterVerifyOtpScreen> {
     }
     setState(() => _resendBusy = true);
     try {
-      final response = await OdooAuthService.instance.requestSignupOtpResend(
-        identifier: args.phoneFull,
-      );
-      final data = response['data'];
-      if (data is Map) {
-        final raw =
-            data['otp_challenge_id'] ??
-            data['challenge_id'] ??
-            response['otp_challenge_id'] ??
-            response['challenge_id'];
-        final parsed = int.tryParse(raw?.toString() ?? '');
-        if (parsed != null && parsed > 0) {
-          _challengeId = parsed;
-          await PendingSignupStore.save(
-            name: args.name,
-            phoneFull: args.phoneFull,
-            challengeId: parsed,
-            companyId: args.companyId,
-          );
-        }
+      final challenge = await AuthFlowController.instance
+          .requestSignupOtpResend(identifier: args.phoneFull);
+      final parsed = challenge.challengeId;
+      if (parsed != null && parsed > 0) {
+        _challengeId = parsed;
+        await PendingSignupStore.save(
+          name: args.name,
+          phoneFull: args.phoneFull,
+          challengeId: parsed,
+          companyId: args.companyId,
+        );
       }
       if (mounted) {
         _startOtpTimer();
@@ -958,10 +908,6 @@ class _RegisterField extends StatelessWidget {
     this.keyboardType,
     this.maxLength,
     this.inputFormatters,
-    this.trailing,
-    this.counterLabel = '',
-    this.textInputAction,
-    this.onFieldSubmitted,
   });
 
   final TextEditingController controller;
@@ -971,10 +917,6 @@ class _RegisterField extends StatelessWidget {
   final TextInputType? keyboardType;
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
-  final Widget? trailing;
-  final String counterLabel;
-  final TextInputAction? textInputAction;
-  final ValueChanged<String>? onFieldSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -990,8 +932,6 @@ class _RegisterField extends StatelessWidget {
           maxLength: maxLength,
           inputFormatters: inputFormatters,
           validator: validator,
-          textInputAction: textInputAction,
-          onFieldSubmitted: onFieldSubmitted,
           style: const TextStyle(
             fontSize: 15.5,
             color: AppColors.ink,
@@ -1010,7 +950,6 @@ class _RegisterField extends StatelessWidget {
               horizontal: 20,
               vertical: 18,
             ),
-            suffixIcon: trailing,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.line, width: 1.1),
@@ -1043,21 +982,6 @@ class _RegisterField extends StatelessWidget {
             counterText: '',
           ),
         ),
-        if (counterLabel.trim().isNotEmpty) ...[
-          const SizedBox(height: 3),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: Text(
-              counterLabel,
-              style: const TextStyle(
-                fontSize: 12.5,
-                height: 1.1,
-                color: AppColors.muted,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

@@ -23,17 +23,15 @@ void main() {
       expect(source, isNot(contains('device_trust_state')));
     });
 
-    test(
-      'register screen saves pending signup before OTP verification route',
-      () {
+    test('register screen saves pending signup before advancing to OTP entry', () {
         final source = _read('lib/features/auth/screens/register_screen.dart');
         final storeIndex = source.indexOf('PendingSignupStore.save');
-        final routeIndex = source.indexOf("'/register/verify-otp'");
+        final otpStepIndex = source.indexOf('_activeStep = 3;');
 
         expect(storeIndex, isNonNegative);
-        expect(routeIndex, isNonNegative);
-        expect(storeIndex, lessThan(routeIndex));
-        expect(source, contains('pin: _pin.text'));
+        expect(otpStepIndex, isNonNegative);
+        expect(storeIndex, lessThan(otpStepIndex));
+        expect(source, isNot(contains('pin: _pin.text')));
       },
     );
 
@@ -47,7 +45,7 @@ void main() {
     });
 
     test('router allows register verify OTP route without extra args', () {
-      final source = _read('lib/core/router/app_router.dart');
+      final source = _read('lib/app/router/app_router.dart');
 
       expect(source, contains("path: '/register/verify-otp'"));
       expect(source, contains('args: x is RegisterOtpRouteArgs ? x : null'));

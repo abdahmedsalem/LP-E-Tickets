@@ -7,7 +7,7 @@ String _read(String path) => File(path).readAsStringSync();
 void main() {
   group('Patch2S station client route guard', () {
     test('station user is redirected away from client mobile-only paths', () {
-      final source = _read('lib/core/router/app_router.dart');
+      final source = _read('lib/app/router/app_router.dart');
 
       expect(
         source,
@@ -31,7 +31,7 @@ void main() {
     });
 
     test('client path classifier covers purchase, QR and transfer screens', () {
-      final source = _read('lib/core/router/app_router.dart');
+      final source = _read('lib/app/router/app_router.dart');
 
       expect(source, contains("loc == '/home'"));
       expect(source, contains("loc == '/faces'"));
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('station routes remain available to station users', () {
-      final source = _read('lib/core/router/app_router.dart');
+      final source = _read('lib/app/router/app_router.dart');
 
       expect(source, contains("path: '/station/home'"));
       expect(source, contains("path: '/station/scan'"));

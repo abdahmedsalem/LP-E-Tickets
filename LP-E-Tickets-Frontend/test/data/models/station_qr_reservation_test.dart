@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/models/station_qr_check_result.dart';
+import 'package:fueltoken_app/data/services/station_services/station_qr_check_mapper.dart';
 
 void main() {
   test('expired reservation allows cancellation but never consumption', () {
-    final result = StationQrCheckResult.fromRpc({
+    final result = StationQrCheckMapper.fromRpc({
       'data': {
         'state': 'expired',
         'can_consume': false,
@@ -17,7 +17,7 @@ void main() {
   });
 
   test('missing cancellation permission defaults to false', () {
-    final result = StationQrCheckResult.fromRpc({
+    final result = StationQrCheckMapper.fromRpc({
       'data': {'state': 'active', 'can_consume': true},
     });
     expect(result.canConsume, isTrue);

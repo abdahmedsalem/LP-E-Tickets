@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/services/acpec_faces_mapper.dart';
+import 'package:fueltoken_app/data/services/portfolio_services/acpec_faces_mapper.dart';
 
 void main() {
   group('AcpecFacesMapper', () {

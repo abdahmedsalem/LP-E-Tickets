@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/services/acpec_wallet_mapper.dart';
-import 'package:fueltoken_app/data/services/odoo_jsonrpc_client.dart';
+import 'package:fueltoken_app/data/services/portfolio_services/acpec_wallet_mapper.dart';
+import 'package:fueltoken_app/data/services/shared_services/odoo_jsonrpc_client.dart';
 
 void main() {
   group('AcpecWalletMapper', () {

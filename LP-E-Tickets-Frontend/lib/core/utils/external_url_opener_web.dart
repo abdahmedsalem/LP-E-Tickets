@@ -1,6 +1,6 @@
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 Future<bool> openExternalUrl(String url) async {
-  html.window.open(url, '_blank', 'noopener,noreferrer');
+  web.window.open(url, '_blank', 'noopener,noreferrer');
   return true;
 }

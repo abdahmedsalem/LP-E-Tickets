@@ -7,7 +7,7 @@ String _read(String path) => File(path).readAsStringSync();
 void main() {
   group('Patch2N QR issue PIN failure feedback guard', () {
     test('QR issue backend errors are not swallowed silently', () {
-      final source = _read('lib/features/qr/screens/emit_qr_screen.dart');
+      final source = _read('lib/features/qr/generation/screens/emit_qr_screen.dart');
 
       expect(source, contains('ErrorPresenter.isBackendUnavailable(error)'));
       expect(
@@ -32,7 +32,7 @@ void main() {
       'QR confirmation locks before PIN dialog to avoid duplicate dialogs',
       () {
         final source = _read(
-          'lib/features/qr/screens/qr_action_confirmation_screen.dart',
+          'lib/features/qr/shared/screens/qr_action_confirmation_screen.dart',
         );
 
         final confirmIndex = source.indexOf('Future<void> _confirm()');
@@ -53,7 +53,7 @@ void main() {
     );
 
     test('QR issue success path still refreshes QR and read models', () {
-      final source = _read('lib/features/qr/screens/emit_qr_screen.dart');
+      final source = _read('lib/features/qr/generation/screens/emit_qr_screen.dart');
 
       expect(source, contains('_refreshClientReadModelsAfterQrIssue();'));
       expect(source, contains('QrRefreshBus.instance.bump();'));

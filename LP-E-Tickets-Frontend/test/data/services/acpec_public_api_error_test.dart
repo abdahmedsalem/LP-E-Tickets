@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/services/acpec_public_api_error.dart';
-import 'package:fueltoken_app/data/services/acpec_rpc_result_guard.dart';
-import 'package:fueltoken_app/data/services/odoo_jsonrpc_client.dart';
+import 'package:fueltoken_app/data/services/shared_services/acpec_public_api_error.dart';
+import 'package:fueltoken_app/data/services/shared_services/acpec_rpc_result_guard.dart';
+import 'package:fueltoken_app/data/services/shared_services/odoo_jsonrpc_client.dart';
 
 void main() {
   group('AcpecPublicApiError', () {

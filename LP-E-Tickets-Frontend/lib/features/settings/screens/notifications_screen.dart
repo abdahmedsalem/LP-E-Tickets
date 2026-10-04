@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/notifications/purchase_validation_notification_service.dart';
+import '../../../domain/models/app_user.dart';
+import '../controllers/notifications_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../l10n/app_localizations.dart';
@@ -13,41 +13,49 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
-import '../../auth/bloc/auth_bloc.dart';
-import '../data/notifications_store.dart';
-import '../models/notification_item.dart';
+import '../../../domain/models/notifications/notification_item.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({
+    super.key,
+    required this.user,
+    required this.controller,
+  });
+
+  final AppUser? user;
+  final NotificationsController controller;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final _store = NotificationsStore.instance;
+  NotificationsController get _controller => widget.controller;
   final Set<String> _expandedIds = <String>{};
 
   @override
   void initState() {
     super.initState();
-    final user = context.read<AuthBloc>().state.user;
+    final user = widget.user;
     if (user != null) {
-      _store.loadForUser(user.id).then((_) {
-        if (mounted) _store.initCounts();
-        if (mounted) _store.migrateLegacyContent();
-      });
+      unawaited(_controller.loadForUser(user.id));
     }
     unawaited(_syncPurchaseNotifications());
   }
 
   Future<void> _syncPurchaseNotifications() async {
-    final user = context.read<AuthBloc>().state.user;
+    final user = widget.user;
     if (user == null) return;
-    await PurchaseValidationNotificationService.instance.syncForUser(user);
+    await _controller.syncForUser(user);
   }
 
-  Future<void> _markAllRead() async => _store.markAllRead();
+  Future<void> _markAllRead() async => _controller.markAllRead();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   void _toggleExpanded(String id) {
     setState(() {
@@ -63,10 +71,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AnimatedBuilder(
-      animation: _store,
+      animation: _controller,
       builder: (context, _) {
-        final notifications = _store.items
-            .map(_store.displayItem)
+        final notifications = _controller.items
+            .map(_controller.displayItem)
             .toList(growable: false);
         final unreadItems = notifications
             .where((item) => !item.read)
@@ -74,7 +82,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final readItems = notifications
             .where((item) => item.read)
             .toList(growable: false);
-        final hasUnread = _store.unreadCount.value > 0;
+        final hasUnread = _controller.unreadCount > 0;
 
         return Scaffold(
           backgroundColor: Colors.white,

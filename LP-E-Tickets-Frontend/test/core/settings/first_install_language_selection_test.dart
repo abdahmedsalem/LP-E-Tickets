@@ -24,7 +24,11 @@ void main() {
       await AppPreferences.setLocaleCode('ar');
 
       expect(await AppPreferences.localeCode(), 'ar');
+      expect(AppPreferences.localeNotifier.value, 'ar');
       expect(await AppPreferences.hasSelectedLanguage(), isTrue);
+
+      await AppPreferences.setLocaleCode('fr');
+      expect(AppPreferences.localeNotifier.value, 'fr');
     },
   );
 

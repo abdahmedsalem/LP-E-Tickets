@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/models/user_role.dart';
+import '../../domain/models/user_role.dart';
 
 /// Retour : si la pile du tab a des écrans, pop ; sinon retour à l’accueil client.
 void popOrGoClientHome(BuildContext context) {

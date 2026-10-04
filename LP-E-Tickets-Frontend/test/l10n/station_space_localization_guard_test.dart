@@ -6,12 +6,12 @@ import 'package:fueltoken_app/l10n/app_localizations_ar.dart';
 void main() {
   test('station screens and dialogs use centralized localization', () {
     final paths = <String>[
-      'lib/features/station/screens/station_shell_scaffold.dart',
-      'lib/features/station/screens/station_home_screen.dart',
-      'lib/features/station/screens/scan_screen.dart',
-      'lib/features/station/screens/station_manual_qr_screen.dart',
-      'lib/features/station/screens/station_consumption_history_screen.dart',
-      'lib/features/station/screens/station_profile_screen.dart',
+      'lib/features/station/accueil/station_shell_scaffold.dart',
+      'lib/features/station/accueil/station_home_screen.dart',
+      'lib/features/station/scan/scan_screen.dart',
+      'lib/features/station/scan/station_manual_qr_screen.dart',
+      'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
+      'lib/features/station/profile/station_profile_screen.dart',
       'lib/shared/widgets/station_qr_success_dialog.dart',
     ];
 
@@ -47,7 +47,7 @@ void main() {
 
   test('station history has no remaining hardcoded French UI labels', () {
     final source = File(
-      'lib/features/station/screens/station_consumption_history_screen.dart',
+      'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
     ).readAsStringSync();
     const forbiddenLabels = <String>[
       'Consommation de carburant',
@@ -67,9 +67,9 @@ void main() {
 
   test('station errors never bypass localized user messages', () {
     final paths = <String>[
-      'lib/features/station/screens/scan_screen.dart',
-      'lib/features/station/screens/station_manual_qr_screen.dart',
-      'lib/features/station/screens/station_consumption_history_screen.dart',
+      'lib/features/station/scan/scan_screen.dart',
+      'lib/features/station/scan/station_manual_qr_screen.dart',
+      'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
     ];
 
     for (final path in paths) {

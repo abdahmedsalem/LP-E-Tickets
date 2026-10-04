@@ -11,31 +11,46 @@ class AppPreferences {
 
   /// Langues supportées par l’app (UI + préférences) : français et arabe uniquement.
   static const String defaultLocaleCode = 'fr';
+  static final ValueNotifier<String> localeNotifier = ValueNotifier(
+    defaultLocaleCode,
+  );
+
+  static void _publishLocale(String code) {
+    if (localeNotifier.value != code) localeNotifier.value = code;
+  }
 
   static Future<String> localeCode() async {
     final p = await SharedPreferences.getInstance();
     var stored = p.getString(_kLocale);
     if (stored == null || stored.isEmpty) {
+      _publishLocale(defaultLocaleCode);
       return defaultLocaleCode;
     }
     if (stored == 'en') {
       await p.setString(_kLocale, 'fr');
+      _publishLocale('fr');
       return 'fr';
     }
     switch (stored) {
       case 'ar':
       case 'fr':
+        _publishLocale(stored);
         return stored;
       default:
         await p.setString(_kLocale, defaultLocaleCode);
+        _publishLocale(defaultLocaleCode);
         return defaultLocaleCode;
     }
   }
 
   static Future<void> setLocaleCode(String code) async {
+    if (code != 'fr' && code != 'ar') {
+      throw ArgumentError.value(code, 'code', 'Unsupported app locale');
+    }
     final p = await SharedPreferences.getInstance();
     await p.setString(_kLocale, code);
     await p.setBool(_kHasSelectedLanguage, true);
+    _publishLocale(code);
   }
 
   static Future<bool> hasSelectedLanguage() async {

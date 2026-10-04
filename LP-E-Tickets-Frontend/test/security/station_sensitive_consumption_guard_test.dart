@@ -9,14 +9,14 @@ void main() {
     test(
       'scan consumption uses sensitive intent and prudent backend error',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final source = _read('lib/features/station/scan/scan_screen.dart');
 
         expect(source, contains('stationConsumptionUnconfirmedMessage'));
-        expect(
-          source,
-          contains("SensitiveActionIntent.create('station-qr-use')"),
+        final controller = _read(
+          'lib/features/station/controllers/station_controller.dart',
         );
-        expect(source, contains('intent.withAuthParams'));
+        expect(controller, contains('station-qr-use'));
+        expect(controller, contains('withAuthParams('));
         expect(source, isNot(contains("'idempotency_key': const Uuid().v4()")));
         expect(source, contains("ErrorPresenter.isBackendUnavailable"));
         expect(source, contains("ErrorPresenter.localizedMessage"));
@@ -28,7 +28,7 @@ void main() {
     );
 
     test('scan consumption is locked before station PIN dialog', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       final consumeIndex = source.indexOf('Future<void> _consume(');
       final lockIndex = source.indexOf(
@@ -48,7 +48,7 @@ void main() {
 
     test('manual consumption locks before PIN dialog', () {
       final source = _read(
-        'lib/features/station/screens/station_manual_qr_screen.dart',
+        'lib/features/station/scan/station_manual_qr_screen.dart',
       );
 
       final consumeIndex = source.indexOf('Future<void> _consumeManualCode()');
@@ -71,12 +71,18 @@ void main() {
       'manual check refusal uses QR non consommable dialog, not snackbar',
       () {
         final source = _read(
-          'lib/features/station/screens/station_manual_qr_screen.dart',
+          'lib/features/station/scan/station_manual_qr_screen.dart',
         );
 
+        final repository = _read(
+          'lib/data/repositories/station_repository.dart',
+        );
+        expect(source, contains('final result = raw;'));
         expect(
-          source,
-          contains('final result = StationQrCheckResult.fromRpc(raw);'),
+          repository,
+          contains(
+            'StationQrCheckMapper.fromRpc(await _facade.stationQrCheck(params))',
+          ),
         );
         expect(source, contains('if (!result.canConsume)'));
         expect(source, contains('title: l10n.stationQrNotConsumable'));
@@ -91,15 +97,16 @@ void main() {
 
     test('manual action errors are prudent and stay on manual entry', () {
       final source = _read(
-        'lib/features/station/screens/station_manual_qr_screen.dart',
+        'lib/features/station/scan/station_manual_qr_screen.dart',
       );
 
-      expect(
-        source,
-        contains("SensitiveActionIntent.create('station-qr-use')"),
+      final controller = _read(
+        'lib/features/station/controllers/station_controller.dart',
       );
-      expect(source, contains('intent.withAuthParams'));
-      expect(source, contains('_invalidateStationConsumptionCaches('));
+      final repository = _read('lib/data/repositories/station_repository.dart');
+      expect(controller, contains('station-qr-use'));
+      expect(controller, contains('withAuthParams('));
+      expect(repository, contains('_invalidateConsumptionCaches(routeCode)'));
       expect(source, contains('Future<void> _showManualFailureDialog'));
       expect(source, contains('ErrorPresenter.isBackendUnavailable'));
       expect(source, contains('stationConsumptionUnconfirmedMessage'));

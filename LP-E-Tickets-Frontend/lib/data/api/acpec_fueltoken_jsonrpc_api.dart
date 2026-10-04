@@ -1,7 +1,7 @@
 import '../../core/config/odoo_api_config.dart';
 import '../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../../core/settings/app_preferences.dart';
-import '../services/odoo_jsonrpc_client.dart';
+import '../services/shared_services/odoo_jsonrpc_client.dart';
 
 /// Client JSON-RPC vers les routes métier ACPEC.
 class AcpecFueltokenJsonRpcApi {

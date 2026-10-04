@@ -56,7 +56,7 @@ void main() {
         isFalse,
       );
 
-      final routerFile = File('lib/core/router/app_router.dart');
+      final routerFile = File('lib/app/router/app_router.dart');
       expect(routerFile.existsSync(), isTrue);
 
       final router = routerFile.readAsStringSync();

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/services/sensitive_action_intent.dart';
+import 'package:fueltoken_app/data/services/shared_services/sensitive_action_intent.dart';
 
 void main() {
   group('SensitiveActionIntent', () {

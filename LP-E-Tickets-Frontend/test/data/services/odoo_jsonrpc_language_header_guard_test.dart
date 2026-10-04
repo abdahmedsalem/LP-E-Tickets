@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('JSON-RPC requests send the selected application language', () {
     final source = File(
-      'lib/data/services/odoo_jsonrpc_client.dart',
+      'lib/data/services/shared_services/odoo_jsonrpc_client.dart',
     ).readAsStringSync();
 
     expect(source, contains('await AppPreferences.localeCode()'));

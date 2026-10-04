@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('history and wallet cards use a taller shared header', () {
     final source = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync();
 
     expect(
@@ -24,7 +24,7 @@ void main() {
 
   test('history and wallet detail cards display titles fully on one line', () {
     final source = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync().replaceAll('\r\n', '\n');
     final sharedSource = File(
       'lib/shared/widgets/single_line_card_title.dart',

@@ -15,7 +15,9 @@ String _between(String source, String start, String end) {
 void main() {
   group('Register SMS challenge UX guard', () {
     test('signup OTP request uses the public identifier contract', () {
-      final source = _read('lib/data/services/odoo_auth_service.dart');
+      final source = _read(
+        'lib/data/services/auth_services/odoo_auth_service.dart',
+      );
       final method = _between(
         source,
         'Future<Map<String, dynamic>> requestSignupOtp({',
@@ -28,22 +30,22 @@ void main() {
     });
 
     test(
-      'registration screen requires a numeric challenge before navigation',
+      'registration screen consumes a typed challenge before navigation',
       () {
         final source = _read('lib/features/auth/screens/register_screen.dart');
-        final extractor = _between(
-          source,
-          'int? _extractChallengeId(Map<String, dynamic> response)',
-          '@override',
+        final mapper = _read(
+          'lib/data/services/auth_services/signup_response_mapper.dart',
         );
 
+        expect(source, contains('challenge.challengeId'));
         expect(source, contains('challengeId == null || challengeId <= 0'));
+        expect(source, contains('challenge.expiresInSeconds'));
         expect(source, contains('authSmsNotConfirmed'));
-
-        expect(extractor, contains("dataMap['otp_challenge_id']"));
-        expect(extractor, contains("dataMap['challenge_id']"));
-        expect(extractor, isNot(contains('otp_challenge_ref')));
-        expect(extractor, isNot(contains('challenge_ref')));
+        expect(source, isNot(contains('_extractChallengeId')));
+        expect(mapper, contains("data['otp_challenge_id']"));
+        expect(mapper, contains("data['challenge_id']"));
+        expect(mapper, isNot(contains('otp_challenge_ref')));
+        expect(mapper, isNot(contains('challenge_ref')));
       },
     );
 
@@ -54,19 +56,20 @@ void main() {
           'lib/features/auth/screens/register_verify_otp_screen.dart',
         );
 
-        expect(
-          source,
-          contains("import '../../../data/services/odoo_jsonrpc_client.dart';"),
-        );
-        expect(source, contains('error is OdooJsonRpcException'));
+        expect(source, contains('ErrorPresenter.isRpcError(error)'));
+        expect(source, contains('ErrorPresenter.publicErrorCode('));
         expect(source, contains('authOtpMissingExpired'));
         expect(source, contains('supportReference(ref)'));
+        expect(source, contains('result.hasSessionTokens'));
+        expect(source, isNot(contains('_extractTokens')));
         expect(source, isNot(contains('debug_reason')));
       },
     );
 
     test('signup OTP verification sends challenge id when available', () {
-      final source = _read('lib/data/services/odoo_auth_service.dart');
+      final source = _read(
+        'lib/data/services/auth_services/odoo_auth_service.dart',
+      );
       final method = _between(
         source,
         'Future<Map<String, dynamic>> verifySignupOtp({',

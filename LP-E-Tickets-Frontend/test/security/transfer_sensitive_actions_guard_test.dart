@@ -8,7 +8,7 @@ void main() {
   group('Patch2L3A transfer sensitive actions guard', () {
     test('carnet transfer parent has a real mutable submit lock', () {
       final source = _read(
-        'lib/features/qr/screens/transfer_carnets_screen.dart',
+        'lib/features/transfer/screens/transfer_carnets_screen.dart',
       );
 
       expect(source, contains('bool _submitting = false;'));
@@ -23,7 +23,7 @@ void main() {
 
     test('ticket transfer parent has a real mutable submit lock', () {
       final source = _read(
-        'lib/features/qr/screens/transfer_tickets_screen.dart',
+        'lib/features/transfer/screens/transfer_tickets_screen.dart',
       );
 
       expect(source, contains('bool _submitting = false;'));
@@ -40,7 +40,7 @@ void main() {
       'confirmation locks before PIN dialog to prevent double confirmation',
       () {
         final source = _read(
-          'lib/features/qr/screens/transfer_confirmation_screen.dart',
+          'lib/features/transfer/widgets/transfer_confirmation_content.dart',
         );
 
         final lockIndex = source.indexOf('setState(() => _confirming = true);');

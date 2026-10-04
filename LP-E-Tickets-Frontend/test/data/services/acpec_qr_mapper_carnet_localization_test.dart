@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/services/acpec_qr_mapper.dart';
+import 'package:fueltoken_app/data/services/qr_services/acpec_qr_mapper.dart';
 
 void main() {
   test('QR detail keeps the localized carnet name from technical lines', () {

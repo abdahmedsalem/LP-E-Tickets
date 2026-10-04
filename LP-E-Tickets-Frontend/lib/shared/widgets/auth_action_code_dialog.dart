@@ -36,16 +36,19 @@ Future<String?> showSensitiveActionCodeDialog(
     if (!context.mounted) return null;
 
     bool busy = false;
+    bool closing = false;
     bool obscure = true;
     String? errorText;
 
-    final result = await showDialog<String>(
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<String>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.58),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
+            final dialogL10n = AppLocalizations.of(dialogContext);
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (dialogContext.mounted && !focusNode.hasFocus && !busy) {
                 focusNode.requestFocus();
@@ -53,6 +56,9 @@ Future<String?> showSensitiveActionCodeDialog(
             });
 
             Future<void> closeDialog(String? value) async {
+              if (closing) return;
+              closing = true;
+              setState(() => busy = true);
               focusNode.unfocus();
               FocusManager.instance.primaryFocus?.unfocus();
               try {
@@ -187,7 +193,7 @@ Future<String?> showSensitiveActionCodeDialog(
                                 ),
                               ),
                               child: Text(
-                                AppLocalizations.of(context).commonCancel,
+                                dialogL10n.commonCancel,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -223,7 +229,7 @@ Future<String?> showSensitiveActionCodeDialog(
                                       ),
                                     )
                                   : Text(
-                                      AppLocalizations.of(context).authConfirm,
+                                      dialogL10n.authConfirm,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
@@ -244,10 +250,14 @@ Future<String?> showSensitiveActionCodeDialog(
       },
     );
 
+    final result = await navigator.push<String>(route);
+    // A pop resolves before the reverse transition removes the TextField.
+    // Keep its resources alive until the route has removed its overlay entries.
+    await route.completed;
     return result;
   } finally {
     focusNode.dispose();
-    // PATCH6: controller.dispose() disabled here; Android IME/TextField may still read it while dialog closes.
+    controller.dispose();
   }
 }
 

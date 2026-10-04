@@ -8,7 +8,7 @@ void main() {
   group('Station manual QR code entry guard', () {
     test('manual station screen uses qr_numeric_code for check and use', () {
       final source = _read(
-        'lib/features/station/screens/station_manual_qr_screen.dart',
+        'lib/features/station/scan/station_manual_qr_screen.dart',
       );
 
       expect(source, contains("'qr_numeric_code'"));
@@ -30,7 +30,7 @@ void main() {
       'manual station screen displays QR numeric code with human 12 digit format',
       () {
         final source = _read(
-          'lib/features/station/screens/station_manual_qr_screen.dart',
+          'lib/features/station/scan/station_manual_qr_screen.dart',
         );
 
         expect(source, contains('_ManualQrCodeInputFormatter'));

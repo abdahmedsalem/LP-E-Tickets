@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../controllers/auth_flow_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/validation/password_validators.dart';
-import '../../../data/repositories/auth_repository.dart';
-import '../../../data/services/odoo_auth_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_brand_image.dart';
@@ -61,13 +60,9 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
   Future<void> _resend() async {
     setState(() => _busy = true);
     try {
-      final response = await OdooAuthService.instance.requestPasswordResetOtp(
-        phoneFull: widget.args.identifier,
-      );
-      final data = response['data'];
-      if (data is Map) {
-        _challengeId = int.tryParse(data['otp_challenge_id']?.toString() ?? '');
-      }
+      final challenge = await AuthFlowController.instance
+          .requestPasswordResetOtp(phoneFull: widget.args.identifier);
+      _challengeId = challenge.challengeId ?? _challengeId;
       if (mounted) {
         AppMessage.info(context, AppLocalizations.of(context).authCodeResent);
       }
@@ -95,7 +90,7 @@ class _ForgotVerifyOtpScreenState extends State<ForgotVerifyOtpScreen> {
 
     setState(() => _busy = true);
     try {
-      await OdooAuthService.instance.verifyPasswordResetOtp(
+      await AuthFlowController.instance.verifyPasswordResetOtp(
         identifier: widget.args.identifier,
         code: clean,
         pin: _pin.text,
@@ -219,7 +214,7 @@ class _ResetPasswordAfterOtpScreenState
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
-      await AuthRepository.instance.resetPinForIdentifier(
+      await AuthFlowController.instance.resetPinForIdentifier(
         identifier: widget.args.identifier,
         newPin: _pass.text,
       );

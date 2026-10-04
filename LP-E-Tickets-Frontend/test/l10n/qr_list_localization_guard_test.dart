@@ -20,7 +20,7 @@ void main() {
 
   test('QR list reads visible labels from AppLocalizations', () {
     final source = File(
-      'lib/features/qr/screens/qr_list_screen.dart',
+      'lib/features/portfolio/screens/qr_list_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('AppLocalizations.of(context)'));

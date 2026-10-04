@@ -8,7 +8,7 @@ void main() {
       'router anchors pending and blocked device states to security screen',
       () {
         final source = File(
-          'lib/core/router/app_router.dart',
+          'lib/app/router/app_router.dart',
         ).readAsStringSync();
 
         expect(source, contains('deviceSecurityRestricted'));
@@ -35,7 +35,7 @@ void main() {
 
     test('session business auth codes stay strict and backend-confirmed', () {
       final source = File(
-        'lib/data/services/odoo_jsonrpc_client.dart',
+        'lib/data/services/shared_services/odoo_jsonrpc_client.dart',
       ).readAsStringSync();
 
       expect(source, contains("code == 'AUTH_REQUIRED'"));

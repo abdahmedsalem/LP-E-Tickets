@@ -8,13 +8,13 @@ void main() {
       'lib/shared/widgets/list_screen_header.dart',
     ).readAsStringSync();
     final carnets = File(
-      'lib/features/home/screens/faces_detail_screen.dart',
+      'lib/features/portfolio/screens/faces_detail_screen.dart',
     ).readAsStringSync();
     final qrs = File(
-      'lib/features/qr/screens/qr_list_screen.dart',
+      'lib/features/portfolio/screens/qr_list_screen.dart',
     ).readAsStringSync();
     final transactions = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync();
 
     expect(shared, contains('this.horizontalPadding = 26'));
@@ -34,7 +34,7 @@ void main() {
     expect(transactions, contains('ListScreenHeader<_HistoryQuickFilter>'));
     expect(transactions, contains('_listHeader(l10n, UserRole.user)'));
     expect(
-      RegExp(r'_headerForState\(l10n, user\.role\)').allMatches(transactions),
+      RegExp(r'_headerForState\(l10n, widget\.role\)').allMatches(transactions),
       hasLength(3),
     );
     expect(transactions, contains('TransactionsScreenMode.wallet'));

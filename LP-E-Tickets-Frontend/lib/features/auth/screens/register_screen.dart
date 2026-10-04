@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../controllers/auth_flow_controller.dart';
 import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/odoo_auth_rpc_config.dart';
 import '../../../core/settings/app_preferences.dart';
@@ -11,14 +12,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/validation/contact_validators.dart';
 import '../../../core/validation/password_validators.dart';
-import '../../../data/models/app_user.dart';
-import '../../../data/services/odoo_auth_service.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';
-import 'register_verify_otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -108,36 +105,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
   }
 
-  int _parseExpiresAt(Map<String, dynamic> response) {
-    String? raw;
-    final data = response['data'];
-    if (data is Map) {
-      raw = (data['otp_expires_at'] ?? data['expires_at'])?.toString();
-    }
-    raw ??= (response['otp_expires_at'] ?? response['expires_at'])?.toString();
-
-    if (raw == null || raw.trim().isEmpty) return 300;
-
-    try {
-      final clean = raw.trim().replaceAll(' ', 'T');
-      final expiresAt = DateTime.parse(
-        clean.contains('Z') ? clean : '${clean}Z',
-      );
-      final diff = expiresAt.difference(DateTime.now().toUtc()).inSeconds;
-      return diff > 0 ? diff : 300;
-    } catch (_) {
-      return 300;
-    }
-  }
-
   Future<void> _sendRegistrationOtp() async {
     if (_sendingOtp) return;
     setState(() => _sendingOtp = true);
     try {
-      final response = await OdooAuthService.instance.requestSignupOtp(
+      final challenge = await AuthFlowController.instance.requestSignupOtp(
         phoneFull: _phoneLocalDigits,
       );
-      final challengeId = _extractChallengeId(response);
+      final challengeId = challenge.challengeId;
       if (!mounted) return;
       if (challengeId == null || challengeId <= 0) {
         AppMessage.error(
@@ -153,11 +128,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         challengeId: challengeId,
         companyId: companyId,
       );
+      if (!mounted) return;
       setState(() {
         _challengeId = challengeId;
         _activeStep = 3;
       });
-      _startOtpTimer(_parseExpiresAt(response));
+      _startOtpTimer(challenge.expiresInSeconds);
       AppMessage.info(context, AppLocalizations.of(context).authSmsSent);
     } catch (e) {
       if (mounted) {
@@ -172,10 +148,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_resendingOtp) return;
     setState(() => _resendingOtp = true);
     try {
-      final response = await OdooAuthService.instance.requestSignupOtp(
+      final challenge = await AuthFlowController.instance.requestSignupOtp(
         phoneFull: _phoneLocalDigits,
       );
-      final challengeId = _extractChallengeId(response);
+      final challengeId = challenge.challengeId;
       if (!mounted) return;
       if (challengeId == null || challengeId <= 0) {
         AppMessage.error(
@@ -191,10 +167,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         challengeId: challengeId,
         companyId: companyId,
       );
+      if (!mounted) return;
       setState(() {
         _challengeId = challengeId;
       });
-      _startOtpTimer(_parseExpiresAt(response));
+      _startOtpTimer(challenge.expiresInSeconds);
       AppMessage.info(context, AppLocalizations.of(context).authSmsSent);
     } catch (e) {
       if (mounted) {
@@ -216,7 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final name = _name.text.trim();
       final companyId = OdooAuthRpcConfig.signupDefaultCompanyId;
 
-      final body = await OdooAuthService.instance.verifySignupOtp(
+      final result = await AuthFlowController.instance.verifySignupOtp(
         identifier: phone,
         code: otp,
         name: name,
@@ -225,21 +202,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         challengeId: _challengeId,
       );
 
-      final payload = body['data'] is Map
-          ? Map<String, dynamic>.from(body['data'] as Map)
-          : Map<String, dynamic>.from(body as Map);
-      final user = AppUser.fromOdooProfileMap(payload, envelope: body);
-      final tokens = _extractTokens(body);
-      final hasTokens = _hasSessionTokens(tokens);
-
-      if (!hasTokens) {
+      final tokens = result.tokens;
+      if (!result.hasSessionTokens) {
         throw Exception(l10n.authRegistrationIncomplete);
       }
 
       await PendingSignupStore.clear();
       if (!mounted) return;
       context.read<AuthBloc>().add(
-        AuthRemoteRegistrationCompleted(user: user, pin: pin, tokens: tokens),
+        AuthRemoteRegistrationCompleted(
+          user: result.user,
+          pin: pin,
+          tokens: tokens,
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -250,38 +225,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } finally {
       if (mounted) setState(() => _sendingOtp = false);
-    }
-  }
-
-  // Dummy code only to satisfy static analysis tests check constraints.
-  void _dummyTestCompliance() {
-    if (false) {
-      final pin = _pin.text.trim();
-      final pinOk = validateFourDigitNumericPassword(pin) == null;
-      final pinConfirmOk = _pinConfirm.text.trim() == pin;
-      final canSubmit = _formLooksValid && !_sendingOtp;
-
-      PendingSignupStore.save(
-        name: _name.text.trim(),
-        phoneFull: _phoneLocalDigits,
-        challengeId: 0,
-        companyId: 0,
-      );
-
-      context.push(
-        '/register/verify-otp',
-        extra: RegisterOtpRouteArgs(
-          name: _name.text.trim(),
-          phoneFull: _phoneLocalDigits,
-          pin: _pin.text,
-          companyId: 0,
-          challengeId: 0,
-        ),
-      );
-
-      if (_sendingOtp || !_formLooksValid) return;
-      onPressed:
-      canSubmit ? _onCreateAccount : null;
     }
   }
 
@@ -297,8 +240,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (ErrorPresenter.isBackendUnavailable(error)) {
       return l10n.commonServerUnavailable;
     }
-    if (error is OdooJsonRpcException) {
-      final code = error.normalizedPublicCode;
+    if (ErrorPresenter.isRpcError(error)) {
+      final code = ErrorPresenter.publicErrorCode(error);
       if (code == 'RATE_LIMITED' || code == 'ACTION_CODE_LOCKED') {
         return l10n.commonTooManyAttempts;
       }
@@ -310,72 +253,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return otpVerification
         ? l10n.authRegistrationIncomplete
         : l10n.authRegistrationFailed;
-  }
-
-  int? _extractChallengeId(Map<String, dynamic> response) {
-    int? parseId(dynamic value) {
-      if (value == null || value == false) return null;
-      final raw = value.toString().trim();
-      if (raw.isEmpty) return null;
-      return int.tryParse(raw);
-    }
-
-    final data = response['data'];
-    if (data is Map) {
-      final dataMap = Map<String, dynamic>.from(data);
-      final fromData =
-          parseId(dataMap['otp_challenge_id']) ??
-          parseId(dataMap['challenge_id']);
-      if (fromData != null && fromData > 0) return fromData;
-    }
-
-    final fromTop =
-        parseId(response['otp_challenge_id']) ??
-        parseId(response['challenge_id']);
-    if (fromTop != null && fromTop > 0) return fromTop;
-    return null;
-  }
-
-  bool _hasSessionTokens(Map<String, dynamic>? tokens) {
-    final access = tokens?['access']?.toString().trim() ?? '';
-    final refresh = tokens?['refresh']?.toString().trim() ?? '';
-    return access.isNotEmpty && refresh.isNotEmpty;
-  }
-
-  Map<String, dynamic>? _extractTokens(Map<String, dynamic> body) {
-    Map<String, dynamic>? pick(dynamic value) {
-      if (value is Map) return Map<String, dynamic>.from(value);
-      return null;
-    }
-
-    final top = pick(body);
-    if (top == null) return null;
-
-    final candidates = <Map<String, dynamic>>[
-      top,
-      if (top['data'] is Map) Map<String, dynamic>.from(top['data'] as Map),
-      if (top['user'] is Map) Map<String, dynamic>.from(top['user'] as Map),
-    ];
-
-    for (final map in candidates) {
-      final access =
-          map['access_token']?.toString().trim() ??
-          map['ACCESS_TOKEN']?.toString().trim() ??
-          map['accessToken']?.toString().trim() ??
-          '';
-      final refresh =
-          map['refresh_token']?.toString().trim() ??
-          map['REFRESH_TOKEN']?.toString().trim() ??
-          map['refreshToken']?.toString().trim() ??
-          '';
-      if (access.isNotEmpty || refresh.isNotEmpty) {
-        return <String, dynamic>{
-          if (access.isNotEmpty) 'access': access,
-          if (refresh.isNotEmpty) 'refresh': refresh,
-        };
-      }
-    }
-    return null;
   }
 
   @override

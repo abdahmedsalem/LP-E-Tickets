@@ -44,7 +44,7 @@ class ScreenHeader extends StatelessWidget {
               else
                 const SizedBox(width: 34, height: 34),
               const Spacer(),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
         ),

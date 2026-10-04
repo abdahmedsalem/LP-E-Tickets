@@ -8,7 +8,7 @@ void main() {
       'station consumption notification never resolves or displays manual QR code',
       () {
         final source = File(
-          'lib/core/notifications/purchase_validation_notification_service.dart',
+          'lib/data/services/notification_services/purchase_validation_notification_service.dart',
         ).readAsStringSync();
 
         expect(source, isNot(contains('OdooFueltokenFacade().qrDetail')));

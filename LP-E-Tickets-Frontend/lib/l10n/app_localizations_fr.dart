@@ -2056,6 +2056,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get stationHistoryLoadMore => 'Charger la suite';
+
+  @override
   String get stationHistoryEndTitle => 'Fin de l\'historique';
 
   @override
@@ -2187,4 +2190,139 @@ class AppLocalizationsFr extends AppLocalizations {
   String settingsDeletionCompleted(String reference) {
     return 'La demande $reference est indiquée comme terminée par le service chargé de sa suppression.';
   }
+
+  @override
+  String get commonCopyLink => 'Copier le lien';
+
+  @override
+  String get settingsPrivacyPolicy => 'Politique de confidentialité';
+
+  @override
+  String get settingsPrivacyPolicyText =>
+      'Leader Petroleum E-Tickets s’engage à protéger vos données personnelles. La géolocalisation et l’appareil mobile servent uniquement à la sécurité et à la validation des opérations de carburant.';
+
+  @override
+  String get privacyLinkCopied =>
+      'Lien de la politique de confidentialité copié.';
+
+  @override
+  String get settingsStationsMap => 'Carte des stations';
+
+  @override
+  String get stationSearchPlaceholder => 'Chercher une station Leader...';
+
+  @override
+  String get stationOpen247 => 'Ouvert 24/7';
+
+  @override
+  String get stationDirectionsGoogleMaps => 'Itinéraire Google Maps';
+
+  @override
+  String stationListTitle(int count) {
+    return 'STATIONS LEADER PETROLEUM ($count)';
+  }
+
+  @override
+  String get stationBackToMap => 'Retour carte';
+
+  @override
+  String get stationViewOnMap => 'Voir sur carte';
+
+  @override
+  String get stationGps => 'GPS';
+
+  @override
+  String get stationCityNouakchott => 'Nouakchott';
+
+  @override
+  String get stationCityNouadhibou => 'Nouadhibou';
+
+  @override
+  String get stationCityRosso => 'Rosso';
+
+  @override
+  String get qrLimitTitle => 'Montant maximal du QR';
+
+  @override
+  String qrLimitAmountLabel(String currency) {
+    return 'Montant en $currency';
+  }
+
+  @override
+  String get qrLimitAmountHint => 'Ex. 5 000';
+
+  @override
+  String get qrLimitInvalidAmount =>
+      'Saisissez un montant entier strictement positif.';
+
+  @override
+  String get qrLimitApply => 'Appliquer';
+
+  @override
+  String get qrLimitSaved => 'Plafond QR enregistré sur le serveur.';
+
+  @override
+  String get qrLimitLoading => 'Chargement du plafond depuis le serveur...';
+
+  @override
+  String get qrLimitUnavailable =>
+      'Le plafond QR est indisponible depuis le serveur.';
+
+  @override
+  String qrLimitCurrent(int amount, String currency) {
+    return 'Limite actuelle : $amount $currency';
+  }
+
+  @override
+  String get qrLimitSet => 'Définir le plafond';
+
+  @override
+  String qrLimitExceeded(int amount, String currency) {
+    return 'Le montant maximal de ce QR est de $amount $currency.';
+  }
+
+  @override
+  String get qrLimitRequired =>
+      'Le plafond QR n’est pas encore disponible depuis le serveur.';
+
+  @override
+  String get qrMissingCarnetCode => 'Code carnet indisponible';
+
+  @override
+  String get qrGenerationNoLines =>
+      'Aucune ligne à générer (stock ou sélection vide).';
+
+  @override
+  String get purchasePaymentTitle => 'Paiement';
+
+  @override
+  String get purchaseNoPaymentMethods => 'Aucun moyen de paiement disponible.';
+
+  @override
+  String get purchasePaymentMethodsConfigure =>
+      'Les moyens de paiement doivent être configurés et activés dans Odoo.';
+
+  @override
+  String get purchaseTapToEdit => 'Appuyez pour modifier';
+
+  @override
+  String get commonCopy => 'Copier';
+
+  @override
+  String get stationDefaultName => 'Station LP Ksar';
+
+  @override
+  String get stationCountryMauritania => 'Mauritanie';
+
+  @override
+  String get purchaseMobileOnlyProof =>
+      'L’envoi d’une commande avec preuve de paiement nécessite l’application mobile.';
+
+  @override
+  String purchaseUnknownCarnetType(String code) {
+    return 'Type « $code » : identifiant serveur inconnu. Actualisez la liste des offres.';
+  }
+
+  @override
+  String get purchaseNoValidLines => 'Aucune ligne valide à envoyer.';
 }

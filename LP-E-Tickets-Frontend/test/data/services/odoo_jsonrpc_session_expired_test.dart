@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/services/odoo_jsonrpc_client.dart';
+import 'package:fueltoken_app/data/services/shared_services/odoo_jsonrpc_client.dart';
 
 void main() {
   group('OdooJsonRpc session expired business code', () {

@@ -8,10 +8,10 @@ String _read(String path) =>
 void main() {
   test('transfer screens show instructions only when data is available', () {
     final carnets = _read(
-      'lib/features/qr/screens/transfer_carnets_screen.dart',
+      'lib/features/transfer/screens/transfer_carnets_screen.dart',
     );
     final tickets = _read(
-      'lib/features/qr/screens/transfer_tickets_screen.dart',
+      'lib/features/transfer/screens/transfer_tickets_screen.dart',
     );
 
     expect(carnets, contains('if (transferable.isNotEmpty) ...['));
@@ -37,7 +37,7 @@ void main() {
   });
 
   test('QR generation shows instructions only with loaded carnet cards', () {
-    final source = _read('lib/features/qr/screens/emit_qr_screen.dart');
+    final source = _read('lib/features/qr/generation/screens/emit_qr_screen.dart');
 
     expect(source, isNot(contains('l10n.qrGenerationSelectInstruction')));
     expect(source, contains('final hasEntries = availableLines.isNotEmpty'));
@@ -46,9 +46,9 @@ void main() {
 
   test('all four screens use the shared empty state component', () {
     final paths = <String>[
-      'lib/features/qr/screens/emit_qr_screen.dart',
-      'lib/features/qr/screens/transfer_carnets_screen.dart',
-      'lib/features/qr/screens/transfer_tickets_screen.dart',
+      'lib/features/qr/generation/screens/emit_qr_screen.dart',
+      'lib/features/transfer/screens/transfer_carnets_screen.dart',
+      'lib/features/transfer/screens/transfer_tickets_screen.dart',
       'lib/features/purchases/screens/submit_purchase_screen.dart',
     ];
 
@@ -57,7 +57,7 @@ void main() {
     }
 
     expect(
-      _read('lib/features/qr/screens/emit_qr_screen.dart'),
+      _read('lib/features/qr/generation/screens/emit_qr_screen.dart'),
       isNot(contains('class _EmptyAvailable')),
     );
 

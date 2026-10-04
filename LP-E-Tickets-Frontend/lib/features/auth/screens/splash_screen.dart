@@ -7,7 +7,7 @@ import '../../../core/auth/pending_signup_store.dart';
 import '../../../core/config/app_brand_config.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../data/models/user_role.dart';
+import '../../../domain/models/user_role.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 import '../bloc/auth_bloc.dart';

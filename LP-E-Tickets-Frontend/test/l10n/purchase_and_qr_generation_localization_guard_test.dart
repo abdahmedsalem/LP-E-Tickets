@@ -18,9 +18,9 @@ void main() {
     final paths = <String>[
       'lib/features/purchases/screens/submit_purchase_screen.dart',
       'lib/features/purchases/screens/purchase_confirmation_screen.dart',
-      'lib/features/purchases/screens/purchase_detail_screen.dart',
-      'lib/features/qr/screens/emit_qr_screen.dart',
-      'lib/shared/widgets/purchase_submit_success_dialog.dart',
+      'lib/features/qr/generation/screens/emit_qr_screen.dart',
+      'lib/features/purchases/screens/purchase_success_screen.dart',
+      'lib/features/qr/generation/screens/qr_generation_success_screen.dart',
       'lib/shared/widgets/qr_generation_carnet_line.dart',
     ];
     for (final path in paths) {

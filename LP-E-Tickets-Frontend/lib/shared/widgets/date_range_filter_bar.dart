@@ -11,6 +11,7 @@ class DateRangeFilterBar extends StatefulWidget {
     required this.onApply,
     this.firstDate,
     this.lastDate,
+    this.maxRangeDays,
   });
 
   final DateTime initialFrom;
@@ -18,6 +19,7 @@ class DateRangeFilterBar extends StatefulWidget {
   final ValueChanged<DateTimeRange> onApply;
   final DateTime? firstDate;
   final DateTime? lastDate;
+  final int? maxRangeDays;
 
   @override
   State<DateRangeFilterBar> createState() => _DateRangeFilterBarState();
@@ -74,15 +76,27 @@ class _DateRangeFilterBarState extends State<DateRangeFilterBar> {
     setState(() {
       _draftFrom = _startOfDay(picked);
       if (_draftFrom.isAfter(_draftTo)) _draftTo = _draftFrom;
+      final maxDays = widget.maxRangeDays;
+      if (maxDays != null && _draftTo.difference(_draftFrom).inDays > maxDays) {
+        _draftTo = _draftFrom.add(Duration(days: maxDays));
+      }
     });
   }
 
   Future<void> _pickTo() async {
+    final maxDays = widget.maxRangeDays;
+    final earliest = _draftFrom.isAfter(_firstDate) ? _draftFrom : _firstDate;
+    final requestedMax = maxDays == null
+        ? _lastDate
+        : _draftFrom.add(Duration(days: maxDays));
+    final latest = requestedMax.isBefore(_lastDate) ? requestedMax : _lastDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _draftTo,
-      firstDate: _firstDate,
-      lastDate: _lastDate,
+      initialDate: _draftTo.isBefore(earliest)
+          ? earliest
+          : (_draftTo.isAfter(latest) ? latest : _draftTo),
+      firstDate: earliest,
+      lastDate: latest,
     );
     if (picked == null || !mounted) return;
     setState(() {

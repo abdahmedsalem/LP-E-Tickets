@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../controllers/auth_flow_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
-import '../../../data/services/odoo_auth_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_brand_image.dart';
 import '../../../shared/widgets/app_message.dart';
@@ -47,13 +47,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
-      final response = await OdooAuthService.instance.requestPasswordResetOtp(
-        phoneFull: _phoneFull,
-      );
-      final data = response['data'];
-      final challengeId = data is Map
-          ? int.tryParse(data['otp_challenge_id']?.toString() ?? '')
-          : null;
+      final challenge = await AuthFlowController.instance
+          .requestPasswordResetOtp(phoneFull: _phoneFull);
+      final challengeId = challenge.challengeId;
       if (!mounted) return;
       AppMessage.info(context, AppLocalizations.of(context).authCodeSent);
       context.push(

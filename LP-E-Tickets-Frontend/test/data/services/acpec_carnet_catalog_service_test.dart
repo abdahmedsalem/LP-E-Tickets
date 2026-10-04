@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/models/business_transaction.dart';
-import 'package:fueltoken_app/data/models/carnet_type.dart';
-import 'package:fueltoken_app/data/models/face_line.dart';
-import 'package:fueltoken_app/data/models/purchase_lot.dart';
-import 'package:fueltoken_app/data/models/qr_token.dart';
-import 'package:fueltoken_app/data/services/acpec_carnet_catalog_service.dart';
+import 'package:fueltoken_app/domain/models/history/business_transaction.dart';
+import 'package:fueltoken_app/domain/models/purchase/carnet_type.dart';
+import 'package:fueltoken_app/domain/models/portfolio/face_line.dart';
+import 'package:fueltoken_app/data/models/purchase_models/purchase_lot.dart';
+import 'package:fueltoken_app/domain/models/qr/qr_token.dart';
+import 'package:fueltoken_app/data/services/purchase_services/acpec_carnet_catalog_service.dart';
 
 void main() {
   group('AcpecCarnetCatalogService', () {

@@ -1,0 +1,269 @@
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
+
+import '../../../core/config/odoo_api_config.dart';
+import '../../../core/config/odoo_fueltoken_rpc_config.dart';
+import '../../api/acpec_fueltoken_jsonrpc_api.dart';
+
+/// Route ACPEC absente ou désactivée (`dart-define` vide après trim).
+class OdooFuelRpcNotConfigured implements Exception {
+  OdooFuelRpcNotConfigured(this.settingHint);
+
+  final String settingHint;
+
+  @override
+  String toString() =>
+      'OdooFuelRpcNotConfigured: définir $settingHint (chemin route ACPEC, ex. /api/acpec/...).';
+}
+
+/// La base Odoo est configurée sur un hôte local alors que ces actions doivent
+/// impérativement viser l'instance distante de production / staging.
+class OdooFuelRpcLocalHostConfigured implements Exception {
+  OdooFuelRpcLocalHostConfigured(this.settingHint);
+
+  final String settingHint;
+
+  @override
+  String toString() => 'OdooFuelRpcLocalHostConfigured: $settingHint';
+}
+
+/// Façade des appels Odoo FuelToken et administration.
+class OdooFueltokenFacade {
+  OdooFueltokenFacade({AcpecFueltokenJsonRpcApi? api})
+    : _api = api ?? AcpecFueltokenJsonRpcApi();
+
+  final AcpecFueltokenJsonRpcApi _api;
+
+  Future<dynamic> _call(
+    String route,
+    String defineHint, [
+    Map<String, dynamic>? params,
+  ]) {
+    final r = route.trim();
+    if (r.isEmpty) {
+      throw OdooFuelRpcNotConfigured(defineHint);
+    }
+    return _api.callRoute(r, params: params ?? const {});
+  }
+
+  void _ensureRemoteHostForQrActions() {
+    if (OdooApiConfig.isLocalHostBase && kReleaseMode && !kIsWeb) {
+      throw OdooFuelRpcLocalHostConfigured(
+        'ODOO_JSONRPC_BASE_URL doit pointer vers le serveur Odoo distant '
+        'en production, pas localhost / 127.0.0.1 / 10.0.2.2.',
+      );
+    }
+  }
+
+  Future<dynamic> versionCheck([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.versionCheck,
+    'ODOO_ACPEC_VERSION_PATH',
+    params,
+  );
+
+  Future<dynamic> signupCompanies([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.signupCompanies,
+    'ODOO_ACPEC_SIGNUP_COMPANIES_PATH',
+    params,
+  );
+
+  Future<dynamic> walletCurrent([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.walletCurrent,
+    'ODOO_RPC_FUEL_WALLET_PATH',
+    params,
+  );
+
+  Future<dynamic> walletQrLimit(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.walletQrLimit,
+    'ODOO_RPC_FUEL_WALLET_QR_LIMIT_PATH',
+    params,
+  );
+
+  Future<dynamic> transactions(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.transactions,
+    'ODOO_RPC_FUEL_TRANSACTIONS_PATH',
+    params,
+  );
+
+  Future<dynamic> transactionsDetail(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.transactionsDetail,
+    'ODOO_RPC_FUEL_TRANSACTIONS_DETAIL_PATH',
+    params,
+  );
+
+  Future<dynamic> purchasesCreate(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.purchasesCreate,
+    'ODOO_RPC_FUEL_PURCHASES_CREATE_PATH',
+    params,
+  );
+
+  Future<dynamic> purchasesList([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.purchasesList,
+    'ODOO_RPC_FUEL_PURCHASES_LIST_PATH',
+    params,
+  );
+
+  Future<dynamic> purchasesDetail(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.purchasesDetail,
+    'ODOO_RPC_FUEL_PURCHASES_DETAIL_PATH',
+    params,
+  );
+
+  Future<dynamic> paymentMethods([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.paymentMethods,
+    'ODOO_RPC_FUEL_PAYMENT_METHODS_PATH',
+    params,
+  );
+
+  Future<dynamic> adminPurchasesPending(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.adminPurchasesPending,
+    'ODOO_RPC_FUEL_ADMIN_PURCHASES_PENDING_PATH',
+    params,
+  );
+
+  Future<dynamic> adminPurchasesDetail(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.adminPurchasesDetail,
+    'ODOO_RPC_FUEL_ADMIN_PURCHASES_DETAIL_PATH',
+    params,
+  );
+
+  Future<dynamic> adminPurchasesApprove(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.adminPurchasesApprove,
+    'ODOO_RPC_FUEL_ADMIN_PURCHASES_APPROVE_PATH',
+    params,
+  );
+
+  Future<dynamic> adminStationsList([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.adminStationsList,
+    'ODOO_RPC_FUEL_ADMIN_STATIONS_LIST_PATH',
+    params ?? const {},
+  );
+
+  Future<dynamic> adminReportsSummary([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.adminReportsSummary,
+    'ODOO_RPC_FUEL_ADMIN_REPORTS_SUMMARY_PATH',
+    params ?? const {},
+  );
+
+  Future<dynamic> faces([Map<String, dynamic>? params]) =>
+      _call(OdooFueltokenRpcConfig.faces, 'ODOO_RPC_FUEL_FACES_PATH', params);
+
+  Future<dynamic> carnetTypes([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.carnetTypes,
+    'ODOO_RPC_FUEL_CARNET_TYPES_PATH',
+    params,
+  );
+
+  Future<dynamic> adminCarnetTypesList([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.adminCarnetTypesList,
+    'ODOO_RPC_FUEL_ADMIN_CARNET_TYPES_LIST_PATH',
+    params,
+  );
+
+  Future<dynamic> qrIssue(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.qrIssue,
+    'ODOO_RPC_FUEL_QR_ISSUE_PATH',
+    params,
+  );
+
+  Future<dynamic> qrList([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.qrList,
+    'ODOO_RPC_FUEL_QR_LIST_PATH',
+    params,
+  );
+
+  Future<dynamic> qrDetail(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.qrDetail,
+    'ODOO_RPC_FUEL_QR_DETAIL_PATH',
+    params,
+  );
+
+  Future<dynamic> qrRevealCode(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.qrRevealCode,
+      'ODOO_RPC_FUEL_QR_REVEAL_CODE_PATH',
+      params,
+    );
+  }
+
+  Future<dynamic> qrRetirer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.qrRetirer,
+      'ODOO_RPC_FUEL_QR_RETIRER_PATH',
+      params,
+    );
+  }
+
+  Future<dynamic> qrSeparer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.qrSeparer,
+      'ODOO_RPC_FUEL_QR_SEPARER_PATH',
+      params,
+    );
+  }
+
+  Future<dynamic> carnetsTransfer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.carnetsTransfer,
+      'ODOO_RPC_FUEL_CARNETS_TRANSFER_PATH',
+      params,
+    );
+  }
+
+  Future<dynamic> carnetsTransferRecipient(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.carnetsTransferRecipient,
+      'ODOO_RPC_FUEL_CARNETS_TRANSFER_RECIPIENT_PATH',
+      params,
+    );
+  }
+
+  Future<dynamic> ticketsTransfer(Map<String, dynamic> params) {
+    _ensureRemoteHostForQrActions();
+    return _call(
+      OdooFueltokenRpcConfig.ticketsTransfer,
+      'ODOO_RPC_FUEL_TICKETS_TRANSFER_PATH',
+      params,
+    );
+  }
+
+  Future<dynamic> stationQrCancel(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.stationQrCancel,
+    'ODOO_RPC_FUEL_STATION_QR_CANCEL_PATH',
+    params,
+  );
+
+  Future<dynamic> stationQrUse(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.stationQrUse,
+    'ODOO_RPC_FUEL_STATION_QR_USE_PATH',
+    params,
+  );
+
+  Future<dynamic> stationTransactions(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.stationTransactions,
+    'ODOO_RPC_FUEL_STATION_TRANSACTIONS_PATH',
+    params,
+  );
+
+  Future<dynamic> stationProfile([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.stationProfile,
+    'ODOO_RPC_FUEL_STATION_PROFILE_PATH',
+    params ?? const {},
+  );
+
+  Future<dynamic> stationList([Map<String, dynamic>? params]) => _call(
+    OdooFueltokenRpcConfig.stationList,
+    'ODOO_RPC_FUEL_STATION_LIST_PATH',
+    params ?? const {},
+  );
+
+  Future<dynamic> stationQrCheck(Map<String, dynamic> params) => _call(
+    OdooFueltokenRpcConfig.stationQrCheck,
+    'ODOO_RPC_FUEL_STATION_QR_CHECK_PATH',
+    params,
+  );
+}

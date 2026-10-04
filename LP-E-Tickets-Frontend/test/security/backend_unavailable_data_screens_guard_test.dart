@@ -19,7 +19,9 @@ void main() {
     test(
       'QR list preserves existing data and does not show false empty state',
       () {
-        final source = _read('lib/features/qr/screens/qr_list_screen.dart');
+        final source = _read(
+          'lib/features/portfolio/screens/qr_list_screen.dart',
+        );
 
         expect(source, contains('BackendUnavailableBanner'));
         expect(source, contains('l10n.qrsLoadError'));
@@ -37,31 +39,10 @@ void main() {
     );
 
     test(
-      'purchases list preserves lots and shows warning banner over cached list',
-      () {
-        final source = _read(
-          'lib/features/purchases/screens/purchases_list_screen.dart',
-        );
-
-        expect(source, contains('BackendUnavailableBanner'));
-        expect(source, contains('_error != null && _lots.isEmpty'));
-        expect(source, contains('_lots.length + (_error != null ? 1 : 0)'));
-        expect(
-          source,
-          isNot(
-            contains(
-              "_error = e.toString().replaceFirst('Exception: ', '');\n          _lots = [];",
-            ),
-          ),
-        );
-      },
-    );
-
-    test(
       'carnets screen shows backend warning when old carnets remain visible',
       () {
         final source = _read(
-          'lib/features/home/screens/faces_detail_screen.dart',
+          'lib/features/portfolio/screens/faces_detail_screen.dart',
         );
 
         expect(source, contains('BackendUnavailableBanner'));
@@ -72,7 +53,7 @@ void main() {
 
     test('transactions preserve history on refresh failure', () {
       final source = _read(
-        'lib/features/transactions/screens/transactions_screen.dart',
+        'lib/features/history/screens/transactions_screen.dart',
       );
 
       expect(source, contains('BackendUnavailableBanner'));
@@ -85,7 +66,7 @@ void main() {
       'station consumption history preserves existing rows on backend failure',
       () {
         final source = _read(
-          'lib/features/station/screens/station_consumption_history_screen.dart',
+          'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
         );
 
         expect(source, contains('BackendUnavailableBanner'));

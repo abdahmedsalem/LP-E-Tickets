@@ -6,19 +6,28 @@ import '../../core/auth/auth_token_store.dart';
 import '../../core/auth/login_session_cache.dart';
 import '../../core/auth/odoo_session_store.dart';
 import '../../core/config/app_brand_config.dart';
-import '../../core/config/acpec_role_overrides.dart';
 import '../../core/config/odoo_api_config.dart';
 import '../../core/config/odoo_auth_rpc_config.dart';
 import '../../core/utils/error_presenter.dart';
 import '../../core/validation/contact_validators.dart';
 import '../../core/validation/password_validators.dart';
-import '../models/app_user.dart';
-import '../models/user_role.dart';
-import '../services/odoo_auth_service.dart';
-import '../services/odoo_jsonrpc_client.dart' show OdooJsonRpcException;
+import '../../domain/models/app_user.dart';
+import '../../domain/models/auth/acpec_mobile_auth_bootstrap.dart';
+import '../../domain/models/auth/signup_otp_challenge.dart';
+import '../../domain/models/auth/signup_verification_result.dart';
+import '../../domain/models/user_role.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../services/auth_services/app_user_mapper.dart';
+import '../services/auth_services/acpec_mobile_auth_bootstrap_mapper.dart';
+import '../services/auth_services/signup_response_mapper.dart';
+import '../services/auth_services/acpec_role_overrides.dart';
+import '../services/auth_services/odoo_auth_service.dart';
+import '../services/shared_services/odoo_fueltoken_facade.dart';
+import '../services/shared_services/odoo_jsonrpc_client.dart'
+    show OdooJsonRpcException;
 
 /// Doctrine: every new account is created as `user`. Admin can change role.
-class AuthRepository {
+class AuthRepository implements AuthRepositoryContract {
   AuthRepository._();
 
   static final AuthRepository instance = AuthRepository._();
@@ -27,6 +36,12 @@ class AuthRepository {
   final List<AppUser> _users = [];
 
   AppUser? _current;
+
+  @override
+  AppUser userFromOdooProfileMap(
+    Map<String, dynamic> profile, {
+    Map<String, dynamic>? envelope,
+  }) => AppUserMapper.fromOdooProfileMap(profile, envelope: envelope);
 
   bool get _usesServerConfirmPin =>
       OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasConfirmPin;
@@ -37,6 +52,19 @@ class AuthRepository {
   );
 
   AppUser? get currentUser => _current;
+
+  @override
+  Future<AcpecVersionCheckData> checkAcpecVersion(
+    Map<String, dynamic> params,
+  ) async => AcpecMobileAuthBootstrapMapper.versionFromResponse(
+    await OdooFueltokenFacade().versionCheck(params),
+  );
+
+  @override
+  Future<List<AcpecSignupCompany>> signupCompanies() async =>
+      AcpecMobileAuthBootstrapMapper.companiesFromResponse(
+        await OdooFueltokenFacade().signupCompanies(const {}),
+      );
 
   bool _isUsableIdentifier(String raw) {
     final t = raw.trim();
@@ -85,6 +113,7 @@ class AuthRepository {
     return '';
   }
 
+  @override
   Future<AppUser> confirmOpenPin(String pin) async {
     final user = _current;
     if (user == null) {
@@ -101,6 +130,7 @@ class AuthRepository {
   }
 
   /// Connexion Odoo ACPEC lorsque la base URL et la route login sont configurées ; sinon mode local.
+  @override
   Future<AppUser> login(String identifier, String pin) async {
     if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasLogin) {
       return await _loginOdoo(identifier, pin);
@@ -150,6 +180,7 @@ class AuthRepository {
   /// retour immédiat au login. Si un refresh token est disponible, on tente
   /// d'abord `/refresh`, puis un nouveau `session-check`. Les jetons ne sont
   /// effacés que si le refresh échoue réellement.
+  @override
   Future<AppUser?> tryRestoreRemoteSession() async {
     if (OdooApiConfig.isConfigured && OdooAuthRpcConfig.hasSessionMe) {
       final sid = await OdooSessionStore.readSessionId();
@@ -198,7 +229,8 @@ class AuthRepository {
     return null;
   }
 
-  Future<Map<String, dynamic>> requestLoginOtp({
+  @override
+  Future<SignupOtpChallenge> requestLoginOtp({
     required String identifier,
   }) async {
     if (!OdooApiConfig.isConfigured ||
@@ -206,14 +238,74 @@ class AuthRepository {
       throw Exception('Connexion par SMS indisponible.');
     }
     try {
-      return await OdooAuthService.instance.requestLoginOtp(
-        identifier: identifier,
+      return SignupResponseMapper.challengeFromResponse(
+        await OdooAuthService.instance.requestLoginOtp(identifier: identifier),
       );
     } catch (e) {
       throw Exception(ErrorPresenter.message(e));
     }
   }
 
+  @override
+  Future<SignupOtpChallenge> requestSignupOtp({
+    required String phoneFull,
+  }) async => SignupResponseMapper.challengeFromResponse(
+    await OdooAuthService.instance.requestSignupOtp(phoneFull: phoneFull),
+  );
+
+  @override
+  Future<SignupVerificationResult> verifySignupOtp({
+    required String identifier,
+    required String code,
+    required String name,
+    required String pin,
+    required int companyId,
+    int? challengeId,
+  }) async => SignupResponseMapper.verificationFromResponse(
+    await OdooAuthService.instance.verifySignupOtp(
+      identifier: identifier,
+      code: code,
+      name: name,
+      pin: pin,
+      companyId: companyId,
+      challengeId: challengeId,
+    ),
+  );
+
+  @override
+  Future<SignupOtpChallenge> requestSignupOtpResend({
+    required String identifier,
+  }) async => SignupResponseMapper.challengeFromResponse(
+    await OdooAuthService.instance.requestSignupOtpResend(
+      identifier: identifier,
+    ),
+  );
+
+  @override
+  Future<SignupOtpChallenge> requestPasswordResetOtp({
+    required String phoneFull,
+  }) async => SignupResponseMapper.challengeFromResponse(
+    await OdooAuthService.instance.requestPasswordResetOtp(
+      phoneFull: phoneFull,
+    ),
+  );
+
+  @override
+  Future<void> verifyPasswordResetOtp({
+    required String identifier,
+    required String code,
+    required String pin,
+    int? challengeId,
+  }) async {
+    await OdooAuthService.instance.verifyPasswordResetOtp(
+      identifier: identifier,
+      code: code,
+      pin: pin,
+      challengeId: challengeId,
+    );
+  }
+
+  @override
   Future<AppUser> verifyLoginOtp({
     required String identifier,
     required String code,
@@ -248,6 +340,7 @@ class AuthRepository {
     }
   }
 
+  @override
   Future<AppUser> register({
     required String email,
     required String name,
@@ -276,6 +369,7 @@ class AuthRepository {
   }
 
   /// Compte créé côté API (`complete-registration`) — enregistre JWT + cache profil.
+  @override
   Future<AppUser> adoptRemoteUser({
     required AppUser user,
     required String pin,
@@ -321,6 +415,7 @@ class AuthRepository {
   }
 
   /// Après vérification OTP (PIN oublié).
+  @override
   Future<void> resetPinForIdentifier({
     required String identifier,
     required String newPin,
@@ -349,6 +444,7 @@ class AuthRepository {
     }
   }
 
+  @override
   Future<void> logout() async {
     _current = null;
     await AuthTokenStore.clear();
@@ -373,6 +469,7 @@ class AuthRepository {
   }
 
   /// Admin-only: change a user's role.
+  @override
   Future<AppUser> changeRole(
     String userId,
     UserRole newRole, {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/models/qr_token.dart';
-import '../../data/models/purchase_lot.dart';
+import '../../domain/models/qr/qr_token.dart';
+import '../../domain/models/purchase/purchase_lot_state.dart';
 
 class StatusBadge extends StatelessWidget {
   final String label;

@@ -16,19 +16,20 @@ void main() {
   group('Station manual QR success and failure dialog guard', () {
     test('manual QR success uses final dialog and returns to station home', () {
       final source = _read(
-        'lib/features/station/screens/station_manual_qr_screen.dart',
+        'lib/features/station/scan/station_manual_qr_screen.dart',
       );
       final dialogSource = _read(
         'lib/shared/widgets/station_qr_success_dialog.dart',
       );
 
-      expect(source, contains('final guarded = acpecRpcMapOrThrow('));
+      final repository = _read('lib/data/repositories/station_repository.dart');
+      expect(repository, contains('final result = acpecRpcMapOrThrow('));
       expect(source, contains('StationQrSuccessDialog('));
       expect(dialogSource, contains('stationQrConsumedSuccess'));
       expect(dialogSource, contains('l10n.amount'));
       expect(dialogSource, contains('stationDateTime'));
       expect(dialogSource, contains('stationTransactionNumber'));
-      expect(source, contains('transaction_name'));
+      expect(repository, contains('transaction_name'));
       expect(dialogSource, contains('stationFinish'));
       expect(source, contains("context.go('/station/home')"));
 
@@ -40,7 +41,7 @@ void main() {
       'manual QR failure uses blocking dialog and stays on manual entry',
       () {
         final source = _read(
-          'lib/features/station/screens/station_manual_qr_screen.dart',
+          'lib/features/station/scan/station_manual_qr_screen.dart',
         );
 
         expect(source, contains('Future<void> _showManualFailureDialog'));
@@ -55,12 +56,22 @@ void main() {
       'manual non consumable checked QR uses dialog, not red result card',
       () {
         final source = _read(
-          'lib/features/station/screens/station_manual_qr_screen.dart',
+          'lib/features/station/scan/station_manual_qr_screen.dart',
         );
 
+        final controller = _read(
+          'lib/features/station/controllers/station_controller.dart',
+        );
+        final repository = _read(
+          'lib/data/repositories/station_repository.dart',
+        );
+        expect(source, contains('final result = raw;'));
+        expect(controller, contains('Future<StationQrCheckResult> checkQr'));
         expect(
-          source,
-          contains('final result = StationQrCheckResult.fromRpc(raw);'),
+          repository,
+          contains(
+            'StationQrCheckMapper.fromRpc(await _facade.stationQrCheck(params))',
+          ),
         );
         expect(source, contains('if (!result.canConsume)'));
         expect(source, contains('title: l10n.stationQrNotConsumable'));
@@ -68,7 +79,7 @@ void main() {
         expect(source, contains('actionLabel: l10n.stationBackHome'));
         expect(source, contains("context.go('/station/home')"));
 
-        expect(source, contains('if (data != null && canConsume)'));
+        expect(source, contains('if (result != null && canConsume)'));
 
         final card = _classBlock(
           source,

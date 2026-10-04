@@ -56,7 +56,7 @@ void main() {
           'lib/features/auth/screens/register_screen.dart',
         );
         final publicErrors = _read(
-          'lib/data/services/acpec_public_api_error.dart',
+          'lib/core/errors/public_error_messages.dart',
         );
 
         expect(publicErrors, contains("'SIGNUP_NOT_ALLOWED'"));
@@ -70,7 +70,8 @@ void main() {
         );
 
         expect(register, contains('_registrationErrorMessage(e)'));
-        expect(register, contains("error is OdooJsonRpcException"));
+        expect(register, contains('ErrorPresenter.isRpcError(error)'));
+        expect(register, contains('ErrorPresenter.publicErrorCode(error)'));
         expect(
           register,
           isNot(contains('AppMessage.error(context, e.toString())')),

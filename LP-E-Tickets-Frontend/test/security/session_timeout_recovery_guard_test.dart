@@ -8,7 +8,7 @@ void main() {
       'short access session expiration triggers refresh recovery only by code',
       () {
         final source = File(
-          'lib/data/services/odoo_jsonrpc_client.dart',
+          'lib/data/services/shared_services/odoo_jsonrpc_client.dart',
         ).readAsStringSync();
 
         expect(source, contains("code == 'SESSION_EXPIRED'"));
@@ -27,7 +27,7 @@ void main() {
       'terminal refresh failure clears all local tokens and notifies auth bloc',
       () {
         final source = File(
-          'lib/data/services/odoo_jsonrpc_client.dart',
+          'lib/data/services/shared_services/odoo_jsonrpc_client.dart',
         ).readAsStringSync();
 
         expect(source, contains('_clearLocalAuthAndNotify'));
@@ -74,7 +74,7 @@ void main() {
 
     test('refresh recovery uses stale-token check and single-flight latch', () {
       final source = File(
-        'lib/data/services/odoo_jsonrpc_client.dart',
+        'lib/data/services/shared_services/odoo_jsonrpc_client.dart',
       ).readAsStringSync();
 
       expect(
@@ -94,7 +94,7 @@ void main() {
 
     test('transient refresh failure does not clear local auth', () {
       final source = File(
-        'lib/data/services/odoo_jsonrpc_client.dart',
+        'lib/data/services/shared_services/odoo_jsonrpc_client.dart',
       ).readAsStringSync();
 
       expect(source, contains('_SilentRefreshStatus.transientFailure'));

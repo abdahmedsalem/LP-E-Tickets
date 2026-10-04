@@ -3626,6 +3626,12 @@ abstract class AppLocalizations {
   /// **'Résultat partiel : {loaded} sur {total} consommations chargées. Réduisez la période choisie.'**
   String stationHistoryPartialCount(int loaded, int total);
 
+  /// No description provided for @stationHistoryLoadMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Charger la suite'**
+  String get stationHistoryLoadMore;
+
   /// No description provided for @stationHistoryEndTitle.
   ///
   /// In fr, this message translates to:
@@ -3865,6 +3871,240 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'La demande {reference} est indiquée comme terminée par le service chargé de sa suppression.'**
   String settingsDeletionCompleted(String reference);
+
+  /// No description provided for @commonCopyLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copier le lien'**
+  String get commonCopyLink;
+
+  /// No description provided for @settingsPrivacyPolicy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Politique de confidentialité'**
+  String get settingsPrivacyPolicy;
+
+  /// No description provided for @settingsPrivacyPolicyText.
+  ///
+  /// In fr, this message translates to:
+  /// **'Leader Petroleum E-Tickets s’engage à protéger vos données personnelles. La géolocalisation et l’appareil mobile servent uniquement à la sécurité et à la validation des opérations de carburant.'**
+  String get settingsPrivacyPolicyText;
+
+  /// No description provided for @privacyLinkCopied.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lien de la politique de confidentialité copié.'**
+  String get privacyLinkCopied;
+
+  /// No description provided for @settingsStationsMap.
+  ///
+  /// In fr, this message translates to:
+  /// **'Carte des stations'**
+  String get settingsStationsMap;
+
+  /// No description provided for @stationSearchPlaceholder.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chercher une station Leader...'**
+  String get stationSearchPlaceholder;
+
+  /// No description provided for @stationOpen247.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvert 24/7'**
+  String get stationOpen247;
+
+  /// No description provided for @stationDirectionsGoogleMaps.
+  ///
+  /// In fr, this message translates to:
+  /// **'Itinéraire Google Maps'**
+  String get stationDirectionsGoogleMaps;
+
+  /// No description provided for @stationListTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'STATIONS LEADER PETROLEUM ({count})'**
+  String stationListTitle(int count);
+
+  /// No description provided for @stationBackToMap.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retour carte'**
+  String get stationBackToMap;
+
+  /// No description provided for @stationViewOnMap.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir sur carte'**
+  String get stationViewOnMap;
+
+  /// No description provided for @stationGps.
+  ///
+  /// In fr, this message translates to:
+  /// **'GPS'**
+  String get stationGps;
+
+  /// No description provided for @stationCityNouakchott.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouakchott'**
+  String get stationCityNouakchott;
+
+  /// No description provided for @stationCityNouadhibou.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouadhibou'**
+  String get stationCityNouadhibou;
+
+  /// No description provided for @stationCityRosso.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rosso'**
+  String get stationCityRosso;
+
+  /// No description provided for @qrLimitTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Montant maximal du QR'**
+  String get qrLimitTitle;
+
+  /// No description provided for @qrLimitAmountLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Montant en {currency}'**
+  String qrLimitAmountLabel(String currency);
+
+  /// No description provided for @qrLimitAmountHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. 5 000'**
+  String get qrLimitAmountHint;
+
+  /// No description provided for @qrLimitInvalidAmount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisissez un montant entier strictement positif.'**
+  String get qrLimitInvalidAmount;
+
+  /// No description provided for @qrLimitApply.
+  ///
+  /// In fr, this message translates to:
+  /// **'Appliquer'**
+  String get qrLimitApply;
+
+  /// No description provided for @qrLimitSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plafond QR enregistré sur le serveur.'**
+  String get qrLimitSaved;
+
+  /// No description provided for @qrLimitLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chargement du plafond depuis le serveur...'**
+  String get qrLimitLoading;
+
+  /// No description provided for @qrLimitUnavailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le plafond QR est indisponible depuis le serveur.'**
+  String get qrLimitUnavailable;
+
+  /// No description provided for @qrLimitCurrent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Limite actuelle : {amount} {currency}'**
+  String qrLimitCurrent(int amount, String currency);
+
+  /// No description provided for @qrLimitSet.
+  ///
+  /// In fr, this message translates to:
+  /// **'Définir le plafond'**
+  String get qrLimitSet;
+
+  /// No description provided for @qrLimitExceeded.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le montant maximal de ce QR est de {amount} {currency}.'**
+  String qrLimitExceeded(int amount, String currency);
+
+  /// No description provided for @qrLimitRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le plafond QR n’est pas encore disponible depuis le serveur.'**
+  String get qrLimitRequired;
+
+  /// No description provided for @qrMissingCarnetCode.
+  ///
+  /// In fr, this message translates to:
+  /// **'Code carnet indisponible'**
+  String get qrMissingCarnetCode;
+
+  /// No description provided for @qrGenerationNoLines.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune ligne à générer (stock ou sélection vide).'**
+  String get qrGenerationNoLines;
+
+  /// No description provided for @purchasePaymentTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paiement'**
+  String get purchasePaymentTitle;
+
+  /// No description provided for @purchaseNoPaymentMethods.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun moyen de paiement disponible.'**
+  String get purchaseNoPaymentMethods;
+
+  /// No description provided for @purchasePaymentMethodsConfigure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les moyens de paiement doivent être configurés et activés dans Odoo.'**
+  String get purchasePaymentMethodsConfigure;
+
+  /// No description provided for @purchaseTapToEdit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Appuyez pour modifier'**
+  String get purchaseTapToEdit;
+
+  /// No description provided for @commonCopy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copier'**
+  String get commonCopy;
+
+  /// No description provided for @stationDefaultName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Station LP Ksar'**
+  String get stationDefaultName;
+
+  /// No description provided for @stationCountryMauritania.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mauritanie'**
+  String get stationCountryMauritania;
+
+  /// No description provided for @purchaseMobileOnlyProof.
+  ///
+  /// In fr, this message translates to:
+  /// **'L’envoi d’une commande avec preuve de paiement nécessite l’application mobile.'**
+  String get purchaseMobileOnlyProof;
+
+  /// No description provided for @purchaseUnknownCarnetType.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type « {code} » : identifiant serveur inconnu. Actualisez la liste des offres.'**
+  String purchaseUnknownCarnetType(String code);
+
+  /// No description provided for @purchaseNoValidLines.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune ligne valide à envoyer.'**
+  String get purchaseNoValidLines;
 }
 
 class _AppLocalizationsDelegate

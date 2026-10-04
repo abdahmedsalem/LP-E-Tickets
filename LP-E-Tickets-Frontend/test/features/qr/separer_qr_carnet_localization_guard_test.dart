@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('QR separation cards use the localized backend carnet type name', () {
     final source = File(
-      'lib/features/qr/screens/separer_qr_screen.dart',
+      'lib/features/qr/separation/screens/separer_qr_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('line.carnetTypeName'));

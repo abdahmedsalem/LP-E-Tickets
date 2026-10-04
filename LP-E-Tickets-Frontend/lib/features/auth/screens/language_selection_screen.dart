@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../main.dart';
 import '../../../shared/widgets/fuel_mark.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
 
@@ -28,8 +27,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     });
     await AppPreferences.setLocaleCode(code);
     if (!mounted) return;
-    final app = context.findAncestorStateOfType<FuelTokenAppState>();
-    await app?.reloadPreferences();
     if (!mounted) return;
     setState(() => _applying = false);
   }

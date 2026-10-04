@@ -28,7 +28,7 @@ void main() {
     });
 
     test('router no longer exposes admin shell screens', () {
-      final router = _read('lib/core/router/app_router.dart');
+      final router = _read('lib/app/router/app_router.dart');
 
       expect(router, isNot(contains('AdminShellScaffold')));
       expect(router, isNot(contains('AdminHomeScreen')));

@@ -7,7 +7,7 @@ String _read(String path) => File(path).readAsStringSync();
 void main() {
   group('Patch2H splash entry guard', () {
     test('router starts on splash before deciding onboarding or login', () {
-      final router = _read('lib/core/router/app_router.dart');
+      final router = _read('lib/app/router/app_router.dart');
 
       expect(router, contains("initialLocation: '/splash'"));
       expect(router, isNot(contains("initialLocation: '/login'")));

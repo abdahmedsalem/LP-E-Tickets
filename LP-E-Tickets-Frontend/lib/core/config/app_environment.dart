@@ -4,8 +4,6 @@ import 'app_api_config.dart';
 import 'app_brand_config.dart';
 import 'odoo_api_config.dart';
 
-import '../../data/models/app_user.dart';
-
 /// Règles d’exécution : build release, démo locale, identifiants métier.
 class AppEnvironment {
   AppEnvironment._();
@@ -64,8 +62,8 @@ class AppEnvironment {
       !configuredApiUrlsAreSecure;
 
   /// `companyId` pour l’UI : profil utilisateur, sinon valeur par défaut compile-time.
-  static String companyIdForUser(AppUser? user) {
-    final id = user?.companyId?.trim();
+  static String companyIdForUser(String? companyId) {
+    final id = companyId?.trim();
     if (id != null && id.isNotEmpty) return id;
     return AppBrandConfig.effectiveDefaultCompanyId;
   }

@@ -24,7 +24,7 @@ void main() {
       'lib/shared/widgets/station_qr_success_dialog.dart',
     );
     final clientSuccess = _read(
-      'lib/shared/widgets/purchase_submit_success_dialog.dart',
+      'lib/shared/widgets/operation_success_scaffold.dart',
     );
     final summary = _read(
       'lib/shared/widgets/operation_success_summary_card.dart',
@@ -38,9 +38,9 @@ void main() {
   });
 
   test('station QR and language sheets use the branded visual tokens', () {
-    final scan = _read('lib/features/station/screens/scan_screen.dart');
+    final scan = _read('lib/features/station/scan/scan_screen.dart');
     final profile = _read(
-      'lib/features/station/screens/station_profile_screen.dart',
+      'lib/features/station/profile/station_profile_screen.dart',
     );
 
     expect(scan, contains('class _StationQrCheckSheet'));

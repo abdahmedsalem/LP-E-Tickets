@@ -4,10 +4,9 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/debug/acpec_rpc_debug.dart';
 import '../../../core/utils/error_presenter.dart';
-import '../../../data/models/app_user.dart';
-import '../../../data/models/user_role.dart';
-import '../../../data/repositories/auth_repository.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../domain/models/app_user.dart';
+import '../../../domain/models/user_role.dart';
+import '../../../domain/repositories/auth_repository.dart';
 
 // ─────────── Events
 abstract class AuthEvent extends Equatable {
@@ -209,13 +208,13 @@ class AuthState extends Equatable {
 
 // ─────────── Bloc
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final AuthRepository _repo;
+  final AuthRepositoryContract _repo;
 
   static const String _pinResetRequiredMessage =
       'PIN à réinitialiser. Utilisez PIN oublié pour sécuriser votre accès.';
 
-  AuthBloc({AuthRepository? repo})
-    : _repo = repo ?? AuthRepository.instance,
+  AuthBloc({required AuthRepositoryContract repo})
+    : _repo = repo,
       super(const AuthState(status: AuthStatus.unauthenticated)) {
     on<AuthHydrateRequested>(_onHydrate);
     on<AuthActivationRefreshRequested>(_onActivationRefresh);
@@ -338,13 +337,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
     }
     try {
-      final body = await _repo.requestLoginOtp(identifier: e.identifier);
-      final data = body['data'];
-      int? challengeId;
-      if (data is Map) {
-        final raw = data['challenge_id'] ?? data['otp_challenge_id'];
-        challengeId = int.tryParse(raw?.toString() ?? '');
-      }
+      final challenge = await _repo.requestLoginOtp(identifier: e.identifier);
+      final challengeId = challenge.challengeId;
       emit(
         state.copyWith(
           status: AuthStatus.unauthenticated,
@@ -527,15 +521,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   bool _serverPinRequiresLogin(Object err) {
-    if (err is OdooJsonRpcException) {
-      return err.requiresReLogin;
-    }
-    return false;
+    return ErrorPresenter.requiresReLogin(err);
   }
 
   String _serverPinErrorMessage(Object err) {
-    if (err is OdooJsonRpcException) {
-      switch (err.normalizedPublicCode) {
+    if (ErrorPresenter.isRpcError(err)) {
+      switch (ErrorPresenter.publicErrorCode(err)) {
         case 'INVALID_ACTION_CODE':
           return 'PIN incorrect.';
         case 'ACTION_CODE_LOCKED':

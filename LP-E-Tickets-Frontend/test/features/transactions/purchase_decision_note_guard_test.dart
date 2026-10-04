@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/models/business_transaction.dart';
+import 'package:fueltoken_app/domain/models/history/business_transaction.dart';
 
 void main() {
   BusinessTransaction transaction(TxType type, String? note) {

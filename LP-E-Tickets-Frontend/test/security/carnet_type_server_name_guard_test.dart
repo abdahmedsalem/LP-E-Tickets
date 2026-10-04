@@ -31,7 +31,7 @@ void main() {
 
   test('catalog mapper falls back to code instead of composing a name', () {
     final source = File(
-      'lib/data/services/acpec_carnet_types_mapper.dart',
+      'lib/data/services/purchase_services/acpec_carnet_types_mapper.dart',
     ).readAsStringSync();
 
     expect(source, contains('if (name.isEmpty) name = code;'));

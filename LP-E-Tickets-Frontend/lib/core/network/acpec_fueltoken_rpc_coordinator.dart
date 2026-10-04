@@ -118,4 +118,10 @@ class AcpecFueltokenRpcCoordinator {
       (key, _) => key == baseKey || key.startsWith('$baseKey|'),
     );
   }
+
+  /// Invalide toutes les variantes de paramètres mises en cache pour une route.
+  void invalidateRoute(String route) {
+    final prefix = '${route.trim()}|';
+    _cache.removeWhere((key, _) => key.startsWith(prefix));
+  }
 }

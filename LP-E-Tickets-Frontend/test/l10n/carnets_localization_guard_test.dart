@@ -21,7 +21,7 @@ void main() {
 
   test('carnet screen reads visible labels from AppLocalizations', () {
     final source = File(
-      'lib/features/home/screens/faces_detail_screen.dart',
+      'lib/features/portfolio/screens/faces_detail_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('AppLocalizations.of(context)'));

@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/models/purchase_lot.dart';
-import 'package:fueltoken_app/data/services/acpec_purchases_mapper.dart';
+import 'package:fueltoken_app/data/models/purchase_models/purchase_lot.dart';
+import 'package:fueltoken_app/data/services/purchase_services/acpec_purchases_mapper.dart';
 
 void main() {
   group('AcpecPurchasesMapper', () {

@@ -1,3 +1,4 @@
+import '../controllers/purchase_controller.dart';
 import 'dart:convert';
 import 'dart:io' show File;
 import 'dart:math' as math;
@@ -5,47 +6,68 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/config/app_environment.dart';
+import '../../../core/models/client_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/utils/client_history_refresh_bus.dart';
 import '../../../core/utils/purchases_refresh_bus.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/purchase_payment_proof_guard.dart';
-import '../../../data/models/carnet_type.dart';
-import '../../../data/models/payment_method_config.dart';
-import '../../../data/models/acpec_purchase_create_result.dart';
-import '../../../data/services/acpec_carnet_catalog_service.dart';
-import '../../../data/services/acpec_payment_methods_service.dart';
-import '../../../data/services/acpec_purchases_mapper.dart';
-import '../../../data/services/odoo_fueltoken_facade.dart';
+import '../../../domain/models/purchase/carnet_type.dart';
+import '../../../domain/models/purchase/payment_method.dart';
+import '../../../domain/models/purchase/purchase_receipt.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/amount_inline.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../shared/widgets/app_status_lottie.dart';
-import '../../../shared/widgets/purchase_submit_success_dialog.dart';
+import 'purchase_success_screen.dart';
 import '../../../shared/widgets/quantity_circle_badge.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
-import '../../auth/bloc/auth_bloc.dart';
 import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
 
 const int _kMaxTicketsPerPurchase = 500;
 const double _kPurchaseOfferCardHeight = 112;
 
+Color _paymentMethodColor(PaymentMethod method) {
+  final raw = method.colorHex?.trim();
+  if (raw == null || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(raw)) {
+    return const Color(0xFF43A047);
+  }
+  return Color(int.parse('FF${raw.substring(1)}', radix: 16));
+}
+
+Uint8List? _paymentMethodLogoBytes(PaymentMethod method) {
+  final raw = method.logoData?.trim();
+  if (raw == null || raw.isEmpty) return null;
+  final normalized = raw.contains(',') ? raw.split(',').last : raw;
+  try {
+    return base64Decode(normalized);
+  } catch (_) {
+    return null;
+  }
+}
+
 class SubmitPurchaseScreen extends StatefulWidget {
-  const SubmitPurchaseScreen({super.key});
+  const SubmitPurchaseScreen({
+    super.key,
+    required this.session,
+    required this.controller,
+  });
+
+  final ClientSession session;
+  final PurchaseController controller;
   @override
   State<SubmitPurchaseScreen> createState() => _SubmitPurchaseScreenState();
 }
 
 class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
+  PurchaseController get _controller => widget.controller;
   List<CarnetType> _offerTypes = [];
   final Map<String, int> _qty = {};
   final Set<String> _selectedTypeIds = {};
@@ -56,7 +78,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   bool _submitting = false;
   bool _loadingOffers = false;
   String? _offerLoadError;
-  List<PaymentMethodConfig> _paymentMethods = [];
+  List<PaymentMethod> _paymentMethods = [];
   String? _selectedPaymentMethodCode;
   bool _loadingPaymentMethods = true;
 
@@ -71,19 +93,19 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   @override
   void dispose() {
+    _controller.dispose();
     super.dispose();
   }
 
   Future<void> _reloadOffers() async {
     final l10n = AppLocalizations.of(context);
-    final user = context.read<AuthBloc>().state.user;
-    if (!mounted || user == null) return;
+    if (!mounted || widget.session.ownerId == null) return;
     setState(() {
       _loadingOffers = true;
       _offerLoadError = null;
     });
     try {
-      if (!AppEnvironment.useAcpecLiveData) {
+      if (!widget.session.isLiveDataEnabled) {
         if (!mounted) return;
         setState(() {
           _loadingOffers = false;
@@ -92,10 +114,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         });
         return;
       }
-      final offers = await AcpecCarnetCatalogService.instance
-          .listPurchaseOfferTypes(
-            companyId: AppEnvironment.companyIdForUser(user),
-          );
+      final offers = await _controller.listPurchaseOfferTypes(
+        companyId: widget.session.companyId,
+      );
       if (!mounted) return;
       setState(() {
         _loadingOffers = false;
@@ -145,7 +166,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
 
   bool get _hasSelection => _totalTickets() > 0;
 
-  PaymentMethodConfig? get _selectedPaymentMethodConfig {
+  PaymentMethod? get _selectedPaymentMethodConfig {
     for (final method in _paymentMethods) {
       if (method.code == _selectedPaymentMethodCode) return method;
     }
@@ -156,7 +177,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     if (mounted) {
       setState(() => _loadingPaymentMethods = true);
     }
-    final methods = await AcpecPaymentMethodsService.listActive();
+    final methods = await _controller.listPaymentMethods();
     if (!mounted) return;
     setState(() {
       _paymentMethods = methods;
@@ -297,9 +318,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     if (_submitting) return;
     setState(() => _submitting = true);
     try {
-      final user = context.read<AuthBloc>().state.user;
-      if (user == null) return;
-      if (!user.isDeviceTrusted) {
+      if (widget.session.ownerId == null) return;
+      if (!widget.session.isDeviceTrusted) {
         AppMessage.error(context, l10n.purchaseDeviceApprovalRequired);
         return;
       }
@@ -349,6 +369,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         );
         return;
       }
+      // Keep the same purchase identity when retrying this confirmation.
+      final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
+      final idem = const Uuid().v4();
       // Naviguer vers l'Ã©cran de confirmation
       final result = await Navigator.of(context, rootNavigator: true)
           .push<AcpecPurchaseCreateResult>(
@@ -360,15 +383,11 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   proofBytes: proofBytes,
                   onConfirm: (actionCode) async {
                     // Appel API rÃ©el: les erreurs remontent au confirmation screen
-                    if (!AppEnvironment.useAcpecLiveData) {
-                      throw Exception(
-                        'Connexion serveur ACPEC requise pour soumettre une commande de carnets.',
-                      );
+                    if (!widget.session.isLiveDataEnabled) {
+                      throw Exception(l10n.purchaseServerRequired);
                     }
                     if (kIsWeb) {
-                      throw Exception(
-                        "L'envoi de lot ACPEC avec preuve nÃ©cessite l'application mobile.",
-                      );
+                      throw Exception(l10n.purchaseMobileOnlyProof);
                     }
                     final rpcLines = <Map<String, dynamic>>[];
                     for (final line in confirmLines) {
@@ -377,10 +396,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       if (q <= 0) continue;
                       final idOdoo = int.tryParse(line.carnetType.id);
                       if (idOdoo == null) {
-                        throw Exception(
-                          'Type Â« ${t.code} Â» : identifiant serveur inconnu. '
-                          'RafraÃ®chissez la liste des offres.',
-                        );
+                        throw Exception(l10n.purchaseUnknownCarnetType(t.code));
                       }
                       final cq = line.qty;
                       if (cq <= 0) continue;
@@ -390,22 +406,19 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       });
                     }
                     if (rpcLines.isEmpty) {
-                      throw Exception('Aucune ligne valide Ã  envoyer.');
+                      throw Exception(l10n.purchaseNoValidLines);
                     }
                     final fileName = _proofFilename?.trim() ?? '';
                     if (fileName.isEmpty) {
                       throw Exception('La preuve de paiement est obligatoire.');
                     }
-                    final payRef =
-                        'MOBL-${DateTime.now().millisecondsSinceEpoch}';
-                    final idem = const Uuid().v4();
                     final paymentMethod = _selectedPaymentMethodConfig;
                     if (paymentMethod == null) {
                       throw Exception(
-                        'Aucun moyen de paiement actif n’est disponible.',
+                        AppLocalizations.of(context).purchaseNoPaymentMethods,
                       );
                     }
-                    final raw = await OdooFueltokenFacade().purchasesCreate({
+                    return _controller.purchasesCreate({
                       'lines': rpcLines,
                       'proof_filename': fileName,
                       'proof_data': base64Encode(proofBytes),
@@ -417,7 +430,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       'action_code': actionCode,
                       'idempotency_key': idem,
                     });
-                    return AcpecPurchasesMapper.parseCreateResult(raw);
                   },
                 ),
               ),
@@ -443,6 +455,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
           }
         });
         return;
+      }
+    } catch (error) {
+      if (mounted) {
+        AppMessage.error(
+          context,
+          ErrorPresenter.localizedMessage(context, error),
+        );
       }
     } finally {
       if (mounted) {
@@ -476,10 +495,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   child: Column(
                     children: [
                       ScreenHeader(
-                        title:
-                            Localizations.localeOf(context).languageCode == 'ar'
-                            ? 'Ø§Ù„Ø¯ÙØ¹'
-                            : 'Paiement',
+                        title: l10n.purchasePaymentTitle,
                         onBack: () => Navigator.of(routeContext).pop(),
                       ),
                       const SizedBox(height: 12),
@@ -610,16 +626,16 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Aucun moyen de paiement disponible.',
+                Text(
+                  AppLocalizations.of(context).purchaseNoPaymentMethods,
                   style: TextStyle(
                     color: Color(0xFF9A3412),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Les moyens de paiement doivent être configurés et activés dans Odoo.',
+                Text(
+                  AppLocalizations.of(context).purchasePaymentMethodsConfigure,
                   style: TextStyle(color: Color(0xFF9A3412), fontSize: 13),
                 ),
                 const SizedBox(height: 8),
@@ -629,7 +645,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                     modalSetState(() {});
                   },
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Réessayer'),
+                  label: Text(AppLocalizations.of(context).commonRetry),
                 ),
               ],
             ),
@@ -638,7 +654,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
       );
     }
     final selectedCode = selectedMethod.merchantCode;
-    final themeColor = selectedMethod.color;
+    final themeColor = _paymentMethodColor(selectedMethod);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,8 +675,8 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               runSpacing: 8,
               children: _paymentMethods.map((method) {
                 final isSelected = _selectedPaymentMethodCode == method.code;
-                final methodColor = method.color;
-                final logoBytes = method.logoBytes;
+                final methodColor = _paymentMethodColor(method);
+                final logoBytes = _paymentMethodLogoBytes(method);
 
                 return SizedBox(
                   width: itemWidth,
@@ -825,7 +841,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   );
                 },
                 icon: const Icon(Icons.copy, size: 16),
-                label: const Text('Copier'),
+                label: Text(AppLocalizations.of(context).commonCopy),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: themeColor,
                   foregroundColor: Colors.white,
@@ -980,8 +996,8 @@ class _PaymentMethodSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Text(
-      'MODE DE PAIEMENT',
+    return Text(
+      AppLocalizations.of(context).purchasePaymentTitle.toUpperCase(),
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w800,
@@ -1752,8 +1768,8 @@ class _ProofPicker extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Appuyez pour modifier',
+                            Text(
+                              l10n.purchaseTapToEdit,
                               style: TextStyle(
                                 color: Color(0xFF64748B),
                                 fontSize: 11,

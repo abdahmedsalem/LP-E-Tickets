@@ -7,7 +7,7 @@ String _read(String path) => File(path).readAsStringSync();
 void main() {
   group('Patch2R station scan doctrine guard', () {
     test('scanner reads QR codes only and ignores non QR detections', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(source, contains('DetectionSpeed.normal'));
       expect(source, contains('autoStart: false'));
@@ -26,7 +26,7 @@ void main() {
     });
 
     test('camera has explicit start stop restart and recovery overlay', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(source, contains('bool _startingScanner = false;'));
       expect(source, contains('Future<void> _startScanner()'));
@@ -39,7 +39,7 @@ void main() {
     test(
       'scan route restarts camera when visible again after shell navigation',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final source = _read('lib/features/station/scan/scan_screen.dart');
 
         expect(source, contains('void _scheduleScannerStartWhenVisible()'));
         expect(source, contains('GoRouterState.of(context).uri.path'));
@@ -52,7 +52,7 @@ void main() {
     test(
       'station home navigation uses explicit route and resets scan flags',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final source = _read('lib/features/station/scan/scan_screen.dart');
 
         expect(source, contains('void _goStationHome()'));
         expect(source, contains("context.go('/station/home');"));
@@ -64,7 +64,7 @@ void main() {
     );
 
     test('QR check sheet uses cancel and continue for consumable QR', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(source, contains('stationQrVerificationTitle'));
       expect(source, contains('l10n.commonCancel'));
@@ -74,7 +74,7 @@ void main() {
     });
 
     test('cancelled QR can be scanned again after loading closes', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(source, isNot(contains('_ignoredQrCodeAfterCancel')));
       expect(source, contains('_lastHandledCode = null;'));
@@ -90,17 +90,24 @@ void main() {
     test(
       'non consumable QR uses only blocking dialog and never check sheet',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final source = _read('lib/features/station/scan/scan_screen.dart');
 
         expect(source, contains('title: l10n.stationQrNotConsumable'));
         expect(source, contains('actionLabel: l10n.stationBackHome'));
         expect(source, contains('result.reason ??'));
         expect(source, contains('_goStationHome();'));
 
-        final resultIndex = source.indexOf(
-          'final result = StationQrCheckResult.fromRpc(raw);',
+        final resultIndex = source.indexOf('final result = raw;');
+        final repository = _read(
+          'lib/data/repositories/station_repository.dart',
         );
         expect(resultIndex, greaterThanOrEqualTo(0));
+        expect(
+          repository,
+          contains(
+            'StationQrCheckMapper.fromRpc(await _facade.stationQrCheck(params))',
+          ),
+        );
 
         final nonConsumableIndex = source.indexOf(
           'if (!result.canConsume)',
@@ -126,7 +133,7 @@ void main() {
     );
 
     test('scan QR check sheet is consumable only', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(source, contains('required this.onConfirmConsume'));
       expect(source, contains('state: QrState.active'));
@@ -136,7 +143,7 @@ void main() {
     });
 
     test('PIN cancellation returns to scanner without failure popup', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       final cancelIndex = source.indexOf(
         'if (actionCode == null || actionCode.isEmpty)',
@@ -154,7 +161,7 @@ void main() {
     });
 
     test('scan consume handles expired auth user through central host', () {
-      final scanSource = _read('lib/features/station/screens/scan_screen.dart');
+      final scanSource = _read('lib/features/station/scan/scan_screen.dart');
       final appSource = _read('lib/main.dart');
 
       expect(scanSource, isNot(contains('state.user!')));
@@ -168,7 +175,7 @@ void main() {
     });
 
     test('consumption failure is blocking dialog and returns to scan', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(source, contains('Future<void> _showFailureDialog'));
       expect(source, contains('l10n.stationConsumptionUnconfirmed'));
@@ -179,7 +186,7 @@ void main() {
     test(
       'successful consumption shows amount datetime transaction and returns home',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final source = _read('lib/features/station/scan/scan_screen.dart');
         final dialogSource = _read(
           'lib/shared/widgets/station_qr_success_dialog.dart',
         );
@@ -194,7 +201,10 @@ void main() {
         expect(dialogSource, contains('l10n.amount'));
         expect(dialogSource, contains('stationDateTime'));
         expect(dialogSource, contains('stationTransactionNumber'));
-        expect(source, contains('transaction_name'));
+        final repository = _read(
+          'lib/data/repositories/station_repository.dart',
+        );
+        expect(repository, contains('transaction_name'));
         expect(dialogSource, contains('stationFinish'));
 
         final successIndex = source.indexOf('await _showSuccess(');
@@ -205,7 +215,7 @@ void main() {
       },
     );
     test('scan camera header exposes back arrow to station home', () {
-      final source = _read('lib/features/station/screens/scan_screen.dart');
+      final source = _read('lib/features/station/scan/scan_screen.dart');
 
       expect(
         source,

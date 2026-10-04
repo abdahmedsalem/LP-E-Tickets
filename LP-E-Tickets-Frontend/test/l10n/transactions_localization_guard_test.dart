@@ -16,7 +16,7 @@ void main() {
 
   test('transaction screens use localized user-facing labels', () {
     final source = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync();
     final dateFilterSource = File(
       'lib/shared/widgets/date_range_filter_bar.dart',

@@ -5,16 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('transfer flow localization', () {
     final carnets = File(
-      'lib/features/qr/screens/transfer_carnets_screen.dart',
+      'lib/features/transfer/screens/transfer_carnets_screen.dart',
     ).readAsStringSync();
     final tickets = File(
-      'lib/features/qr/screens/transfer_tickets_screen.dart',
+      'lib/features/transfer/screens/transfer_tickets_screen.dart',
     ).readAsStringSync();
     final confirmation = File(
-      'lib/features/qr/screens/transfer_confirmation_screen.dart',
+      'lib/features/transfer/widgets/transfer_confirmation_content.dart',
     ).readAsStringSync();
     final success = File(
-      'lib/shared/widgets/purchase_submit_success_dialog.dart',
+      'lib/features/transfer/screens/transfer_tickets_success_screen.dart',
     ).readAsStringSync();
 
     test('selection screens use localized user-facing labels', () {
@@ -33,7 +33,11 @@ void main() {
       expect(confirmation, isNot(contains("'Bénéficiaire'")));
 
       expect(success, contains('l10n.transferSuccessTitle'));
-      expect(success, contains('showQuantity: showQuantity'));
+      expect(success, contains('showQuantity: true'));
+      final carnetsSuccess = File(
+        'lib/features/transfer/screens/transfer_carnets_success_screen.dart',
+      ).readAsStringSync();
+      expect(carnetsSuccess, contains('showQuantity: false'));
       expect(success, isNot(contains("title: 'Transfert confirmé'")));
     });
   });

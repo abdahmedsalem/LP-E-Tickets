@@ -10,20 +10,25 @@ void main() {
       'manual station QR use validates backend result before final success dialog',
       () {
         final source = _read(
-          'lib/features/station/screens/station_manual_qr_screen.dart',
+          'lib/features/station/scan/station_manual_qr_screen.dart',
         );
         final dialogSource = _read(
           'lib/shared/widgets/station_qr_success_dialog.dart',
         );
+        final controller = _read(
+          'lib/features/station/controllers/station_controller.dart',
+        );
+        final repository = _read(
+          'lib/data/repositories/station_repository.dart',
+        );
 
-        final useIndex = source.indexOf('OdooFueltokenFacade().stationQrUse(');
-        final guardIndex = source.indexOf(
-          'final guarded = acpecRpcMapOrThrow(',
-          useIndex,
+        final useIndex = source.indexOf('_stationController.consumeQr(');
+        final guardIndex = repository.indexOf(
+          'final result = acpecRpcMapOrThrow(',
         );
         final bumpIndex = source.indexOf(
           'ClientHistoryRefreshBus.instance.bump();',
-          guardIndex,
+          useIndex,
         );
         final successIndex = source.indexOf(
           'await _showManualSuccessDialog(',
@@ -35,22 +40,19 @@ void main() {
         );
 
         expect(useIndex, greaterThanOrEqualTo(0));
-        expect(guardIndex, greaterThan(useIndex));
-        expect(bumpIndex, greaterThan(guardIndex));
+        expect(guardIndex, greaterThanOrEqualTo(0));
+        expect(bumpIndex, greaterThan(useIndex));
         expect(successIndex, greaterThan(bumpIndex));
         expect(homeIndex, greaterThan(successIndex));
 
-        expect(
-          source,
-          contains("SensitiveActionIntent.create('station-qr-use')"),
-        );
-        expect(source, contains('intent.withAuthParams'));
+        expect(controller, contains('station-qr-use'));
+        expect(controller, contains('withAuthParams('));
         expect(source, isNot(contains("'idempotency_key': const Uuid().v4()")));
-        expect(source, contains('_invalidateStationConsumptionCaches('));
+        expect(repository, contains('_invalidateConsumptionCaches(routeCode)'));
 
-        expect(source, contains('fallbackMessage:'));
-        expect(source, contains('publicErrorMessage:'));
-        expect(source, contains('transaction_name'));
+        expect(repository, contains('fallbackMessage:'));
+        expect(repository, contains('publicErrorMessage:'));
+        expect(repository, contains('transaction_name'));
         expect(source, contains('StationQrSuccessDialog('));
         expect(dialogSource, contains('stationTransactionNumber'));
 

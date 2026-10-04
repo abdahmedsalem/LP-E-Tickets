@@ -173,6 +173,12 @@ class OdooFueltokenRpcConfig {
     defaultValue: '/api/acpec/fueltoken/v1/station/profile',
   );
 
+  /// Liste publique des stations proposées dans la carte mobile.
+  static const String stationList = String.fromEnvironment(
+    'ODOO_RPC_FUEL_STATION_LIST_PATH',
+    defaultValue: '/api/acpec/fueltoken/v1/mobile/stations/list',
+  );
+
   /// Vérification d’un QR avant consommation.
   static const String stationQrCheck = String.fromEnvironment(
     'ODOO_RPC_FUEL_STATION_QR_CHECK_PATH',

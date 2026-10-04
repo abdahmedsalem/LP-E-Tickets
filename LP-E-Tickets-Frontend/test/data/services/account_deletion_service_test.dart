@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fueltoken_app/data/api/acpec_fueltoken_jsonrpc_api.dart';
-import 'package:fueltoken_app/data/services/account_deletion_service.dart';
+import 'package:fueltoken_app/data/services/profile_services/account_deletion_service.dart';
 
 class FakeApi extends AcpecFueltokenJsonRpcApi {
   FakeApi(this.response);
@@ -27,7 +27,7 @@ void main() {
   test('request sends confirmation and PIN, never a target user', () async {
     final api = FakeApi({'ok': true, 'data': receipt});
     final result = await AccountDeletionService(api: api).submit('1234');
-    expect(api.route, '${AccountDeletionService.route}/request');
+    expect(api.route, '/api/acpec/mobile_auth/v1/account-deletion/request');
     expect(api.params, {'confirmed': true, 'action_code': '1234'});
     expect(result.reference, 'DEL-123');
     expect(result.state, 'pending');
@@ -64,16 +64,12 @@ void main() {
   test('status retrieves an existing request after a lost response', () async {
     final api = FakeApi({
       'ok': true,
-      'data': {'request': receipt},
+      'data': {'request': receipt, 'processing_days': 14},
     });
     final status = await AccountDeletionService(api: api).status();
-    expect(api.route, '${AccountDeletionService.route}/status');
-    expect(
-      AccountDeletionReceipt.fromJson(
-        Map<String, dynamic>.from(status['request'] as Map),
-      ).reference,
-      'DEL-123',
-    );
+    expect(api.route, '/api/acpec/mobile_auth/v1/account-deletion/status');
+    expect(status.existingRequest?.reference, 'DEL-123');
+    expect(status.processingDays, 14);
     expect(api.params, isNull);
   });
 }

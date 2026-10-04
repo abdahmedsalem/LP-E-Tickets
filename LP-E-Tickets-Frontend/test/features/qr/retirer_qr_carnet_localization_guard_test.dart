@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('QR withdrawal cards use the localized backend carnet type name', () {
     final source = File(
-      'lib/features/qr/screens/retirer_qr_screen.dart',
+      'lib/features/qr/retirer/screens/retirer_qr_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('line.carnetTypeName'));

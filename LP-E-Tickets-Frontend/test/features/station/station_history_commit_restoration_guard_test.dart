@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('station history restores the summary statistics above cards', () {
     final source = File(
-      'lib/features/station/screens/station_consumption_history_screen.dart',
+      'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('class _StationHistoryTotalsCard'));
@@ -13,7 +13,10 @@ void main() {
     expect(source, contains('l10n.stationHistorySummary'));
     expect(source, contains('l10n.stationConsumedQr'));
     expect(source, contains('l10n.stationTotal'));
-    expect(source, contains('qrCount: shown.length'));
+    expect(
+      source,
+      contains('_serverTotals?.qrCount ?? (_totalCount ?? shown.length)'),
+    );
     final tileStart = source.indexOf(
       'class _StationHistoryTotalTile extends StatelessWidget',
     );
@@ -28,7 +31,7 @@ void main() {
 
   test('station history cards preserve the bd3ac4f6 expandable layout', () {
     final source = File(
-      'lib/features/station/screens/station_consumption_history_screen.dart',
+      'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
     ).readAsStringSync();
 
     expect(source, contains('class _StationHistoryRow extends StatefulWidget'));

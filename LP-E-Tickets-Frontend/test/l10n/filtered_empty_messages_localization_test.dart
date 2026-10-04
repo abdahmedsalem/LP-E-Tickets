@@ -51,13 +51,13 @@ void main() {
 
   test('all four client lists use filter-aware empty messages', () {
     final carnets = File(
-      'lib/features/home/screens/faces_detail_screen.dart',
+      'lib/features/portfolio/screens/faces_detail_screen.dart',
     ).readAsStringSync();
     final qrs = File(
-      'lib/features/qr/screens/qr_list_screen.dart',
+      'lib/features/portfolio/screens/qr_list_screen.dart',
     ).readAsStringSync();
     final transactions = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync();
 
     expect(carnets, contains('l10n.carnetsFilteredEmptyMessage'));

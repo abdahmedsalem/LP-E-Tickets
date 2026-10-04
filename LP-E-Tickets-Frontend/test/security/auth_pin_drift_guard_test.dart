@@ -32,7 +32,9 @@ void main() {
     test('unlock uses backend confirm-pin, not local PIN comparison', () {
       final bloc = _read('lib/features/auth/bloc/auth_bloc.dart');
       final repo = _read('lib/data/repositories/auth_repository.dart');
-      final service = _read('lib/data/services/odoo_auth_service.dart');
+      final service = _read(
+        'lib/data/services/auth_services/odoo_auth_service.dart',
+      );
       final config = _read('lib/core/config/odoo_auth_rpc_config.dart');
 
       expect(bloc, contains('_repo.confirmOpenPin(e.pin)'));
@@ -116,7 +118,7 @@ void main() {
     });
 
     test('public confirm-pin codes are mapped locally', () {
-      final source = _read('lib/data/services/acpec_public_api_error.dart');
+      final source = _read('lib/core/errors/public_error_messages.dart');
 
       expect(source, contains('INVALID_ACTION_CODE'));
       expect(source, contains('ACTION_CODE_LOCKED'));
@@ -285,11 +287,15 @@ void main() {
     test(
       'QR manual code reveal is temporary and not hydrated into general model',
       () {
-        final detail = _read('lib/features/qr/screens/qr_detail_screen.dart');
-        final model = _read('lib/data/models/qr_token.dart');
-        final mapper = _read('lib/data/services/acpec_qr_mapper.dart');
+        final detail = _read(
+          'lib/features/qr/detail/screens/qr_detail_screen.dart',
+        );
+        final model = _read('lib/domain/models/qr/qr_token.dart');
+        final mapper = _read(
+          'lib/data/services/qr_services/acpec_qr_mapper.dart',
+        );
         final station = _read(
-          'lib/features/station/screens/station_manual_qr_screen.dart',
+          'lib/features/station/scan/station_manual_qr_screen.dart',
         );
 
         expect(detail, contains('Timer? _manualCodeClearTimer'));

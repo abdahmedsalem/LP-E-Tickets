@@ -104,9 +104,9 @@ void main() {
             'textAlign: TextAlign.end',
         'lib/features/purchases/screens/submit_purchase_screen.dart':
             'EdgeInsetsDirectional.only(end: 112)',
-        'lib/features/transactions/screens/transactions_screen.dart':
+        'lib/features/history/screens/transactions_screen.dart':
             'this.textAlign = TextAlign.start',
-        'lib/features/qr/screens/transfer_confirmation_screen.dart':
+        'lib/features/transfer/widgets/transfer_confirmation_content.dart':
             'this.textAlign = TextAlign.start',
         'lib/shared/widgets/fuel_brand_lottie.dart':
             'EdgeInsetsDirectional.fromSTEB(16, 12, 64, 12)',
@@ -116,9 +116,9 @@ void main() {
             'EdgeInsetsDirectional.fromSTEB(20, 14, 12, 8)',
         'lib/shared/widgets/loading_skeleton.dart':
             'EdgeInsetsDirectional.fromSTEB(10, 14, 4, 14)',
-        'lib/features/qr/screens/qr_list_screen.dart':
+        'lib/features/portfolio/screens/qr_list_screen.dart':
             'EdgeInsetsDirectional.fromSTEB(14, 14, 12, 14)',
-        'lib/features/station/screens/scan_screen.dart':
+        'lib/features/station/scan/scan_screen.dart':
             'EdgeInsetsDirectional.fromSTEB(14, 12, 26, 0)',
       };
 

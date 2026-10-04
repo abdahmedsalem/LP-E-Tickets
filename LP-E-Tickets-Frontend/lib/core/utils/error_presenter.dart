@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-import '../../data/services/acpec_public_api_error.dart';
-import '../../data/services/odoo_jsonrpc_client.dart';
+import '../errors/application_failure.dart';
+import '../errors/public_error_messages.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Traduit toute exception en message court et convivial pour l'utilisateur.
@@ -12,21 +12,21 @@ class ErrorPresenter {
   ErrorPresenter._();
 
   static String message(Object error) {
-    if (error is OdooJsonRpcException) {
+    if (error is ApplicationFailure) {
       if (error.requiresReLogin) {
         return 'Votre session a expiré. Veuillez vous reconnecter.';
       }
       if (isBackendUnavailable(error)) {
         return backendUnavailable();
       }
-      final publicCode = error.normalizedPublicCode;
+      final publicCode = error.publicCode?.trim().toUpperCase();
       if (publicCode != null) {
         if (publicCode == 'INVALID_ACTION_CODE' ||
             publicCode == 'SECRET_CODE_INVALID') {
-          return AcpecPublicApiError.publicMessageForCode(publicCode);
+          return PublicErrorMessages.forCode(publicCode);
         }
         return _withReference(
-          AcpecPublicApiError.publicMessageForCode(publicCode),
+          PublicErrorMessages.forCode(publicCode),
           error.reference,
         );
       }
@@ -51,14 +51,14 @@ class ErrorPresenter {
     if (Localizations.localeOf(context).languageCode != 'ar') {
       return message(error);
     }
-    if (error is OdooJsonRpcException && error.requiresReLogin) {
+    if (error is ApplicationFailure && error.requiresReLogin) {
       return l10n.sessionExpiredReconnect;
     }
     if (isBackendUnavailable(error)) {
       return l10n.commonServerUnavailable;
     }
-    if (error is OdooJsonRpcException) {
-      final code = error.normalizedPublicCode;
+    if (error is ApplicationFailure) {
+      final code = error.publicCode?.trim().toUpperCase();
       if (code == 'INVALID_ACTION_CODE' || code == 'SECRET_CODE_INVALID') {
         return l10n.commonPinIncorrect;
       }
@@ -83,7 +83,7 @@ class ErrorPresenter {
       'Votre session a expiré. Veuillez vous reconnecter.';
 
   static bool isBackendUnavailable(Object error) {
-    if (error is OdooJsonRpcException) {
+    if (error is ApplicationFailure) {
       if (error.requiresReLogin || error.requiresLogout) return false;
       final publicCode = error.publicCode?.trim().toUpperCase();
       if (publicCode == 'SERVER_ERROR') return true;
@@ -92,6 +92,30 @@ class ErrorPresenter {
     }
     return _looksLikeBackendUnavailable(error.toString());
   }
+
+  static bool isSessionExpired(Object error) {
+    if (error is ApplicationFailure) return error.isSessionExpired;
+    final message = error.toString().toLowerCase();
+    return message.contains('session expired') ||
+        message.contains('session expir') ||
+        message.contains('sessionexpired') ||
+        message.contains('session_expired');
+  }
+
+  static bool requiresReLogin(Object error) =>
+      error is ApplicationFailure && error.requiresReLogin;
+
+  static bool isRpcError(Object error) => error is ApplicationFailure;
+
+  static String? publicErrorCode(Object error, {bool normalized = true}) {
+    if (error is! ApplicationFailure) return null;
+    if (!normalized) return error.publicCode;
+    final code = error.publicCode?.trim().toUpperCase();
+    return code == null || code.isEmpty ? null : code;
+  }
+
+  static String? supportReference(Object error) =>
+      error is ApplicationFailure ? error.reference : null;
 
   static bool _looksLikeBackendUnavailable(String raw) {
     final lower = raw.toLowerCase();

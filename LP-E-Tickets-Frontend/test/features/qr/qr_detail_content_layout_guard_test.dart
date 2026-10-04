@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('QR detail content displays each title fully on one line', () {
     final source = File(
-      'lib/features/qr/screens/qr_detail_screen.dart',
+      'lib/features/qr/detail/screens/qr_detail_screen.dart',
     ).readAsStringSync();
     final rowStart = source.indexOf('class _CompositionLineRow');
     final rowSource = source.substring(rowStart);
@@ -28,7 +28,7 @@ void main() {
 
   test('QR detail content uses the localized carnet type name', () {
     final frontendSource = File(
-      'lib/features/qr/screens/qr_detail_screen.dart',
+      'lib/features/qr/detail/screens/qr_detail_screen.dart',
     ).readAsStringSync();
     final rowStart = frontendSource.indexOf('class _CompositionLineRow');
     final rowSource = frontendSource.substring(rowStart);

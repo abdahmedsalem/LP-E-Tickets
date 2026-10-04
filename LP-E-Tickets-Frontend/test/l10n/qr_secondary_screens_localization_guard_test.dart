@@ -17,10 +17,10 @@ void main() {
 
   test('QR detail, withdrawal and separation use localization resources', () {
     final paths = <String>[
-      'lib/features/qr/screens/qr_detail_screen.dart',
-      'lib/features/qr/screens/retirer_qr_screen.dart',
-      'lib/features/qr/screens/separer_qr_screen.dart',
-      'lib/features/qr/screens/qr_action_confirmation_screen.dart',
+      'lib/features/qr/detail/screens/qr_detail_screen.dart',
+      'lib/features/qr/retirer/screens/retirer_qr_screen.dart',
+      'lib/features/qr/separation/screens/separer_qr_screen.dart',
+      'lib/features/qr/shared/screens/qr_action_confirmation_screen.dart',
     ];
 
     for (final path in paths) {
@@ -40,12 +40,12 @@ void main() {
 
   test('localized screens use centralized localized error presentation', () {
     final paths = <String>[
-      'lib/features/home/screens/faces_detail_screen.dart',
-      'lib/features/qr/screens/qr_list_screen.dart',
-      'lib/features/transactions/screens/transactions_screen.dart',
-      'lib/features/qr/screens/qr_detail_screen.dart',
-      'lib/features/qr/screens/retirer_qr_screen.dart',
-      'lib/features/qr/screens/separer_qr_screen.dart',
+      'lib/features/portfolio/screens/faces_detail_screen.dart',
+      'lib/features/portfolio/screens/qr_list_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
+      'lib/features/qr/detail/screens/qr_detail_screen.dart',
+      'lib/features/qr/retirer/screens/retirer_qr_screen.dart',
+      'lib/features/qr/separation/screens/separer_qr_screen.dart',
     ];
 
     for (final path in paths) {

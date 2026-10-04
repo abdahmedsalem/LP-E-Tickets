@@ -1,22 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/models/face_line.dart';
-import 'package:fueltoken_app/features/qr/transfer_carnets_logic.dart';
+import 'package:fueltoken_app/domain/models/transfer_inventory.dart';
+import 'package:fueltoken_app/features/transfer/logic/transfer_carnets_logic.dart';
 
 void main() {
-  FaceLine buildFaceLine({
+  TransferInventoryItem buildFaceLine({
     required int initialQty,
     required int availableQty,
     required DateTime expirationDate,
   }) {
-    return FaceLine(
+    return TransferInventoryItem(
       id: 'fl-1',
-      lotId: 'lot-1',
-      lotInternalRef: 'ACH/2026/00001',
-      purchaseLineId: 'pl-1',
       carnetTypeId: 'ct-1',
       carnetTypeCode: 'C10-1000',
       carnetTypeName: 'Carnet 10 x 1000',
+      carnetNo: 'ACH/2026/00001',
+      carnetShortCode: '00001',
+      carnetFaceCount: 12,
       faceValue: 1000,
       initialQty: initialQty,
       availableQty: availableQty,
@@ -25,7 +25,6 @@ void main() {
       consumedQty: 0,
       expiredQty: 0,
       expirationDate: expirationDate,
-      ownerId: 'user-1',
     );
   }
 
@@ -80,14 +79,14 @@ void main() {
 
     expect(isTransferableCarnetLine(qrActive, 4), isTrue);
 
-    final qrActiveLine = FaceLine(
+    final qrActiveLine = TransferInventoryItem(
       id: qrActive.id,
-      lotId: qrActive.lotId,
-      lotInternalRef: qrActive.lotInternalRef,
-      purchaseLineId: qrActive.purchaseLineId,
       carnetTypeId: qrActive.carnetTypeId,
       carnetTypeCode: qrActive.carnetTypeCode,
       carnetTypeName: qrActive.carnetTypeName,
+      carnetNo: qrActive.carnetNo,
+      carnetShortCode: qrActive.carnetShortCode,
+      carnetFaceCount: qrActive.carnetFaceCount,
       faceValue: qrActive.faceValue,
       initialQty: qrActive.initialQty,
       availableQty: qrActive.availableQty,
@@ -96,16 +95,15 @@ void main() {
       consumedQty: 0,
       expiredQty: 0,
       expirationDate: qrActive.expirationDate,
-      ownerId: qrActive.ownerId,
     );
-    final qrBlockedLine = FaceLine(
+    final qrBlockedLine = TransferInventoryItem(
       id: qrBlocked.id,
-      lotId: qrBlocked.lotId,
-      lotInternalRef: qrBlocked.lotInternalRef,
-      purchaseLineId: qrBlocked.purchaseLineId,
       carnetTypeId: qrBlocked.carnetTypeId,
       carnetTypeCode: qrBlocked.carnetTypeCode,
       carnetTypeName: qrBlocked.carnetTypeName,
+      carnetNo: qrBlocked.carnetNo,
+      carnetShortCode: qrBlocked.carnetShortCode,
+      carnetFaceCount: qrBlocked.carnetFaceCount,
       faceValue: qrBlocked.faceValue,
       initialQty: qrBlocked.initialQty,
       availableQty: qrBlocked.availableQty,
@@ -114,16 +112,15 @@ void main() {
       consumedQty: 0,
       expiredQty: 0,
       expirationDate: qrBlocked.expirationDate,
-      ownerId: qrBlocked.ownerId,
     );
-    final consumedLine = FaceLine(
+    final consumedLine = TransferInventoryItem(
       id: consumed.id,
-      lotId: consumed.lotId,
-      lotInternalRef: consumed.lotInternalRef,
-      purchaseLineId: consumed.purchaseLineId,
       carnetTypeId: consumed.carnetTypeId,
       carnetTypeCode: consumed.carnetTypeCode,
       carnetTypeName: consumed.carnetTypeName,
+      carnetNo: consumed.carnetNo,
+      carnetShortCode: consumed.carnetShortCode,
+      carnetFaceCount: consumed.carnetFaceCount,
       faceValue: consumed.faceValue,
       initialQty: consumed.initialQty,
       availableQty: consumed.availableQty,
@@ -132,16 +129,15 @@ void main() {
       consumedQty: 1,
       expiredQty: 0,
       expirationDate: consumed.expirationDate,
-      ownerId: consumed.ownerId,
     );
-    final expiredQtyLine = FaceLine(
+    final expiredQtyLine = TransferInventoryItem(
       id: expiredQty.id,
-      lotId: expiredQty.lotId,
-      lotInternalRef: expiredQty.lotInternalRef,
-      purchaseLineId: expiredQty.purchaseLineId,
       carnetTypeId: expiredQty.carnetTypeId,
       carnetTypeCode: expiredQty.carnetTypeCode,
       carnetTypeName: expiredQty.carnetTypeName,
+      carnetNo: expiredQty.carnetNo,
+      carnetShortCode: expiredQty.carnetShortCode,
+      carnetFaceCount: expiredQty.carnetFaceCount,
       faceValue: expiredQty.faceValue,
       initialQty: expiredQty.initialQty,
       availableQty: expiredQty.availableQty,
@@ -150,7 +146,6 @@ void main() {
       consumedQty: 0,
       expiredQty: 1,
       expirationDate: expiredQty.expirationDate,
-      ownerId: expiredQty.ownerId,
     );
 
     expect(isTransferableCarnetLine(qrActiveLine, 4), isFalse);

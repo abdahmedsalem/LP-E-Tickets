@@ -15,7 +15,7 @@ void main() {
 
   test('transfer section label is inside the lines card', () {
     final source = File(
-      'lib/features/qr/screens/transfer_confirmation_screen.dart',
+      'lib/features/transfer/widgets/transfer_confirmation_content.dart',
     ).readAsStringSync();
     final cardStart = source.indexOf('class _TransferConfirmationLinesCard');
     final cardEnd = source.indexOf('class ', cardStart + 1);

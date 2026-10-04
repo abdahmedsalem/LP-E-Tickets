@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fueltoken_app/core/utils/error_presenter.dart';
-import 'package:fueltoken_app/data/services/odoo_jsonrpc_client.dart';
+import 'package:fueltoken_app/data/services/shared_services/odoo_jsonrpc_client.dart';
 import 'package:fueltoken_app/l10n/app_localizations.dart';
 
 void main() {

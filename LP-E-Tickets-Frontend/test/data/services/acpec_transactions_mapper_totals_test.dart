@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/services/acpec_transactions_mapper.dart';
+import 'package:fueltoken_app/data/services/history_services/acpec_transactions_mapper.dart';
 
 void main() {
   group('AcpecTransactionsMapper totals', () {

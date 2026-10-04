@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('generated QR success keeps carnet title and amount on one row', () {
     final source = File(
-      'lib/shared/widgets/purchase_submit_success_dialog.dart',
+      'lib/features/qr/generation/screens/qr_generation_success_screen.dart',
     ).readAsStringSync();
     final rowStart = source.indexOf('class _GeneratedQrLineRow');
-    final rowEnd = source.indexOf('class _PurchasedLineRow', rowStart);
+    final rowEnd = source.indexOf('\n  }\n}', rowStart);
     final rowSource = source.substring(rowStart, rowEnd);
 
     expect(rowSource, contains('QrGenerationCarnetLine('));

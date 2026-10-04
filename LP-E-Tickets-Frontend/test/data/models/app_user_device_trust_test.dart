@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fueltoken_app/data/models/app_user.dart';
-import 'package:fueltoken_app/data/models/user_role.dart';
+import 'package:fueltoken_app/domain/models/app_user.dart';
+import 'package:fueltoken_app/domain/models/user_role.dart';
 
 void main() {
   AppUser userWithTrust(String? state) {

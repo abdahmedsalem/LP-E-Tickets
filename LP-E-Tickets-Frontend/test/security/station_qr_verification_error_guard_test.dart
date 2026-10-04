@@ -9,7 +9,7 @@ void main() {
     test(
       'scan verification technical error does not become QR non consommable',
       () {
-        final source = _read('lib/features/station/screens/scan_screen.dart');
+        final source = _read('lib/features/station/scan/scan_screen.dart');
 
         expect(source, contains('ErrorPresenter.isBackendUnavailable(e)'));
         expect(source, contains('stationVerificationImpossible'));
@@ -21,7 +21,7 @@ void main() {
 
     test('manual verification technical error stays on manual entry', () {
       final source = _read(
-        'lib/features/station/screens/station_manual_qr_screen.dart',
+        'lib/features/station/scan/station_manual_qr_screen.dart',
       );
 
       expect(source, contains('ErrorPresenter.isBackendUnavailable(e)'));
@@ -34,9 +34,7 @@ void main() {
     test(
       'expired scan user uses central auth session host, not direct login',
       () {
-        final scanSource = _read(
-          'lib/features/station/screens/scan_screen.dart',
-        );
+        final scanSource = _read('lib/features/station/scan/scan_screen.dart');
         final appSource = _read('lib/main.dart');
 
         expect(

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('QR generation card titles stay complete on one line', () {
     final source = File(
-      'lib/features/qr/screens/emit_qr_screen.dart',
+      'lib/features/qr/generation/screens/emit_qr_screen.dart',
     ).readAsStringSync();
     final cardStart = source.indexOf('class _CompositionRowState');
     final cardEnd = source.indexOf('class ', cardStart + 1);
@@ -21,7 +21,7 @@ void main() {
 
   test('QR generation card expiration date is never truncated', () {
     final source = File(
-      'lib/features/qr/screens/emit_qr_screen.dart',
+      'lib/features/qr/generation/screens/emit_qr_screen.dart',
     ).readAsStringSync();
     final cardStart = source.indexOf('class _CompositionRowState');
     final cardEnd = source.indexOf('class ', cardStart + 1);
@@ -37,11 +37,10 @@ void main() {
 
   test('QR confirmation keeps line title and amount on one row', () {
     final source = File(
-      'lib/features/qr/screens/emit_qr_screen.dart',
+      'lib/features/qr/generation/screens/emit_qr_screen.dart',
     ).readAsStringSync();
     final rowStart = source.indexOf('class _EmitConfirmationLineRow');
-    final rowEnd = source.indexOf('class _AmountInline', rowStart);
-    final rowSource = source.substring(rowStart, rowEnd);
+    final rowSource = source.substring(rowStart);
 
     expect(rowSource, contains('QrGenerationCarnetLine('));
 
@@ -51,14 +50,19 @@ void main() {
     final sharedRowSource = File(
       'lib/shared/widgets/confirmation_line_main_row.dart',
     ).readAsStringSync();
+    final amountWidget = File(
+      'lib/features/qr/shared/widgets/qr_amount_inline.dart',
+    ).readAsStringSync();
     expect(lineSource, contains('ConfirmationLineMainRow('));
     expect(sharedRowSource, contains('SingleLineCardTitle('));
     expect(sharedRowSource, contains('static const double height = 20'));
+    expect(source, contains('QrAmountInline('));
+    expect(amountWidget, contains('maxLines: 1'));
   });
 
   test('QR confirmation displays Carnets utilisés inside the lines card', () {
     final source = File(
-      'lib/features/qr/screens/emit_qr_screen.dart',
+      'lib/features/qr/generation/screens/emit_qr_screen.dart',
     ).readAsStringSync();
     final sectionStart = source.indexOf('class _EmitConfirmationLinesSection');
     final sectionEnd = source.indexOf(

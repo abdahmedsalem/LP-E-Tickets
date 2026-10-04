@@ -49,9 +49,14 @@ const _allowedFlutterAcpecEndpoints = <String>{
   '/api/acpec/mobile_auth/v1/verify-otp',
   '/api/acpec/mobile_auth/v1/version-check',
   '/api/acpec/mobile_auth/v1/signup-companies',
+  // Authenticated account deletion status and explicitly confirmed request.
+  '/api/acpec/mobile_auth/v1/account-deletion/status',
+  '/api/acpec/mobile_auth/v1/account-deletion/request',
 
   // FuelToken client mobile.
   '/api/acpec/fueltoken/v1/mobile/wallet/current',
+  // Mobile wallet QR ceiling, implemented by update_wallet_qr_limit.
+  '/api/acpec/fueltoken/v1/mobile/wallet/qr-limit',
   '/api/acpec/fueltoken/v1/mobile/transactions',
   '/api/acpec/fueltoken/v1/mobile/transactions/detail',
   '/api/acpec/fueltoken/v1/mobile/purchases/create',
@@ -76,6 +81,7 @@ const _allowedFlutterAcpecEndpoints = <String>{
   '/api/acpec/fueltoken/v1/station/transactions',
   '/api/acpec/fueltoken/v1/station/profile',
   '/api/acpec/fueltoken/v1/station/qr/check',
+  '/api/acpec/fueltoken/v1/station/qr/cancel',
 
   // Manager mobile: read + positive validation only.
   '/api/acpec/fueltoken/v1/admin/purchases/pending',

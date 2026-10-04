@@ -8,7 +8,7 @@ void main() {
       'QR list uses public code for navigation and never secret/internal refs',
       () {
         final source = File(
-          'lib/features/qr/screens/qr_list_screen.dart',
+          'lib/features/portfolio/screens/qr_list_screen.dart',
         ).readAsStringSync();
 
         expect(source, isNot(contains('qr.qrNumericCode')));

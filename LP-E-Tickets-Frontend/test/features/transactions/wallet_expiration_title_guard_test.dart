@@ -9,7 +9,7 @@ void main() {
     final french = AppLocalizationsFr();
     final arabic = AppLocalizationsAr();
     final source = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync();
 
     expect(french.txQrExpiration, 'Expiration QR');

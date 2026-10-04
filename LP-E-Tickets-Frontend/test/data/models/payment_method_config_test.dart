@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/models/payment_method_config.dart';
+import 'package:fueltoken_app/domain/models/purchase/payment_method.dart';
 
-PaymentMethodConfig _method(String destination) =>
-    PaymentMethodConfig(code: 'test', name: 'Test', merchantCode: destination);
+PaymentMethod _method(String destination) =>
+    PaymentMethod(code: 'test', name: 'Test', merchantCode: destination);
 
 void main() {
   test('8 digits are displayed as a phone number', () {

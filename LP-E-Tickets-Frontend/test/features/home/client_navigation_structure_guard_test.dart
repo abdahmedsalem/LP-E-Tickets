@@ -29,9 +29,9 @@ void main() {
   });
 
   test('portfolio groups carnet and QR entry points in one shell branch', () {
-    final router = File('lib/core/router/app_router.dart').readAsStringSync();
+    final router = File('lib/app/router/app_router.dart').readAsStringSync();
     final portfolio = File(
-      'lib/features/home/screens/client_portfolio_screen.dart',
+      'lib/features/portfolio/screens/client_portfolio_screen.dart',
     ).readAsStringSync();
 
     final home = router.indexOf("path: '/home'");

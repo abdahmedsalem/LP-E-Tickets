@@ -9,7 +9,7 @@ void main() {
     test('splash requests language before first onboarding', () {
       final splash = _read('lib/features/auth/screens/splash_screen.dart');
       final prefs = _read('lib/core/settings/app_preferences.dart');
-      final router = _read('lib/core/router/app_router.dart');
+      final router = _read('lib/app/router/app_router.dart');
 
       expect(prefs, contains('_kHasSeenOnboarding'));
       expect(prefs, contains('_kHasSelectedLanguage'));
@@ -74,18 +74,24 @@ void main() {
         );
         expect(source, contains('_pinConfirm.text.trim() == pin'));
         expect(source, contains('hint: l10n.authConfirmPin'));
-        expect(source, contains('onPressed: canSubmit'));
+        expect(
+          source,
+          matches(
+            RegExp(
+              r'onPressed:\s*canSubmit\s*\?\s*_onCreateAccount\s*:\s*null',
+            ),
+          ),
+        );
         expect(source, contains('_onCreateAccount'));
         expect(source, contains('const _RegisterCompactHeader()'));
         expect(source, contains('l10n.authRegisterBrand'));
-        expect(
-          source,
-          contains('l10n.authRegisterInstruction'),
-        );
+        expect(source, contains('l10n.authRegisterInstruction'));
         expect(source, isNot(contains('const _RegisterWelcomeCopy(),')));
         expect(
           source,
-          contains('if (_sendingOtp || !_formLooksValid) return;'),
+          contains(
+            'final canSubmit = _formLooksValid && !loading && _activeStep == 5;',
+          ),
         );
       },
     );
@@ -93,13 +99,20 @@ void main() {
     test(
       'registration keeps backend OTP contract technical names unchanged',
       () {
-        final authService = _read('lib/data/services/odoo_auth_service.dart');
-        final register = _read('lib/features/auth/screens/register_screen.dart');
+        final authService = _read(
+          'lib/data/services/auth_services/odoo_auth_service.dart',
+        );
+        final register = _read(
+          'lib/features/auth/screens/register_screen.dart',
+        );
 
         expect(authService, contains("'purpose': 'register'"));
         expect(authService, contains('requestSignupOtp'));
         expect(register, contains('_challengeId'));
-        expect(register, contains("'/register/verify-otp'"));
+        expect(
+          _read('lib/app/router/app_router.dart'),
+          contains("path: '/register/verify-otp'"),
+        );
       },
     );
 

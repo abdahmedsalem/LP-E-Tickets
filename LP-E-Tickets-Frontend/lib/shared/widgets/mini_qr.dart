@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/models/qr_token.dart';
+import '../../domain/models/qr/qr_token.dart';
 
 /// Small QR thumbnail used in QR list cards. Color reflects the state.
 class MiniQR extends StatelessWidget {

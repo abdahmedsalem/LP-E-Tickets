@@ -17,20 +17,22 @@ import 'core/bootstrap/production_config_gate.dart'
     show ProductionConfigGateApp, ProductionConfigGateReason;
 import 'core/config/app_environment.dart';
 import 'core/debug/acpec_network_startup_log.dart';
-import 'core/router/app_router.dart';
+import 'app/router/app_router.dart';
 import 'core/settings/app_preferences.dart';
+import 'core/utils/formatters.dart';
 import 'l10n/app_localizations.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
-import 'core/notifications/purchase_validation_notification_service.dart';
 import 'core/utils/client_history_refresh_bus.dart';
 import 'core/utils/faces_refresh_bus.dart';
 import 'core/utils/purchases_refresh_bus.dart';
 import 'core/utils/qr_refresh_bus.dart';
 import 'core/utils/wallet_refresh_bus.dart';
-import 'data/models/user_role.dart';
+import 'domain/models/user_role.dart';
 import 'features/auth/bloc/auth_bloc.dart';
-import 'features/settings/data/notifications_store.dart';
+import 'data/repositories/auth_repository.dart';
+import 'features/auth/controllers/auth_flow_controller.dart';
+import 'data/repositories/notifications_repository.dart';
 
 Future<void> _clearPersistedAuthOnDesktopInterrupt() async {
   if (kIsWeb) return;
@@ -65,6 +67,7 @@ Future<void> _hideStatusBar() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AuthFlowController.configure(AuthRepository.instance);
   await _hideStatusBar();
 
   await _clearPersistedAuthOnDesktopInterrupt();
@@ -114,8 +117,8 @@ class FuelTokenAppState extends State<FuelTokenApp>
   static const Duration _purchaseNotificationPollDelay = Duration(seconds: 2);
 
   late final AuthBloc _authBloc;
+  late final NotificationsRepository _notificationsRepository;
   late final GoRouter _router;
-  String _localeCode = AppPreferences.defaultLocaleCode;
   ThemeMode _themeMode = ThemeMode.light;
   Timer? _idleLockTimer;
   Timer? _notificationPollTimer;
@@ -127,7 +130,8 @@ class FuelTokenAppState extends State<FuelTokenApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _authBloc = AuthBloc();
+    _notificationsRepository = NotificationsRepository();
+    _authBloc = AuthBloc(repo: AuthRepository.instance);
     AuthSessionHost.instance.attach(
       () => _authBloc.add(const AuthSessionExpiredRequested()),
     );
@@ -137,12 +141,8 @@ class FuelTokenAppState extends State<FuelTokenApp>
         _backgroundedAt = null;
         _scheduleIdleLock();
         // Charger le store pour CET utilisateur.
-        unawaited(NotificationsStore.instance.loadForUser(state.user!.id));
-        unawaited(
-          PurchaseValidationNotificationService.instance.syncForUser(
-            state.user!,
-          ),
-        );
+        unawaited(_notificationsRepository.loadForUser(state.user!.id));
+        unawaited(_notificationsRepository.syncForUser(state.user!));
         _scheduleNotificationPolling();
       } else if (state.status == AuthStatus.locked) {
         _backgroundedAt = null;
@@ -155,7 +155,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
         _cancelNotificationPolling();
         // Déconnexion : purger la mémoire pour ne pas exposer les données
         // de l'ancien utilisateur au prochain login
-        unawaited(NotificationsStore.instance.clearAndReset());
+        unawaited(_notificationsRepository.clearAndReset());
       }
     });
     _authBloc.add(const AuthHydrateRequested());
@@ -165,8 +165,8 @@ class FuelTokenAppState extends State<FuelTokenApp>
 
   Future<void> _bootstrap() async {
     await reloadPreferences();
-    await NotificationsStore.instance.load();
-    NotificationsStore.instance.initCounts();
+    await _notificationsRepository.load();
+    _notificationsRepository.initCounts();
   }
 
   void _scheduleIdleLock() {
@@ -196,9 +196,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
           currentUser.role != UserRole.user) {
         return;
       }
-      unawaited(
-        PurchaseValidationNotificationService.instance.syncForUser(currentUser),
-      );
+      unawaited(_notificationsRepository.syncForUser(currentUser));
     });
   }
 
@@ -243,9 +241,9 @@ class FuelTokenAppState extends State<FuelTokenApp>
   Future<void> reloadPreferences() async {
     final locale = await AppPreferences.localeCode();
     final dark = await AppPreferences.darkMode();
+    Formatters.setLocaleCode(locale);
     if (!mounted) return;
     setState(() {
-      _localeCode = locale;
       _themeMode = dark ? ThemeMode.dark : ThemeMode.light;
     });
     SystemChrome.setSystemUIOverlayStyle(
@@ -296,11 +294,7 @@ class FuelTokenAppState extends State<FuelTokenApp>
 
       final currentUser = _authBloc.state.user;
       if (currentUser != null && currentUser.role == UserRole.user) {
-        unawaited(
-          PurchaseValidationNotificationService.instance.syncForUser(
-            currentUser,
-          ),
-        );
+        unawaited(_notificationsRepository.syncForUser(currentUser));
       }
     }
   }
@@ -330,21 +324,28 @@ class FuelTokenAppState extends State<FuelTokenApp>
           onPointerSignal: (_) => _recordUserActivity(),
           onPointerUp: (_) => _recordUserActivity(),
           onPointerCancel: (_) => _recordUserActivity(),
-          child: MaterialApp.router(
-            onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
-            themeMode: _themeMode,
-            locale: AppPreferences.localeFromCode(_localeCode),
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            routerConfig: _router,
+          child: ValueListenableBuilder<String>(
+            valueListenable: AppPreferences.localeNotifier,
+            builder: (context, localeCode, _) {
+              Formatters.setLocaleCode(localeCode);
+              return MaterialApp.router(
+                onGenerateTitle: (context) =>
+                    AppLocalizations.of(context).appTitle,
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.light(),
+                darkTheme: AppTheme.dark(),
+                themeMode: _themeMode,
+                locale: AppPreferences.localeFromCode(localeCode),
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: const [
+                  AppLocalizations.delegate,
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                routerConfig: _router,
+              );
+            },
           ),
         ),
       ),

@@ -4,7 +4,7 @@ import '../../core/theme/app_colors.dart';
 
 import '../../core/utils/formatters.dart';
 
-import '../../data/models/wallet_breakdown_extras.dart';
+import '../../domain/models/portfolio/wallet_breakdown_extras.dart';
 import '../../l10n/app_localizations.dart';
 
 import 'empty_state.dart';

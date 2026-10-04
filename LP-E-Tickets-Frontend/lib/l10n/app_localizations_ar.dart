@@ -2006,6 +2006,9 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get stationHistoryLoadMore => 'تحميل المزيد';
+
+  @override
   String get stationHistoryEndTitle => 'نهاية السجل';
 
   @override
@@ -2134,4 +2137,135 @@ class AppLocalizationsAr extends AppLocalizations {
   String settingsDeletionCompleted(String reference) {
     return 'يشير فريق المعالجة إلى اكتمال الطلب $reference.';
   }
+
+  @override
+  String get commonCopyLink => 'نسخ الرابط';
+
+  @override
+  String get settingsPrivacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get settingsPrivacyPolicyText =>
+      'تلتزم ليدر بيتروليوم إي-تذاكر بحماية بياناتك الشخصية. يُستخدم الموقع الجغرافي والجهاز المحمول لأغراض الأمان والتحقق من عمليات الوقود فقط.';
+
+  @override
+  String get privacyLinkCopied => 'تم نسخ رابط سياسة الخصوصية.';
+
+  @override
+  String get settingsStationsMap => 'خريطة المحطات';
+
+  @override
+  String get stationSearchPlaceholder => 'ابحث عن محطة ليدر...';
+
+  @override
+  String get stationOpen247 => 'مفتوح على مدار الساعة';
+
+  @override
+  String get stationDirectionsGoogleMaps => 'الاتجاهات عبر خرائط Google';
+
+  @override
+  String stationListTitle(int count) {
+    return 'محطات ليدر بيتروليوم ($count)';
+  }
+
+  @override
+  String get stationBackToMap => 'العودة إلى الخريطة';
+
+  @override
+  String get stationViewOnMap => 'عرض على الخريطة';
+
+  @override
+  String get stationGps => 'نظام تحديد المواقع';
+
+  @override
+  String get stationCityNouakchott => 'نواكشوط';
+
+  @override
+  String get stationCityNouadhibou => 'نواذيبو';
+
+  @override
+  String get stationCityRosso => 'روصو';
+
+  @override
+  String get qrLimitTitle => 'الحد الأقصى لمبلغ رمز QR';
+
+  @override
+  String qrLimitAmountLabel(String currency) {
+    return 'المبلغ بـ $currency';
+  }
+
+  @override
+  String get qrLimitAmountHint => 'مثال: ٥٬٠٠٠';
+
+  @override
+  String get qrLimitInvalidAmount => 'أدخل مبلغًا صحيحًا أكبر من صفر.';
+
+  @override
+  String get qrLimitApply => 'تطبيق';
+
+  @override
+  String get qrLimitSaved => 'تم حفظ حد رمز QR على الخادم.';
+
+  @override
+  String get qrLimitLoading => 'جارٍ تحميل الحد من الخادم...';
+
+  @override
+  String get qrLimitUnavailable => 'حد رمز QR غير متاح من الخادم.';
+
+  @override
+  String qrLimitCurrent(int amount, String currency) {
+    return 'الحد الحالي: $amount $currency';
+  }
+
+  @override
+  String get qrLimitSet => 'تحديد الحد';
+
+  @override
+  String qrLimitExceeded(int amount, String currency) {
+    return 'الحد الأقصى لمبلغ رمز QR هو $amount $currency.';
+  }
+
+  @override
+  String get qrLimitRequired => 'حد رمز QR غير متاح بعد من الخادم.';
+
+  @override
+  String get qrMissingCarnetCode => 'رمز الدفتر غير متاح';
+
+  @override
+  String get qrGenerationNoLines =>
+      'لا توجد عناصر لإنشائها (المخزون أو الاختيار فارغ).';
+
+  @override
+  String get purchasePaymentTitle => 'الدفع';
+
+  @override
+  String get purchaseNoPaymentMethods => 'لا توجد وسائل دفع متاحة.';
+
+  @override
+  String get purchasePaymentMethodsConfigure =>
+      'يجب إعداد وسائل الدفع وتفعيلها في أودو.';
+
+  @override
+  String get purchaseTapToEdit => 'اضغط للتعديل';
+
+  @override
+  String get commonCopy => 'نسخ';
+
+  @override
+  String get stationDefaultName => 'محطة إل بي القصر';
+
+  @override
+  String get stationCountryMauritania => 'موريتانيا';
+
+  @override
+  String get purchaseMobileOnlyProof =>
+      'يتطلب إرسال طلب مع إثبات الدفع استخدام تطبيق الهاتف.';
+
+  @override
+  String purchaseUnknownCarnetType(String code) {
+    return 'نوع « $code »: معرّف الخادم غير معروف. حدّث قائمة العروض.';
+  }
+
+  @override
+  String get purchaseNoValidLines => 'لا توجد عناصر صالحة للإرسال.';
 }

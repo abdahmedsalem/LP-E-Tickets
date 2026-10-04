@@ -20,13 +20,13 @@ void main() {
 
   test('history, wallet and station reuse the same date filter', () {
     final transactions = File(
-      'lib/features/transactions/screens/transactions_screen.dart',
+      'lib/features/history/screens/transactions_screen.dart',
     ).readAsStringSync();
     final wallet = File(
-      'lib/features/transactions/screens/wallet_screen.dart',
+      'lib/features/operations/screens/operations_screen.dart',
     ).readAsStringSync();
     final station = File(
-      'lib/features/station/screens/station_consumption_history_screen.dart',
+      'lib/features/station/historique_consommation/station_consumption_history_screen.dart',
     ).readAsStringSync();
 
     expect(transactions, contains('DateRangeFilterBar('));

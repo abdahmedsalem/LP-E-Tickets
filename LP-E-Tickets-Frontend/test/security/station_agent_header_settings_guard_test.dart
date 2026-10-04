@@ -6,7 +6,7 @@ void main() {
   group('station agent header settings guard', () {
     test('station home exposes agent identity and profile shortcut', () {
       final source = File(
-        'lib/features/station/screens/station_home_screen.dart',
+        'lib/features/station/accueil/station_home_screen.dart',
       ).readAsStringSync();
 
       expect(source, contains('agentName'));

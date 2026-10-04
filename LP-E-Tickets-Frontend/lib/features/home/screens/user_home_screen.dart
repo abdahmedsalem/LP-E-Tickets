@@ -5,20 +5,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/models/client_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../data/services/acpec_carnet_catalog_service.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../shared/widgets/fuel_brand_lottie.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/single_line_card_title.dart';
 import '../../../core/utils/wallet_refresh_bus.dart';
-import '../../auth/bloc/auth_bloc.dart';
+import '../../portfolio/controllers/portfolio_controller.dart';
 import '../../wallet/bloc/wallet_cubit.dart';
+import '../../../domain/repositories/wallet_repository.dart';
 
 class UserHomeScreen extends StatefulWidget {
-  const UserHomeScreen({super.key});
+  const UserHomeScreen({
+    super.key,
+    required this.session,
+    required this.portfolioController,
+    required this.walletRepository,
+  });
+
+  final ClientSession session;
+  final PortfolioController portfolioController;
+  final WalletRepositoryContract walletRepository;
 
   @override
   State<UserHomeScreen> createState() => _UserHomeScreenState();
@@ -30,24 +39,28 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   String? _walletCompanyId;
 
   void _syncWalletCubit() {
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) {
+    final ownerId = widget.session.ownerId;
+    if (ownerId == null || ownerId.isEmpty) {
       _walletCubit?.close();
       _walletCubit = null;
       _walletOwnerId = null;
       _walletCompanyId = null;
       return;
     }
-    final companyId = AppEnvironment.companyIdForUser(user);
     if (_walletCubit != null &&
-        _walletOwnerId == user.id &&
-        _walletCompanyId == companyId) {
+        _walletOwnerId == ownerId &&
+        _walletCompanyId == widget.session.companyId) {
       return;
     }
     _walletCubit?.close();
-    _walletCubit = WalletCubit(ownerId: user.id, companyId: companyId);
-    _walletOwnerId = user.id;
-    _walletCompanyId = companyId;
+    _walletCubit = WalletCubit(
+      ownerId: ownerId,
+      companyId: widget.session.companyId,
+      isLiveDataEnabled: widget.session.isLiveDataEnabled,
+      repository: widget.walletRepository,
+    );
+    _walletOwnerId = ownerId;
+    _walletCompanyId = widget.session.companyId;
   }
 
   @override
@@ -64,42 +77,50 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) {
+    if (widget.session.ownerId == null || widget.session.ownerId!.isEmpty) {
       return const Scaffold(body: _HomeLoadingSkeleton());
     }
     _syncWalletCubit();
     return BlocProvider.value(
       value: _walletCubit!,
-      child: const _UserHomeBody(),
+      child: _UserHomeBody(
+        session: widget.session,
+        portfolioController: widget.portfolioController,
+      ),
     );
   }
 }
 
 class _UserHomeBody extends StatefulWidget {
-  const _UserHomeBody();
+  const _UserHomeBody({
+    required this.session,
+    required this.portfolioController,
+  });
+
+  final ClientSession session;
+  final PortfolioController portfolioController;
 
   @override
   State<_UserHomeBody> createState() => _UserHomeBodyState();
 }
 
 class _UserHomeBodyState extends State<_UserHomeBody> {
+  PortfolioController get _portfolioController => widget.portfolioController;
   Timer? _pollTimer;
   late final VoidCallback _walletBusListener;
   String _walletCurrency = Formatters.fallbackCurrency;
   String? _walletCurrencyCompanyId;
 
   Future<void> _loadWalletCurrency() async {
-    final user = context.read<AuthBloc>().state.user;
-    if (user == null) return;
-
-    final companyId = AppEnvironment.companyIdForUser(user);
+    final companyId = widget.session.companyId;
+    if (companyId.isEmpty) return;
     if (_walletCurrencyCompanyId == companyId) return;
     _walletCurrencyCompanyId = companyId;
 
     try {
-      final types = await AcpecCarnetCatalogService.instance
-          .listPurchaseOfferTypes(companyId: companyId);
+      final types = await _portfolioController.purchaseOfferTypes(
+        companyId: companyId,
+      );
       final currencies = types
           .map((type) => type.displayCurrency.trim())
           .where((currency) => currency.isNotEmpty)
@@ -139,268 +160,257 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
   void dispose() {
     WalletRefreshBus.instance.revision.removeListener(_walletBusListener);
     _pollTimer?.cancel();
+    _portfolioController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, authState) {
-        final user = authState.user;
-        if (user == null) {
-          return const Scaffold(body: _HomeLoadingSkeleton());
-        }
+    if (widget.session.ownerId == null || widget.session.ownerId!.isEmpty) {
+      return const Scaffold(body: _HomeLoadingSkeleton());
+    }
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: BlocBuilder<WalletCubit, WalletState>(
+          builder: (ctx, wallet) {
+            final viewportWidth = MediaQuery.sizeOf(ctx).width;
+            final horizontalPadding = viewportWidth < 340 ? 12.0 : 16.0;
+            final actionGap = viewportWidth < 340 ? 10.0 : 12.0;
+            final walletHeight = viewportWidth < 340 ? 112.0 : 106.0;
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          body: SafeArea(
-            bottom: false,
-            child: BlocBuilder<WalletCubit, WalletState>(
-              builder: (ctx, wallet) {
-                final viewportWidth = MediaQuery.sizeOf(ctx).width;
-                final horizontalPadding = viewportWidth < 340 ? 12.0 : 16.0;
-                final actionGap = viewportWidth < 340 ? 10.0 : 12.0;
-                final walletHeight = viewportWidth < 340 ? 112.0 : 106.0;
-
-                return RefreshIndicator(
-                  color: AppColors.leaderGreen,
-                  onRefresh: () async => ctx.read<WalletCubit>().refresh(),
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
+            return RefreshIndicator(
+              color: AppColors.leaderGreen,
+              onRefresh: () async => ctx.read<WalletCubit>().refresh(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
+                children: [
+                  Padding(
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      horizontalPadding,
+                      4,
+                      horizontalPadding,
+                      0,
                     ),
-                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
-                    children: [
-                      Padding(
-                        padding: EdgeInsetsDirectional.fromSTEB(
-                          horizontalPadding,
-                          4,
-                          horizontalPadding,
-                          0,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            InkWell(
-                              onTap: () => ctx.go('/settings'),
-                              customBorder: const CircleBorder(),
-                              child: Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      AppColors.leaderGreen.withValues(
-                                        alpha: 0.22,
-                                      ),
-                                      AppColors.accentTeal.withValues(
-                                        alpha: 0.18,
-                                      ),
-                                    ],
-                                  ),
-                                  border: Border.all(
-                                    color: AppColors.leaderGreen.withValues(
-                                      alpha: 0.25,
-                                    ),
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.person_rounded,
-                                  color: AppColors.leaderGreenDark,
-                                  size: 27,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        InkWell(
+                          onTap: () => ctx.go('/settings'),
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.leaderGreen.withValues(alpha: 0.22),
+                                  AppColors.accentTeal.withValues(alpha: 0.18),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: AppColors.leaderGreen.withValues(
+                                  alpha: 0.25,
                                 ),
                               ),
                             ),
-                            const Padding(
-                              padding: EdgeInsetsDirectional.only(start: 6),
-                              child: SizedBox(width: 6),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.leaderGreenDark,
+                              size: 27,
                             ),
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsetsDirectional.only(start: 6),
+                          child: SizedBox(width: 6),
+                        ),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.session.ownerName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.35,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
                                 children: [
-                                  Text(
-                                    user.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.35,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurface,
-                                    ),
+                                  Icon(
+                                    Icons.verified_rounded,
+                                    size: 15,
+                                    color: AppColors.leaderGreen,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.verified_rounded,
-                                        size: 15,
-                                        color: AppColors.leaderGreen,
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      l10n.homeVerifiedAccount,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
-                                      const SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          l10n.homeVerifiedAccount,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                        ),
-                        child: SizedBox(
-                          height: walletHeight,
-                          child: ClientHomeWalletCard(
-                            amount: wallet.amount,
-                            currency: _walletCurrency,
-                            loading: wallet.loading,
-                          ),
-                        ),
-                      ),
-                      if (wallet.loadError != null &&
-                          wallet.loadError!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
-                          ),
-                          child: _BackendUnavailableBanner(
-                            message:
-                                Localizations.localeOf(ctx).languageCode == 'ar'
-                                ? l10n.commonServerUnavailable
-                                : wallet.loadError!,
-                            onRetry: () => ctx.read<WalletCubit>().refresh(),
+                            ],
                           ),
                         ),
                       ],
-                      const SizedBox(height: 22),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                        ),
-                        child: Text(
-                          l10n.homeQuickActions,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
+                    child: SizedBox(
+                      height: walletHeight,
+                      child: ClientHomeWalletCard(
+                        amount: wallet.amount,
+                        currency: _walletCurrency,
+                        loading: wallet.loading,
                       ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                        ),
-                        child: Column(
+                    ),
+                  ),
+                  if (wallet.loadError != null &&
+                      wallet.loadError!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                      ),
+                      child: _BackendUnavailableBanner(
+                        message:
+                            Localizations.localeOf(ctx).languageCode == 'ar'
+                            ? l10n.commonServerUnavailable
+                            : wallet.loadError!,
+                        onRetry: () => ctx.read<WalletCubit>().refresh(),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
+                    child: Text(
+                      l10n.homeQuickActions,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AspectRatio(
-                                    aspectRatio: 1.18,
-                                    child: _QuickActionCard(
-                                      title: l10n.homeBuyCarnets,
-                                      icon: Icons.add_shopping_cart_outlined,
-                                      onTap: () =>
-                                          context.push('/purchases/new'),
-                                    ),
-                                  ),
+                            Expanded(
+                              child: AspectRatio(
+                                aspectRatio: 1.18,
+                                child: _QuickActionCard(
+                                  title: l10n.homeBuyCarnets,
+                                  icon: Icons.add_shopping_cart_outlined,
+                                  onTap: () => context.push('/purchases/new'),
                                 ),
-                                SizedBox(width: actionGap),
-                                Expanded(
-                                  child: AspectRatio(
-                                    aspectRatio: 1.18,
-                                    child: _QuickActionCard(
-                                      title: l10n.homeGenerateQr,
-                                      icon: Icons.qr_code_scanner_rounded,
-                                      onTap: () => context.push('/qr/emit'),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                            SizedBox(height: actionGap),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AspectRatio(
-                                    aspectRatio: 1.18,
-                                    child: _QuickActionCard(
-                                      title: l10n.homeTransferCarnets,
-                                      icon: Icons.account_tree_outlined,
-                                      onTap: () =>
-                                          context.push('/transfer-carnets'),
-                                    ),
-                                  ),
+                            SizedBox(width: actionGap),
+                            Expanded(
+                              child: AspectRatio(
+                                aspectRatio: 1.18,
+                                child: _QuickActionCard(
+                                  title: l10n.homeGenerateQr,
+                                  icon: Icons.qr_code_scanner_rounded,
+                                  onTap: () => context.push('/qr/emit'),
                                 ),
-                                SizedBox(width: actionGap),
-                                Expanded(
-                                  child: AspectRatio(
-                                    aspectRatio: 1.18,
-                                    child: _QuickActionCard(
-                                      title: l10n.homeTransferTickets,
-                                      icon: Icons.confirmation_number_outlined,
-                                      onTap: () =>
-                                          context.push('/transfer-tickets'),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: actionGap),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AspectRatio(
-                                    aspectRatio: 2.45,
-                                    child: _QuickActionCard(
-                                      title: 'Carte des stations',
-                                      icon: Icons.map_outlined,
-                                      onTap: () =>
-                                          context.push('/stations-map'),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        SizedBox(height: actionGap),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AspectRatio(
+                                aspectRatio: 1.18,
+                                child: _QuickActionCard(
+                                  title: l10n.homeTransferCarnets,
+                                  icon: Icons.account_tree_outlined,
+                                  onTap: () =>
+                                      context.push('/transfer-carnets'),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: actionGap),
+                            Expanded(
+                              child: AspectRatio(
+                                aspectRatio: 1.18,
+                                child: _QuickActionCard(
+                                  title: l10n.homeTransferTickets,
+                                  icon: Icons.confirmation_number_outlined,
+                                  onTap: () =>
+                                      context.push('/transfer-tickets'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: actionGap),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AspectRatio(
+                                aspectRatio: 2.45,
+                                child: _QuickActionCard(
+                                  title: l10n.settingsStationsMap,
+                                  icon: Icons.map_outlined,
+                                  onTap: () => context.push('/stations-map'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-        );
-      },
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

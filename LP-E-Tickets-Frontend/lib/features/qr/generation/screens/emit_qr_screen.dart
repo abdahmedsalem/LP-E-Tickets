@@ -1,0 +1,1257 @@
+import '../widgets/qr_limit_dialog.dart';
+import '../controllers/qr_generation_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/navigation/client_tab_navigation.dart';
+import '../../../../core/models/client_session.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/client_history_refresh_bus.dart';
+import '../../../../core/utils/faces_refresh_bus.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/error_presenter.dart';
+import '../../../../core/utils/qr_refresh_bus.dart';
+import '../../../../core/utils/wallet_refresh_bus.dart';
+import '../../../../domain/models/purchase/carnet_type.dart';
+import '../../../../domain/models/portfolio/face_line.dart';
+import '../../../../shared/widgets/api_required_view.dart';
+import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/empty_state.dart';
+import '../../../../core/models/sensitive_action_intent.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/screen_header.dart';
+import '../../../../shared/widgets/card_section_title.dart';
+import '../../../../shared/widgets/single_line_card_title.dart';
+import '../../../../shared/widgets/app_status_lottie.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
+import '../../../../shared/widgets/overview_info_card.dart';
+import 'qr_generation_success_screen.dart';
+import 'qr_generation_confirmation_screen.dart';
+import '../../../../shared/widgets/qr_generation_carnet_line.dart';
+import '../../shared/screens/qr_action_confirmation_screen.dart';
+import '../../shared/widgets/qr_amount_inline.dart';
+import '../../../../shared/widgets/app_message.dart';
+
+class EmitQrScreen extends StatefulWidget {
+  const EmitQrScreen({
+    super.key,
+    required this.session,
+    required this.controller,
+  });
+
+  final ClientSession session;
+  final QrGenerationController controller;
+  @override
+  State<EmitQrScreen> createState() => _EmitQrScreenState();
+}
+
+class _EmitQrScreenState extends State<EmitQrScreen> {
+  QrGenerationController get _controller => widget.controller;
+  final Map<String, int> _request = {};
+  int? _qrAmountLimit;
+  String? _qrCurrency;
+  bool _qrAmountLoading = true;
+  String? _qrAmountError;
+  bool _emitting = false;
+  bool _confirmingEmit = false;
+  bool _liveLoading = false;
+  String? _liveError;
+  List<CarnetType> _offerTypes = [];
+  List<FaceLine> _liveFaceLines = [];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.session.isLiveDataEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _loadLiveFaces();
+        await _loadQrAmountLimit();
+      });
+    }
+  }
+
+  Future<void> _loadLiveFaces() async {
+    final l10n = AppLocalizations.of(context);
+    final ownerId = widget.session.ownerId;
+    if (ownerId == null) return;
+    setState(() {
+      _liveLoading = true;
+      _liveError = null;
+    });
+    try {
+      final loaded = await _controller.loadFaces(
+        ownerId: ownerId,
+        companyId: widget.session.companyId,
+      );
+      final lines = loaded.faces;
+      final offerTypes = loaded.types;
+      if (!mounted) return;
+      setState(() {
+        _liveFaceLines = lines;
+        _offerTypes = offerTypes;
+        _liveLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _liveLoading = false;
+        _liveError = ErrorPresenter.isSessionExpired(e)
+            ? l10n.sessionExpiredReconnect
+            : ErrorPresenter.localizedMessage(context, e);
+      });
+    }
+  }
+
+  Future<void> _loadQrAmountLimit() async {
+    try {
+      final settings = await _controller.qrLimitSettings();
+      final saved = settings.maxAmount;
+      if (saved == null || saved <= 0) {
+        if (!mounted) return;
+        setState(() {
+          _qrAmountLoading = false;
+          _qrAmountError = AppLocalizations.of(context).qrLimitUnavailable;
+        });
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _qrAmountLimit = saved;
+        _qrCurrency = settings.currency;
+        _qrAmountLoading = false;
+        _qrAmountError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _qrAmountLoading = false;
+        _qrAmountError = ErrorPresenter.localizedMessage(context, error);
+      });
+    }
+  }
+
+  String _qrIssueErrorMessage(Object error) {
+    if (ErrorPresenter.isBackendUnavailable(error)) {
+      return AppLocalizations.of(context).qrUnconfirmed;
+    }
+
+    return ErrorPresenter.localizedMessage(context, error);
+  }
+
+  Future<void> _chooseQrAmountLimit() async {
+    var currentLimit = _qrAmountLimit;
+    if (currentLimit == null) {
+      if (_qrAmountLoading) {
+        AppMessage.warning(
+          context,
+          AppLocalizations.of(context).qrLimitLoading,
+        );
+        return;
+      }
+      await _loadQrAmountLimit();
+      currentLimit = _qrAmountLimit;
+      if (!mounted) return;
+      if (currentLimit == null) {
+        AppMessage.error(
+          context,
+          _qrAmountError ?? AppLocalizations.of(context).qrLimitUnavailable,
+        );
+        return;
+      }
+    }
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<int>(
+      context: context,
+      builder: (_) => QrLimitDialog(
+        currentAmount: currentLimit!,
+        currency: _qrCurrency ?? 'MRU',
+      ),
+    );
+    final selected = await navigator.push<int>(route);
+    await route.completed;
+    if (!mounted || selected == null) return;
+    try {
+      final confirmed = await _controller.walletQrLimit(selected);
+      if (!mounted) return;
+      setState(() {
+        _qrAmountLimit = confirmed;
+        if (_selectedAmount() > confirmed) _request.clear();
+      });
+      AppMessage.success(context, AppLocalizations.of(context).qrLimitSaved);
+    } catch (error) {
+      if (mounted) AppMessage.error(context, _qrIssueErrorMessage(error));
+    }
+  }
+
+  int _selectedAmount() {
+    return _liveFaceLines.fold<int>(0, (sum, line) {
+      return sum + line.faceValue * (_request[line.id] ?? 0);
+    });
+  }
+
+  int _lineCarnetSize(FaceLine line) {
+    if (line.carnetFaceCount > 0) return line.carnetFaceCount;
+    for (final type in _offerTypes) {
+      if (type.id == line.carnetTypeId && type.size > 0) return type.size;
+      if (type.code.isNotEmpty &&
+          type.code == line.carnetTypeCode &&
+          type.size > 0) {
+        return type.size;
+      }
+      if (type.faceValue == line.faceValue && type.size > 0) return type.size;
+    }
+    return 1;
+  }
+
+  String _lineCarnetLabel(FaceLine line) {
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    return label.isNotEmpty ? label : AppLocalizations.of(context).carnet;
+  }
+
+  String _lineReferenceCode(FaceLine line) {
+    final shortCode = line.carnetShortCode.trim();
+    if (shortCode.isNotEmpty) return shortCode;
+
+    final typeCode = line.carnetTypeCode.trim();
+    if (typeCode.isNotEmpty) return typeCode;
+
+    final carnetNo = line.carnetNo.trim();
+    if (carnetNo.isNotEmpty) return carnetNo;
+
+    return AppLocalizations.of(context).qrMissingCarnetCode;
+  }
+
+  List<FaceLine> _availableLinesFor(String ownerId) {
+    final lines =
+        _liveFaceLines
+            .where(
+              (f) => f.ownerId == ownerId && !f.isExpired && f.availableQty > 0,
+            )
+            .toList()
+          ..sort((a, b) {
+            if (a.faceValue != b.faceValue) {
+              return a.faceValue.compareTo(b.faceValue);
+            }
+            final sizeCmp = _lineCarnetSize(a).compareTo(_lineCarnetSize(b));
+            if (sizeCmp != 0) return sizeCmp;
+            return a.expirationDate.compareTo(b.expirationDate);
+          });
+    return lines;
+  }
+
+  /// Corps de requête d'émission : sélection explicite par carnet.
+  List<Map<String, dynamic>> _acpecIssueLinePayload(String ownerId) {
+    final out = <Map<String, dynamic>>[];
+
+    for (final line in _availableLinesFor(ownerId)) {
+      final qty = _request[line.id] ?? 0;
+      if (qty <= 0) continue;
+      final take = qty < line.availableQty ? qty : line.availableQty;
+      if (take <= 0) continue;
+
+      final faceLineId = int.tryParse(line.id.trim());
+      if (faceLineId == null || faceLineId <= 0) {
+        continue;
+      }
+
+      out.add({'face_line_id': faceLineId, 'qty': take});
+    }
+
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final ownerId = widget.session.ownerId;
+    if (ownerId == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(
+                title: l10n.qrGenerationTitle,
+                onBack: () => popOrGo(context, '/qr'),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: ListView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(16, 20, 16, 120),
+                  children: [
+                    AppLoadingSkeleton(
+                      style: AppLoadingSkeletonStyle.qrGeneration,
+                      itemCount: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (!widget.session.isLiveDataEnabled) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(
+                title: l10n.qrGenerationTitle,
+                onBack: () => popOrGo(context, '/qr'),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+                  children: const [ApiRequiredView()],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_liveLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(
+                title: l10n.qrGenerationTitle,
+                onBack: () => popOrGo(context, '/qr'),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+                  children: [
+                    AppLoadingSkeleton(
+                      style: AppLoadingSkeletonStyle.qrGeneration,
+                      itemCount: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (widget.session.isLiveDataEnabled && _liveError != null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(
+                title: l10n.qrGenerationTitle,
+                onBack: () => popOrGo(context, '/qr'),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _liveError!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.body),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _loadLiveFaces,
+                          child: Text(l10n.commonRetry),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final availableLines = _availableLinesFor(ownerId);
+    final hasEntries = availableLines.isNotEmpty;
+    final totalQty = _request.values.fold(0, (s, v) => s + v);
+    final totalAmount = availableLines.fold<int>(0, (sum, line) {
+      final qty = _request[line.id] ?? 0;
+      return sum + (line.faceValue * qty);
+    });
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      bottomNavigationBar: hasEntries
+          ? SafeArea(
+              child: _BottomBar(
+                totalAmount: totalAmount,
+                emitting: _emitting,
+                onEmit:
+                    totalQty == 0 ||
+                        totalAmount > (_qrAmountLimit ?? 0) ||
+                        _qrAmountLoading ||
+                        _qrAmountLimit == null ||
+                        _emitting
+                    ? null
+                    : () => _confirmEmit(context),
+              ),
+            )
+          : null,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ScreenHeader(
+              title: l10n.qrGenerationTitle,
+              onBack: () => popOrGo(context, '/qr'),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: hasEntries
+                  ? ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 130),
+                      children: [
+                        Text(
+                          l10n.qrGenerationChooseInstruction,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.muted,
+                            height: 1.35,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.qrLimitCurrent(
+                                  _qrAmountLimit ?? 0,
+                                  _qrCurrency ?? 'MRU',
+                                ),
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _chooseQrAmountLimit,
+                              icon: const Icon(Icons.tune_rounded, size: 18),
+                              label: Text(l10n.qrLimitSet),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (_qrAmountError != null)
+                          Text(
+                            _qrAmountError!,
+                            style: const TextStyle(color: AppColors.danger),
+                          ),
+                        ...availableLines.map((line) {
+                          final selected = _request[line.id] ?? 0;
+                          return _CompositionRow(
+                            title: _lineCarnetLabel(line),
+                            referenceCode: _lineReferenceCode(line),
+                            faceValue: line.faceValue,
+                            available: line.availableQty,
+                            initialQty: line.initialQty,
+                            carnetFaceCount: line.carnetFaceCount,
+                            expirationDate: line.expirationDate,
+                            qrActiveQty: line.qrActiveQty,
+                            consumedQty: line.consumedQty,
+                            selected: selected,
+                            onChange: (n) {
+                              final nextAmount =
+                                  totalAmount -
+                                  (line.faceValue * selected) +
+                                  (line.faceValue * n);
+                              if (_qrAmountLimit != null &&
+                                  nextAmount > _qrAmountLimit!) {
+                                AppMessage.warning(
+                                  context,
+                                  l10n.qrLimitExceeded(
+                                    _qrAmountLimit!,
+                                    _qrCurrency ?? 'MRU',
+                                  ),
+                                );
+                                return;
+                              }
+                              setState(() {
+                                if (n <= 0) {
+                                  _request.remove(line.id);
+                                } else {
+                                  _request[line.id] = n;
+                                }
+                              });
+                            },
+                          );
+                        }),
+                        const SizedBox(height: 8),
+                      ],
+                    )
+                  : EmptyState(
+                      icon: Icons.layers_clear_outlined,
+                      title: l10n.qrGenerationEmptyTitle,
+                      message: l10n.qrGenerationEmptyMessage,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmEmit(BuildContext context) async {
+    if (_confirmingEmit || _emitting) return;
+    _confirmingEmit = true;
+    try {
+      await _openEmitConfirmation(context);
+    } finally {
+      _confirmingEmit = false;
+    }
+  }
+
+  Future<void> _openEmitConfirmation(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final ownerId = widget.session.ownerId;
+    if (ownerId == null) return;
+
+    final availableLines = _availableLinesFor(ownerId);
+    final selectedLines = availableLines
+        .where((line) => (_request[line.id] ?? 0) > 0)
+        .toList();
+    if (selectedLines.isEmpty) {
+      AppMessage.warning(context, l10n.qrGenerationSelectAtLeastOne);
+      return;
+    }
+
+    final totalQty = selectedLines.fold<int>(0, (sum, line) {
+      return sum + (_request[line.id] ?? 0);
+    });
+    final totalAmount = selectedLines.fold<int>(0, (sum, line) {
+      return sum + (line.faceValue * (_request[line.id] ?? 0));
+    });
+    final successLines = selectedLines
+        .map(
+          (line) => QrGenerationSuccessLine(
+            label: _lineCarnetLabel(line),
+            qty: _request[line.id] ?? 0,
+            faceValue: line.faceValue,
+            expirationDate: line.expirationDate,
+          ),
+        )
+        .toList(growable: false);
+
+    final actionCode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => QrGenerationConfirmationScreen(
+          args: QrActionConfirmationArgs(
+            title: l10n.qrGenerationConfirmTitle,
+            confirmLabel: l10n.qrGenerateButton,
+            showHero: false,
+            hero: _EmitConfirmationHero(
+              totalQty: totalQty,
+              totalAmount: totalAmount,
+            ),
+            details: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _EmitConfirmationLinesSection(
+                  lines: selectedLines,
+                  request: _request,
+                ),
+              ],
+            ),
+            summaryRows: const [],
+            disclaimer: l10n.qrGenerationDisclaimer,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    if (actionCode != null && actionCode.isNotEmpty) {
+      final intent = SensitiveActionIntent.create('qr-issue');
+      await _performEmit(
+        actionCode: actionCode,
+        intent: intent,
+        totalQty: totalQty,
+        totalAmount: totalAmount,
+        successLines: successLines,
+      );
+    }
+  }
+
+  void _refreshClientReadModelsAfterQrIssue() {
+    QrRefreshBus.instance.bump();
+    FacesRefreshBus.instance.bump();
+    WalletRefreshBus.instance.bump();
+    ClientHistoryRefreshBus.instance.bump();
+  }
+
+  Future<void> _performEmit({
+    required String actionCode,
+    required SensitiveActionIntent intent,
+    required int totalQty,
+    required int totalAmount,
+    required List<QrGenerationSuccessLine> successLines,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final ownerId = widget.session.ownerId;
+    if (ownerId == null) return;
+    final qrAmountLimit = _qrAmountLimit;
+    if (qrAmountLimit == null || qrAmountLimit <= 0) {
+      if (mounted) {
+        AppMessage.error(context, l10n.qrLimitRequired);
+      }
+      return;
+    }
+    setState(() => _emitting = true);
+    try {
+      if (widget.session.isLiveDataEnabled) {
+        final linesPayload = _acpecIssueLinePayload(ownerId);
+        if (linesPayload.isEmpty) {
+          throw Exception(l10n.qrGenerationNoLines);
+        }
+        final receipt = await _controller.qrIssue(
+          intent.withAuthParams({
+            'lines': linesPayload,
+            'max_amount': _qrAmountLimit!,
+          }, actionCode: actionCode),
+          ownerId: ownerId,
+          ownerName: widget.session.ownerName,
+          companyId: widget.session.companyId,
+          publicErrorMessage: l10n.qrGenerationFailed,
+        );
+        final transactionReference = receipt.transactionReference;
+        if (!mounted) return;
+        _refreshClientReadModelsAfterQrIssue();
+        setState(() {
+          _request.clear();
+          _emitting = false;
+        });
+        if (!mounted) return;
+        await showQrGenerationSuccessDialog(
+          context,
+          totalAmount: totalAmount,
+          confirmedAt: DateTime.now(),
+          transactionReference: transactionReference,
+          lines: successLines,
+        );
+        if (!mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.go('/home');
+          }
+        });
+        return;
+      } else {
+        throw Exception('Connexion serveur ACPEC requise pour générer un QR.');
+      }
+    } catch (err) {
+      if (mounted) {
+        AppMessage.error(context, _qrIssueErrorMessage(err));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _emitting = false);
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// Bottom bar: white summary card + green action button
+// --------------------------------------------------------------------------
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({
+    required this.totalAmount,
+    required this.emitting,
+    required this.onEmit,
+  });
+
+  final int totalAmount;
+  final bool emitting;
+  final VoidCallback? onEmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final disabled = onEmit == null;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line.withValues(alpha: 0.75)),
+        boxShadow: AppColors.softShadow,
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.qrGenerationTotal.toUpperCase(),
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: QrAmountInline(
+                    amount: totalAmount,
+                    valueStyle: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF2E7D32),
+                    ),
+                    unitStyle: const TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 112, maxWidth: 154),
+            child: SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: disabled ? null : onEmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF43A047),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(
+                    0xFF43A047,
+                  ).withValues(alpha: 0.35),
+                  disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  elevation: 0,
+                ),
+                child: emitting
+                    ? const AppInlineLoading(size: 20)
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          l10n.qrGenerate,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --------------------------------------------------------------------------
+// Composition row & stepper
+// --------------------------------------------------------------------------
+
+class _CompositionRow extends StatefulWidget {
+  final String title;
+  final String referenceCode;
+  final int faceValue;
+  final int available;
+  final int initialQty;
+  final int carnetFaceCount;
+  final DateTime? expirationDate;
+  final int qrActiveQty;
+  final int consumedQty;
+  final int selected;
+  final ValueChanged<int> onChange;
+
+  const _CompositionRow({
+    required this.title,
+    required this.referenceCode,
+    required this.faceValue,
+    required this.available,
+    required this.initialQty,
+    required this.carnetFaceCount,
+    required this.expirationDate,
+    required this.qrActiveQty,
+    required this.consumedQty,
+    required this.selected,
+    required this.onChange,
+  });
+
+  @override
+  State<_CompositionRow> createState() => _CompositionRowState();
+}
+
+class _CompositionRowState extends State<_CompositionRow> {
+  bool _expanded = false;
+
+  String _availabilityLabel() {
+    final denominator = widget.initialQty > 0
+        ? widget.initialQty
+        : (widget.carnetFaceCount > 0 ? widget.carnetFaceCount : 0);
+
+    if (denominator > 0 && denominator >= widget.available) {
+      return '${Formatters.numberFr(widget.available)}/${Formatters.numberFr(denominator)}';
+    }
+
+    return Formatters.numberFr(widget.available);
+  }
+
+  String _referenceCode(AppLocalizations l10n) {
+    final code = widget.referenceCode.trim();
+    return code.isNotEmpty ? code : l10n.carnetCodeUnavailable;
+  }
+
+  String _expirationLabel(AppLocalizations l10n) {
+    final expirationDate = widget.expirationDate;
+    if (expirationDate == null) return l10n.notAvailable;
+    return l10n.expiresOn(Formatters.dateTimeDash(expirationDate));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isSelected = widget.selected > 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 110),
+        child: AppCard(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          borderColor: isSelected ? AppColors.leaderGreen : AppColors.line,
+          borderWidth: isSelected ? 1.5 : 1,
+          shadow: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 112),
+                    child: SingleLineCardTitle(
+                      text: widget.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: Text(
+                      _availabilityLabel(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryDeep,
+                        height: 1,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _expirationLabel(l10n),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF667085),
+                  height: 1.08,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Container(height: 1, color: const Color(0xFFEAECEF)),
+              const SizedBox(height: 1),
+              Row(
+                children: [
+                  Text(
+                    l10n.purchaseQuantity,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const Spacer(),
+                  _Stepper(
+                    value: widget.selected,
+                    max: widget.available,
+                    onChange: widget.onChange,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    size: 22,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: _expanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: OverviewInfoCard(
+                          items: [
+                            OverviewInfoItem(
+                              label: l10n.referenceCode,
+                              value: _referenceCode(l10n),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Stepper extends StatelessWidget {
+  final int value;
+  final int max;
+  final ValueChanged<int> onChange;
+  const _Stepper({
+    required this.value,
+    required this.max,
+    required this.onChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _StepBtn(
+          icon: Icons.remove,
+          enabled: value > 0,
+          onTap: () => onChange(value - 1),
+          primary: false,
+        ),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 30,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+              height: 1,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        _StepBtn(
+          icon: Icons.add,
+          enabled: value < max,
+          onTap: () => onChange(value + 1),
+          primary: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _StepBtn extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  final bool primary;
+  const _StepBtn({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+    required this.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      onPressed: enabled ? onTap : null,
+      icon: Icon(icon, size: 18),
+      style: IconButton.styleFrom(
+        backgroundColor: enabled
+            ? (primary ? const Color(0xFF43A047) : const Color(0xFFF2F4F7))
+            : const Color(0xFFF3F4F6),
+        foregroundColor: enabled
+            ? (primary ? Colors.white : const Color(0xFF344054))
+            : const Color(0xFFB8BEC7),
+        disabledBackgroundColor: const Color(0xFFF3F4F6),
+        disabledForegroundColor: const Color(0xFFB8BEC7),
+      ),
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+class _EmitConfirmationHero extends StatelessWidget {
+  const _EmitConfirmationHero({
+    required this.totalQty,
+    required this.totalAmount,
+  });
+
+  final int totalQty;
+  final int totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFF43A047).withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.qr_code_rounded,
+            color: Color(0xFF2E7D32),
+            size: 26,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.qrGenerationTotal,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              QrAmountInline(
+                amount: totalAmount,
+                valueStyle: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2E7D32),
+                ),
+                unitStyle: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2E7D32),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                l10n.ticketCount(totalQty),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.body,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmitConfirmationLinesSection extends StatelessWidget {
+  const _EmitConfirmationLinesSection({
+    required this.lines,
+    required this.request,
+  });
+
+  final List<FaceLine> lines;
+  final Map<String, int> request;
+
+  String _labelFor(FaceLine line, AppLocalizations l10n) {
+    final label = Formatters.carnetTypeLabelFromServer(
+      line.carnetTypeName,
+      fallbackCode: line.carnetTypeCode,
+    );
+    return label.isNotEmpty ? label : l10n.carnet;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final totalAmount = lines.fold<int>(
+      0,
+      (sum, line) => sum + (line.faceValue * (request[line.id] ?? 0)),
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CardSectionTitle(text: l10n.usedCarnets),
+          const SizedBox(height: 14),
+          for (var i = 0; i < lines.length; i++) ...[
+            _EmitConfirmationLineRow(
+              label: _labelFor(lines[i], l10n),
+              selectedQty: request[lines[i].id] ?? 0,
+              faceValue: lines[i].faceValue,
+              expirationDate: lines[i].expirationDate,
+            ),
+            if (i < lines.length - 1)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+              ),
+          ],
+          if (lines.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+            ),
+          _EmitConfirmationTotalRow(totalAmount: totalAmount),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmitConfirmationTotalRow extends StatelessWidget {
+  const _EmitConfirmationTotalRow({required this.totalAmount});
+
+  final int totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            AppLocalizations.of(context).totalAmount,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.body,
+            ),
+          ),
+        ),
+        QrAmountInline(
+          amount: totalAmount,
+          textAlign: TextAlign.end,
+          valueStyle: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
+          ),
+          unitStyle: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2E7D32).withValues(alpha: 0.82),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmitConfirmationLineRow extends StatelessWidget {
+  const _EmitConfirmationLineRow({
+    required this.label,
+    required this.selectedQty,
+    required this.faceValue,
+    required this.expirationDate,
+  });
+
+  final String label;
+  final int selectedQty;
+  final int faceValue;
+  final DateTime expirationDate;
+
+  String _title(AppLocalizations l10n) {
+    final carnetLabel = label.trim().isNotEmpty
+        ? label.trim().replaceFirst(
+            RegExp(r'^Carnet\s+', caseSensitive: false),
+            '',
+          )
+        : l10n.carnet;
+    return l10n.ticketsFromCarnet(selectedQty, carnetLabel);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final amount = selectedQty * faceValue;
+    return QrGenerationCarnetLine(
+      title: _title(l10n),
+      amount: amount,
+      expirationDate: expirationDate,
+    );
+  }
+}

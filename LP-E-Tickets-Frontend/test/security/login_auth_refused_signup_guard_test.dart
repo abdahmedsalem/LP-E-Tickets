@@ -9,7 +9,7 @@ void main() {
     test(
       'AUTH_REFUSED copy suggests checking phone or creating an account',
       () {
-        final source = _read('lib/data/services/acpec_public_api_error.dart');
+        final source = _read('lib/core/errors/public_error_messages.dart');
 
         expect(source, contains("'AUTH_REFUSED'"));
         expect(source, contains('Connexion impossible.'));
