@@ -1,3 +1,6 @@
+import os
+from unittest.mock import patch
+
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
@@ -10,6 +13,10 @@ class TestGooglePlayReviewOtp(TransactionCase):
 
     def setUp(self):
         super().setUp()
+        # Exercise review authorization independently of the local dev OTP gate.
+        strict_runtime = patch.dict(os.environ, {'ACPEC_ENV': 'production', 'ACPEC_FUELTOKEN_DEV_MODE': '0'})
+        strict_runtime.start()
+        self.addCleanup(strict_runtime.stop)
         self.params = self.env['ir.config_parameter'].sudo()
         self.params.set_param(
             'acpec_google_play_review_access.enabled',

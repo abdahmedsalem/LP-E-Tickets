@@ -1,9 +1,10 @@
 import re
 from pathlib import Path
 
-from odoo.tests.common import TransactionCase
+from odoo.tests.common import TransactionCase, tagged
 
 
+@tagged("post_install", "-at_install")
 class TestReferenceApiArchiveDeleteDoctrineM21F(TransactionCase):
 
     def _api_admin_source(self):

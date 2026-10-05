@@ -3,7 +3,7 @@ import base64
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_admin as api_admin_module
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
@@ -11,6 +11,7 @@ from odoo.addons.acpec_fueltoken_api.controllers import api_station as api_stati
 from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelTokenAdminApi
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_api.controllers.api_station import AcpecFuelTokenStationApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 def _acpec_test_mobile_phone(label):
@@ -23,7 +24,7 @@ def _acpec_test_mobile_phone(label):
 
 
 @tagged("post_install", "-at_install")
-class TestRoleBasedSmokeH3(TransactionCase):
+class TestRoleBasedSmokeH3(FuelTokenTransactionCase):
     """Patch43H3: end-to-end smoke coverage for mobile role boundaries.
 
     H3 deliberately stays runtime-test-only.  It reuses the existing lightweight controller test pattern:
@@ -202,6 +203,7 @@ class TestRoleBasedSmokeH3(TransactionCase):
         self.assertGreater(face_line.qty_available, 0)
 
         wallet = self.env["acpec.fuel.wallet"].sudo().get_or_create(client_user.partner_id, self.company)
+        wallet._write_internal({"qr_max_amount": max(5000, int(purchase.amount_total))})
         return carnet_type, purchase, wallet
 
     def _create_submitted_purchase(self, suffix):

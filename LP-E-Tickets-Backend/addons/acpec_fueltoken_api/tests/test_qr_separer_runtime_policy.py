@@ -14,14 +14,15 @@ def _acpec_test_mobile_phone(label):
     return "3%07d" % value
 
 from odoo import fields
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestQrSeparerRuntimePolicy(TransactionCase):
+class TestQrSeparerRuntimePolicy(FuelTokenTransactionCase):
     # Runtime policy coverage for /mobile/qr/separer.
     # The fixture builds a real QR with one expired line and one still-valid line,
     # then calls the real controller and real action_separer_valid_to_child() path.
@@ -127,6 +128,7 @@ class TestQrSeparerRuntimePolicy(TransactionCase):
         purchase._create_face_lines_after_approval()
 
         wallet = self.env["acpec.fuel.wallet"].sudo().get_or_create(user.partner_id, self.company)
+        wallet._write_internal({"qr_max_amount": max(5000, int(purchase.amount_total))})
         return expired_carnet, valid_carnet, purchase, wallet
 
     def _controller_with_blocked_source_qr(self, login, trusted=True):

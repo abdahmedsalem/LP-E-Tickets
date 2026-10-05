@@ -5,14 +5,15 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from odoo.exceptions import AccessError
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestTicketTransferRuntimePolicy(TransactionCase):
+class TestTicketTransferRuntimePolicy(FuelTokenTransactionCase):
     """Runtime policy coverage for /mobile/tickets/transfer."""
 
     @classmethod

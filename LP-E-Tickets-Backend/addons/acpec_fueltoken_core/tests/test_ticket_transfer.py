@@ -3,13 +3,14 @@ import base64
 import uuid
 
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
 
 from .qr_action_test_utils import create_mobile_test_user
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged('post_install', '-at_install')
-class TestTicketTransfer(TransactionCase):
+class TestTicketTransfer(FuelTokenTransactionCase):
 
     def setUp(self):
         super().setUp()
@@ -216,6 +217,7 @@ class TestTicketTransfer(TransactionCase):
         _dest_partner, dest_wallet = self._create_partner_wallet('I1 Destination guard %s' % suffix)
         _purchase, _purchase_line, face_line = self._create_purchase_with_face_line(source_partner, suffix)
 
+        source_wallet._write_internal({"qr_max_amount": int(face_line.face_value * 4)})
         self.Qr._issue_from_available_internal(
             source_client_user,
             source_wallet,

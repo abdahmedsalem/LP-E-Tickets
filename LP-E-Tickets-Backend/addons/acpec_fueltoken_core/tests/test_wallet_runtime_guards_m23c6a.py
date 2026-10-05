@@ -3,10 +3,11 @@ import uuid
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged('-at_install', 'post_install')
-class TestWalletRuntimeGuardsM23C6A(TransactionCase):
+class TestWalletRuntimeGuardsM23C6A(FuelTokenTransactionCase):
 
     @classmethod
     def setUpClass(cls):

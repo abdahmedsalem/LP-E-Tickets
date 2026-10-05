@@ -3,11 +3,12 @@ import uuid
 
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged('-at_install', 'post_install')
-class TestQrRuntimeGuardsM23C6C(TransactionCase):
+class TestQrRuntimeGuardsM23C6C(FuelTokenTransactionCase):
 
     @classmethod
     def setUpClass(cls):

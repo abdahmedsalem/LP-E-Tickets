@@ -40,6 +40,8 @@ from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
 from .qr_action_test_utils import create_mobile_test_user
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
+from odoo.addons.acpec_fueltoken_base.tests.common import enable_test_fueltoken_company
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +144,7 @@ class _ConsumeFixtureMixin:
 
         Ne committe pas : l'appelant decide (rollback en test rapide, commit en
         test de concurrence)."""
-        company = env.company
+        company = enable_test_fueltoken_company(env)
         suffix = uuid.uuid4().hex[:10]
 
         partner = env['res.partner'].sudo().create({
@@ -228,7 +230,7 @@ class _ConsumeFixtureMixin:
 # 1) Garde logique : rapide, deterministe, sans commit
 # ---------------------------------------------------------------------------
 @tagged('-at_install', 'post_install')
-class TestConsumeStationGuard(_ConsumeFixtureMixin, TransactionCase):
+class TestConsumeStationGuard(_ConsumeFixtureMixin, FuelTokenTransactionCase):
 
     def setUp(self):
         super().setUp()

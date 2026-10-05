@@ -15,14 +15,15 @@ def _acpec_test_mobile_phone(label):
 
 from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_station as api_station_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_station import AcpecFuelTokenStationApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestStationQrUseRuntimePolicy(TransactionCase):
+class TestStationQrUseRuntimePolicy(FuelTokenTransactionCase):
     # Runtime policy coverage for /station/qr/use.
     # The fixture builds a real client QR, a real station user/session,
     # a real acpec.fuel.station record, then calls the real station controller.

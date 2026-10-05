@@ -3,13 +3,14 @@ import base64
 import uuid
 
 from odoo.exceptions import UserError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
 
 from .qr_action_test_utils import create_mobile_test_user
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged('-at_install', 'post_install')
-class TestEconomicIdentityImmutability(TransactionCase):
+class TestEconomicIdentityImmutability(FuelTokenTransactionCase):
 
     QR_FACE_QTY = 4
 
@@ -176,6 +177,7 @@ class TestEconomicIdentityImmutability(TransactionCase):
         _purchase, _purchase_line, face_lines = self._create_purchase_with_two_carnets(source_partner, suffix)
 
         face_line = face_lines[0]
+        source_wallet._write_internal({"qr_max_amount": int(face_line.face_value * self.QR_FACE_QTY)})
         qr = self.Qr._issue_from_available_internal(
             source_client_user,
             source_wallet,

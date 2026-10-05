@@ -3,13 +3,14 @@ import uuid
 
 from odoo import fields
 from odoo.exceptions import AccessError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
 
 from .qr_action_test_utils import create_mobile_test_user
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestQrActionAuthorizationM23C6CBis(TransactionCase):
+class TestQrActionAuthorizationM23C6CBis(FuelTokenTransactionCase):
 
     QR_QTY = 4
 
@@ -186,6 +187,7 @@ class TestQrActionAuthorizationM23C6CBis(TransactionCase):
         face_line,
         suffix,
     ):
+        wallet._write_internal({"qr_max_amount": int(face_line.face_value * self.QR_QTY)})
         return self.Qr._issue_from_available_internal(
             actor,
             wallet,

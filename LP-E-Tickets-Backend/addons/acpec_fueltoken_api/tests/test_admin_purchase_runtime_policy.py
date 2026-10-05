@@ -12,14 +12,15 @@ def _acpec_test_mobile_phone(label):
         value = (value * 16777619) % 10000000
     return "3%07d" % value
 
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_admin as api_admin_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelTokenAdminApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestAdminPurchaseRuntimePolicy(TransactionCase):
+class TestAdminPurchaseRuntimePolicy(FuelTokenTransactionCase):
     # Runtime policy coverage for admin purchase approve/reject.
     # These admin economic decisions require trusted manager device,
     # action_code, idempotency_key and request_hash conflict protection.

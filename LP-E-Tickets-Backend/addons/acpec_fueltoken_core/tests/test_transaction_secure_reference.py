@@ -26,12 +26,15 @@ class TestFuelTransactionSecureReference(TransactionCase):
         return self.Transaction.with_context(allow_fuel_transaction_create=True).create(vals)
 
     def test_patch43m20_operation_ref_uses_secure_public_reference_format(self):
-        tx = self._make_transaction()
+        # A random suffix can coincidentally contain the database ID.
+        # Fix the entropy source to verify its independent origin instead.
+        with patch('odoo.addons.acpec_fueltoken_core.models.fuel_transaction.secrets.randbelow', return_value=123456789012):
+            tx = self._make_transaction()
 
         self.assertRegex(tx.operation_ref or '', self.operation_ref_pattern)
         self.assertRegex(tx.name or '', self.name_pattern)
         self.assertNotEqual(tx.name, tx.operation_ref)
-        self.assertNotIn(str(tx.id), tx.operation_ref)
+        self.assertEqual(tx.operation_ref.rsplit("-", 1)[1], "123456789012")
 
     def test_patch43m20_operation_refs_and_names_are_unique_for_generated_rows(self):
         txs = self.Transaction.browse([

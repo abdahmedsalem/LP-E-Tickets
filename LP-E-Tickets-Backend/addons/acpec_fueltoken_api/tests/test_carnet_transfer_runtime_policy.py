@@ -12,14 +12,15 @@ def _acpec_test_mobile_phone(label):
         value = (value * 16777619) % 10000000
     return "3%07d" % value
 
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestCarnetTransferRuntimePolicy(TransactionCase):
+class TestCarnetTransferRuntimePolicy(FuelTokenTransactionCase):
     # Runtime policy coverage for /mobile/carnets/transfer.
     # The fixture builds one intact carnet for the source mobile user,
     # creates a real recipient mobile user, then calls the real controller

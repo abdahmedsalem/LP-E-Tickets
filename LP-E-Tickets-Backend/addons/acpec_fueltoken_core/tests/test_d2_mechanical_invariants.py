@@ -2,12 +2,13 @@
 import base64
 
 from odoo.exceptions import ValidationError, UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
 from odoo.tools import mute_logger
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged('-at_install', 'post_install')
-class TestD2MechanicalInvariants(TransactionCase):
+class TestD2MechanicalInvariants(FuelTokenTransactionCase):
 
     def setUp(self):
         super().setUp()

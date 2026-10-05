@@ -755,9 +755,8 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                 max_amount = int(kwargs.get('max_amount'))
             except (TypeError, ValueError):
                 raise ValidationError('Le plafond du QR doit être un montant valide.')
-            qr_model = request.env['acpec.fuel.qr']
-            if max_amount <= 0 or max_amount > qr_model.QR_MAX_AMOUNT:
-                raise ValidationError('Le plafond du QR ne peut pas dépasser %(amount)s %(currency)s.' % {'amount': qr_model.QR_MAX_AMOUNT, 'currency': wallet.currency_id.name or 'MRU'})
+            if max_amount <= 0:
+                raise ValidationError('Le plafond du QR doit être strictement positif.')
             wallet._write_internal({'qr_max_amount': max_amount})
             return self._json_response({
                 'wallet_id': wallet.id,
@@ -1162,7 +1161,7 @@ class AcpecFuelTokenMobileApi(AcpecFuelTokenApiCommon):
                     max_amount = int(kwargs.get('max_amount', wallet.qr_max_amount))
                 except (TypeError, ValueError):
                     raise ValidationError('Le plafond du QR doit être un montant valide.')
-                if max_amount <= 0 or max_amount > min(wallet.qr_max_amount, request.env['acpec.fuel.qr'].QR_MAX_AMOUNT):
+                if max_amount <= 0 or max_amount > wallet.qr_max_amount:
                     raise ValidationError('Le plafond du QR dépasse la limite autorisée pour ce client.')
                 mobile_session = self._get_mobile_session(required=True)
                 requests = []

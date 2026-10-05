@@ -4,10 +4,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 def _acpec_test_mobile_phone(label):
@@ -19,7 +20,7 @@ def _acpec_test_mobile_phone(label):
 
 
 @tagged("post_install", "-at_install")
-class TestMobileTransactionReportRuntimePolicy(TransactionCase):
+class TestMobileTransactionReportRuntimePolicy(FuelTokenTransactionCase):
 
     @classmethod
     def setUpClass(cls):

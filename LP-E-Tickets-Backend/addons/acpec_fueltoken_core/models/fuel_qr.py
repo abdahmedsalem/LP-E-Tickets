@@ -77,7 +77,6 @@ class AcpecFuelQr(models.Model):
     )
     QR_NUMERIC_CODE_DIGITS = 12
     QR_NUMERIC_CODE_GROUP_SIZE = 4
-    QR_MAX_AMOUNT = 5000
     QR_NUMERIC_SECRET_MODEL = 'acpec.fueltoken.security.settings'
     _qr_economic_identity_fields = frozenset((
         'name',
@@ -372,7 +371,7 @@ class AcpecFuelQr(models.Model):
         requests,
         idempotency_key=False,
         request_hash=False,
-        max_amount=5000,
+        max_amount=None,
     ):
         actor = self._qr_internal_actor(actor_user)
 
@@ -739,7 +738,7 @@ class AcpecFuelQr(models.Model):
         idempotency_key=False,
         request_hash=False,
         actor_user=False,
-        max_amount=5000,
+        max_amount=None,
     ):
         actor = self._qr_action_actor(actor_user)
         wallet = self._assert_qr_client_wallet_allowed(
@@ -753,16 +752,11 @@ class AcpecFuelQr(models.Model):
         )
         self._check_qr_issue_wallet_allowed(wallet)
         try:
-            max_amount = int(max_amount)
+            max_amount = int(wallet.qr_max_amount if max_amount is None else max_amount)
         except (TypeError, ValueError):
             raise ValidationError(_('Le plafond du QR doit être un montant valide.'))
-        if max_amount <= 0 or max_amount > self.QR_MAX_AMOUNT:
-            raise ValidationError(_(
-                'Le plafond du QR doit être compris entre 1 et %(amount)s %(currency)s.'
-            ) % {
-                'amount': self.QR_MAX_AMOUNT,
-                'currency': wallet.currency_id.name or 'MRU',
-            })
+        if max_amount <= 0:
+            raise ValidationError(_('Le plafond du QR doit être strictement positif.'))
 
         if idempotency_key:
             existing = self.sudo().search([('wallet_id', '=', wallet.id), ('idempotency_key', '=', idempotency_key)], limit=1)

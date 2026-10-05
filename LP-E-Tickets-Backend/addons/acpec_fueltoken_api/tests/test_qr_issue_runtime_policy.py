@@ -12,14 +12,15 @@ def _acpec_test_mobile_phone(label):
         value = (value * 16777619) % 10000000
     return "3%07d" % value
 
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestQrIssueRuntimePolicy(TransactionCase):
+class TestQrIssueRuntimePolicy(FuelTokenTransactionCase):
     # Runtime policy coverage for /mobile/qr/issue.
     # The fixture builds real approved stock for the mobile user's partner,
     # then calls the real controller and real issue_from_available() path.
@@ -127,6 +128,7 @@ class TestQrIssueRuntimePolicy(TransactionCase):
         self.assertGreater(face_line.qty_available, 0)
 
         wallet = self.env["acpec.fuel.wallet"].sudo().get_or_create(user.partner_id, self.company)
+        wallet._write_internal({"qr_max_amount": max(5000, int(purchase.amount_total))})
         return carnet_type, purchase, face_line, wallet
 
     def _controller_with_stock(self, login, trusted=True, carnet_qty=1):
@@ -387,4 +389,34 @@ class TestQrIssueRuntimePolicy(TransactionCase):
             self._payload(carnet_type, key=key),
         )
         self._assert_error_contains(response, "Device mobile en attente de validation")
+        self.assertFalse(self._qr_by_key(wallet, key))
+
+    def test_client_can_save_limit_above_default(self):
+        controller, _user, _session, _type, _purchase, _line, wallet = self._controller_with_stock(
+            "qr-custom-limit@example.com",
+        )
+        self.assertEqual(self.env['acpec.fuel.wallet'].default_get(['qr_max_amount'])['qr_max_amount'], 5000)
+        with patch.object(api_mobile_module, "request", SimpleNamespace(env=self.env)):
+            for amount in (5001, 10000, 1000000):
+                response = controller.update_wallet_qr_limit(max_amount=amount)
+                self.assertTrue(response.get('success'), response)
+                wallet.flush_recordset(['qr_max_amount'])
+                wallet.invalidate_recordset(['qr_max_amount'])
+                self.assertEqual(wallet.qr_max_amount, amount)
+            for amount in (0, -1, 'invalid'):
+                response = controller.update_wallet_qr_limit(max_amount=amount)
+                self.assertFalse(response.get('success'), response)
+                self.assertEqual(response['error']['code'], 'VALIDATION_ERROR')
+                self.assertEqual(wallet.qr_max_amount, 1000000)
+
+    def test_issue_rejects_limit_above_client_choice(self):
+        controller, _user, _session, carnet_type, _purchase, _line, wallet = self._controller_with_stock(
+            "qr-client-limit-guard@example.com",
+        )
+        key = "qr-above-client-choice"
+        response = self._call_issue_qr(controller, self._payload(
+            carnet_type, key=key, max_amount=int(wallet.qr_max_amount) + 1,
+        ))
+        self.assertFalse(response.get('success'), response)
+        self.assertEqual(response['error']['code'], 'VALIDATION_ERROR')
         self.assertFalse(self._qr_by_key(wallet, key))

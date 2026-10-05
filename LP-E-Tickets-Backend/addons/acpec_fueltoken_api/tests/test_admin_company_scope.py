@@ -1,11 +1,12 @@
 from odoo.exceptions import AccessError, ValidationError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelTokenAdminApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged('-at_install', 'post_install')
-class TestAcpecFuelAdminCompanyScope(TransactionCase):
+class TestAcpecFuelAdminCompanyScope(FuelTokenTransactionCase):
 
     def setUp(self):
         super().setUp()

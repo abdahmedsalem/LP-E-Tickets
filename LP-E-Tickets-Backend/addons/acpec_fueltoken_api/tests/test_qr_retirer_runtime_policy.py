@@ -12,14 +12,15 @@ def _acpec_test_mobile_phone(label):
         value = (value * 16777619) % 10000000
     return "3%07d" % value
 
-from odoo.tests.common import TransactionCase, tagged
+from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
+from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
 
 @tagged("post_install", "-at_install")
-class TestQrRetirerRuntimePolicy(TransactionCase):
+class TestQrRetirerRuntimePolicy(FuelTokenTransactionCase):
     # Runtime policy coverage for /mobile/qr/retirer.
     # The fixture builds real approved stock, issues a real source QR,
     # then calls the real controller and real action_retirer_to_child() path.
@@ -129,6 +130,7 @@ class TestQrRetirerRuntimePolicy(TransactionCase):
         self.assertGreaterEqual(face_line.qty_available, self.SOURCE_QTY)
 
         wallet = self.env["acpec.fuel.wallet"].sudo().get_or_create(user.partner_id, self.company)
+        wallet._write_internal({"qr_max_amount": max(5000, int(purchase.amount_total))})
         return carnet_type, purchase, face_line, wallet
 
     def _controller_with_source_qr(self, login, trusted=True):

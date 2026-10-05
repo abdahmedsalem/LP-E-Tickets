@@ -11,7 +11,6 @@
         'security/payment_groups.xml',
         'security/ir.model.access.csv',
         'security/fueltoken_purchase_rules.xml',
-        'data/fuel_payment_method_data.xml',
         'views/fuel_payment_method_views.xml',
         'views/fuel_purchase_views.xml',
     ],
