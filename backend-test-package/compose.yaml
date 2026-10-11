@@ -1,0 +1,43 @@
+name: lp-etickets-backend-test
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: local-test-db
+    volumes:
+      - test-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U odoo -d postgres]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+  odoo:
+    image: registry.gitlab.com/medlemine223/lp-e-tickets:1.0.0.0
+    platform: linux/amd64
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8079:8069"
+    environment:
+      HOST: db
+      USER: odoo
+      PASSWORD: local-test-db
+      ACPEC_ENV: dev
+      ODOO_ENV: dev
+      ACPEC_FUELTOKEN_DEV_MODE: "true"
+      ACPEC_FUELTOKEN_TEST_MODE: "true"
+    volumes:
+      - test-odoo:/var/lib/odoo
+    command:
+      - odoo
+      - --database=lp-etickets-test
+      - --db-filter=^lp-etickets-test$$
+      - --init=acpec_fueltoken_test,acpec_fueltoken_company_portal,acpec_fueltoken_reports,acpec_mobile_account_deletion
+      - --without-demo
+      - --max-cron-threads=0
+volumes:
+  test-db:
+  test-odoo:

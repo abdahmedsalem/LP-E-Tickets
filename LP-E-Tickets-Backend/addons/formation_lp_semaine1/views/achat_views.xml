@@ -1,0 +1,96 @@
+<odoo>
+    <record id="formation_carnet_type_list" model="ir.ui.view">
+        <field name="name">formation.lp.carnet.type.list</field>
+        <field name="model">formation.lp.carnet.type</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="face_count"/>
+                <field name="face_value"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    <record id="formation_carnet_type_form" model="ir.ui.view">
+        <field name="name">formation.lp.carnet.type.form</field>
+        <field name="model">formation.lp.carnet.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="face_count"/>
+                        <field name="face_value"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="formation_carnet_type_action" model="ir.actions.act_window">
+        <field name="name">Types de carnet</field>
+        <field name="res_model">formation.lp.carnet.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="formation_achat_list" model="ir.ui.view">
+        <field name="name">formation.lp.achat.list</field>
+        <field name="model">formation.lp.achat</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="state"/>
+                <field name="ticket_total"/>
+                <field name="amount_total"/>
+            </list>
+        </field>
+    </record>
+    <record id="formation_achat_form" model="ir.ui.view">
+        <field name="name">formation.lp.achat.form</field>
+        <field name="model">formation.lp.achat</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" type="object" string="Soumettre"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approuver"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_reject" type="object" string="Rejeter"
+                            invisible="state != 'submitted'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="partner_id"/>
+                        <field name="company_id"/>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom">
+                            <field name="carnet_type_id"/>
+                            <field name="carnet_qty"/>
+                            <field name="face_count"/>
+                            <field name="face_value"/>
+                            <field name="ticket_qty"/>
+                            <field name="amount_total"/>
+                        </list>
+                    </field>
+                    <group>
+                        <field name="ticket_total"/>
+                        <field name="amount_total"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="formation_achat_action" model="ir.actions.act_window">
+        <field name="name">Achats pédagogiques</field>
+        <field name="res_model">formation.lp.achat</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="formation_root_menu" name="Formation LP E-Tickets" sequence="90"/>
+    <menuitem id="formation_carnet_type_menu" name="Types de carnet"
+              parent="formation_root_menu" action="formation_carnet_type_action" sequence="5"/>
+    <menuitem id="formation_achat_menu" name="Achats pédagogiques"
+              parent="formation_root_menu" action="formation_achat_action" sequence="10"/>
+</odoo>

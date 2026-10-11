@@ -13,23 +13,22 @@ Ce document est un **brouillon à vérifier avant soumission**. Il ne garantit a
 | **Sous-titre** | `Carburant & Bons Électroniques` | Max 30 caractères |
 | **Catégorie principale** | `Productivité` (Business) | Obligatoire |
 | **Catégorie secondaire** | `Utilitaires` (Utilities) | Recommandé |
-| **Classement par âge** | `4+` (aucun contenu sensible, violence ou jeu) | Questionnaire standard |
+| **Classement par âge** | À déterminer avec le questionnaire App Store Connect | Obligatoire |
 | **Droits de distribution** | Disponible dans les pays ciblés (Mauritanie, etc.) | Sélection pays |
 
 ---
 
 ## 2. URLs Légales et d'Assistance (Obligatoires)
 
-Ces URLs sont actives et servies directement par votre serveur Odoo :
+La politique ci-dessous est accessible. Les coordonnées d’assistance et la page support doivent encore être confirmées par ACPEC avant saisie :
 
 - **URL de la politique de confidentialité (Privacy Policy URL)** :  
   `https://lpft.odoorim.com/privacy`
-- **URL de l’assistance technique (Support URL)** :  
-  `https://lpft.odoorim.com/account-deletion`
-- **URL de marketing (facultatif)** :  
-  `https://lpft.odoorim.com`
-- **Email de contact support** :  
-  `support@acpec.mr`
+- **URL de l’assistance technique (Support URL)** : `https://lpft.odoorim.com`
+- **Email de contact support** : `support@acpec.mr`
+- **Numéro de téléphone support** : `+222 27919822`
+- **Contact responsable** : Ahmed Salem Abdefattah
+- **Copyright** : `2026 ACPEC Sarl`
 
 ---
 
@@ -66,13 +65,11 @@ Gérez et utilisez vos tickets de carburant Leader Petroleum en toute simplicit�
 ## 4. Informations pour l’Équipe de Validation Apple (App Review Information)
 
 > [!IMPORTANT]
-> C’est dans cette section que 90% des rejets ont lieu si les examinateurs d'Apple ne savent pas comment tester ou s'ils se bloquent sur la connexion OTP.
+> Les informations d’accès et de test doivent être valides et vérifiées sur la version de production.
 
 ### Connexion requise (Sign-in Required) : **OUI**
 
-- **Nom d'utilisateur / Téléphone** : `27919822`
-- **Mot de passe / OTP fixe** : `000000` *(Code OTP de validation pour le mode examen)*
-- **Code PIN de confirmation (actions sensibles)** : `1234`
+Utiliser un **compte de démonstration dédié à App Review**, créé et maintenu par ACPEC. Ne pas réutiliser un compte client réel ni enregistrer ici de numéro, OTP, mot de passe ou PIN. Vérifier avant soumission que le compte est actif, que l’équipe Apple peut recevoir ou contourner l’OTP selon une procédure prise en charge par le service, et que les opérations visibles utilisent uniquement des données fictives.
 
 ### Notes pour la revue (Review Notes)
 Copiez-collez ce texte (en anglais et français) dans le champ **"Review Notes"** d'App Store Connect :
@@ -80,28 +77,30 @@ Copiez-collez ce texte (en anglais et français) dans le champ **"Review Notes"*
 ```text
 --- INSTRUCTIONS FOR APPLE APP REVIEW TEAM ---
 
-1. DEMO CREDENTIALS:
-- Phone number: 27919822
-- Verification code (OTP): 000000 (fixed for review & test environment)
-- Security PIN (for sensitive operations & account deletion): 1234
+1. DEMO ACCESS:
+- Use the dedicated review account credentials entered in the App Review Information fields in App Store Connect.
+- OTP/PIN steps: [ACPEC must provide a secure, working review procedure here; do not claim a fixed OTP unless it is implemented and verified on the production service.]
 
 2. APP PURPOSE & FUNCTIONALITY:
 LP E-Tickets is an enterprise fuel voucher management app for Leader Petroleum customers in Mauritania. It allows customers to access their pre-purchased electronic fuel tickets, generate QR codes, and redeem them at Leader Petroleum gas stations.
 
-3. ACCOUNT DELETION COMPLIANCE (Guideline 5.1.1(v)):
-- The account deletion option is available in the app under Settings > "Supprimer mon compte" (Delete Account).
-- In accordance with Apple Guideline 5.1.1(v) and applicable Mauritanian tax, commercial, and energy regulations, financial fuel transaction history, purchase invoices, and accounting vouchers are securely retained in Odoo for audit and legal compliance.
-- Account credentials, active mobile sessions, authentication tokens, and user profile accesses are fully revoked and the user is deactivated within a 7-day review timeframe.
-- The app provides a request receipt. Support performs the deletion manually and confirms completion to the customer through the agreed channel. Verify this procedure on the deployed app before submitting these notes.
+3. ACCOUNT DELETION:
+- Describe the in-app deletion request and its actual processing only after ACPEC has verified the production workflow and retention obligations. Do not claim a completion deadline or retained records unless that has been confirmed.
 
-If you have any questions, please contact our support team at: support@acpec.mr
+### Coordonnées du contact pour l’examen (App Review Contact Information) :
+- **Prénom** : Ahmed Salem
+- **Nom** : Abdefattah
+- **E-mail** : `support@acpec.mr`
+- **Numéro de téléphone** : `+222 27919822`
+
+If you have any questions, please contact the support contact entered in App Store Connect: Ahmed Salem Abdefattah (`support@acpec.mr` / `+222 27919822`).
 ```
 
 ---
 
 ## 5. Questionnaire de Confidentialité (App Privacy / Nutrition Labels)
 
-Sur App Store Connect, sous la section **Confidentialité de l’application**, répondez au questionnaire de la façon suivante :
+La déclaration ci-dessous reste un brouillon d’audit, pas une réponse prête à publier. Le questionnaire App Store Connect doit être complété après confirmation des pratiques réelles côté serveur Odoo et des prestataires :
 
 ### Collectez-vous des données depuis cette app ? **OUI**
 

@@ -10,5 +10,8 @@ __pycache__/
 # Logs / env
 *.log
 .env
+*.dump
+odoo_docker/backups/
 .venv/
 venv/
+
