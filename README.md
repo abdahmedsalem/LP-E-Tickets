@@ -25,45 +25,25 @@ LP E-Tickets est une solution mobile de gestion de carnets et tickets de carbura
 - transfert de carnets ou de tickets entre utilisateurs autorisés ;
 - consultation de la carte et des informations des stations.
 
-## 5. Captures d’écran
+## 5. Captures d’écran iOS
 
-Les captures réelles de l’application seront placées dans les espaces ci-dessous. Utiliser uniquement des images anonymisées, sans données de production.
+Aperçu de l’application sur le simulateur iOS (iPhone 16e). Cliquez sur une capture pour l’ouvrir en grand.
 
-### 1. Accueil
+| Mes carnets | Détail d’un carnet |
+| --- | --- |
+| <a href="docs/screenshots/ios/mes-carnets.png"><img src="docs/screenshots/ios/mes-carnets.png" alt="Mes carnets — iOS" width="280"></a> | <a href="docs/screenshots/ios/detail-carnet.png"><img src="docs/screenshots/ios/detail-carnet.png" alt="Détail d’un carnet — iOS" width="280"></a> |
 
-<!-- Insérer ici la capture de l’écran d’accueil -->
+| Mes QR | Génération d’un QR |
+| --- | --- |
+| <a href="docs/screenshots/ios/mes-qr.png"><img src="docs/screenshots/ios/mes-qr.png" alt="Mes QR — iOS" width="280"></a> | <a href="docs/screenshots/ios/generation-qr.png"><img src="docs/screenshots/ios/generation-qr.png" alt="Génération d’un QR — iOS" width="280"></a> |
 
-### 2. Achat d’un carnet
+| Transfert de carnets | Transfert de tickets |
+| --- | --- |
+| <a href="docs/screenshots/ios/transfert-carnets.png"><img src="docs/screenshots/ios/transfert-carnets.png" alt="Transfert de carnets — iOS" width="280"></a> | <a href="docs/screenshots/ios/transfert-tickets.png"><img src="docs/screenshots/ios/transfert-tickets.png" alt="Transfert de tickets — iOS" width="280"></a> |
 
-<!-- Insérer ici la capture du parcours d’achat -->
-
-### 3. Mes carnets
-
-<!-- Insérer ici la capture du portefeuille / de la liste des carnets -->
-
-### 4. Mes QR
-
-<!-- Insérer ici la capture de la liste des QR codes -->
-
-### 5. Génération d’un QR code
-
-<!-- Insérer ici la capture de la génération ou du détail d’un QR code -->
-
-### 6. Transfert de carnets et de tickets
-
-<!-- Insérer ici la capture du parcours de transfert -->
-
-### 7. Historique des opérations client
-
-<!-- Insérer ici la capture de l’historique des opérations client -->
-
-### 8. Scan station
-
-<!-- Insérer ici la capture du scanner station -->
-
-### 9. Historique des consommations
-
-<!-- Insérer ici la capture de l’historique des consommations station -->
+| Historique des commandes | Historique des opérations |
+| --- | --- |
+| <a href="docs/screenshots/ios/historique-commandes.png"><img src="docs/screenshots/ios/historique-commandes.png" alt="Historique des commandes — iOS" width="280"></a> | <a href="docs/screenshots/ios/historique-operations.png"><img src="docs/screenshots/ios/historique-operations.png" alt="Historique des opérations — iOS" width="280"></a> |
 
 L’administration métier (validation des achats, gestion des comptes, carnets, stations et rapports) est réalisée dans Odoo. L’application mobile ne contient pas d’espace d’administration autonome.
 
