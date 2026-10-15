@@ -27,23 +27,27 @@ LP E-Tickets est une solution mobile de gestion de carnets et tickets de carbura
 
 ## 5. Captures d’écran iOS
 
-Aperçu de l’application sur le simulateur iOS (iPhone 16e). Cliquez sur une capture pour l’ouvrir en grand.
+Captures prises sur **iPhone 17 Pro Max**. Les opérations et historiques client couvrent la période du **1er septembre au 15 octobre 2026**. Cliquez sur une image pour l’agrandir. Le simulateur ne dispose pas de caméra : l’écran de scan affiche cette limitation.
 
 | Mes carnets | Détail d’un carnet |
 | --- | --- |
-| <a href="docs/screenshots/ios/mes-carnets.png"><img src="docs/screenshots/ios/mes-carnets.png" alt="Mes carnets — iOS" width="280"></a> | <a href="docs/screenshots/ios/detail-carnet.png"><img src="docs/screenshots/ios/detail-carnet.png" alt="Détail d’un carnet — iOS" width="280"></a> |
+| <a href="docs/screenshots/iphone-17-pro-max/mes-carnets.png"><img src="docs/screenshots/iphone-17-pro-max/mes-carnets.png" alt="Mes carnets — iPhone 17 Pro Max" width="280"></a> | <a href="docs/screenshots/iphone-17-pro-max/detail-carnet.png"><img src="docs/screenshots/iphone-17-pro-max/detail-carnet.png" alt="Détail d’un carnet — iPhone 17 Pro Max" width="280"></a> |
 
-| Mes QR | Génération d’un QR |
+| Mes QR | Opérations depuis le 1er septembre |
 | --- | --- |
-| <a href="docs/screenshots/ios/mes-qr.png"><img src="docs/screenshots/ios/mes-qr.png" alt="Mes QR — iOS" width="280"></a> | <a href="docs/screenshots/ios/generation-qr.png"><img src="docs/screenshots/ios/generation-qr.png" alt="Génération d’un QR — iOS" width="280"></a> |
-
-| Transfert de carnets | Transfert de tickets |
-| --- | --- |
-| <a href="docs/screenshots/ios/transfert-carnets.png"><img src="docs/screenshots/ios/transfert-carnets.png" alt="Transfert de carnets — iOS" width="280"></a> | <a href="docs/screenshots/ios/transfert-tickets.png"><img src="docs/screenshots/ios/transfert-tickets.png" alt="Transfert de tickets — iOS" width="280"></a> |
+| <a href="docs/screenshots/iphone-17-pro-max/mes-qr.png"><img src="docs/screenshots/iphone-17-pro-max/mes-qr.png" alt="Mes QR — iPhone 17 Pro Max" width="280"></a> | <a href="docs/screenshots/iphone-17-pro-max/operations.png"><img src="docs/screenshots/iphone-17-pro-max/operations.png" alt="Opérations depuis le 1er septembre — iPhone 17 Pro Max" width="280"></a> |
 
 | Historique des commandes | Historique des opérations |
 | --- | --- |
-| <a href="docs/screenshots/ios/historique-commandes.png"><img src="docs/screenshots/ios/historique-commandes.png" alt="Historique des commandes — iOS" width="280"></a> | <a href="docs/screenshots/ios/historique-operations.png"><img src="docs/screenshots/ios/historique-operations.png" alt="Historique des opérations — iOS" width="280"></a> |
+| <a href="docs/screenshots/iphone-17-pro-max/historique-commandes.png"><img src="docs/screenshots/iphone-17-pro-max/historique-commandes.png" alt="Historique des commandes — iPhone 17 Pro Max" width="280"></a> | <a href="docs/screenshots/iphone-17-pro-max/historique-operations.png"><img src="docs/screenshots/iphone-17-pro-max/historique-operations.png" alt="Historique des opérations — iPhone 17 Pro Max" width="280"></a> |
+
+| Accueil station | Scan station |
+| --- | --- |
+| <a href="docs/screenshots/iphone-17-pro-max/station-accueil.png"><img src="docs/screenshots/iphone-17-pro-max/station-accueil.png" alt="Accueil station — iPhone 17 Pro Max" width="280"></a> | <a href="docs/screenshots/iphone-17-pro-max/station-scan.png"><img src="docs/screenshots/iphone-17-pro-max/station-scan.png" alt="Scan station — iPhone 17 Pro Max" width="280"></a> |
+
+| Historique des consommations |
+| --- |
+| <a href="docs/screenshots/iphone-17-pro-max/station-consommations.png"><img src="docs/screenshots/iphone-17-pro-max/station-consommations.png" alt="Historique des consommations — iPhone 17 Pro Max" width="280"></a> |
 
 L’administration métier (validation des achats, gestion des comptes, carnets, stations et rapports) est réalisée dans Odoo. L’application mobile ne contient pas d’espace d’administration autonome.
 
