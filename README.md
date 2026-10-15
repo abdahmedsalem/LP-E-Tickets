@@ -32,6 +32,16 @@ Captures prises sur **iPhone 17 Pro Max**. Les opérations et historiques client
 <table align="center">
   <tr>
     <td align="center" valign="top" width="50%">
+      <strong>Connexion</strong><br><br>
+      <a href="docs/screenshots/iphone-17-pro-max/connexion.png"><img src="docs/screenshots/iphone-17-pro-max/connexion.png" alt="Connexion — iPhone 17 Pro Max" width="300"></a>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <strong>Inscription</strong><br><br>
+      <a href="docs/screenshots/iphone-17-pro-max/inscription.png"><img src="docs/screenshots/iphone-17-pro-max/inscription.png" alt="Inscription — iPhone 17 Pro Max" width="300"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
       <strong>Mes carnets</strong><br><br>
       <a href="docs/screenshots/iphone-17-pro-max/mes-carnets.png"><img src="docs/screenshots/iphone-17-pro-max/mes-carnets.png" alt="Mes carnets — iPhone 17 Pro Max" width="300"></a>
     </td>
@@ -71,9 +81,13 @@ Captures prises sur **iPhone 17 Pro Max**. Les opérations et historiques client
     </td>
   </tr>
   <tr>
-    <td align="center" valign="top" colspan="2">
+    <td align="center" valign="top" width="50%">
       <strong>Historique des consommations</strong><br><br>
       <a href="docs/screenshots/iphone-17-pro-max/station-consommations.png"><img src="docs/screenshots/iphone-17-pro-max/station-consommations.png" alt="Historique des consommations — iPhone 17 Pro Max" width="300"></a>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <strong>Déverrouillage par PIN</strong><br><br>
+      <a href="docs/screenshots/iphone-17-pro-max/deverrouillage-pin.png"><img src="docs/screenshots/iphone-17-pro-max/deverrouillage-pin.png" alt="Déverrouillage par PIN — iPhone 17 Pro Max" width="300"></a>
     </td>
   </tr>
 </table>
