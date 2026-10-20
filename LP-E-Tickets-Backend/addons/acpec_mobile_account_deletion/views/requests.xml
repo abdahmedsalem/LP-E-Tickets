@@ -16,15 +16,15 @@
         <button name="action_prepare_deletion" type="object" string="2. Révoquer les accès"
           invisible="state != 'in_progress'"
           confirm="Cette action désactive le compte et révoque les accès. L'effacement des données reste à réaliser manuellement. Vérifiez d'abord le traitement des tickets et du solde."/>
-        <button name="action_complete" type="object" string="Clôturer après suppression et confirmation"
+        <button name="action_complete" type="object" string="Clôturer après effacement et confirmation"
           invisible="state != 'in_progress'" class="oe_highlight"
-          confirm="J'atteste avoir effectué la suppression des données personnelles non soumises à conservation et adressé la confirmation au client. Ce bouton enregistre mon attestation ; il n'efface aucune donnée."/>
+          confirm="J'atteste avoir vérifié le traitement métier et la confirmation client. Ce bouton efface les données personnelles non soumises à conservation et clôture la demande."/>
         <field name="state" widget="statusbar"/>
       </header>
       <sheet>
         <div class="alert alert-info" invisible="state == 'completed'">
           Traiter avant l'échéance annoncée : régler les tickets et le solde, révoquer les accès,
-          supprimer les données personnelles non soumises à conservation, puis confirmer au client.
+          confirmer au client. La clôture exécute ensuite l'effacement des données personnelles non soumises à conservation.
           Une désactivation ou un e-mail au support ne suffit pas.
         </div>
         <group><field name="reference"/><field name="user_id"/><field name="company_id"/>
@@ -68,6 +68,6 @@
     <field name="context">{'search_default_open': 1}</field>
   </record>
   <menuitem id="deletion_menu" name="Demandes de suppression" sequence="25"
-    parent="acpec_mobile_auth.menu_mobile_auth_operations" action="deletion_action"
+    parent="acpec_fueltoken_base.menu_acpec_fueltoken_operations" action="deletion_action"
     groups="acpec_mobile_auth.group_mobile_auth_admin"/>
 </odoo>

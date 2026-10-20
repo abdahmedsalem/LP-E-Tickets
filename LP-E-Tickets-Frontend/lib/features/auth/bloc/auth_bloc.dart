@@ -103,6 +103,11 @@ class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }
 
+/// Server deletion has completed; clear memory without calling a revoked session.
+class AuthAccountDeletionCompleted extends AuthEvent {
+  const AuthAccountDeletionCompleted();
+}
+
 /// Session ACPEC expirée ou révoquée : déconnexion locale + message sur l’écran de login.
 class AuthSessionExpiredRequested extends AuthEvent {
   const AuthSessionExpiredRequested();
@@ -225,6 +230,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthRemoteRegistrationCompleted>(_onRemoteRegistrationCompleted);
     on<AuthSessionEstablished>(_onSessionEstablished);
     on<AuthLogoutRequested>(_onLogout);
+    on<AuthAccountDeletionCompleted>((event, emit) {
+      _repo.forgetDeletedAccount();
+      emit(const AuthState(status: AuthStatus.unauthenticated));
+    });
     on<AuthSessionExpiredRequested>(_onSessionExpired);
     on<AuthUnlockRequested>(_onUnlock);
     on<AuthLockRequested>(_onLockRequested);

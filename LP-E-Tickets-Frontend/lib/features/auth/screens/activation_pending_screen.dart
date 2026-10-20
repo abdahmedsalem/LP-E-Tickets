@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/user_role.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_brand_image.dart';
 import '../bloc/auth_bloc.dart';
+import '../../settings/widgets/account_deletion_flow.dart';
 
 class ActivationPendingScreen extends StatelessWidget {
   const ActivationPendingScreen({super.key});
@@ -132,6 +134,8 @@ class ActivationPendingScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (user?.role == UserRole.user)
+                          const AccountDeletionButton(),
                       ],
                     ),
                   ),

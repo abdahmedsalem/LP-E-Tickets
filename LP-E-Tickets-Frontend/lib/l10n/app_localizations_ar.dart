@@ -9,6 +9,112 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get deletionIntro =>
+      'حذف حسابك نهائي. راجع محفظتك واحفظ تقريرها قبل المتابعة. ستُحذف البيانات الشخصية غير الملزم الاحتفاظ بها وتُلغى صلاحيات الدخول.';
+
+  @override
+  String get deletionReportTitle => 'تقرير المحفظة قبل الحذف';
+
+  @override
+  String get deletionReportWarning =>
+      'هذا التقرير نسخة للمعلومات فقط. بعد الحذف لن تعمل رموز QR ولن تتمكن من الوصول إلى تذاكر هذا الحساب.';
+
+  @override
+  String get deletionSave => 'حفظ التقرير';
+
+  @override
+  String get deletionSaved => 'تم حفظ التقرير.';
+
+  @override
+  String get deletionSaveFailed =>
+      'تعذر حفظ التقرير. يمكنك إعادة المحاولة أو أخذ لقطة للشاشة.';
+
+  @override
+  String get deletionWaiver =>
+      'أتنازل نهائيًا عن التذاكر ورموز QR والأرصدة المتبقية. لن يؤدي الحذف إلى استرداد أو تحويل.';
+
+  @override
+  String get deletionConfirm => 'تأكيد حذف حسابي';
+
+  @override
+  String get deletionManageWallet => 'إدارة محفظتي';
+
+  @override
+  String get deletionOperationPending =>
+      'توجد عملية قيد التنفيذ (شراء أو تحقق في المحطة). أكملها قبل متابعة الحذف.';
+
+  @override
+  String get deletionPin => 'أدخل رمز PIN لحذف حسابك نهائيًا.';
+
+  @override
+  String get deletionSuccess => 'تم حذف حسابك بنجاح';
+
+  @override
+  String get deletionFailure =>
+      'تعذر تأكيد الحذف. تحقق من اتصالك ورمز PIN ثم أعد فتح هذا المسار. إذا تغيرت المحفظة، راجع التقرير الجديد قبل التأكيد مجددًا.';
+
+  @override
+  String get deletionWallets => 'المحافظ';
+
+  @override
+  String get deletionCarnets => 'دفاتر التذاكر';
+
+  @override
+  String get deletionQrs => 'رموز QR';
+
+  @override
+  String get deletionEmpty => 'لا توجد عناصر.';
+
+  @override
+  String get deletionReference => 'المرجع';
+
+  @override
+  String get deletionCurrency => 'العملة';
+
+  @override
+  String get deletionBalance => 'الرصيد المتاح';
+
+  @override
+  String get deletionAvailable => 'التذاكر المتاحة';
+
+  @override
+  String get deletionFaceValue => 'قيمة التذكرة';
+
+  @override
+  String get deletionActiveQr => 'تذاكر في رموز QR نشطة';
+
+  @override
+  String get deletionBlockedQr => 'تذاكر في رموز QR محظورة';
+
+  @override
+  String get deletionConsumed => 'مستهلكة';
+
+  @override
+  String get deletionExpired => 'منتهية الصلاحية';
+
+  @override
+  String get deletionTransferred => 'محوّلة';
+
+  @override
+  String get deletionExpiry => 'انتهاء الصلاحية';
+
+  @override
+  String get deletionState => 'الحالة';
+
+  @override
+  String get deletionTickets => 'التذاكر';
+
+  @override
+  String get deletionActive => 'نشط';
+
+  @override
+  String get deletionBlocked => 'محظور';
+
+  @override
+  String get authAccountNotFound =>
+      'لا يوجد حساب مرتبط بهذا الرقم. تحقق من الرقم أو أنشئ حسابًا.';
+
+  @override
   String get appTitle => 'Leader Petroleum E-Tickets';
 
   @override

@@ -52,10 +52,11 @@ const _allowedFlutterAcpecEndpoints = <String>{
   // Authenticated account deletion status and explicitly confirmed request.
   '/api/acpec/mobile_auth/v1/account-deletion/status',
   '/api/acpec/mobile_auth/v1/account-deletion/request',
+  // Authenticated preview/execute and opaque receipt recovery use this base.
+  '/api/acpec/mobile_auth/v1/account-deletion',
 
   // FuelToken client mobile.
   '/api/acpec/fueltoken/v1/mobile/wallet/current',
-  // Mobile wallet QR ceiling, implemented by update_wallet_qr_limit.
   '/api/acpec/fueltoken/v1/mobile/wallet/qr-limit',
   '/api/acpec/fueltoken/v1/mobile/transactions',
   '/api/acpec/fueltoken/v1/mobile/transactions/detail',

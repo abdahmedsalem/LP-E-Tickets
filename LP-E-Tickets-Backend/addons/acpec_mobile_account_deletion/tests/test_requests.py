@@ -127,6 +127,24 @@ class TestDeletionRequests(TransactionCase):
         self.assertFalse(record.completed_at)
         self.assertTrue(record.processing_notes)
 
+        partner = requester.partner_id
+        record.write({
+            'settlement_notes': 'No tickets or balance in this fixture',
+            'erasure_evidence': 'Identity erased by the controlled workflow',
+            'retention_details': 'Business records retained for audit',
+            'notification_channel': 'sms',
+            'notification_reference': 'SMS-test',
+            'notification_sent_at': fields.Datetime.now(),
+        })
+        record.action_complete()
+        self.assertEqual(record.state, 'completed')
+        self.assertEqual(requester.partner_id, partner)
+        self.assertEqual(requester.name, 'Compte supprimé')
+        self.assertFalse(requester.acpec_mobile_phone)
+        self.assertFalse(requester.email)
+        self.assertFalse(partner.ref)
+        self.assertFalse(requester.acpec_mobile_pin_set)
+
 
     def test_overdue_cron_does_not_claim_deletion(self):
         requester = self.env['res.users'].with_context(no_reset_password=True).create({

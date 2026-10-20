@@ -182,8 +182,70 @@ class AccountDeletionRequest(models.Model):
         # Old callers must not mistake account deactivation for data deletion.
         return self.action_prepare_deletion()
 
+    def _erase_personal_data(self):
+        """Erase mobile identity data while retaining required business records."""
+        self.ensure_one()
+        user = self.user_id.with_context(active_test=False)
+        if not user:
+            return False
+
+        now = fields.Datetime.now()
+        sessions = self.env['acpec.mobile.session'].sudo().search([
+            ('user_id', '=', user.id),
+        ])
+        if sessions:
+            sessions._write_internal({
+                'state': 'revoked',
+                'revoked_at': now,
+                'ip_address': False,
+                'user_agent': False,
+                'device_name': False,
+                'app_version': False,
+                'device_trust_note': False,
+            })
+
+        user_values = {
+            'name': _('Compte supprimé'),
+            'login': 'deleted+%s.%s@invalid.local' % (user.id, uuid.uuid4().hex),
+            'active': False,
+            'acpec_mobile_state': 'blocked',
+            'acpec_mobile_phone': False,
+            'acpec_human_code': False,
+        }
+        for field_name in ('email', 'phone', 'mobile_phone'):
+            if field_name in user._fields:
+                user_values[field_name] = False
+        if user.acpec_mobile_only:
+            user.sudo()._acpec_fueltoken_erase_mobile_identity()
+            for field_name in ('name', 'login', 'acpec_mobile_phone', 'acpec_human_code'):
+                user_values.pop(field_name, None)
+        user.sudo().with_context(
+            acpec_allow_human_code_write=True,
+            acpec_mobile_allow_password_write=True,
+        ).write(user_values)
+        user.sudo().action_reset_mobile_pin()
+
+        partner = user.partner_id.with_context(active_test=False)
+        if partner:
+            other_users = self.env['res.users'].sudo().with_context(
+                active_test=False,
+            ).search([
+                ('partner_id', '=', partner.id),
+                ('id', '!=', user.id),
+            ], limit=1)
+            if not other_users:
+                partner_values = {'name': _('Compte supprimé')}
+                for field_name in (
+                    'email', 'phone', 'mobile', 'street', 'street2',
+                    'zip', 'city', 'website', 'vat', 'comment', 'ref',
+                ):
+                    if field_name in partner._fields:
+                        partner_values[field_name] = False
+                partner.sudo().write(partner_values)
+        return True
+
     def action_complete(self):
-        """Record an operator's completed manual procedure, not automatic erasure."""
+        """Erase personal identity data and close the verified request."""
         self._check_manager()
         with self.env.cr.savepoint():
             for rec in self.sorted('id'):
@@ -213,6 +275,7 @@ class AccountDeletionRequest(models.Model):
                         ('user_id', '=', user.id), ('state', 'in', ('active', 'rotated')),
                     ]):
                         raise ValidationError(_('Des sessions mobiles sont encore actives. Révoquez-les avant de clôturer.'))
+                rec._erase_personal_data()
                 rec.sudo().write({'state': 'completed', 'completed_at': now,
                                   'completed_by': self.env.user.id,
                                   'assigned_to': rec.assigned_to.id or self.env.user.id})

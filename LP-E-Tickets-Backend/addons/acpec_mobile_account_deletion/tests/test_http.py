@@ -75,3 +75,95 @@ class TestAccountDeletionHttp(HttpCase):
         self.env.invalidate_all()
         self.assertFalse(self.env['acpec.mobile.account.deletion'].sudo().search([
             ('user_id', '=', self.user.id)]))
+
+    def _immediate_policy(self):
+        self.env['ir.config_parameter'].sudo().set_param(
+            'acpec_mobile_account_deletion.retention_notice',
+            'Test fixture: financial rows retained until the test transaction rolls back.')
+
+    def test_immediate_deletion_and_unauthenticated_recovery(self):
+        import uuid
+        self._immediate_policy()
+        preview = self.rpc('preview')
+        self.assertTrue(preview['success'], preview)
+        key = str(uuid.uuid4())
+        params = {'confirmed': True, 'action_code': '1234',
+                  'snapshot': preview['data']['snapshot'], 'waive_value': False,
+                  'recovery_key': key, 'user_id': self.env.user.id}
+        result = self.rpc('execute', params)
+        self.assertTrue(result['success'], result)
+        self.assertTrue(result['data']['completed'])
+        self.env.invalidate_all()
+        self.assertFalse(self.user.active)
+        self.assertFalse(self.user.acpec_mobile_phone)
+        self.assertFalse(self.user.partner_id.phone)
+        self.assertFalse(self.env['acpec.mobile.session'].sudo().search_count([('user_id', '=', self.user.id)]))
+        recovered = self.rpc('recover', {'recovery_key': key}, authenticated=False)
+        self.assertEqual(recovered['data'], result['data'])
+        self.assertEqual(self.rpc('execute', params, authenticated=False)['data'], result['data'])
+        self.assertFalse(self.rpc('recover', {'recovery_key': str(uuid.uuid4())},
+                                  authenticated=False)['data']['completed'])
+        self.assertFalse(self.rpc('preview')['success'])
+        self.assertTrue(self.env.ref('base.user_admin').active)
+
+    def test_immediate_requires_session_confirmation_and_pin(self):
+        import uuid
+        self._immediate_policy()
+        report = self.rpc('preview')['data']
+        params = {'confirmed': True, 'action_code': '9999', 'snapshot': report['snapshot'],
+                  'waive_value': False, 'recovery_key': str(uuid.uuid4())}
+        self.assertFalse(self.rpc('preview', authenticated=False)['success'])
+        self.assertFalse(self.rpc('execute', params, authenticated=False)['success'])
+        result = self.rpc('execute', params)
+        self.assertFalse(result['success'], result)
+        self.env.invalidate_all()
+        self.assertTrue(self.user.active)
+        self.assertEqual(self.user.acpec_mobile_pin_failed_count, 1)
+        params['action_code'] = '1234'
+        params['confirmed'] = False
+        self.assertFalse(self.rpc('execute', params)['success'])
+        self.assertTrue(self.user.active)
+
+    def test_immediate_rejects_changed_wallet_and_missing_policy(self):
+        import uuid
+        self._immediate_policy()
+        params = {'confirmed': True, 'action_code': '1234', 'snapshot': '0' * 64,
+                  'waive_value': False, 'recovery_key': str(uuid.uuid4())}
+        self.assertFalse(self.rpc('execute', params)['success'])
+        self.env.invalidate_all()
+        self.assertTrue(self.user.active)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'acpec_mobile_account_deletion.retention_notice', '')
+        self.assertFalse(self.rpc('preview')['success'])
+
+    def test_immediate_audit_failure_rolls_back_erasure(self):
+        import uuid
+        from unittest.mock import patch
+        from odoo.addons.acpec_mobile_account_deletion.controllers.account_deletion import AccountDeletionApi
+        self._immediate_policy()
+        report = self.rpc('preview')['data']
+        params = {'confirmed': True, 'action_code': '1234', 'snapshot': report['snapshot'],
+                  'waive_value': False, 'recovery_key': str(uuid.uuid4())}
+        with patch.object(AccountDeletionApi, '_audit_in_transaction', side_effect=RuntimeError('audit unavailable')):
+            result = self.rpc('execute', params)
+        self.assertFalse(result['success'], result)
+        self.env.invalidate_all()
+        self.assertTrue(self.user.active)
+        self.assertEqual(self.user.acpec_mobile_phone, '23451234')
+        self.assertTrue(self.session.exists())
+        self.assertFalse(self.env['acpec.mobile.account.deletion'].sudo().search([('user_id', '=', self.user.id)]))
+
+    def test_pending_device_can_delete_with_session_and_correct_pin(self):
+        import uuid
+        self._immediate_policy()
+        self.session.device_id._write_internal({'trust_state': 'pending_trust'})
+        self.session._write_internal({'device_trust_state': 'pending_trust'})
+        report = self.rpc('preview')
+        self.assertTrue(report['success'], report)
+        result = self.rpc('execute', {
+            'confirmed': True, 'action_code': '1234',
+            'snapshot': report['data']['snapshot'], 'waive_value': False,
+            'recovery_key': str(uuid.uuid4())})
+        self.assertTrue(result['success'], result)
+        self.env.invalidate_all()
+        self.assertFalse(self.user.active)

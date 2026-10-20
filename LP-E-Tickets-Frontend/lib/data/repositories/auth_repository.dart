@@ -463,6 +463,12 @@ class AuthRepository implements AuthRepositoryContract {
     }
   }
 
+  void forgetDeletedAccount() {
+    final deletedId = _current?.id;
+    _users.removeWhere((user) => user.id == deletedId);
+    _current = null;
+  }
+
   Future<List<AppUser>> listUsers() async {
     await Future.delayed(const Duration(milliseconds: 200));
     return List.unmodifiable(_users);

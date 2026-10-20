@@ -9,6 +9,113 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get deletionIntro =>
+      'La suppression de votre compte est définitive. Consultez et enregistrez votre portefeuille avant de continuer. Les données personnelles non soumises à conservation seront effacées et vos accès seront révoqués.';
+
+  @override
+  String get deletionReportTitle => 'Rapport du portefeuille avant suppression';
+
+  @override
+  String get deletionReportWarning =>
+      'Ce rapport est une copie informative. Après suppression, les QR seront inutilisables et vous ne pourrez plus accéder aux tickets de ce compte.';
+
+  @override
+  String get deletionSave => 'Enregistrer le rapport';
+
+  @override
+  String get deletionSaved => 'Rapport enregistré.';
+
+  @override
+  String get deletionSaveFailed =>
+      'Impossible d’enregistrer le rapport. Vous pouvez réessayer ou effectuer une capture d’écran.';
+
+  @override
+  String get deletionWaiver =>
+      'Je renonce définitivement aux tickets, QR et soldes restants. Aucun remboursement ni transfert ne sera effectué par cette suppression.';
+
+  @override
+  String get deletionConfirm => 'Confirmer la suppression de mon compte';
+
+  @override
+  String get deletionManageWallet => 'Gérer mon portefeuille';
+
+  @override
+  String get deletionOperationPending =>
+      'Une opération est en cours (achat ou validation en station). Terminez-la avant de reprendre la suppression.';
+
+  @override
+  String get deletionPin =>
+      'Saisissez votre PIN pour supprimer définitivement votre compte.';
+
+  @override
+  String get deletionSuccess => 'Votre compte a été supprimé avec succès';
+
+  @override
+  String get deletionFailure =>
+      'La suppression n’a pas pu être confirmée. Vérifiez votre connexion et votre PIN, puis rouvrez ce parcours. Si le portefeuille a changé, vérifiez le nouveau rapport avant de confirmer à nouveau.';
+
+  @override
+  String get deletionWallets => 'Portefeuilles';
+
+  @override
+  String get deletionCarnets => 'Carnets';
+
+  @override
+  String get deletionQrs => 'QR codes';
+
+  @override
+  String get deletionEmpty => 'Aucun élément.';
+
+  @override
+  String get deletionReference => 'Référence';
+
+  @override
+  String get deletionCurrency => 'Devise';
+
+  @override
+  String get deletionBalance => 'Solde disponible';
+
+  @override
+  String get deletionAvailable => 'Tickets disponibles';
+
+  @override
+  String get deletionFaceValue => 'Valeur du ticket';
+
+  @override
+  String get deletionActiveQr => 'Tickets en QR actif';
+
+  @override
+  String get deletionBlockedQr => 'Tickets en QR bloqué';
+
+  @override
+  String get deletionConsumed => 'Consommés';
+
+  @override
+  String get deletionExpired => 'Expirés';
+
+  @override
+  String get deletionTransferred => 'Transférés';
+
+  @override
+  String get deletionExpiry => 'Expiration';
+
+  @override
+  String get deletionState => 'État';
+
+  @override
+  String get deletionTickets => 'Tickets';
+
+  @override
+  String get deletionActive => 'Actif';
+
+  @override
+  String get deletionBlocked => 'Bloqué';
+
+  @override
+  String get authAccountNotFound =>
+      'Aucun compte associé à ce numéro. Vérifiez le numéro ou créez un compte.';
+
+  @override
   String get appTitle => 'Leader Petroleum E-Tickets';
 
   @override

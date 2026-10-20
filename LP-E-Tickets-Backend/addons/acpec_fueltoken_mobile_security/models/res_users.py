@@ -1,6 +1,10 @@
 import re
+import uuid
 from odoo import _, api, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
+
+
+_IDENTITY_ERASURE_TOKEN = object()
 
 
 class ResUsers(models.Model):
@@ -174,6 +178,8 @@ class ResUsers(models.Model):
         )
 
     def _check_acpec_fueltoken_mobile_phone_write_allowed(self, vals):
+        if self.env.su and self.env.context.get('_acpec_identity_erasure') is _IDENTITY_ERASURE_TOKEN:
+            return True
         vals = dict(vals or {})
         touched_fields = {'login', 'acpec_mobile_phone'} & set(vals)
         if not touched_fields:
@@ -234,6 +240,44 @@ class ResUsers(models.Model):
             "Identité mobile FuelToken verrouillée : une identité établie ne peut pas changer de téléphone. "
             "Bloquez l’ancienne identité et créez une nouvelle identité mobile."
         ))
+
+    def _acpec_fueltoken_erase_mobile_identity(self):
+        """Retire a blocked identity through the account deletion workflow."""
+        self.ensure_one()
+        if not self.env.su:
+            raise AccessError(_('Identity erasure requires privileged execution.'))
+        if self.active or self.acpec_mobile_state != 'blocked':
+            raise ValidationError(_('Block the mobile account before erasing its identity.'))
+        if not self.acpec_mobile_only:
+            raise ValidationError(_('Identity erasure requires a mobile account.'))
+        if self.env['acpec.mobile.session'].sudo().search_count([
+            ('user_id', '=', self.id), ('state', 'in', ('active', 'rotated')),
+        ]):
+            raise ValidationError(_('Revoke mobile sessions before erasing the identity.'))
+        partner = self.partner_id
+        if self.with_context(active_test=False).search_count([
+            ('partner_id', '=', partner.id), ('id', '!=', self.id),
+        ]):
+            raise ValidationError(_('A shared contact must be separated before account erasure.'))
+
+        # The object token cannot be supplied through an RPC context.
+        erased_user = self.with_context(
+            _acpec_identity_erasure=_IDENTITY_ERASURE_TOKEN,
+            acpec_fueltoken_allow_mobile_partner_identity_sync=True,
+            acpec_allow_human_code_write=True,
+        )
+        erased_user.write({
+            'name': _('Compte supprimé'),
+            'login': 'deleted+%s.%s@invalid.local' % (self.id, uuid.uuid4().hex),
+            'acpec_mobile_phone': False,
+            'acpec_human_code': False,
+            'acpec_mobile_only': False,
+            'group_ids': [(6, 0, [self.env.ref('base.group_portal').id])],
+        })
+        partner.with_context(
+            acpec_fueltoken_allow_mobile_partner_identity_sync=True,
+        ).write({'name': _('Compte supprimé'), 'ref': False})
+        return True
 
     @api.model_create_multi
     def create(self, vals_list):

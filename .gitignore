@@ -14,4 +14,8 @@ __pycache__/
 odoo_docker/backups/
 .venv/
 venv/
+*.msi
+.android-setup/
+.audit_hits.txt
+
 

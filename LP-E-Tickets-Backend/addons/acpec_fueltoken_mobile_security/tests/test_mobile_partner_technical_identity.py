@@ -117,6 +117,30 @@ class TestFuelTokenMobilePartnerTechnicalIdentity(TransactionCase):
         self.assertEqual(partner.name, 'Normal Partner Updated')
         self.assertEqual(partner.ref, 'NORMAL-REF')
 
+    def test_controlled_erasure_retires_blocked_mobile_identity(self):
+        user = self._mobile_user('38374752', 'Erasure test')
+        partner = user.partner_id
+        with self.assertRaises(ValidationError):
+            user._acpec_fueltoken_erase_mobile_identity()
+        user.write({'active': False, 'acpec_mobile_state': 'blocked'})
+        user._acpec_fueltoken_erase_mobile_identity()
+        self.assertFalse(user.active)
+        self.assertFalse(user.acpec_mobile_only)
+        self.assertFalse(user.acpec_mobile_phone)
+        self.assertFalse(user.acpec_human_code)
+        self.assertTrue(user.login.startswith('deleted+'))
+        self.assertEqual(user.partner_id, partner)
+        self.assertEqual(user.name, 'Compte supprimé')
+        self.assertFalse(partner.ref)
+        self.assertNotIn(self.env.ref('acpec_mobile_auth.group_mobile_auth_user'), user.group_ids)
+
+    def test_erasure_cannot_be_enabled_by_rpc_context(self):
+        user = self._mobile_user('38374753', 'Context test')
+        with self.assertRaises(ValidationError):
+            user.with_context(_acpec_identity_erasure=True).write({
+                'acpec_mobile_phone': False,
+            })
+
     def test_patch43m1_direct_user_name_and_mobile_only_write_is_refused(self):
         user = self._mobile_user('38374749', 'Sidi Mokhtar')
 

@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/login_session_cache.dart';
+import '../../../data/services/login_otp_challenge.dart';
+import '../../../data/services/immediate_account_deletion_service.dart';
+import '../../settings/widgets/account_deletion_flow.dart';
 import '../../../core/validation/password_validators.dart'
     show kOtpSmsCodeLength;
 import '../../../l10n/app_localizations.dart';
@@ -35,6 +38,18 @@ class _LoginScreenState extends State<LoginScreen> {
     _identifier.addListener(_onIdentifierChanged);
     _otp.addListener(_onFieldChanged);
     _hydrateIdentifier();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _recoverDeletion());
+  }
+
+  Future<void> _recoverDeletion() async {
+    final service = ImmediateAccountDeletionService();
+    try {
+      if (await service.recover() && mounted) {
+        await showDeletionSuccess(context, service);
+      }
+    } catch (_) {
+      // Keep the recovery key for the next attempt when connectivity returns.
+    }
   }
 
   Future<void> _hydrateIdentifier() async {
@@ -91,6 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _presentLoginFailure(String raw) {
+    if (raw.trim() == LoginOtpChallenge.accountUnavailableMessage) {
+      return AppLocalizations.of(context).authAccountNotFound;
+    }
     if (Localizations.localeOf(context).languageCode == 'ar') {
       return AppLocalizations.of(context).authLoginFailed;
     }
@@ -199,7 +217,9 @@ class _LoginScreenState extends State<LoginScreen> {
               a.loginOtpIdentifier != b.loginOtpIdentifier,
           listener: (ctx, state) async {
             if (state.status == AuthStatus.unauthenticated &&
-                state.loginOtpIdentifier != null) {
+                state.loginOtpIdentifier != null &&
+                (state.loginOtpChallengeId ?? 0) > 0 &&
+                state.loginOtpIdentifier!.trim() == _identifier.text.trim()) {
                final id = state.loginOtpIdentifier!.trim();
                if (ctx.mounted) {
                  setState(() {
@@ -220,6 +240,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 state.errorMessage != null &&
                 !_handlingAuthMessage) {
               _handlingAuthMessage = true;
+              if (state.loginOtpIdentifier == null && _otpStep) {
+                _resetOtpStep();
+              }
               final msg = _otpStep
                   ? _presentOtpFailure(state.errorMessage!)
                   : _presentLoginFailure(state.errorMessage!);

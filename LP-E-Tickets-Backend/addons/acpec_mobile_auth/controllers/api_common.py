@@ -1746,7 +1746,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
             raise ValidationError('action_code requis pour confirmer cette action sensible.')
         return str(pin)
 
-    def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action', log_allowed=True, return_audit_vals=False):
+    def _require_sensitive_action_pin(self, params=None, purpose='sensitive_action', log_allowed=True, return_audit_vals=False, require_trusted_device=True):
         """Require trusted device + server-side mobile PIN for a concrete sensitive action.
 
         Le PIN/action_code brut n’est jamais stocké dans l’audit. Le mobile
@@ -1770,7 +1770,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
                 params=params,
             )
 
-        if session.device_trust_state != 'trusted':
+        if require_trusted_device and session.device_trust_state != 'trusted':
             if session.device_trust_state == 'pending_trust':
                 self._raise_sensitive_action_error(
                     code='DEVICE_PENDING_TRUST',

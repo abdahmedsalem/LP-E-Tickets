@@ -1,8 +1,8 @@
 {
     'name': 'ACPEC Mobile Account Deletion Requests',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.1.0',
     'license': 'OPL-1',
-    'depends': ['acpec_mobile_auth'],
+    'depends': ['acpec_mobile_auth', 'acpec_fueltoken_base', 'acpec_fueltoken_mobile_security', 'acpec_fueltoken_core', 'acpec_mobile_auth_otp'],
     'data': [
         'security/ir.model.access.csv',
         'security/rules.xml',

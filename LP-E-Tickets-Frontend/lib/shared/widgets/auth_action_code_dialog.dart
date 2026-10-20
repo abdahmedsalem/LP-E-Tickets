@@ -370,7 +370,9 @@ class _PinCodeBoxes extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: active ? Colors.black : const Color(0xFFB8BDC6),
+                            color: active
+                                ? Colors.black
+                                : const Color(0xFFB8BDC6),
                             width: active ? 2 : 1.6,
                           ),
                         ),

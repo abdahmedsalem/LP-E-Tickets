@@ -10,6 +10,8 @@ import '../controllers/profile_controller.dart';
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/profile/account_deletion_receipt.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';
+import '../../../data/services/immediate_account_deletion_service.dart';
+import '../../settings/widgets/account_deletion_flow.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/settings/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
@@ -37,6 +39,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   bool _bioPref = false;
   bool _deletionBusy = false;
   ProfileController get _profileController => widget.controller;
+  final _deletionService = ImmediateAccountDeletionService();
   String _localeCode = 'fr';
   String _appVersion = '—';
   String _buildNumber = '—';
@@ -126,74 +129,11 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   Future<void> _showDeleteAccountInfo() async {
     if (_deletionBusy) return;
     setState(() => _deletionBusy = true);
-    final l10n = AppLocalizations.of(context);
     try {
-      final status = await _profileController.accountDeletionStatus();
-      if (!mounted) return;
-      final existing = status.existingRequest;
-      if (existing != null) {
-        await _showDeletionReceipt(existing);
-        return;
-      }
-      final days = status.processingDays;
-      if (days == null || days < 1) {
-        throw const FormatException('Missing deletion processing policy');
-      }
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.settingsDeleteAccountTitle),
-          content: Text(l10n.settingsDeletionExplanation(days)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.commonCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.settingsDeletionSubmit),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true || !mounted) return;
-      final pin = await showSensitiveActionCodeDialog(
-        context,
-        title: l10n.commonPinVerification,
-        description: l10n.settingsDeletionPinDescription,
-      );
-      if (pin == null || pin.isEmpty || !mounted) return;
-      final receipt = await _profileController.requestAccountDeletion(pin);
-      if (mounted) await _showDeletionReceipt(receipt);
-    } catch (_) {
-      if (mounted) AppMessage.error(context, l10n.settingsDeletionUnconfirmed);
+      await runAccountDeletionFlow(context, _deletionService);
     } finally {
       if (mounted) setState(() => _deletionBusy = false);
     }
-  }
-
-  Future<void> _showDeletionReceipt(AccountDeletionReceipt receipt) async {
-    final l10n = AppLocalizations.of(context);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.settingsDeleteAccountTitle),
-        content: Text(
-          receipt.state == 'completed'
-              ? l10n.settingsDeletionCompleted(receipt.reference)
-              : l10n.settingsDeletionReceipt(
-                  receipt.reference,
-                  DateFormat.yMd(_localeCode).format(receipt.dueAt.toLocal()),
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.commonClose),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _showPrivacyPolicyInfo() async {

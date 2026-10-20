@@ -98,6 +98,204 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @deletionIntro.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression de votre compte est définitive. Consultez et enregistrez votre portefeuille avant de continuer. Les données personnelles non soumises à conservation seront effacées et vos accès seront révoqués.'**
+  String get deletionIntro;
+
+  /// No description provided for @deletionReportTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport du portefeuille avant suppression'**
+  String get deletionReportTitle;
+
+  /// No description provided for @deletionReportWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce rapport est une copie informative. Après suppression, les QR seront inutilisables et vous ne pourrez plus accéder aux tickets de ce compte.'**
+  String get deletionReportWarning;
+
+  /// No description provided for @deletionSave.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer le rapport'**
+  String get deletionSave;
+
+  /// No description provided for @deletionSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport enregistré.'**
+  String get deletionSaved;
+
+  /// No description provided for @deletionSaveFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d’enregistrer le rapport. Vous pouvez réessayer ou effectuer une capture d’écran.'**
+  String get deletionSaveFailed;
+
+  /// No description provided for @deletionWaiver.
+  ///
+  /// In fr, this message translates to:
+  /// **'Je renonce définitivement aux tickets, QR et soldes restants. Aucun remboursement ni transfert ne sera effectué par cette suppression.'**
+  String get deletionWaiver;
+
+  /// No description provided for @deletionConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la suppression de mon compte'**
+  String get deletionConfirm;
+
+  /// No description provided for @deletionManageWallet.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer mon portefeuille'**
+  String get deletionManageWallet;
+
+  /// No description provided for @deletionOperationPending.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une opération est en cours (achat ou validation en station). Terminez-la avant de reprendre la suppression.'**
+  String get deletionOperationPending;
+
+  /// No description provided for @deletionPin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisissez votre PIN pour supprimer définitivement votre compte.'**
+  String get deletionPin;
+
+  /// No description provided for @deletionSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre compte a été supprimé avec succès'**
+  String get deletionSuccess;
+
+  /// No description provided for @deletionFailure.
+  ///
+  /// In fr, this message translates to:
+  /// **'La suppression n’a pas pu être confirmée. Vérifiez votre connexion et votre PIN, puis rouvrez ce parcours. Si le portefeuille a changé, vérifiez le nouveau rapport avant de confirmer à nouveau.'**
+  String get deletionFailure;
+
+  /// No description provided for @deletionWallets.
+  ///
+  /// In fr, this message translates to:
+  /// **'Portefeuilles'**
+  String get deletionWallets;
+
+  /// No description provided for @deletionCarnets.
+  ///
+  /// In fr, this message translates to:
+  /// **'Carnets'**
+  String get deletionCarnets;
+
+  /// No description provided for @deletionQrs.
+  ///
+  /// In fr, this message translates to:
+  /// **'QR codes'**
+  String get deletionQrs;
+
+  /// No description provided for @deletionEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun élément.'**
+  String get deletionEmpty;
+
+  /// No description provided for @deletionReference.
+  ///
+  /// In fr, this message translates to:
+  /// **'Référence'**
+  String get deletionReference;
+
+  /// No description provided for @deletionCurrency.
+  ///
+  /// In fr, this message translates to:
+  /// **'Devise'**
+  String get deletionCurrency;
+
+  /// No description provided for @deletionBalance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Solde disponible'**
+  String get deletionBalance;
+
+  /// No description provided for @deletionAvailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tickets disponibles'**
+  String get deletionAvailable;
+
+  /// No description provided for @deletionFaceValue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valeur du ticket'**
+  String get deletionFaceValue;
+
+  /// No description provided for @deletionActiveQr.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tickets en QR actif'**
+  String get deletionActiveQr;
+
+  /// No description provided for @deletionBlockedQr.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tickets en QR bloqué'**
+  String get deletionBlockedQr;
+
+  /// No description provided for @deletionConsumed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consommés'**
+  String get deletionConsumed;
+
+  /// No description provided for @deletionExpired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Expirés'**
+  String get deletionExpired;
+
+  /// No description provided for @deletionTransferred.
+  ///
+  /// In fr, this message translates to:
+  /// **'Transférés'**
+  String get deletionTransferred;
+
+  /// No description provided for @deletionExpiry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Expiration'**
+  String get deletionExpiry;
+
+  /// No description provided for @deletionState.
+  ///
+  /// In fr, this message translates to:
+  /// **'État'**
+  String get deletionState;
+
+  /// No description provided for @deletionTickets.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tickets'**
+  String get deletionTickets;
+
+  /// No description provided for @deletionActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif'**
+  String get deletionActive;
+
+  /// No description provided for @deletionBlocked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloqué'**
+  String get deletionBlocked;
+
+  /// No description provided for @authAccountNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun compte associé à ce numéro. Vérifiez le numéro ou créez un compte.'**
+  String get authAccountNotFound;
+
   /// Nom de l'application
   ///
   /// In fr, this message translates to:
