@@ -25,10 +25,12 @@ Mettre à jour le module Odoo `acpec_mobile_account_deletion` version
 Core et Mobile Auth OTP.
 
 Configurer le paramètre système
-`acpec_mobile_account_deletion.retention_notice` : catégories financières
-conservées, justification, durée et accès. Sans cette politique, le parcours
-refuse de démarrer. Une politique de base locale de test ne doit pas être
-utilisée comme politique de production.
+`acpec_mobile_account_deletion.retention_notice` avec la règle de production :
+toutes les données personnelles, captures et justificatifs d’achat sont
+supprimés immédiatement ; seul l’historique des mouvements sans données
+personnelles est gardé temporairement trois jours pour le suivi des opérations,
+puis purgé car il n’est ensuite plus nécessaire. Sans cette politique, le
+parcours refuse de démarrer.
 
 Routes JSON-RPC sous `/api/acpec/mobile_auth/v1/account-deletion` :
 

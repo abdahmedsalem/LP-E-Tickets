@@ -15,6 +15,14 @@ class ImmediateAccountDeletion(models.Model):
 
     recovery_hash = fields.Char(readonly=True, copy=False, index=True, groups='base.group_system')
     recovery_expires_at = fields.Datetime(readonly=True, copy=False, groups='base.group_system')
+    history_expires_at = fields.Datetime(
+        readonly=True, copy=False, index=True,
+        string='Échéance de l’historique des mouvements',
+    )
+    history_purged_at = fields.Datetime(
+        readonly=True, copy=False,
+        string='Purge de l’historique des mouvements',
+    )
     _unique_recovery_hash = models.Constraint('UNIQUE(recovery_hash)', 'Recovery key must be unique.')
 
     @api.model
@@ -40,6 +48,12 @@ class ImmediateAccountDeletion(models.Model):
         if not notice.strip():
             raise ValidationError(_('Account deletion is temporarily unavailable: retention policy is not configured.'))
         return notice.strip()
+
+    @api.model
+    def _retention_notice_ar(self):
+        notice = self.env['ir.config_parameter'].sudo().get_param(
+            'acpec_mobile_account_deletion.retention_notice_ar', '')
+        return notice.strip() or self._retention_notice()
 
     @api.model
     def _client_wallets(self, user):
@@ -95,7 +109,9 @@ class ImmediateAccountDeletion(models.Model):
                      'tickets': sum(q.line_ids.mapped('qty'))} for q in qrs],
             'has_value': any(f.qty_available or f.qty_qr_active or f.qty_qr_blocked for f in faces),
             'blockers': blockers,
-            'retention_notice': self._retention_notice(),
+            'retention_notice': self._retention_notice_ar()
+            if (self.env.context.get('lang') or '').startswith('ar')
+            else self._retention_notice(),
         }
         txs = self.env['acpec.fuel.transaction'].sudo().search([
             ('wallet_id', 'in', wallets.ids)], order='id')
@@ -158,6 +174,28 @@ class ImmediateAccountDeletion(models.Model):
             '|', '&', ('res_model', '=', 'res.users'), ('res_id', '=', user.id),
             '&', ('res_model', '=', 'res.partner'), ('res_id', '=', partner.id),
         ]).unlink()
+        # Purchase screenshots and payment proofs are personal data. They are
+        # erased immediately with the account, while the movement ledger is
+        # retained for the configured three-day traceability window.
+        purchases = self.env['acpec.fuel.purchase'].sudo().search([
+            ('partner_id', '=', partner.id),
+        ])
+        proof_attachments = purchases.mapped('proof_attachment_ids')
+        if proof_attachments:
+            models.Model.write(purchases, {'proof_attachment_ids': [(5, 0, 0)]})
+            proof_attachments.unlink()
+        if purchases:
+            models.Model.write(purchases, {
+                'payment_reference': False,
+                'payment_merchant_code': False,
+                'rejection_reason': False,
+                'idempotency_key': False,
+                'request_hash': False,
+                'approval_idempotency_key': False,
+                'approval_request_hash': False,
+                'rejection_idempotency_key': False,
+                'rejection_request_hash': False,
+            })
         for model, ids in (('res.users', user), ('res.partner', partner)):
             values = {name: False for name in ('image_1920', 'signature', 'function', 'birthdate',
                                                'website', 'tz')
@@ -225,11 +263,44 @@ class ImmediateAccountDeletion(models.Model):
             'notification_reference': False,
             'recovery_hash': digest,
             'recovery_expires_at': fields.Datetime.now() + timedelta(days=7),
+            'history_expires_at': fields.Datetime.now() + timedelta(days=3),
             'settlement_notes': 'Explicit in-app waiver of residual value.' if report['has_value'] else 'No residual value.',
             'processing_notes': 'Immediate authenticated deletion; completion receipt available for seven days.',
             'erasure_evidence': 'Profile and contact cleared; personal attachments/messages, OTPs, sessions and devices purged.',
             'retention_details': report['retention_notice'],
         })
         return {'completed': True, 'reference': record.reference}
+
+    @api.model
+    def _purge_expired_movement_history(self):
+        """Purge only the deleted client's anonymous movement ledger."""
+        now = fields.Datetime.now()
+        records = self.sudo().search([
+            ('state', '=', 'completed'),
+            ('history_expires_at', '!=', False),
+            ('history_expires_at', '<=', now),
+            '|', ('history_purged_at', '=', False),
+                 ('history_purged_at', '<', fields.Datetime.to_string(now - timedelta(minutes=1))),
+        ], limit=100, order='history_expires_at,id')
+        count = 0
+        for record in records:
+            user = record.user_id.with_context(active_test=False)
+            if not user or user.active or user.acpec_mobile_phone:
+                continue
+            wallets = self.env['acpec.fuel.wallet'].sudo().search([
+                ('partner_id', '=', user.partner_id.id),
+            ])
+            purchases = self.env['acpec.fuel.purchase'].sudo().search([
+                ('partner_id', '=', user.partner_id.id),
+            ])
+            movements = self.env['acpec.fuel.transaction'].sudo().search([
+                '|', ('wallet_id', 'in', wallets.ids),
+                '&', ('wallet_id', '=', False), ('purchase_id', 'in', purchases.ids),
+            ])
+            if movements:
+                movements.with_context(allow_fuel_transaction_unlink=True).unlink()
+                count += len(movements)
+            record.sudo().write({'history_purged_at': now})
+        return count
 
 

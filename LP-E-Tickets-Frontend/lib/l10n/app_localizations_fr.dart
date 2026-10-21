@@ -13,15 +13,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deletionDeletedDataText =>
-      'Votre nom, numéro de téléphone, adresse e-mail, coordonnées, photo et pièces jointes du profil sont effacés des données actives du compte. Les demandes d’inscription, codes SMS, sessions et données d’appareils associés sont supprimés. Les accès sont révoqués et les métadonnées personnelles des audits sont effacées.';
+      'Votre nom, numéro de téléphone, adresse e-mail, coordonnées, photo et pièces jointes du profil, ainsi que les captures et justificatifs d’achat, sont effacés immédiatement des données actives lors de la suppression du compte. Les demandes d’inscription, codes SMS, sessions et données d’appareils associés sont supprimés. Les accès sont révoqués et les métadonnées personnelles des audits sont effacées.';
 
   @override
-  String get deletionRetainedDataTitle =>
-      'Données conservées : justification et durée';
+  String get deletionRetainedDataTitle => 'Historique des mouvements : 3 jours';
 
   @override
   String get deletionCopiesNotice =>
-      'Les carnets, tickets et transactions restent cohérents pour la traçabilité financière. Les justificatifs de paiement concernés par la conservation suivent la notice ci-dessus. Les sauvegardes, journaux d’infrastructure et copies que vous avez exportées ne sont pas effacés instantanément par cette action.';
+      'Les captures et justificatifs d’achat ne font pas partie de l’historique conservé : ils sont supprimés immédiatement avec vos données personnelles. Seul l’historique des mouvements, sans vos informations personnelles, est conservé 3 jours puis supprimé automatiquement. Les sauvegardes, journaux d’infrastructure et copies exportées suivent leur propre cycle de purge.';
 
   @override
   String get deletionIntro =>
@@ -76,7 +75,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deletionCarnets => 'Carnets';
 
   @override
-  String get deletionQrs => 'QR codes';
+  String get deletionQrs => 'Codes QR';
 
   @override
   String get deletionEmpty => 'Aucun élément.';
@@ -2321,7 +2320,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicyText =>
-      'Lors de la suppression définitive du compte, le nom, le numéro de téléphone, l’e-mail, les coordonnées, la photo et les pièces jointes du profil sont effacés des données actives. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Les transactions et justificatifs financiers concernés par une obligation de conservation restent soumis à la notice affichée avant confirmation, qui précise les catégories, la justification et la durée. Les sauvegardes, journaux d’infrastructure et copies exportées ne sont pas supprimés instantanément. Consultez la politique complète pour le détail.';
+      'Lors de la suppression du compte, vos données personnelles, les captures et les justificatifs d’achat sont effacés immédiatement des données actives. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Seul l’historique des mouvements, sans vos informations personnelles, est conservé 3 jours pour la traçabilité des opérations, puis supprimé automatiquement. Les sauvegardes, journaux d’infrastructure et copies exportées suivent leur propre cycle de purge. Consultez la politique complète pour le détail.';
 
   @override
   String get privacyLinkCopied =>
