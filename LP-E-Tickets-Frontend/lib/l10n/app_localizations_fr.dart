@@ -2407,4 +2407,44 @@ class AppLocalizationsFr extends AppLocalizations {
   String get qrLimitRequired =>
       'Le plafond QR n’est pas encore disponible depuis le serveur.';
 
-  @overrid
+  @override
+  String get qrMissingCarnetCode => 'Code carnet indisponible';
+
+  @override
+  String get qrGenerationNoLines =>
+      'Aucune ligne à générer (stock ou sélection vide).';
+
+  @override
+  String get purchasePaymentTitle => 'Paiement';
+
+  @override
+  String get purchaseNoPaymentMethods => 'Aucun moyen de paiement disponible.';
+
+  @override
+  String get purchasePaymentMethodsConfigure =>
+      'Les moyens de paiement doivent être configurés et activés dans Odoo.';
+
+  @override
+  String get purchaseTapToEdit => 'Appuyez pour modifier';
+
+  @override
+  String get commonCopy => 'Copier';
+
+  @override
+  String get stationDefaultName => 'Station LP Ksar';
+
+  @override
+  String get stationCountryMauritania => 'Mauritanie';
+
+  @override
+  String get purchaseMobileOnlyProof =>
+      'L’envoi d’une commande avec preuve de paiement nécessite l’application mobile.';
+
+  @override
+  String purchaseUnknownCarnetType(String code) {
+    return 'Type « $code » : identifiant serveur inconnu. Actualisez la liste des offres.';
+  }
+
+  @override
+  String get purchaseNoValidLines => 'Aucune ligne valide à envoyer.';
+}

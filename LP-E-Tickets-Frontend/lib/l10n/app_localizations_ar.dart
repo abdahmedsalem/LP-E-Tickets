@@ -2366,4 +2366,26 @@ class AppLocalizationsAr extends AppLocalizations {
       'يجب إعداد وسائل الدفع وتفعيلها في أودو.';
 
   @override
-  String get purchaseTapToE
+  String get purchaseTapToEdit => 'اضغط للتعديل';
+
+  @override
+  String get commonCopy => 'نسخ';
+
+  @override
+  String get stationDefaultName => 'محطة إل بي القصر';
+
+  @override
+  String get stationCountryMauritania => 'موريتانيا';
+
+  @override
+  String get purchaseMobileOnlyProof =>
+      'يتطلب إرسال طلب مع إثبات الدفع استخدام تطبيق الهاتف.';
+
+  @override
+  String purchaseUnknownCarnetType(String code) {
+    return 'نوع « $code »: معرّف الخادم غير معروف. حدّث قائمة العروض.';
+  }
+
+  @override
+  String get purchaseNoValidLines => 'لا توجد عناصر صالحة للإرسال.';
+}
