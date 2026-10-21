@@ -20,7 +20,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get deletionCopiesNotice =>
-      'Les captures et justificatifs d’achat ne font pas partie de l’historique conservé : ils sont supprimés immédiatement avec vos données personnelles. Seul l’historique des mouvements, sans vos informations personnelles, est conservé 3 jours puis supprimé automatiquement. Les sauvegardes, journaux d’infrastructure et copies exportées suivent leur propre cycle de purge.';
+      'Toutes vos données personnelles, ainsi que les captures et justificatifs d’achat, sont supprimés immédiatement avec votre compte. Seul l’historique des mouvements, sans données personnelles, est conservé temporairement pendant 3 jours pour le suivi des opérations, puis supprimé automatiquement car il n’est ensuite plus nécessaire. Les sauvegardes, journaux d’infrastructure et copies exportées suivent leur propre cycle de purge.';
 
   @override
   String get deletionIntro =>
@@ -2320,7 +2320,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicyText =>
-      'Lors de la suppression du compte, vos données personnelles, les captures et les justificatifs d’achat sont effacés immédiatement des données actives. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Seul l’historique des mouvements, sans vos informations personnelles, est conservé 3 jours pour la traçabilité des opérations, puis supprimé automatiquement. Les sauvegardes, journaux d’infrastructure et copies exportées suivent leur propre cycle de purge. Consultez la politique complète pour le détail.';
+      'Lors de la suppression du compte, toutes vos données personnelles, les captures et les justificatifs d’achat sont supprimés immédiatement. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Seul l’historique des mouvements, sans données personnelles, est conservé temporairement pendant 3 jours pour le suivi des opérations, puis supprimé automatiquement car il n’est ensuite plus nécessaire. Les sauvegardes, journaux d’infrastructure et copies exportées suivent leur propre cycle de purge. Consultez la politique complète pour le détail.';
 
   @override
   String get privacyLinkCopied =>
