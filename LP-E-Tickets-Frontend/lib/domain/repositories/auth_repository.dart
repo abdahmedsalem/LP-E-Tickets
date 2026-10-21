@@ -57,6 +57,7 @@ abstract interface class AuthRepositoryContract {
     required String newPin,
   });
   Future<void> logout();
+  void forgetDeletedAccount();
   Future<AppUser> changeRole(
     String userId,
     UserRole newRole, {

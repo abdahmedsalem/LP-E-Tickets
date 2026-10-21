@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fueltoken_app/data/models/app_user.dart';
-import 'package:fueltoken_app/data/models/user_role.dart';
+import 'package:fueltoken_app/domain/models/app_user.dart';
+import 'package:fueltoken_app/domain/models/user_role.dart';
+import 'package:fueltoken_app/data/repositories/auth_repository.dart';
 import 'package:fueltoken_app/data/services/immediate_account_deletion_service.dart';
 import 'package:fueltoken_app/features/auth/bloc/auth_bloc.dart';
 import 'package:fueltoken_app/features/settings/widgets/account_deletion_flow.dart';
 import 'package:fueltoken_app/l10n/app_localizations.dart';
 
 class DeletionFlowBloc extends AuthBloc {
-  DeletionFlowBloc() {
+  DeletionFlowBloc() : super(repo: AuthRepository.instance) {
     emit(
       AuthState(
         status: AuthStatus.authenticated,

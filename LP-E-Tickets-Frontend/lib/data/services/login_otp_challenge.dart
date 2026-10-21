@@ -1,4 +1,4 @@
-import 'acpec_public_api_error.dart';
+import 'shared_services/acpec_public_api_error.dart';
 
 /// A login may advance to SMS verification only with a real server challenge.
 class LoginOtpChallenge {

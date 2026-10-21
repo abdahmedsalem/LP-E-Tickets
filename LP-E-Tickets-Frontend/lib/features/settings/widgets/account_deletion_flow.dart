@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/services/immediate_account_deletion_service.dart';
-import '../../../data/services/odoo_jsonrpc_client.dart';
+import '../../../data/services/shared_services/odoo_jsonrpc_client.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_message.dart';
 import '../../../shared/widgets/auth_action_code_dialog.dart';

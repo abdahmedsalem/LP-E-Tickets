@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fueltoken_app/data/repositories/auth_repository.dart';
 import 'package:fueltoken_app/data/services/login_otp_challenge.dart';
 import 'package:fueltoken_app/features/auth/bloc/auth_bloc.dart';
 import 'package:fueltoken_app/features/auth/screens/login_screen.dart';
 import 'package:fueltoken_app/l10n/app_localizations.dart';
 
 class LoginTestBloc extends AuthBloc {
+  LoginTestBloc() : super(repo: AuthRepository.instance);
   void showState(AuthState value) => emit(value);
 }
 

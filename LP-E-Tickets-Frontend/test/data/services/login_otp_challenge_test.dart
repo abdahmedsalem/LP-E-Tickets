@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fueltoken_app/data/services/login_otp_challenge.dart';
-import 'package:fueltoken_app/data/services/odoo_jsonrpc_client.dart';
+import 'package:fueltoken_app/data/services/shared_services/odoo_jsonrpc_client.dart';
 
 void main() {
   test('unknown account accepted response cannot open SMS verification', () {

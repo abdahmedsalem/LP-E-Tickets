@@ -8,8 +8,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/auth/login_session_cache.dart';
 import '../controllers/profile_controller.dart';
 import '../../../domain/models/app_user.dart';
-import '../../../domain/models/profile/account_deletion_receipt.dart';
-import '../../../shared/widgets/auth_action_code_dialog.dart';
 import '../../../data/services/immediate_account_deletion_service.dart';
 import '../../settings/widgets/account_deletion_flow.dart';
 import '../../../core/navigation/client_tab_navigation.dart';

@@ -6,7 +6,7 @@ import '../../core/auth/odoo_session_store.dart';
 import '../../core/auth/secure_kv.dart';
 import '../../core/network/acpec_fueltoken_rpc_coordinator.dart';
 import '../api/acpec_fueltoken_jsonrpc_api.dart';
-import 'acpec_rpc_result_guard.dart';
+import 'shared_services/acpec_rpc_result_guard.dart';
 
 class DeletionWalletReport {
   DeletionWalletReport.fromJson(Map<String, dynamic> json) : data = json {
