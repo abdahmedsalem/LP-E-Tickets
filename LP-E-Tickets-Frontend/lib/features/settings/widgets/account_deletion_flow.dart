@@ -197,7 +197,13 @@ class _DeletionReportDialogState extends State<_DeletionReportDialog> {
       }
       text.writeln();
     }
+    text.writeln(l10n.deletionDeletedDataTitle);
+    text.writeln(l10n.deletionDeletedDataText);
+    text.writeln();
+    text.writeln(l10n.deletionRetainedDataTitle);
     text.writeln(widget.report.retentionNotice);
+    text.writeln();
+    text.writeln(l10n.deletionCopiesNotice);
     text.writeln('\n${l10n.deletionReportWarning}');
     return text.toString();
   }

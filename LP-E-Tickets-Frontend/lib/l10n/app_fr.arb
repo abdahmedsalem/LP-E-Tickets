@@ -1,5 +1,10 @@
 {
-  "deletionIntro": "La suppression de votre compte est définitive. Consultez et enregistrez votre portefeuille avant de continuer. Les données personnelles non soumises à conservation seront effacées et vos accès seront révoqués.",
+  "deletionDeletedDataTitle": "Données personnelles effacées",
+  "deletionDeletedDataText": "Votre nom, numéro de téléphone, adresse e-mail, coordonnées, photo et pièces jointes du profil sont effacés des données actives du compte. Les demandes d’inscription, codes SMS, sessions et données d’appareils associés sont supprimés. Les accès sont révoqués et les métadonnées personnelles des audits sont effacées.",
+  "deletionRetainedDataTitle": "Données conservées : justification et durée",
+  "deletionCopiesNotice": "Les carnets, tickets et transactions restent cohérents pour la traçabilité financière. Les justificatifs de paiement concernés par la conservation suivent la notice ci-dessus. Les sauvegardes, journaux d’infrastructure et copies que vous avez exportées ne sont pas effacés instantanément par cette action.",
+
+  "deletionIntro": "La suppression de votre compte est définitive. Avant de confirmer, consultez le rapport du portefeuille et les informations sur les données effacées et conservées.",
   "deletionReportTitle": "Rapport du portefeuille avant suppression",
   "deletionReportWarning": "Ce rapport est une copie informative. Après suppression, les QR seront inutilisables et vous ne pourrez plus accéder aux tickets de ce compte.",
   "deletionSave": "Enregistrer le rapport",
@@ -808,7 +813,7 @@
   },
   "commonCopyLink": "Copier le lien",
   "settingsPrivacyPolicy": "Politique de confidentialité",
-  "settingsPrivacyPolicyText": "Leader Petroleum E-Tickets s’engage à protéger vos données personnelles. La géolocalisation et l’appareil mobile servent uniquement à la sécurité et à la validation des opérations de carburant.",
+  "settingsPrivacyPolicyText": "Lors de la suppression définitive du compte, le nom, le numéro de téléphone, l’e-mail, les coordonnées, la photo et les pièces jointes du profil sont effacés des données actives. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Les transactions et justificatifs financiers concernés par une obligation de conservation restent soumis à la notice affichée avant confirmation, qui précise les catégories, la justification et la durée. Les sauvegardes, journaux d’infrastructure et copies exportées ne sont pas supprimés instantanément. Consultez la politique complète pour le détail.",
   "privacyLinkCopied": "Lien de la politique de confidentialité copié.",
   "settingsStationsMap": "Carte des stations",
   "stationSearchPlaceholder": "Chercher une station Leader...",

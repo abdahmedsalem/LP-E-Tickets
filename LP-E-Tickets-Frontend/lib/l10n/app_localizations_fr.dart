@@ -9,8 +9,23 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get deletionDeletedDataTitle => 'Données personnelles effacées';
+
+  @override
+  String get deletionDeletedDataText =>
+      'Votre nom, numéro de téléphone, adresse e-mail, coordonnées, photo et pièces jointes du profil sont effacés des données actives du compte. Les demandes d’inscription, codes SMS, sessions et données d’appareils associés sont supprimés. Les accès sont révoqués et les métadonnées personnelles des audits sont effacées.';
+
+  @override
+  String get deletionRetainedDataTitle =>
+      'Données conservées : justification et durée';
+
+  @override
+  String get deletionCopiesNotice =>
+      'Les carnets, tickets et transactions restent cohérents pour la traçabilité financière. Les justificatifs de paiement concernés par la conservation suivent la notice ci-dessus. Les sauvegardes, journaux d’infrastructure et copies que vous avez exportées ne sont pas effacés instantanément par cette action.';
+
+  @override
   String get deletionIntro =>
-      'La suppression de votre compte est définitive. Consultez et enregistrez votre portefeuille avant de continuer. Les données personnelles non soumises à conservation seront effacées et vos accès seront révoqués.';
+      'La suppression de votre compte est définitive. Avant de confirmer, consultez le rapport du portefeuille et les informations sur les données effacées et conservées.';
 
   @override
   String get deletionReportTitle => 'Rapport du portefeuille avant suppression';
@@ -2306,7 +2321,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicyText =>
-      'Leader Petroleum E-Tickets s’engage à protéger vos données personnelles. La géolocalisation et l’appareil mobile servent uniquement à la sécurité et à la validation des opérations de carburant.';
+      'Lors de la suppression définitive du compte, le nom, le numéro de téléphone, l’e-mail, les coordonnées, la photo et les pièces jointes du profil sont effacés des données actives. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Les transactions et justificatifs financiers concernés par une obligation de conservation restent soumis à la notice affichée avant confirmation, qui précise les catégories, la justification et la durée. Les sauvegardes, journaux d’infrastructure et copies exportées ne sont pas supprimés instantanément. Consultez la politique complète pour le détail.';
 
   @override
   String get privacyLinkCopied =>
@@ -2392,44 +2407,4 @@ class AppLocalizationsFr extends AppLocalizations {
   String get qrLimitRequired =>
       'Le plafond QR n’est pas encore disponible depuis le serveur.';
 
-  @override
-  String get qrMissingCarnetCode => 'Code carnet indisponible';
-
-  @override
-  String get qrGenerationNoLines =>
-      'Aucune ligne à générer (stock ou sélection vide).';
-
-  @override
-  String get purchasePaymentTitle => 'Paiement';
-
-  @override
-  String get purchaseNoPaymentMethods => 'Aucun moyen de paiement disponible.';
-
-  @override
-  String get purchasePaymentMethodsConfigure =>
-      'Les moyens de paiement doivent être configurés et activés dans Odoo.';
-
-  @override
-  String get purchaseTapToEdit => 'Appuyez pour modifier';
-
-  @override
-  String get commonCopy => 'Copier';
-
-  @override
-  String get stationDefaultName => 'Station LP Ksar';
-
-  @override
-  String get stationCountryMauritania => 'Mauritanie';
-
-  @override
-  String get purchaseMobileOnlyProof =>
-      'L’envoi d’une commande avec preuve de paiement nécessite l’application mobile.';
-
-  @override
-  String purchaseUnknownCarnetType(String code) {
-    return 'Type « $code » : identifiant serveur inconnu. Actualisez la liste des offres.';
-  }
-
-  @override
-  String get purchaseNoValidLines => 'Aucune ligne valide à envoyer.';
-}
+  @overrid

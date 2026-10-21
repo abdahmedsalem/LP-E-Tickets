@@ -9,8 +9,22 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
+  String get deletionDeletedDataTitle => 'البيانات الشخصية التي تُحذف';
+
+  @override
+  String get deletionDeletedDataText =>
+      'يُحذف اسمك ورقم هاتفك وبريدك الإلكتروني وبيانات الاتصال وصورتك ومرفقات ملفك الشخصي من بيانات الحساب النشطة. تُحذف طلبات التسجيل ورموز الرسائل النصية والجلسات وبيانات الأجهزة المرتبطة، وتُلغى صلاحيات الدخول وتُمحى البيانات الشخصية من سجلات التدقيق.';
+
+  @override
+  String get deletionRetainedDataTitle => 'البيانات المحتفظ بها: السبب والمدة';
+
+  @override
+  String get deletionCopiesNotice =>
+      'تبقى دفاتر التذاكر والتذاكر والمعاملات متسقة لضمان التتبع المالي. تخضع مستندات الدفع المحتفظ بها للإشعار أعلاه. لا تُحذف النسخ الاحتياطية وسجلات البنية التحتية والنسخ التي صدّرتها فورًا بهذا الإجراء.';
+
+  @override
   String get deletionIntro =>
-      'حذف حسابك نهائي. راجع محفظتك واحفظ تقريرها قبل المتابعة. ستُحذف البيانات الشخصية غير الملزم الاحتفاظ بها وتُلغى صلاحيات الدخول.';
+      'حذف حسابك نهائي. قبل التأكيد، راجع تقرير المحفظة والمعلومات حول البيانات المحذوفة والمحتفظ بها.';
 
   @override
   String get deletionReportTitle => 'تقرير المحفظة قبل الحذف';
@@ -2252,7 +2266,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settingsPrivacyPolicyText =>
-      'تلتزم ليدر بيتروليوم إي-تذاكر بحماية بياناتك الشخصية. يُستخدم الموقع الجغرافي والجهاز المحمول لأغراض الأمان والتحقق من عمليات الوقود فقط.';
+      'عند حذف الحساب نهائيًا، يُحذف الاسم ورقم الهاتف والبريد الإلكتروني وبيانات الاتصال والصورة ومرفقات الملف الشخصي من البيانات النشطة. تُحذف رموز الرسائل النصية والجلسات وبيانات الأجهزة المرتبطة وتُلغى صلاحيات الدخول. تخضع المعاملات والمستندات المالية الواجب الاحتفاظ بها للإشعار المعروض قبل التأكيد، الذي يوضح الفئات والسبب والمدة. لا تُحذف النسخ الاحتياطية وسجلات البنية التحتية والنسخ المصدّرة فورًا. راجع السياسة الكاملة للتفاصيل.';
 
   @override
   String get privacyLinkCopied => 'تم نسخ رابط سياسة الخصوصية.';
@@ -2352,26 +2366,4 @@ class AppLocalizationsAr extends AppLocalizations {
       'يجب إعداد وسائل الدفع وتفعيلها في أودو.';
 
   @override
-  String get purchaseTapToEdit => 'اضغط للتعديل';
-
-  @override
-  String get commonCopy => 'نسخ';
-
-  @override
-  String get stationDefaultName => 'محطة إل بي القصر';
-
-  @override
-  String get stationCountryMauritania => 'موريتانيا';
-
-  @override
-  String get purchaseMobileOnlyProof =>
-      'يتطلب إرسال طلب مع إثبات الدفع استخدام تطبيق الهاتف.';
-
-  @override
-  String purchaseUnknownCarnetType(String code) {
-    return 'نوع « $code »: معرّف الخادم غير معروف. حدّث قائمة العروض.';
-  }
-
-  @override
-  String get purchaseNoValidLines => 'لا توجد عناصر صالحة للإرسال.';
-}
+  String get purchaseTapToE

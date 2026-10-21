@@ -98,10 +98,34 @@ abstract class AppLocalizations {
     Locale('fr'),
   ];
 
+  /// No description provided for @deletionDeletedDataTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données personnelles effacées'**
+  String get deletionDeletedDataTitle;
+
+  /// No description provided for @deletionDeletedDataText.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre nom, numéro de téléphone, adresse e-mail, coordonnées, photo et pièces jointes du profil sont effacés des données actives du compte. Les demandes d’inscription, codes SMS, sessions et données d’appareils associés sont supprimés. Les accès sont révoqués et les métadonnées personnelles des audits sont effacées.'**
+  String get deletionDeletedDataText;
+
+  /// No description provided for @deletionRetainedDataTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données conservées : justification et durée'**
+  String get deletionRetainedDataTitle;
+
+  /// No description provided for @deletionCopiesNotice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les carnets, tickets et transactions restent cohérents pour la traçabilité financière. Les justificatifs de paiement concernés par la conservation suivent la notice ci-dessus. Les sauvegardes, journaux d’infrastructure et copies que vous avez exportées ne sont pas effacés instantanément par cette action.'**
+  String get deletionCopiesNotice;
+
   /// No description provided for @deletionIntro.
   ///
   /// In fr, this message translates to:
-  /// **'La suppression de votre compte est définitive. Consultez et enregistrez votre portefeuille avant de continuer. Les données personnelles non soumises à conservation seront effacées et vos accès seront révoqués.'**
+  /// **'La suppression de votre compte est définitive. Avant de confirmer, consultez le rapport du portefeuille et les informations sur les données effacées et conservées.'**
   String get deletionIntro;
 
   /// No description provided for @deletionReportTitle.
@@ -4085,7 +4109,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPrivacyPolicyText.
   ///
   /// In fr, this message translates to:
-  /// **'Leader Petroleum E-Tickets s’engage à protéger vos données personnelles. La géolocalisation et l’appareil mobile servent uniquement à la sécurité et à la validation des opérations de carburant.'**
+  /// **'Lors de la suppression définitive du compte, le nom, le numéro de téléphone, l’e-mail, les coordonnées, la photo et les pièces jointes du profil sont effacés des données actives. Les codes SMS, sessions et données d’appareils associés sont supprimés et les accès sont révoqués. Les transactions et justificatifs financiers concernés par une obligation de conservation restent soumis à la notice affichée avant confirmation, qui précise les catégories, la justification et la durée. Les sauvegardes, journaux d’infrastructure et copies exportées ne sont pas supprimés instantanément. Consultez la politique complète pour le détail.'**
   String get settingsPrivacyPolicyText;
 
   /// No description provided for @privacyLinkCopied.
@@ -4334,7 +4358,4 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
-}
+    'on GitHub with a reproducible sample app and
