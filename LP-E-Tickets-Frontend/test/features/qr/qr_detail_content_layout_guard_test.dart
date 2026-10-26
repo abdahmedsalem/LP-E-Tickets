@@ -33,7 +33,7 @@ void main() {
     final rowStart = frontendSource.indexOf('class _CompositionLineRow');
     final rowSource = frontendSource.substring(rowStart);
     final backendSource = File(
-      '../LP-E-Tickets-Backend/addons/acpec_fueltoken_api/controllers/api_mobile.py',
+      '../LP-E-Tickets-Backend/addons/acpec_fueltoken_api/controllers/mobile/common.py',
     ).readAsStringSync();
 
     expect(rowSource, contains('final localizedLabel = label.trim();'));

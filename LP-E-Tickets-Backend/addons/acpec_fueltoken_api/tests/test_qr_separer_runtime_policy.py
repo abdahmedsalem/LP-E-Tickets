@@ -16,7 +16,8 @@ def _acpec_test_mobile_phone(label):
 from odoo import fields
 from odoo.tests.common import tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import qr as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
@@ -189,7 +190,7 @@ class TestQrSeparerRuntimePolicy(FuelTokenTransactionCase):
 
     def _call_separer_qr(self, controller, payload):
         fake_request = SimpleNamespace(env=self.env)
-        with patch.object(api_mobile_module, "request", fake_request):
+        with patch.object(api_mobile_common_module, "request", fake_request), patch.object(api_mobile_module, "request", fake_request):
             return controller.separer_qr(**payload)
 
     def _assert_error_contains(self, response, expected):

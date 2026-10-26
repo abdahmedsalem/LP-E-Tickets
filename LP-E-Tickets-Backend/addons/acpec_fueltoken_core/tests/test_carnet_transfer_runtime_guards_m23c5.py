@@ -292,7 +292,7 @@ class TestCarnetTransferRuntimeGuardsM23C5(TransactionCase):
         addons_dir = pathlib.Path(__file__).resolve().parents[2]
 
         api_controller = (
-            addons_dir / 'acpec_fueltoken_api' / 'controllers' / 'api_mobile.py'
+            addons_dir / 'acpec_fueltoken_api' / 'controllers' / 'mobile' / 'transfers.py'
         ).read_text(encoding='utf-8')
         carnet_start = api_controller.index('    def transfer_carnets(self, **kwargs):')
         carnet_end = api_controller.index(

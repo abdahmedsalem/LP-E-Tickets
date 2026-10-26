@@ -14,7 +14,8 @@ def _acpec_test_mobile_phone(label):
 
 from odoo.tests.common import tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import qr as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
@@ -162,7 +163,7 @@ class TestQrIssueRuntimePolicy(FuelTokenTransactionCase):
 
     def _call_issue_qr(self, controller, payload):
         fake_request = SimpleNamespace(env=self.env)
-        with patch.object(api_mobile_module, "request", fake_request):
+        with patch.object(api_mobile_common_module, "request", fake_request), patch.object(api_mobile_module, "request", fake_request):
             return controller.issue_qr(**payload)
 
     def _assert_error_contains(self, response, expected):
@@ -396,7 +397,7 @@ class TestQrIssueRuntimePolicy(FuelTokenTransactionCase):
             "qr-custom-limit@example.com",
         )
         self.assertEqual(self.env['acpec.fuel.wallet'].default_get(['qr_max_amount'])['qr_max_amount'], 5000)
-        with patch.object(api_mobile_module, "request", SimpleNamespace(env=self.env)):
+        with patch.object(api_mobile_common_module, "request", SimpleNamespace(env=self.env)), patch.object(api_mobile_module, "request", SimpleNamespace(env=self.env)):
             for amount in (5001, 10000, 1000000):
                 response = controller.update_wallet_qr_limit(max_amount=amount)
                 self.assertTrue(response.get('success'), response)

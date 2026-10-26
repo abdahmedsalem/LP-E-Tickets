@@ -67,9 +67,18 @@ class TestReferenceApiArchiveDeleteDoctrineM21F(TransactionCase):
             ('acpec.fuel.carnet.type', 'acpec_fueltoken_base.group_fuel_admin', True, True, True, False),
             ('acpec.fuel.station', 'acpec_fueltoken_base.group_fuel_manager', True, True, True, False),
             ('acpec.fuel.station', 'acpec_fueltoken_base.group_fuel_admin', True, True, True, False),
-            ('acpec.fuel.distributor', 'acpec_fueltoken_base.group_fuel_manager', True, True, True, False),
-            ('acpec.fuel.distributor', 'acpec_fueltoken_base.group_fuel_admin', True, True, True, False),
         )
+
+        # Distributor access is owned by the optional company addon and should
+        # be asserted by that addon when installed, not required by the API suite.
+        distributor_model = self.env['ir.model'].sudo().search([
+            ('model', '=', 'acpec.fuel.distributor'),
+        ], limit=1)
+        if distributor_model:
+            expectations += (
+                ('acpec.fuel.distributor', 'acpec_fueltoken_base.group_fuel_manager', True, True, True, False),
+                ('acpec.fuel.distributor', 'acpec_fueltoken_base.group_fuel_admin', True, True, True, False),
+            )
 
         Access = self.env['ir.model.access'].sudo()
         for model_name, group_xmlid, can_read, can_write, can_create, can_unlink in expectations:

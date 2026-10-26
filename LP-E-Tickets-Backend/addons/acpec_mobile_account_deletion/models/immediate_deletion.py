@@ -187,7 +187,6 @@ class ImmediateAccountDeletion(models.Model):
         if purchases:
             models.Model.write(purchases, {
                 'payment_reference': False,
-                'payment_merchant_code': False,
                 'rejection_reason': False,
                 'idempotency_key': False,
                 'request_hash': False,

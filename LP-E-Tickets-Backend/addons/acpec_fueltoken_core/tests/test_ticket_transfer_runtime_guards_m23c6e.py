@@ -381,7 +381,8 @@ class TestTicketTransferRuntimeGuardsM23C6E(TransactionCase):
             addons_root
             / 'acpec_fueltoken_api'
             / 'controllers'
-            / 'api_mobile.py',
+            / 'mobile'
+            / 'transfers.py',
             addons_root
             / 'acpec_fueltoken_api'
             / 'models'

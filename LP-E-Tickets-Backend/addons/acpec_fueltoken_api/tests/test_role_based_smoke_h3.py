@@ -6,7 +6,13 @@ from unittest.mock import patch
 from odoo.tests.common import tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_admin as api_admin_module
-from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import (
+    purchases as mobile_purchases_module,
+    qr as mobile_qr_module,
+    transfers as mobile_transfers_module,
+    wallet as mobile_wallet_module,
+)
 from odoo.addons.acpec_fueltoken_api.controllers import api_station as api_station_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelTokenAdminApi
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
@@ -132,7 +138,19 @@ class TestRoleBasedSmokeH3(FuelTokenTransactionCase):
 
     def _call_mobile(self, controller, method_name, payload=None):
         fake_request = SimpleNamespace(env=self.env)
-        with patch.object(api_mobile_module, "request", fake_request):
+        module_by_method = {
+            "create_purchase": mobile_purchases_module,
+            "purchases": mobile_purchases_module,
+            "purchase_detail": mobile_purchases_module,
+            "issue_qr": mobile_qr_module,
+            "current_wallet": mobile_wallet_module,
+            "transfer_tickets": mobile_transfers_module,
+            "transfer_carnets_recipient": mobile_transfers_module,
+            "transfer_carnets": mobile_transfers_module,
+            "transfer_list": mobile_transfers_module,
+        }
+        module = module_by_method[method_name]
+        with patch.object(api_mobile_common_module, "request", fake_request), patch.object(module, "request", fake_request):
             return getattr(controller, method_name)(**(payload or {}))
 
     def _call_station(self, controller, method_name, payload=None):

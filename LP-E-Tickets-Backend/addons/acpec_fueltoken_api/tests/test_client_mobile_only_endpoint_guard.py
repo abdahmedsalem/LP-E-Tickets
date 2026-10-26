@@ -10,7 +10,11 @@ class TestClientMobileOnlyEndpointGuard(TransactionCase):
 
     def _source(self):
         root = pathlib.Path(__file__).resolve().parents[1]
-        return (root / "controllers" / "api_mobile.py").read_text(encoding="utf-8")
+        mobile = root / "controllers" / "mobile"
+        return "\n".join(
+            (mobile / name).read_text(encoding="utf-8")
+            for name in ("purchases.py", "qr.py", "transfers.py")
+        )
 
     def _block(self, source, start, end):
         i = source.index(start)

@@ -37,12 +37,6 @@ class AcpecFuelPurchase(models.Model):
     )
     payment_reference = fields.Char(string='Reference paiement')
     payment_method_id = fields.Many2one('acpec.fuel.payment.method', string='Mode de paiement', readonly=True)
-    payment_method_code = fields.Char(string='Code mode paiement', readonly=True)
-    payment_method_name = fields.Char(string='Mode paiement', readonly=True)
-    payment_merchant_code = fields.Char(
-        string='Code commerçant / Numéro de téléphone',
-        readonly=True,
-    )
     idempotency_key = fields.Char(string='Cle idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     approval_idempotency_key = fields.Char(string='Cle idempotence validation', index=True, copy=False)
@@ -827,9 +821,6 @@ class AcpecFuelPurchase(models.Model):
                 'company_id': company.id,
                 'payment_reference': payment_reference or False,
                 'payment_method_id': payment_method.id if payment_method else False,
-                'payment_method_code': payment_method.code if payment_method else False,
-                'payment_method_name': payment_method.name if payment_method else False,
-                'payment_merchant_code': payment_method.merchant_code if payment_method else False,
                 'idempotency_key': idempotency_key or False,
                 'request_hash': request_hash or False,
             })

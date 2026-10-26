@@ -79,7 +79,15 @@ class TestMobileSecurityRuntimeDocs(TransactionCase):
         self.assertIn("_assert_users_have_no_non_empty_client_wallet_for_operational_mobile_role", session_source)
 
     def test_i0_mobile_read_contract_exposes_transferred_out_bucket(self):
-        source = inspect.getsource(AcpecFuelTokenMobileApi)
+        from odoo.addons.acpec_fueltoken_api.controllers.mobile.common import MobileCommonMixin
+        from odoo.addons.acpec_fueltoken_api.controllers.mobile.tickets import MobileTicketsMixin
+        from odoo.addons.acpec_fueltoken_api.controllers.mobile.wallet import MobileWalletMixin
+
+        source = "\n".join((
+            inspect.getsource(MobileCommonMixin),
+            inspect.getsource(MobileWalletMixin),
+            inspect.getsource(MobileTicketsMixin),
+        ))
         self.assertIn("qty_transferred_out", source)
         self.assertIn("amount_transferred_out", source)
         self.assertIn("is_transfer_fragment", source)

@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 from odoo.tests.common import TransactionCase, tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import purchases as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 
 
@@ -32,7 +33,7 @@ class TestMobilePurchasePaymentProofPayload(TransactionCase):
 
         controller = AcpecFuelTokenMobileApi()
         fake_request = SimpleNamespace(env=self.env)
-        with patch.object(api_mobile_module, "request", fake_request):
+        with patch.object(api_mobile_common_module, "request", fake_request):
             attachments = controller._purchase_proof_attachments(purchase)
 
         self.assertIn(attachment, attachments)
@@ -62,7 +63,7 @@ class TestMobilePurchasePaymentProofPayload(TransactionCase):
         )
         controller._mobile_wallet = lambda: wallet
 
-        with patch.object(api_mobile_module, "request", fake_request):
+        with patch.object(api_mobile_common_module, "request", fake_request), patch.object(api_mobile_module, "request", fake_request):
             list_response = controller.purchases()
             list_with_data_response = controller.purchases(include_proof_data=True)
             detail_response = controller.purchase_detail(purchase_id=purchase.id)

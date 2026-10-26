@@ -91,7 +91,8 @@ class TestQrManualCodeSecrecyH11(TransactionCase):
             self._addons_root()
             / 'acpec_fueltoken_api'
             / 'controllers'
-            / 'api_mobile.py'
+            / 'mobile'
+            / 'qr.py'
         ).read_text(encoding='utf-8')
 
         self.assertIn('/api/acpec/fueltoken/v1/mobile/qr/reveal-code', source)

@@ -39,6 +39,16 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
         'password',
     }
 
+    def _purchase_payment_method_payload(self, purchase):
+        """Expose payment-method details from their canonical related record."""
+        method = purchase.payment_method_id
+        return {
+            'payment_method_id': method.id if method else False,
+            'payment_method_code': method.code or False if method else False,
+            'payment_method_name': method.name or False if method else False,
+            'payment_merchant_code': method.merchant_code or False if method else False,
+        }
+
     def _requested_language_code(self):
         """Return the mobile UI language requested through HTTP headers."""
         try:

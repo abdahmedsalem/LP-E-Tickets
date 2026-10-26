@@ -14,7 +14,8 @@ def _acpec_test_mobile_phone(label):
 from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.acpec_fueltoken_api.controllers import api_admin as api_admin_module
-from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers.mobile import wallet as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers import api_station as api_station_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_admin import AcpecFuelTokenAdminApi
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
@@ -107,7 +108,7 @@ class TestTrustedReadGateRuntimePolicy(TransactionCase):
         controller._get_mobile_session = lambda required=True: session
 
         fake_request = SimpleNamespace(env=self.env)
-        with patch.object(api_mobile_module, "request", fake_request):
+        with patch.object(api_mobile_common_module, "request", fake_request), patch.object(api_mobile_module, "request", fake_request):
             response = controller.current_wallet()
 
         self._assert_pending_read_refused(response)

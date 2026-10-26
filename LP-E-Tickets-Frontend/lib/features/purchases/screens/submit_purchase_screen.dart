@@ -425,8 +425,6 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       'payment_reference': payRef,
                       if (paymentMethod.id != null)
                         'payment_method_id': paymentMethod.id,
-                      'payment_method_code': paymentMethod.code,
-                      'payment_merchant_code': paymentMethod.merchantCode,
                       'action_code': actionCode,
                       'idempotency_key': idem,
                     });
