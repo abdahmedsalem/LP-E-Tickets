@@ -21,6 +21,21 @@ void main() {
       expect(message, isNot(contains('private_table')));
     });
 
+    test(
+      'shows a business message when a transfer recipient does not exist',
+      () {
+        final message = ErrorPresenter.message(
+          OdooJsonRpcException(
+            'private recipient lookup details',
+            publicCode: 'RECIPIENT_NOT_FOUND',
+          ),
+        );
+
+        expect(message, 'Aucun client ne correspond à ce numéro.');
+        expect(message, isNot(contains('private recipient')));
+      },
+    );
+
     test('hides an unknown Odoo technical message', () {
       final message = ErrorPresenter.message(
         OdooJsonRpcException(
@@ -85,6 +100,35 @@ void main() {
       final context = tester.element(find.byType(SizedBox));
       expect(message, AppLocalizations.of(context).commonPinIncorrect);
       expect(message, isNot(contains('private backend')));
+    });
+
+    testWidgets('localizes an unknown transfer recipient in Arabic', (
+      tester,
+    ) async {
+      late String message;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('ar'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              message = ErrorPresenter.localizedMessage(
+                context,
+                OdooJsonRpcException(
+                  'private recipient lookup details',
+                  publicCode: 'RECIPIENT_NOT_FOUND',
+                ),
+              );
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      final context = tester.element(find.byType(SizedBox));
+      expect(message, AppLocalizations.of(context).transferRecipientNotFound);
     });
   });
 }

@@ -1,10 +1,4 @@
-import base64
-import binascii
-import os
-import time
-import psycopg2
-from odoo import http, _, fields
-from odoo.exceptions import ValidationError
+from odoo import http
 from odoo.http import request
 
 
@@ -28,8 +22,10 @@ class MobileCatalogMixin:
     def payment_methods(self, **kwargs):
         try:
             wallet = self._mobile_wallet()
-            records = request.env['acpec.fuel.payment.method'].sudo().available_for_company(wallet.company_id)
-            items = [self._mobile_payment_method_payload(record) for record in records]
+            payment_methods = request.env['acpec.fuel.payment.method'].sudo().available_for_company(
+                wallet.company_id,
+            )
+            items = [self._mobile_payment_method_payload(method) for method in payment_methods]
             return self._json_response({'items': items, 'count': len(items)})
         except Exception as exc:
             return self._handle_exception_response(exc)

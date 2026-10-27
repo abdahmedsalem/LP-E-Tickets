@@ -11,8 +11,7 @@ class TestImmediateDeletion(TransactionCase):
     def setUp(self):
         super().setUp()
         self.model = self.env['acpec.mobile.account.deletion'].sudo()
-        self.env['ir.config_parameter'].sudo().set_param(
-            'acpec_mobile_account_deletion.retention_notice', 'Test: preserved until fixture rollback.')
+        self.env.company.write({'acpec_fueltoken_enabled': True})
         self.user = create_mobile_test_user(self.env, self.env.company, uuid.uuid4().hex, 'client')
         self.user.set_mobile_pin('1234')
         self.wallet = self.env['acpec.fuel.wallet'].sudo().get_or_create(self.user.partner_id, self.env.company)
@@ -59,7 +58,7 @@ class TestImmediateDeletion(TransactionCase):
         self.assertEqual(face.qty_initial, initial)
         self.assertEqual(txs.exists(), txs)
         self.assertTrue(purchase.exists())
-        self.assertTrue(proof.exists())
+        self.assertFalse(proof.exists())
         self.assertNotEqual(old_wallet_label, self.wallet.name)
         self.assertFalse(self.user.acpec_mobile_phone)
         self.assertFalse(self.user.acpec_mobile_pin_set)

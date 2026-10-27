@@ -3,6 +3,8 @@ class PublicErrorMessages {
   PublicErrorMessages._();
 
   static const _messages = <String, String>{
+    'ACCOUNT_NOT_FOUND':
+        'Ce compte n’existe pas. Vérifiez le numéro ou créez un compte.',
     'AUTH_REFUSED':
         'Connexion impossible. Vérifiez le numéro ou le code SMS, puis réessayez. Vous pouvez aussi créer un compte.',
     'RATE_LIMITED': 'Trop de tentatives. Réessayez plus tard.',
@@ -20,6 +22,7 @@ class PublicErrorMessages {
     'PAYMENT_PROOF_INVALID':
         'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.',
     'QR_NOT_USABLE': 'Ce QR ne peut pas être utilisé.',
+    'RECIPIENT_NOT_FOUND': 'Aucun client ne correspond à ce numéro.',
     'TRANSFER_REFUSED': 'Le transfert a été refusé.',
     'REQUEST_REFUSED': 'Demande refusée. Réessayez ou contactez le support.',
     'FORBIDDEN': 'Vous n’avez pas l’autorisation d’effectuer cette action.',

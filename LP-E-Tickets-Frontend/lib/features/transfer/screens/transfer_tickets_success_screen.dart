@@ -13,6 +13,7 @@ Future<void> showTransferTicketsSuccessDialog(
   required int totalAmount,
   required DateTime confirmedAt,
   required String recipientName,
+  String? operationReference,
   List<TransferConfirmationLine> lines = const [],
   String? linesTitle,
 }) {
@@ -22,6 +23,7 @@ Future<void> showTransferTicketsSuccessDialog(
         totalAmount: totalAmount,
         confirmedAt: confirmedAt,
         recipientName: recipientName,
+        operationReference: operationReference,
         lines: lines,
         linesTitle: linesTitle,
       ),
@@ -35,6 +37,7 @@ class TransferTicketsSuccessScreen extends StatelessWidget {
     required this.totalAmount,
     required this.confirmedAt,
     required this.recipientName,
+    this.operationReference,
     this.lines = const [],
     this.linesTitle,
   });
@@ -42,6 +45,7 @@ class TransferTicketsSuccessScreen extends StatelessWidget {
   final int totalAmount;
   final DateTime confirmedAt;
   final String recipientName;
+  final String? operationReference;
   final List<TransferConfirmationLine> lines;
   final String? linesTitle;
 
@@ -52,6 +56,7 @@ class TransferTicketsSuccessScreen extends StatelessWidget {
       title: l10n.transferSuccessTitle,
       icon: Icons.check_circle_rounded,
       accentColor: const Color(0xFF2B8F3A),
+      showSummaryDividers: true,
       details: lines.isEmpty
           ? null
           : TransferredLinesSection(
@@ -60,6 +65,13 @@ class TransferTicketsSuccessScreen extends StatelessWidget {
               showQuantity: true,
             ),
       rows: [
+        if (operationReference != null && operationReference!.isNotEmpty)
+          OperationSuccessSummaryData(
+            label: l10n.operationReference,
+            value: operationReference!,
+            valueColor: AppColors.ink,
+            displayAsAmount: false,
+          ),
         OperationSuccessSummaryData(
           label: l10n.beneficiary,
           value: recipientName,

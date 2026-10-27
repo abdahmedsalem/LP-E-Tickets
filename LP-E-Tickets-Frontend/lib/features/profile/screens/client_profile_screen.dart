@@ -8,7 +8,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/auth/login_session_cache.dart';
 import '../controllers/profile_controller.dart';
 import '../../../domain/models/app_user.dart';
-import '../../../data/services/immediate_account_deletion_service.dart';
 import '../../settings/widgets/account_deletion_flow.dart';
 import '../../../core/navigation/client_tab_navigation.dart';
 import '../../../core/settings/app_preferences.dart';
@@ -36,8 +35,6 @@ class ClientProfileScreen extends StatefulWidget {
 class _ClientProfileScreenState extends State<ClientProfileScreen> {
   bool _bioPref = false;
   bool _deletionBusy = false;
-  ProfileController get _profileController => widget.controller;
-  final _deletionService = ImmediateAccountDeletionService();
   String _localeCode = 'fr';
   String _appVersion = '—';
   String _buildNumber = '—';
@@ -70,7 +67,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
   @override
   void dispose() {
-    _profileController.dispose();
+    widget.controller.dispose();
     super.dispose();
   }
 
@@ -128,7 +125,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     if (_deletionBusy) return;
     setState(() => _deletionBusy = true);
     try {
-      await runAccountDeletionFlow(context, _deletionService);
+      await runAccountDeletionFlow(context);
     } finally {
       if (mounted) setState(() => _deletionBusy = false);
     }

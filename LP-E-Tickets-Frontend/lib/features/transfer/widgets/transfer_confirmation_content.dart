@@ -62,7 +62,11 @@ class _TransferConfirmationContentState
           context,
           ErrorPresenter.isBackendUnavailable(e)
               ? widget.args.unconfirmedActionMessage
-              : ErrorPresenter.localizedMessage(context, e),
+              : ErrorPresenter.localizedMessage(
+                  context,
+                  e,
+                  includeSupportReference: false,
+                ),
         );
       }
       return;

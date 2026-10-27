@@ -13,6 +13,7 @@ class OperationSuccessScaffold extends StatelessWidget {
     required this.rows,
     this.details,
     this.message,
+    this.showSummaryDividers = false,
   });
 
   final String title;
@@ -21,6 +22,7 @@ class OperationSuccessScaffold extends StatelessWidget {
   final Color accentColor;
   final List<OperationSuccessSummaryData> rows;
   final Widget? details;
+  final bool showSummaryDividers;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +82,10 @@ class OperationSuccessScaffold extends StatelessWidget {
                       details!,
                       const SizedBox(height: 18),
                     ],
-                    OperationSuccessSummaryCard(rows: rows),
+                    OperationSuccessSummaryCard(
+                      rows: rows,
+                      showDividers: showSummaryDividers,
+                    ),
                   ],
                 ),
               ),

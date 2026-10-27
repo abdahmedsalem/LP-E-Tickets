@@ -1,6 +1,6 @@
 /// Minimal confirmation returned after QR generation.
 class QrIssueReceipt {
-  const QrIssueReceipt({this.transactionReference});
+  const QrIssueReceipt({this.operationReference});
 
-  final String? transactionReference;
+  final String? operationReference;
 }

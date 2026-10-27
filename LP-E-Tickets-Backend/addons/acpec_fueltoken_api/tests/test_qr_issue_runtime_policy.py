@@ -14,8 +14,8 @@ def _acpec_test_mobile_phone(label):
 
 from odoo.tests.common import tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import qr as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
@@ -264,6 +264,14 @@ class TestQrIssueRuntimePolicy(FuelTokenTransactionCase):
         self.assertIn(str(qrs.id), repr(second_response))
         self.assertEqual(qrs.state, "active")
         self.assertEqual(qrs.face_qty_total, 2)
+        txs = self.env['acpec.fuel.transaction'].sudo().search([
+            ('qr_id', '=', qrs.id),
+            ('transaction_type', '=', 'emission_qr'),
+            ('wallet_id', '=', wallet.id),
+        ])
+        self.assertEqual(len(txs), 1)
+        self.assertEqual(first_response['data']['operation_reference'], txs.operation_ref)
+        self.assertEqual(second_response['data']['operation_reference'], txs.operation_ref)
         self.assertTrue(qrs.request_hash)
         self.assertTrue(qrs.qr_numeric_code_hash)
         self.assertRegex(qrs._qr_numeric_code_display(), r'^\d{4}-\d{4}-\d{4}$')

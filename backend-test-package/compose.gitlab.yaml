@@ -1,0 +1,3 @@
+services:
+  odoo:
+    image: registry.gitlab.com/medlemine223/lp-e-tickets:latest

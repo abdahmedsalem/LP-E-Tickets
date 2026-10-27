@@ -1,4 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_formation_carnet_type_user,formation.carnet.type.user,model_formation_lp_carnet_type,base.group_user,1,1,1,0
-access_formation_achat_user,formation.achat.user,model_formation_lp_achat,base.group_user,1,1,1,0
-access_formation_achat_line_user,formation.achat.line.user,model_formation_lp_achat_line,base.group_user,1,1,1,0

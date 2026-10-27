@@ -12,9 +12,7 @@ class DeletionWalletReport {
   DeletionWalletReport.fromJson(Map<String, dynamic> json) : data = json {
     if (json['snapshot'] is! String ||
         !RegExp(r'^[a-f0-9]{64}$').hasMatch(json['snapshot'] as String) ||
-        json['has_value'] is! bool ||
-        json['retention_notice'] is! String ||
-        (json['retention_notice'] as String).trim().isEmpty) {
+        json['has_value'] is! bool) {
       throw const FormatException('Invalid deletion report');
     }
     for (final key in ['wallets', 'carnets', 'qrs']) {
@@ -32,7 +30,6 @@ class DeletionWalletReport {
   String get snapshot => data['snapshot'] as String;
   bool get hasValue => data['has_value'] as bool;
   bool get blocked => (data['blockers'] as List).isNotEmpty;
-  String get retentionNotice => data['retention_notice'] as String;
   List<Map<String, dynamic>> rows(String key) => (data[key] as List)
       .map((row) => Map<String, dynamic>.from(row as Map))
       .toList();

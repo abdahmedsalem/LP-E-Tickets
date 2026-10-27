@@ -179,7 +179,11 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = ErrorPresenter.localizedMessage(context, e);
+        _error = ErrorPresenter.localizedMessage(
+          context,
+          e,
+          includeSupportReference: false,
+        );
       });
     }
   }
@@ -242,12 +246,17 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
         }
       } catch (e) {
         if (!mounted) return;
-        final errorMsg = ErrorPresenter.localizedMessage(context, e);
+        final errorMsg = ErrorPresenter.localizedMessage(
+          context,
+          e,
+          includeSupportReference: false,
+        );
         AppMessage.error(context, errorMsg);
         return;
       }
 
       var confirmedRecipientName = recipientName;
+      String? transferOperationReference;
 
       if (!mounted) return;
       final confirmed = await Navigator.of(context).push<bool>(
@@ -277,6 +286,13 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
                 if (responseName != null && responseName.isNotEmpty) {
                   confirmedRecipientName = responseName;
                 }
+                final operationReference = data['operation_reference']
+                    ?.toString()
+                    .trim();
+                if (operationReference != null &&
+                    operationReference.isNotEmpty) {
+                  transferOperationReference = operationReference;
+                }
               },
             ),
           ),
@@ -296,6 +312,7 @@ class _TransferTicketsScreenState extends State<TransferTicketsScreen> {
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
+          operationReference: transferOperationReference,
           lines: confirmLines,
           linesTitle: l10n.transferredTickets,
         );

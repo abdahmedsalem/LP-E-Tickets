@@ -8,7 +8,7 @@ void main() {
       'id': '12',
       'code': 'BANKILY',
       'display_name': 'Bankily',
-      'merchant_code': '27919822',
+      'merchant_code': '12345',
       'instructions': 'Pay this number',
       'color_hex': '#123456',
       'image_128': 'aGVsbG8=',
@@ -18,7 +18,7 @@ void main() {
     expect(method.id, 12);
     expect(method.code, 'bankily');
     expect(method.name, 'Bankily');
-    expect(method.merchantCode, '27919822');
+    expect(method.merchantCode, '12345');
     expect(method.instructions, 'Pay this number');
     expect(method.colorHex, '#123456');
     expect(method.logoData, 'aGVsbG8=');

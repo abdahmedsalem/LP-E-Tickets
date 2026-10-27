@@ -2,6 +2,21 @@
 
 Prérequis : Docker avec Docker Compose. Le premier démarrage télécharge PostgreSQL 15 ; une connexion Internet est nécessaire.
 
+## Tester l’image GitLab
+
+Depuis ce dossier (image AMD64 exécutée aussi sur Mac Apple Silicon) :
+
+```bash
+docker compose -f compose.yaml -f compose.gitlab.yaml pull
+docker compose -f compose.yaml -f compose.gitlab.yaml up -d
+docker compose -f compose.yaml -f compose.gitlab.yaml logs -f odoo
+```
+
+Cette configuration utilise le tag `latest` de GitLab, le port local 8079
+et les volumes dédiés au projet `lp-etickets-backend-test`.
+Le code provient de l’image téléchargée ; les modifications locales du dépôt
+ne sont pas montées dans ce conteneur.
+
 ## PC Intel/AMD (Linux ou Docker Desktop Windows/Mac Intel)
 
 Depuis ce dossier :

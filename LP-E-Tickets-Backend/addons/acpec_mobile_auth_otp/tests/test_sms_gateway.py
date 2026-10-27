@@ -493,11 +493,10 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
                     purpose='login',
                 ))
 
-        self.assertTrue(result['ok'])
-        self.assertIn('data', result)
-        self.assertIn('message', result['data'])
-        self.assertNotIn('error', result)
-        self._assert_public_error_is_not_enumerating(result)
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
+        self.assertIn('Ce compte n’existe pas', result['error']['message'])
+        self.assertFalse(result.get('data', {}).get('challenge_id'))
 
     def test_request_otp_reset_unknown_identifier_returns_account_not_found(self):
         controller = AcpecMobileAuthOtpApi()
@@ -622,9 +621,8 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             identifier='unknown-login-runtime-gated@example.com',
             purpose='login',
         ))
-        self.assertTrue(result['ok'])
-        self.assertIn('data', result)
-        self.assertNotIn('error', result)
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
         self.assertNotIn('debug_reason', result)
 
         os.environ['ACPEC_ENV'] = 'dev'
@@ -634,9 +632,9 @@ class TestAcpecMobileAuthOtpSms(TransactionCase):
             identifier='unknown-login-runtime-gated@example.com',
             purpose='login',
         ))
-        self.assertTrue(result['ok'])
-        self.assertIn('data', result)
-        self.assertEqual(result.get('debug_reason'), 'auth_account_not_allowed')
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['error']['code'], 'ACCOUNT_NOT_FOUND')
+        self.assertEqual(result['error'].get('debug_reason'), 'auth_account_not_allowed')
 
     def test_verify_otp_unknown_challenge_debug_reason_is_runtime_gated(self):
 

@@ -109,7 +109,7 @@ void main() {
         'lib/features/transfer/widgets/transfer_confirmation_content.dart':
             'this.textAlign = TextAlign.start',
         'lib/shared/widgets/fuel_brand_lottie.dart':
-            'EdgeInsetsDirectional.fromSTEB(16, 12, 64, 12)',
+            'EdgeInsetsDirectional.fromSTEB(',
         'lib/shared/widgets/backend_unavailable_banner.dart':
             'EdgeInsetsDirectional.fromSTEB(14, 12, 12, 12)',
         'lib/shared/widgets/list_filters_sheet.dart':
@@ -125,6 +125,9 @@ void main() {
       for (final entry in expectations.entries) {
         expect(_read(entry.key), contains(entry.value), reason: entry.key);
       }
+
+      final walletCard = _read('lib/shared/widgets/fuel_brand_lottie.dart');
+      expect(walletCard, contains('widget.expanded ? 150 : 64'));
     },
   );
 }

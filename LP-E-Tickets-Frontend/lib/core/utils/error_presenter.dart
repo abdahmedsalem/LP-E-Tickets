@@ -11,7 +11,10 @@ import '../../l10n/app_localizations.dart';
 class ErrorPresenter {
   ErrorPresenter._();
 
-  static String message(Object error) {
+  static String message(
+    Object error, {
+    bool includeSupportReference = true,
+  }) {
     if (error is ApplicationFailure) {
       if (error.requiresReLogin) {
         return 'Votre session a expiré. Veuillez vous reconnecter.';
@@ -25,31 +28,42 @@ class ErrorPresenter {
             publicCode == 'SECRET_CODE_INVALID') {
           return PublicErrorMessages.forCode(publicCode);
         }
-        return _withReference(
-          PublicErrorMessages.forCode(publicCode),
-          error.reference,
-        );
+        final message = PublicErrorMessages.forCode(publicCode);
+        return includeSupportReference
+            ? _withReference(message, error.reference)
+            : message;
       }
       if (_isHttpStatus(error.code)) {
-        return _withReference(_sanitize(error.message), error.reference);
+        final message = _sanitize(error.message);
+        return includeSupportReference
+            ? _withReference(message, error.reference)
+            : _withoutSupportReference(message);
       }
-      return _withReference(
-        'Une erreur est survenue. Réessayez.',
-        error.reference,
-      );
+      const message = 'Une erreur est survenue. Réessayez.';
+      return includeSupportReference
+          ? _withReference(message, error.reference)
+          : message;
     }
     final raw = error
         .toString()
         .replaceFirst('Exception: ', '')
         .replaceFirst('OdooJsonRpcException: ', '')
         .trim();
-    return _sanitize(raw);
+    final message = _sanitize(raw);
+    return includeSupportReference ? message : _withoutSupportReference(message);
   }
 
-  static String localizedMessage(BuildContext context, Object error) {
+  static String localizedMessage(
+    BuildContext context,
+    Object error, {
+    bool includeSupportReference = true,
+  }) {
     final l10n = AppLocalizations.of(context);
     if (Localizations.localeOf(context).languageCode != 'ar') {
-      return message(error);
+      return message(
+        error,
+        includeSupportReference: includeSupportReference,
+      );
     }
     if (error is ApplicationFailure && error.requiresReLogin) {
       return l10n.sessionExpiredReconnect;
@@ -65,10 +79,13 @@ class ErrorPresenter {
       final message = switch (code) {
         'INVALID_ACTION_CODE' ||
         'SECRET_CODE_INVALID' => l10n.commonPinIncorrect,
+        'RECIPIENT_NOT_FOUND' => l10n.transferRecipientNotFound,
         'ACTION_CODE_LOCKED' || 'RATE_LIMITED' => l10n.commonTooManyAttempts,
         _ => l10n.commonGenericError,
       };
-      return _localizedWithReference(l10n, message, error.reference);
+      return includeSupportReference
+          ? _localizedWithReference(l10n, message, error.reference)
+          : message;
     }
     return l10n.commonGenericError;
   }
@@ -149,6 +166,16 @@ class ErrorPresenter {
       l10n.supportReference(ref),
     ].join(String.fromCharCode(10));
   }
+
+  static String _withoutSupportReference(String message) => message
+      .replaceFirst(
+        RegExp(
+          r'\n(?:Référence support|مرجع الدعم)\s*:\s*(?:SEC|ERR)-[A-Za-z0-9_.:/-]+\s*$',
+          caseSensitive: false,
+        ),
+        '',
+      )
+      .trim();
 
   static bool _isHttpStatus(int? code) =>
       code != null && code >= 400 && code <= 599;

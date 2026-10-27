@@ -103,10 +103,23 @@ Future<void> showDeletionSuccess(
   }
 }
 
+/// Resume an uncertain deletion without exposing persistence to login screens.
+Future<void> recoverAccountDeletionFlow(BuildContext context) async {
+  final service = ImmediateAccountDeletionService();
+  try {
+    if (await service.recover() && context.mounted) {
+      await showDeletionSuccess(context, service);
+    }
+  } catch (_) {
+    // Keep the receipt key for the next attempt when connectivity returns.
+  }
+}
+
 Future<void> runAccountDeletionFlow(
-  BuildContext context,
-  ImmediateAccountDeletionService service,
-) async {
+  BuildContext context, [
+  ImmediateAccountDeletionService? deletionService,
+]) async {
+  final service = deletionService ?? ImmediateAccountDeletionService();
   final l10n = AppLocalizations.of(context);
   try {
     if (await service.recover()) {
@@ -261,8 +274,6 @@ class _DeletionReportDialogState extends State<_DeletionReportDialog> {
     text.writeln(l10n.deletionDeletedDataText);
     text.writeln();
     text.writeln(l10n.deletionRetainedDataTitle);
-    text.writeln(l10n.deletionCopiesNotice);
-    text.writeln();
     text.writeln(l10n.deletionCopiesNotice);
     text.writeln('\n${l10n.deletionReportWarning}');
     return text.toString();

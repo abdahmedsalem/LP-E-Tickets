@@ -47,7 +47,6 @@ class FlowService extends ImmediateAccountDeletionService {
         'snapshot': List.filled(64, 'b').join(),
         'has_value': hasValue,
         'blockers': [if (pendingOperation) 'station_operation'],
-        'retention_notice': 'Conservation financière de test.',
         'wallets': [
           {
             'reference': 'Portefeuille test',

@@ -1,9 +1,4 @@
-import base64
-import binascii
-import os
-import time
-import psycopg2
-from odoo import http, _, fields
+from odoo import _, fields
 from odoo.exceptions import ValidationError
 from odoo.http import request
 
@@ -11,97 +6,9 @@ from ..api_common import AcpecFuelTokenApiCommon
 
 class MobileCommonMixin(AcpecFuelTokenApiCommon):
 
-    PURCHASE_PAYMENT_PROOF_MAX_BYTES = 5 * 1024 * 1024
-    PURCHASE_PAYMENT_PROOF_BASE64_MARGIN_CHARS = 8192
-    PURCHASE_PAYMENT_PROOF_ALLOWED_EXTENSIONS = frozenset(('jpg', 'jpeg', 'png', 'pdf'))
-    PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE = bytes.fromhex('ffd8ff')
-    PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE = bytes.fromhex('89504e470d0a1a0a')
-    PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE = b'%PDF-'
     MOBILE_TRANSACTIONS_DEFAULT_LIMIT = 20
     MOBILE_TRANSACTIONS_MAX_LIMIT = 100
     MOBILE_TRANSACTIONS_MAX_HISTORY_DAYS = 365
-
-    def _purchase_payment_proof_invalid_message(self):
-        # Do not wrap this message in _().
-        # This helper can run in lightweight controller tests before a real
-        # HTTP request/controller env exists; Odoo translation may inspect
-        # self.env.uid and crash with AttributeError("'NoneType' object has no attribute 'uid'").
-        return 'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.'
-
-    def _purchase_payment_proof_max_base64_chars(self):
-        return ((self.PURCHASE_PAYMENT_PROOF_MAX_BYTES + 2) // 3) * 4
-
-    def _validate_purchase_payment_proof(self, proof_filename, proof_data):
-        """Validate mobile purchase payment proof before action_code.
-
-        Only mobile purchase creation sends files in V1. The backend remains
-        the authority even if the mobile app also validates type/size: unsupported
-        proof payloads are rejected before the sensitive action transaction so
-        an invalid file never consumes a PIN/action_code attempt.
-        """
-        message = self._purchase_payment_proof_invalid_message()
-
-        def reject():
-            return False, False, message
-
-        raw_name = str(proof_filename or '').strip()
-        raw_name = raw_name.replace('\\', '/')
-        filename = os.path.basename(raw_name)
-        if not filename or filename in ('.', '..') or '.' not in filename:
-            return reject()
-
-        extension = filename.rsplit('.', 1)[1].lower()
-        if extension not in self.PURCHASE_PAYMENT_PROOF_ALLOWED_EXTENSIONS:
-            return reject()
-
-        if proof_data in (None, False, ''):
-            return reject()
-
-        max_base64_chars = self._purchase_payment_proof_max_base64_chars()
-        max_text_chars = max_base64_chars + self.PURCHASE_PAYMENT_PROOF_BASE64_MARGIN_CHARS
-
-        # DoS guard: reject an abnormally large text payload BEFORE split(),
-        # join(), base64 decoding, or any other allocation-heavy processing.
-        if isinstance(proof_data, bytes):
-            if len(proof_data) > max_text_chars:
-                return reject()
-            try:
-                proof_text = proof_data.decode('ascii')
-            except Exception:
-                return reject()
-        elif isinstance(proof_data, str):
-            if len(proof_data) > max_text_chars:
-                return reject()
-            proof_text = proof_data
-        else:
-            return reject()
-
-        if proof_text.lstrip()[:5].lower() == 'data:':
-            return reject()
-
-        compact_data = ''.join(proof_text.split())
-        if not compact_data or len(compact_data) > max_base64_chars:
-            return reject()
-
-        try:
-            raw = base64.b64decode(compact_data, validate=True)
-        except (binascii.Error, ValueError):
-            return reject()
-
-        if not raw or len(raw) > self.PURCHASE_PAYMENT_PROOF_MAX_BYTES:
-            return reject()
-
-        if extension in ('jpg', 'jpeg'):
-            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE)
-        elif extension == 'png':
-            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE)
-        else:
-            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE)
-
-        if not valid_signature:
-            return reject()
-
-        return filename, compact_data, False
 
     def _mobile_wallet(self):
         user = self._require_trusted_mobile_auth()
@@ -279,8 +186,8 @@ class MobileCommonMixin(AcpecFuelTokenApiCommon):
             'carnet_type_id': carnet_type.id,
             'carnet_type_code': carnet_type.code,
             'carnet_type_name': self._carnet_type_label(carnet_type),
-            'carnet_size': int(carnet_type.face_count or 0),
-            'face_count': int(carnet_type.face_count or 0),
+            'carnet_size': line.face_count,
+            'face_count': line.face_count,
             'face_value': line.face_value,
             'carnet_qty': line.carnet_qty,
             'amount_total': line.amount_total,
@@ -613,22 +520,6 @@ class MobileCommonMixin(AcpecFuelTokenApiCommon):
             'currency_id': currency.id if currency else False,
             'currency_name': currency.name if currency else False,
             'currency_symbol': currency.symbol if currency else False,
-        }
-
-    def _mobile_payment_method_payload(self, record):
-        return {
-            'id': record.id,
-            'code': record.code,
-            'name': record.name,
-            'display_name': record.name,
-            'merchant_code': record.merchant_code,
-            'logo_data': record.image_128 or False,
-            'image_128': record.image_128 or False,
-            'instructions': record.instructions or False,
-            'color_hex': record.color_hex or False,
-            'sequence': record.sequence,
-            'company_id': record.company_id.id if record.company_id else False,
-            'company_name': record.company_id.name if record.company_id else False,
         }
 
     def _transfer_payload(self, transfer):

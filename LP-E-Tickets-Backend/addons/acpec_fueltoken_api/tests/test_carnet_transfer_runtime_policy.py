@@ -14,8 +14,8 @@ def _acpec_test_mobile_phone(label):
 
 from odoo.tests.common import tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import transfers as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
@@ -288,7 +288,8 @@ class TestCarnetTransferRuntimePolicy(FuelTokenTransactionCase):
             self._payload('49999991', face_line, key=key),
         )
         self.assertFalse(response['ok'])
-        self.assertEqual(response['error']['code'], 'TRANSFER_REFUSED')
+        self.assertEqual(response['error']['code'], 'RECIPIENT_NOT_FOUND')
+        self.assertEqual(response['error']['message'], 'Aucun client ne correspond à ce numéro.')
         self.assertTrue(str(response['error'].get('reference') or '').startswith('SEC-'))
         self.assertNotIn('49999991', repr(response))
         self.assertFalse(self._transfer_by_key(source_wallet, key))
@@ -324,6 +325,19 @@ class TestCarnetTransferRuntimePolicy(FuelTokenTransactionCase):
         self.assertEqual(set(txs.mapped('counterparty_user_id').ids), {_recipient_user.id})
         self.assertEqual(set(txs.mapped('mobile_session_id').ids), {_session.id})
         self.assertEqual(set(txs.mapped('device_uid')), {_session.device_uid})
+        source_transaction = txs.filtered(
+            lambda transaction: transaction.wallet_id == source_wallet
+            and transaction.transaction_effect == 'outgoing'
+        )
+        self.assertEqual(len(source_transaction), 1)
+        self.assertEqual(
+            first_response['data']['operation_reference'],
+            source_transaction.operation_ref,
+        )
+        self.assertEqual(
+            second_response['data']['operation_reference'],
+            source_transaction.operation_ref,
+        )
 
         self.assertEqual(transfer.face_qty_total, carnet_type.face_count)
         self.assertTrue(transfer.request_hash)

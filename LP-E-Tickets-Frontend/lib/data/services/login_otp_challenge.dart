@@ -7,7 +7,7 @@ class LoginOtpChallenge {
   final int id;
 
   static const accountUnavailableMessage =
-      'Aucun compte associé à ce numéro. Vérifiez le numéro ou créez un compte.';
+      'Ce compte n’existe pas. Vérifiez le numéro ou créez un compte.';
 
   factory LoginOtpChallenge.fromResponse(Map<String, dynamic> response) {
     if (AcpecPublicApiError.hasBusinessError(response)) {

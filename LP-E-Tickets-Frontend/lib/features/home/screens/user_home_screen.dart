@@ -177,235 +177,263 @@ class _UserHomeBodyState extends State<_UserHomeBody> {
         child: BlocBuilder<WalletCubit, WalletState>(
           builder: (ctx, wallet) {
             final viewportWidth = MediaQuery.sizeOf(ctx).width;
-            final horizontalPadding = viewportWidth < 340 ? 12.0 : 16.0;
-            final actionGap = viewportWidth < 340 ? 10.0 : 12.0;
-            final walletHeight = viewportWidth < 340 ? 112.0 : 106.0;
+            final isTabletLayout = viewportWidth >= 700;
+            final contentWidth = math.min(viewportWidth, 580.0);
+            final horizontalPadding = isTabletLayout
+                ? 0.0
+                : viewportWidth < 340
+                ? 12.0
+                : 16.0;
+            final actionGap = isTabletLayout
+                ? 16.0
+                : viewportWidth < 340
+                ? 10.0
+                : 12.0;
+            final walletHeight = isTabletLayout
+                ? 172.0
+                : viewportWidth < 340
+                ? 112.0
+                : 106.0;
 
             return RefreshIndicator(
               color: AppColors.leaderGreen,
               onRefresh: () async => ctx.read<WalletCubit>().refresh(),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
-                children: [
-                  Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      horizontalPadding,
-                      4,
-                      horizontalPadding,
-                      0,
+              child: Center(
+                child: SizedBox(
+                  width: contentWidth,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        InkWell(
-                          onTap: () => ctx.go('/settings'),
-                          customBorder: const CircleBorder(),
-                          child: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppColors.leaderGreen.withValues(alpha: 0.22),
-                                  AppColors.accentTeal.withValues(alpha: 0.18),
-                                ],
-                              ),
-                              border: Border.all(
-                                color: AppColors.leaderGreen.withValues(
-                                  alpha: 0.25,
-                                ),
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.person_rounded,
-                              color: AppColors.leaderGreenDark,
-                              size: 27,
-                            ),
-                          ),
+                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
+                    children: [
+                      Padding(
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          horizontalPadding,
+                          4,
+                          horizontalPadding,
+                          0,
                         ),
-                        const Padding(
-                          padding: EdgeInsetsDirectional.only(start: 6),
-                          child: SizedBox(width: 6),
-                        ),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.session.ownerName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.35,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.verified_rounded,
-                                    size: 15,
-                                    color: AppColors.leaderGreen,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      l10n.homeVerifiedAccount,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            InkWell(
+                              onTap: () => ctx.go('/settings'),
+                              customBorder: const CircleBorder(),
+                              child: Container(
+                                width: isTabletLayout ? 80 : 50,
+                                height: isTabletLayout ? 80 : 50,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AppColors.leaderGreen.withValues(
+                                        alpha: 0.22,
                                       ),
+                                      AppColors.accentTeal.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.leaderGreen.withValues(
+                                      alpha: 0.25,
                                     ),
                                   ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  color: AppColors.leaderGreenDark,
+                                  size: isTabletLayout ? 42 : 27,
+                                ),
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsetsDirectional.only(start: 6),
+                              child: SizedBox(width: 6),
+                            ),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.session.ownerName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: isTabletLayout ? 25 : 17,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.35,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  SizedBox(height: isTabletLayout ? 7 : 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.verified_rounded,
+                                        size: isTabletLayout ? 22 : 15,
+                                        color: AppColors.leaderGreen,
+                                      ),
+                                      SizedBox(width: isTabletLayout ? 7 : 4),
+                                      Flexible(
+                                        child: Text(
+                                          l10n.homeVerifiedAccount,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: isTabletLayout
+                                                ? 17
+                                                : 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: isTabletLayout ? 22 : 14),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        child: SizedBox(
+                          height: walletHeight,
+                          child: ClientHomeWalletCard(
+                            amount: wallet.amount,
+                            currency: _walletCurrency,
+                            loading: wallet.loading,
+                            expanded: isTabletLayout,
+                          ),
+                        ),
+                      ),
+                      if (wallet.loadError != null &&
+                          wallet.loadError!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding,
+                          ),
+                          child: _BackendUnavailableBanner(
+                            message:
+                                Localizations.localeOf(ctx).languageCode == 'ar'
+                                ? l10n.commonServerUnavailable
+                                : wallet.loadError!,
+                            onRetry: () => ctx.read<WalletCubit>().refresh(),
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: SizedBox(
-                      height: walletHeight,
-                      child: ClientHomeWalletCard(
-                        amount: wallet.amount,
-                        currency: _walletCurrency,
-                        loading: wallet.loading,
+                      SizedBox(height: isTabletLayout ? 32 : 22),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        child: Text(
+                          l10n.homeQuickActions,
+                          style: TextStyle(
+                            fontSize: isTabletLayout ? 21 : 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  if (wallet.loadError != null &&
-                      wallet.loadError!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                      ),
-                      child: _BackendUnavailableBanner(
-                        message:
-                            Localizations.localeOf(ctx).languageCode == 'ar'
-                            ? l10n.commonServerUnavailable
-                            : wallet.loadError!,
-                        onRetry: () => ctx.read<WalletCubit>().refresh(),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 22),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: Text(
-                      l10n.homeQuickActions,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
+                      SizedBox(height: isTabletLayout ? 18 : 12),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 1.18,
-                                child: _QuickActionCard(
-                                  title: l10n.homeBuyCarnets,
-                                  icon: Icons.add_shopping_cart_outlined,
-                                  onTap: () => context.push('/purchases/new'),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: l10n.homeBuyCarnets,
+                                      icon: Icons.add_shopping_cart_outlined,
+                                      onTap: () =>
+                                          context.push('/purchases/new'),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                SizedBox(width: actionGap),
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: l10n.homeGenerateQr,
+                                      icon: Icons.qr_code_scanner_rounded,
+                                      onTap: () => context.push('/qr/emit'),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: actionGap),
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 1.18,
-                                child: _QuickActionCard(
-                                  title: l10n.homeGenerateQr,
-                                  icon: Icons.qr_code_scanner_rounded,
-                                  onTap: () => context.push('/qr/emit'),
+                            SizedBox(height: actionGap),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: l10n.homeTransferCarnets,
+                                      icon: Icons.account_tree_outlined,
+                                      onTap: () =>
+                                          context.push('/transfer-carnets'),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                SizedBox(width: actionGap),
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 1.18,
+                                    child: _QuickActionCard(
+                                      title: l10n.homeTransferTickets,
+                                      icon: Icons.confirmation_number_outlined,
+                                      onTap: () =>
+                                          context.push('/transfer-tickets'),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: actionGap),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AspectRatio(
+                                    aspectRatio: 2.45,
+                                    child: _QuickActionCard(
+                                      title: l10n.settingsStationsMap,
+                                      icon: Icons.map_outlined,
+                                      onTap: () =>
+                                          context.push('/stations-map'),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        SizedBox(height: actionGap),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 1.18,
-                                child: _QuickActionCard(
-                                  title: l10n.homeTransferCarnets,
-                                  icon: Icons.account_tree_outlined,
-                                  onTap: () =>
-                                      context.push('/transfer-carnets'),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: actionGap),
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 1.18,
-                                child: _QuickActionCard(
-                                  title: l10n.homeTransferTickets,
-                                  icon: Icons.confirmation_number_outlined,
-                                  onTap: () =>
-                                      context.push('/transfer-tickets'),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: actionGap),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 2.45,
-                                child: _QuickActionCard(
-                                  title: l10n.settingsStationsMap,
-                                  icon: Icons.map_outlined,
-                                  onTap: () => context.push('/stations-map'),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           },

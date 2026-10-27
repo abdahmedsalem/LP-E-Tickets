@@ -4,8 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/login_session_cache.dart';
-import '../../../data/services/login_otp_challenge.dart';
-import '../../../data/services/immediate_account_deletion_service.dart';
+import '../../../core/errors/public_error_messages.dart';
 import '../../settings/widgets/account_deletion_flow.dart';
 import '../../../core/validation/password_validators.dart'
     show kOtpSmsCodeLength;
@@ -42,14 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _recoverDeletion() async {
-    final service = ImmediateAccountDeletionService();
-    try {
-      if (await service.recover() && mounted) {
-        await showDeletionSuccess(context, service);
-      }
-    } catch (_) {
-      // Keep the recovery key for the next attempt when connectivity returns.
-    }
+    await recoverAccountDeletionFlow(context);
   }
 
   Future<void> _hydrateIdentifier() async {
@@ -106,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _presentLoginFailure(String raw) {
-    if (raw.trim() == LoginOtpChallenge.accountUnavailableMessage) {
+    if (raw.trim() == PublicErrorMessages.forCode('ACCOUNT_NOT_FOUND')) {
       return AppLocalizations.of(context).authAccountNotFound;
     }
     if (Localizations.localeOf(context).languageCode == 'ar') {
@@ -220,9 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 state.loginOtpIdentifier != null &&
                 (state.loginOtpChallengeId ?? 0) > 0 &&
                 state.loginOtpIdentifier!.trim() == _identifier.text.trim()) {
-               final id = state.loginOtpIdentifier!.trim();
-               if (ctx.mounted) {
-                 setState(() {
+              final id = state.loginOtpIdentifier!.trim();
+              if (ctx.mounted) {
+                setState(() {
                   _otpStep = true;
                   _otpIdentifier = id;
                   _challengeId = state.loginOtpChallengeId;
@@ -266,263 +258,232 @@ class _LoginScreenState extends State<LoginScreen> {
           builder: (ctx, state) {
             final loading = state.status == AuthStatus.authenticating;
             final buttonLabel = _otpStep ? l10n.authContinue : l10n.authSignIn;
-             return GestureDetector(
-               onTap: () => FocusScope.of(context).unfocus(),
-               child: SafeArea(
-                 child: SingleChildScrollView(
-                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-                   child: Center(
-                     child: ConstrainedBox(
-                       constraints: const BoxConstraints(maxWidth: 420),
-                       child: Form(
-                         key: _formKey,
-                         child: Column(
-                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                           children: [
-                              const SizedBox(height: 16),
-                              const AuthBrandImage(),
-                              SizedBox(height: _otpStep ? 10 : 34),
-                                        _LoginSectionTitle(
-                                          title: _otpStep
-                                              ? l10n.authVerificationCode
-                                              : l10n.authAccountVerification,
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          _otpStep
-                                              ? l10n.authOtpSentTo(
-                                                  _otpIdentifier ??
-                                                      _identifier.text.trim(),
-                                                )
-                                              : l10n.authEnterPhone,
-                                          style: const TextStyle(
-                                            fontSize: 13.5,
-                                            height: 1.35,
-                                            color: Color(0xFF64748B),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _LoginTextField(
-                                          controller: _identifier,
-                                          hint: l10n.authPhone,
-                                          obscure: false,
-                                          keyboardType: TextInputType.phone,
-                                          textCapitalization:
-                                              TextCapitalization.none,
-                                          autocorrect: false,
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter
-                                                .digitsOnly,
-                                            LengthLimitingTextInputFormatter(8),
-                                          ],
-                                          validator: _validateIdentifier,
-                                          borderColor: const Color(0xFFC7CEDA),
-                                          counterLabel: _phoneCounterLabel,
-                                        ),
-                                        if (_otpStep) ...[
-                                          const SizedBox(height: 18),
-                                          _LoginTextField(
-                                            controller: _otp,
-                                            hint: l10n.authSmsCode,
-                                            obscure: false,
-                                            validator: _validateOtp,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly,
-                                              LengthLimitingTextInputFormatter(
-                                                kOtpSmsCodeLength,
-                                              ),
-                                            ],
-                                            borderColor: const Color(
-                                              0xFFC7CEDA,
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 16),
+                            const AuthBrandImage(),
+                            SizedBox(height: _otpStep ? 10 : 34),
+                            _LoginSectionTitle(
+                              title: _otpStep
+                                  ? l10n.authVerificationCode
+                                  : l10n.authAccountVerification,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              _otpStep
+                                  ? l10n.authOtpSentTo(
+                                      _otpIdentifier ?? _identifier.text.trim(),
+                                    )
+                                  : l10n.authEnterPhone,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                height: 1.35,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _LoginTextField(
+                              controller: _identifier,
+                              hint: l10n.authPhone,
+                              obscure: false,
+                              keyboardType: TextInputType.phone,
+                              textCapitalization: TextCapitalization.none,
+                              autocorrect: false,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(8),
+                              ],
+                              validator: _validateIdentifier,
+                              borderColor: const Color(0xFFC7CEDA),
+                              counterLabel: _phoneCounterLabel,
+                            ),
+                            if (_otpStep) ...[
+                              const SizedBox(height: 18),
+                              _LoginTextField(
+                                controller: _otp,
+                                hint: l10n.authSmsCode,
+                                obscure: false,
+                                validator: _validateOtp,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(
+                                    kOtpSmsCodeLength,
+                                  ),
+                                ],
+                                borderColor: const Color(0xFFC7CEDA),
+                                counterLabel: _otpCounterLabel,
+                              ),
+                              Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: TextButton(
+                                  onPressed: loading
+                                      ? null
+                                      : () {
+                                          _otp.clear();
+                                          ctx.read<AuthBloc>().add(
+                                            AuthLoginOtpRequested(
+                                              identifier: _identifier.text
+                                                  .trim(),
                                             ),
-                                            counterLabel: _otpCounterLabel,
-                                          ),
-                                          Align(
-                                            alignment:
-                                                AlignmentDirectional.centerEnd,
-                                            child: TextButton(
-                                              onPressed: loading
-                                                  ? null
-                                                  : () {
-                                                      _otp.clear();
-                                                      ctx.read<AuthBloc>().add(
-                                                        AuthLoginOtpRequested(
-                                                          identifier:
-                                                              _identifier.text
-                                                                  .trim(),
-                                                        ),
-                                                      );
-                                                    },
-                                              style: TextButton.styleFrom(
-                                                foregroundColor: const Color(
-                                                  0xFF203A73,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 4,
-                                                    ),
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
+                                          );
+                                        },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF203A73),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 4,
+                                    ),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    l10n.authResendCode,
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              height: 56,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF065F46),
+                                      Color(0xFF2EA043),
+                                      Color(0xFF34D399),
+                                    ],
+                                    stops: [0.0, 0.48, 1.0],
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(12),
+                                    onTap: loading
+                                        ? null
+                                        : () => _submit(state),
+                                    child: Center(
+                                      child: loading
+                                          ? const SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.4,
+                                                color: Colors.white,
                                               ),
-                                              child: Text(
-                                                l10n.authResendCode,
-                                                style: const TextStyle(
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        const SizedBox(height: 14),
-                                        SizedBox(
-                                          height: 56,
-                                          child: DecoratedBox(
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              gradient: const LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  Color(0xFF065F46),
-                                                  Color(0xFF2EA043),
-                                                  Color(0xFF34D399),
-                                                ],
-                                                stops: [0.0, 0.48, 1.0],
-                                              ),
-                                            ),
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                onTap: loading
-                                                    ? null
-                                                    : () => _submit(state),
-                                                child: Center(
-                                                  child: loading
-                                                      ? const SizedBox(
-                                                          width: 24,
-                                                          height: 24,
-                                                          child:
-                                                              CircularProgressIndicator(
-                                                                strokeWidth:
-                                                                    2.4,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                        )
-                                                      : Text(
-                                                          buttonLabel,
-                                                          style:
-                                                              const TextStyle(
-                                                                color: Colors
-                                                                    .white,
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w800,
-                                                              ),
-                                                        ),
-                                                ),
+                                            )
+                                          : Text(
+                                              buttonLabel,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                        if (_otpStep) ...[
-                                          const SizedBox(height: 10),
-                                          Center(
-                                            child: TextButton(
-                                              onPressed: loading
-                                                  ? null
-                                                  : _resetOtpStep,
-                                              child: Text(l10n.authChangePhone),
-                                            ),
-                                          ),
-                                        ],
-                                        SizedBox(
-                                          height: _otpStep ? 8 : 24,
-                                        ),
-                                        Center(
-                                          child: Wrap(
-                                            alignment: WrapAlignment.center,
-                                            crossAxisAlignment:
-                                                WrapCrossAlignment.center,
-                                            spacing: 16,
-                                            runSpacing: 8,
-                                            children: [
-                                              TextButton(
-                                                onPressed: () => ctx.push(
-                                                  '/forgot-password',
-                                                ),
-                                                child: Text(l10n.authForgotPin),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    ctx.go('/register'),
-                                                child: Text(
-                                                  l10n.authCreateAnAccount,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 18),
-                                        Center(
-                                          child: SizedBox(
-                                            width: 212,
-                                            height: 50,
-                                            child: OutlinedButton.icon(
-                                              onPressed: _showContactsHelp,
-                                              icon: const Icon(
-                                                Icons.mail_outline_rounded,
-                                                size: 19,
-                                                color: Color(0xFF203A73),
-                                              ),
-                                              label: Text(
-                                                l10n.authContacts,
-                                                style: const TextStyle(
-                                                  fontSize: 15.2,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Color(0xFF203A73),
-                                                ),
-                                              ),
-                                              style: OutlinedButton.styleFrom(
-                                                side: const BorderSide(
-                                                  color: Color(0xFF203A73),
-                                                  width: 1.2,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                backgroundColor: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        if (state.loginInfoMessage != null) ...[
-                                          const SizedBox(height: 18),
-                                          _SessionNoticeCard(
-                                            message: _presentLoginInfo(
-                                              state.loginInfoMessage!,
-                                            ),
-                                          ),
-                                        ],
-                           ],
-                         ),
-                       ),
-                     ),
-                   ),
-                 ),
-               ),
-             );
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_otpStep) ...[
+                              const SizedBox(height: 10),
+                              Center(
+                                child: TextButton(
+                                  onPressed: loading ? null : _resetOtpStep,
+                                  child: Text(l10n.authChangePhone),
+                                ),
+                              ),
+                            ],
+                            SizedBox(height: _otpStep ? 8 : 24),
+                            Center(
+                              child: Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 16,
+                                runSpacing: 8,
+                                children: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        ctx.push('/forgot-password'),
+                                    child: Text(l10n.authForgotPin),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => ctx.go('/register'),
+                                    child: Text(l10n.authCreateAnAccount),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Center(
+                              child: SizedBox(
+                                width: 212,
+                                height: 50,
+                                child: OutlinedButton.icon(
+                                  onPressed: _showContactsHelp,
+                                  icon: const Icon(
+                                    Icons.mail_outline_rounded,
+                                    size: 19,
+                                    color: Color(0xFF203A73),
+                                  ),
+                                  label: Text(
+                                    l10n.authContacts,
+                                    style: const TextStyle(
+                                      fontSize: 15.2,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF203A73),
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: Color(0xFF203A73),
+                                      width: 1.2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    backgroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (state.loginInfoMessage != null) ...[
+                              const SizedBox(height: 18),
+                              _SessionNoticeCard(
+                                message: _presentLoginInfo(
+                                  state.loginInfoMessage!,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
           },
         ),
       ),

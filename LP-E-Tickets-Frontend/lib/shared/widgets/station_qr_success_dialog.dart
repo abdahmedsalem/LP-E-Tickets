@@ -33,6 +33,7 @@ class StationQrSuccessDialog extends StatelessWidget {
       onAction: onClose,
       maxHeightFactor: 0.86,
       content: OperationSuccessSummaryCard(
+        showDividers: true,
         rows: [
           OperationSuccessSummaryData(
             label: l10n.amount,

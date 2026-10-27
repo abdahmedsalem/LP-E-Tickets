@@ -127,7 +127,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authAccountNotFound =>
-      'Aucun compte associé à ce numéro. Vérifiez le numéro ou créez un compte.';
+      'Ce compte n’existe pas. Vérifiez le numéro ou créez un compte.';
 
   @override
   String get appTitle => 'Leader Petroleum E-Tickets';
@@ -897,6 +897,15 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get purchaseSuccessMessage =>
       'Votre commande de carnets est en attente de validation.';
+
+  @override
+  String get purchasePaymentMethod => 'Moyen de paiement';
+
+  @override
+  String get purchaseMerchantCode => 'Code commerçant';
+
+  @override
+  String get operationReference => 'Référence opération';
 
   @override
   String get purchasedCarnets => 'Carnets commandés';
@@ -2339,6 +2348,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get stationDirectionsGoogleMaps => 'Itinéraire Google Maps';
 
   @override
+  String get stationLocationPermissionRequired =>
+      'Activez la localisation du téléphone et autorisez l’accès pour afficher votre position et calculer l’itinéraire.';
+
+  @override
+  String get stationRouteUnavailable =>
+      'Itinéraire indisponible sur la carte. Vous pouvez l’ouvrir dans Google Maps.';
+
+  @override
+  String stationRouteSummary(String distance, String duration) {
+    return '$distance km • $duration min';
+  }
+
+  @override
   String stationListTitle(int count) {
     return 'STATIONS LEADER PETROLEUM ($count)';
   }
@@ -2380,7 +2402,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get qrLimitApply => 'Appliquer';
 
   @override
-  String get qrLimitSaved => 'Plafond QR enregistré sur le serveur.';
+  String get qrLimitSaved => 'Le plafond de vos QR a bien été mis à jour.';
 
   @override
   String get qrLimitLoading => 'Chargement du plafond depuis le serveur...';

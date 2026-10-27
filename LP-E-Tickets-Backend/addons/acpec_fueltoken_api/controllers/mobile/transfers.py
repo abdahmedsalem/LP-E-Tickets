@@ -43,7 +43,7 @@ class MobileTransfersMixin:
                 if not recipient_user:
                     self._raise_sensitive_action_error(
                         code='RECIPIENT_NOT_ALLOWED',
-                        public_code='TRANSFER_REFUSED',
+                        public_code='RECIPIENT_NOT_FOUND',
                         purpose='ticket_transfer',
                         debug_reason='recipient_not_found',
                         user=source_user,
@@ -194,7 +194,7 @@ class MobileTransfersMixin:
             ], limit=1)
             if not recipient_user:
                 return self._sensitive_refusal_response(
-                    public_code='TRANSFER_REFUSED',
+                    public_code='RECIPIENT_NOT_FOUND',
                     debug_reason='recipient_not_found',
                     purpose='carnet_transfer_recipient',
                     params=kwargs,
@@ -278,7 +278,7 @@ class MobileTransfersMixin:
                 if not recipient_user:
                     self._raise_sensitive_action_error(
                         code='RECIPIENT_NOT_ALLOWED',
-                        public_code='TRANSFER_REFUSED',
+                        public_code='RECIPIENT_NOT_FOUND',
                         purpose='carnet_transfer',
                         debug_reason='recipient_not_found',
                         user=source_user,

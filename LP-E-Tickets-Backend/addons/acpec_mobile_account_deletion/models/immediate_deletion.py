@@ -1,4 +1,4 @@
-"""Immediate client deletion. Financial rows remain; personal copies are purged."""
+"""Delete a mobile account while preserving required business records."""
 import hashlib
 import hmac
 import json
@@ -11,6 +11,8 @@ from odoo.exceptions import AccessError, ValidationError
 
 
 class ImmediateAccountDeletion(models.Model):
+    """Add immediate deletion and receipt behavior to deletion requests."""
+
     _inherit = 'acpec.mobile.account.deletion'
 
     recovery_hash = fields.Char(readonly=True, copy=False, index=True, groups='base.group_system')
@@ -23,7 +25,10 @@ class ImmediateAccountDeletion(models.Model):
         readonly=True, copy=False,
         string='Purge de l’historique des mouvements',
     )
-    _unique_recovery_hash = models.Constraint('UNIQUE(recovery_hash)', 'Recovery key must be unique.')
+    _unique_recovery_hash = models.Constraint(
+        'UNIQUE(recovery_hash)',
+        'Recovery key must be unique.',
+    )
 
     @api.model
     def _recovery_digest(self, key):
@@ -42,18 +47,13 @@ class ImmediateAccountDeletion(models.Model):
         return {'completed': bool(record), **({'reference': record.reference} if record else {})}
 
     @api.model
-    def _retention_notice(self):
-        notice = self.env['ir.config_parameter'].sudo().get_param(
-            'acpec_mobile_account_deletion.retention_notice', '')
-        if not notice.strip():
-            raise ValidationError(_('Account deletion is temporarily unavailable: retention policy is not configured.'))
-        return notice.strip()
-
-    @api.model
-    def _retention_notice_ar(self):
-        notice = self.env['ir.config_parameter'].sudo().get_param(
-            'acpec_mobile_account_deletion.retention_notice_ar', '')
-        return notice.strip() or self._retention_notice()
+    def _retention_details(self):
+        """Static audit description; user-facing wording lives in Flutter l10n."""
+        return _(
+            'Movement history without personal data is retained for 3 days, '
+            'then automatically deleted. Personal data, purchase screenshots '
+            'and proofs are erased immediately.'
+        )
 
     @api.model
     def _client_wallets(self, user):
@@ -61,13 +61,22 @@ class ImmediateAccountDeletion(models.Model):
         if not user.active or not user.acpec_mobile_only:
             raise AccessError(_('This operation requires an active mobile account.'))
         # Never erase a shared identity or an operational/company identity.
-        for xmlid in ('base.group_user', 'acpec_fueltoken_base.group_fuel_station',
-                      'acpec_fueltoken_base.group_fuel_manager', 'acpec_fueltoken_base.group_fuel_admin'):
+        protected_groups = (
+            'base.group_user',
+            'acpec_fueltoken_base.group_fuel_station',
+            'acpec_fueltoken_base.group_fuel_manager',
+            'acpec_fueltoken_base.group_fuel_admin',
+        )
+        for xmlid in protected_groups:
             if user.has_group(xmlid):
                 raise AccessError(_('This operation is reserved for client accounts.'))
-        if user.partner_id.is_company or self.env['res.users'].sudo().with_context(active_test=False).search_count([
-            ('partner_id', '=', user.partner_id.id), ('id', '!=', user.id),
-        ]):
+        other_users = self.env['res.users'].sudo().with_context(
+            active_test=False,
+        ).search_count([
+            ('partner_id', '=', user.partner_id.id),
+            ('id', '!=', user.id),
+        ])
+        if user.partner_id.is_company or other_users:
             raise ValidationError(_('A shared identity must be separated before deletion.'))
         return self.env['acpec.fuel.wallet'].sudo().search([('partner_id', '=', user.partner_id.id)], order='id')
 
@@ -79,18 +88,31 @@ class ImmediateAccountDeletion(models.Model):
         purchases = self.env['acpec.fuel.purchase'].sudo().search([('partner_id', '=', user.partner_id.id)], order='id')
         if lock:
             # Match wallet/face locking used by transfers and QR issuance.
-            for table, records in (('res_users', user), ('acpec_fuel_wallet', wallets),
-                                   ('acpec_fuel_qr', qrs), ('acpec_fuel_face_line', faces),
-                                   ('acpec_fuel_purchase', purchases)):
+            records_to_lock = (
+                ('res_users', user),
+                ('acpec_fuel_wallet', wallets),
+                ('acpec_fuel_qr', qrs),
+                ('acpec_fuel_face_line', faces),
+                ('acpec_fuel_purchase', purchases),
+            )
+            for table, records in records_to_lock:
                 if records:
-                    self.env.cr.execute('SELECT id FROM ' + table + ' WHERE id IN %s ORDER BY id FOR UPDATE',
-                                        [tuple(records.ids)])
+                    query = (
+                        'SELECT id FROM '
+                        + table
+                        + ' WHERE id IN %s ORDER BY id FOR UPDATE'
+                    )
+                    self.env.cr.execute(query, [tuple(records.ids)])
                     records.invalidate_recordset()
         blockers = []
         if any(qr.station_lock_user_id or qr.station_lock_station_id for qr in qrs):
             blockers.append('station_operation')
         # An unsettled purchase must not disappear together with its owner.
-        if any(p.state not in ('approved', 'rejected', 'cancelled') for p in purchases):
+        has_unsettled_purchase = any(
+            purchase.state not in ('approved', 'rejected', 'cancelled')
+            for purchase in purchases
+        )
+        if has_unsettled_purchase:
             blockers.append('pending_purchase')
         report = {
             'wallets': [{
@@ -109,9 +131,6 @@ class ImmediateAccountDeletion(models.Model):
                      'tickets': sum(q.line_ids.mapped('qty'))} for q in qrs],
             'has_value': any(f.qty_available or f.qty_qr_active or f.qty_qr_blocked for f in faces),
             'blockers': blockers,
-            'retention_notice': self._retention_notice_ar()
-            if (self.env.context.get('lang') or '').startswith('ar')
-            else self._retention_notice(),
         }
         txs = self.env['acpec.fuel.transaction'].sudo().search([
             ('wallet_id', 'in', wallets.ids)], order='id')
@@ -121,14 +140,23 @@ class ImmediateAccountDeletion(models.Model):
             'faces': [(f.id, str(f.write_date)) for f in faces],
             'qrs': [(q.id, str(q.write_date)) for q in qrs],
         }
-        report['snapshot'] = hashlib.sha256(json.dumps(
-            fingerprint_data, sort_keys=True, default=str).encode()).hexdigest()
+        snapshot_data = json.dumps(
+            fingerprint_data,
+            sort_keys=True,
+            default=str,
+        ).encode()
+        report['snapshot'] = hashlib.sha256(snapshot_data).hexdigest()
         return report
 
     def _neutralize_qrs(self, wallets):
-        for qr in self.env['acpec.fuel.qr'].sudo().search([
-            ('wallet_id', 'in', wallets.ids), ('state', '=', 'active'),
-        ], order='id'):
+        active_qrs = self.env['acpec.fuel.qr'].sudo().search(
+            [
+                ('wallet_id', 'in', wallets.ids),
+                ('state', '=', 'active'),
+            ],
+            order='id',
+        )
+        for qr in active_qrs:
             tx_lines = []
             for line in qr.line_ids.filtered(lambda item: item.state == 'active'):
                 face = line.face_line_id
@@ -147,15 +175,31 @@ class ImmediateAccountDeletion(models.Model):
         """Purge nonfinancial account material, leaving financial foreign keys intact."""
         self.ensure_one()
         partner = user.partner_id
-        for model, domain, context_key in (
-            ('acpec.mobile.auth.otp',
-             ['|', ('user_id', '=', user.id), ('identifier', 'in', identifiers)],
-             'acpec_mobile_otp_internal_purge'),
-            ('acpec.mobile.session', [('user_id', '=', user.id)], 'acpec_mobile_session_internal_purge'),
-            ('acpec.mobile.auth.account.request', [('user_id', '=', user.id)], 'acpec_mobile_auth_account_request_internal_purge'),
-            ('acpec.mobile.device', [('user_id', '=', user.id)], 'acpec_mobile_device_internal_purge'),
-        ):
-            self.env[model].sudo().with_context(**{context_key: True}).search(domain).unlink()
+        records_to_purge = (
+            (
+                'acpec.mobile.auth.otp',
+                ['|', ('user_id', '=', user.id), ('identifier', 'in', identifiers)],
+                'acpec_mobile_otp_internal_purge',
+            ),
+            (
+                'acpec.mobile.session',
+                [('user_id', '=', user.id)],
+                'acpec_mobile_session_internal_purge',
+            ),
+            (
+                'acpec.mobile.auth.account.request',
+                [('user_id', '=', user.id)],
+                'acpec_mobile_auth_account_request_internal_purge',
+            ),
+            (
+                'acpec.mobile.device',
+                [('user_id', '=', user.id)],
+                'acpec_mobile_device_internal_purge',
+            ),
+        )
+        for model_name, domain, context_key in records_to_purge:
+            model = self.env[model_name].sudo().with_context(**{context_key: True})
+            model.search(domain).unlink()
         self.env['acpec.mobile.auth.otp.verify.bucket'].sudo().with_context(
             acpec_mobile_otp_bucket_internal_purge=True).search([
                 ('scope', '=', 'identifier'), ('key', 'in', identifiers),
@@ -163,15 +207,20 @@ class ImmediateAccountDeletion(models.Model):
         # The initial request emails may contain the old name/login.
         mails = self.env['mail.mail'].sudo().search([('subject', 'ilike', self.reference)])
         mails.mapped('mail_message_id').unlink()
-        profile_domain = ['|', '&', ('model', '=', 'res.users'), ('res_id', '=', user.id),
-                          '&', ('model', '=', 'res.partner'), ('res_id', '=', partner.id)]
+        profile_domain = [
+            '|',
+            '&', ('model', '=', 'res.users'), ('res_id', '=', user.id),
+            '&', ('model', '=', 'res.partner'), ('res_id', '=', partner.id),
+        ]
         self.env['mail.message'].sudo().search(profile_domain).unlink()
         self.env['ir.attachment'].sudo().search([
-            '|', '&', ('res_model', '=', 'res.users'), ('res_id', '=', user.id),
+            '|',
+            '&', ('res_model', '=', 'res.users'), ('res_id', '=', user.id),
             '&', ('res_model', '=', 'res.partner'), ('res_id', '=', partner.id),
         ]).unlink()
         self.env['mail.activity'].sudo().search([
-            '|', '&', ('res_model', '=', 'res.users'), ('res_id', '=', user.id),
+            '|',
+            '&', ('res_model', '=', 'res.users'), ('res_id', '=', user.id),
             '&', ('res_model', '=', 'res.partner'), ('res_id', '=', partner.id),
         ]).unlink()
         # Purchase screenshots and payment proofs are personal data. They are
@@ -195,12 +244,23 @@ class ImmediateAccountDeletion(models.Model):
                 'rejection_idempotency_key': False,
                 'rejection_request_hash': False,
             })
-        for model, ids in (('res.users', user), ('res.partner', partner)):
-            values = {name: False for name in ('image_1920', 'signature', 'function', 'birthdate',
-                                               'website', 'tz')
-                      if name in ids._fields and not ids._fields[name].related}
+        profile_fields = (
+            'image_1920',
+            'signature',
+            'function',
+            'birthdate',
+            'website',
+            'tz',
+        )
+        for _model_name, record in (('res.users', user), ('res.partner', partner)):
+            values = {
+                field_name: False
+                for field_name in profile_fields
+                if field_name in record._fields
+                and not record._fields[field_name].related
+            }
             if values:
-                ids.sudo().write(values)
+                record.sudo().write(values)
 
     @api.model
     def _scrub_deletion_audit(self, user):
@@ -266,7 +326,7 @@ class ImmediateAccountDeletion(models.Model):
             'settlement_notes': 'Explicit in-app waiver of residual value.' if report['has_value'] else 'No residual value.',
             'processing_notes': 'Immediate authenticated deletion; completion receipt available for seven days.',
             'erasure_evidence': 'Profile and contact cleared; personal attachments/messages, OTPs, sessions and devices purged.',
-            'retention_details': report['retention_notice'],
+            'retention_details': self._retention_details(),
         })
         return {'completed': True, 'reference': record.reference}
 

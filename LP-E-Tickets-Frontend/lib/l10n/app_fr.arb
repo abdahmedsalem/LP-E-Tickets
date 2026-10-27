@@ -37,7 +37,7 @@
   "deletionActive": "Actif",
   "deletionBlocked": "Bloqué",
 
-  "authAccountNotFound": "Aucun compte associé à ce numéro. Vérifiez le numéro ou créez un compte.",
+  "authAccountNotFound": "Ce compte n’existe pas. Vérifiez le numéro ou créez un compte.",
   "@@locale": "fr",
   "appTitle": "Leader Petroleum E-Tickets",
   "@appTitle": {
@@ -358,6 +358,9 @@
   "@purchaseMaxTickets": {"placeholders": {"count": {"type": "int"}}},
   "purchaseSuccessTitle": "Commande de carnets enregistrée",
   "purchaseSuccessMessage": "Votre commande de carnets est en attente de validation.",
+  "purchasePaymentMethod": "Moyen de paiement",
+  "purchaseMerchantCode": "Code commerçant",
+  "operationReference": "Référence opération",
   "purchasedCarnets": "Carnets commandés",
   "totalAmount": "Montant total",
   "date": "Date",
@@ -819,6 +822,15 @@
   "stationSearchPlaceholder": "Chercher une station Leader...",
   "stationOpen247": "Ouvert 24/7",
   "stationDirectionsGoogleMaps": "Itinéraire Google Maps",
+  "stationLocationPermissionRequired": "Activez la localisation du téléphone et autorisez l’accès pour afficher votre position et calculer l’itinéraire.",
+  "stationRouteUnavailable": "Itinéraire indisponible sur la carte. Vous pouvez l’ouvrir dans Google Maps.",
+  "stationRouteSummary": "{distance} km • {duration} min",
+  "@stationRouteSummary": {
+    "placeholders": {
+      "distance": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
   "stationListTitle": "STATIONS LEADER PETROLEUM ({count})",
   "@stationListTitle": {"placeholders": {"count": {"type": "int"}}},
   "stationBackToMap": "Retour carte",
@@ -833,7 +845,7 @@
   "qrLimitAmountHint": "Ex. 5 000",
   "qrLimitInvalidAmount": "Saisissez un montant entier strictement positif.",
   "qrLimitApply": "Appliquer",
-  "qrLimitSaved": "Plafond QR enregistré sur le serveur.",
+  "qrLimitSaved": "Le plafond de vos QR a bien été mis à jour.",
   "qrLimitLoading": "Chargement du plafond depuis le serveur...",
   "qrLimitUnavailable": "Le plafond QR est indisponible depuis le serveur.",
   "qrLimitCurrent": "Limite actuelle : {amount} {currency}",

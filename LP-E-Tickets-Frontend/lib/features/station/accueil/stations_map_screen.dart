@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../domain/models/station/station_location.dart';
 import '../../../core/utils/external_url_opener.dart';
+import '../../../data/services/station_services/station_route_service.dart';
+import '../../../domain/models/station/station_route.dart';
+import '../../../domain/models/station/station_location.dart';
 import '../controllers/station_controller.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../l10n/app_localizations.dart';
@@ -27,6 +31,11 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
 
   String _searchQuery = '';
   StationLocationItem? _selectedStation;
+  final StationRouteService _stationRouteService = StationRouteService();
+  LatLng? _deviceLocation;
+  StationRoute? _selectedRoute;
+  int _routeRequestId = 0;
+  bool _isRouteLoading = false;
   bool _showListView = false;
   List<StationLocationItem> _backendStations = [];
   bool _hasFetchedBackend = false;
@@ -140,11 +149,112 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
   }
 
   void _selectStation(StationLocationItem station) {
+    final requestId = ++_routeRequestId;
     setState(() {
       _selectedStation = station;
+      _deviceLocation = null;
+      _selectedRoute = null;
+      _isRouteLoading = true;
       _showListView = false;
     });
     _mapController.move(station.location, 14.8);
+    unawaited(_loadRouteFromCurrentLocation(station, requestId));
+  }
+
+  void _clearSelectedStation() {
+    _routeRequestId++;
+    setState(() {
+      _selectedStation = null;
+      _deviceLocation = null;
+      _selectedRoute = null;
+      _isRouteLoading = false;
+    });
+  }
+
+  Future<void> _loadRouteFromCurrentLocation(
+    StationLocationItem station,
+    int requestId,
+  ) async {
+    LatLng? origin;
+    try {
+      origin = await _getCurrentLocation();
+    } catch (_) {
+      origin = null;
+    }
+
+    if (!mounted || requestId != _routeRequestId) return;
+    if (origin == null) {
+      setState(() => _isRouteLoading = false);
+      _showMapMessage(
+        AppLocalizations.of(context).stationLocationPermissionRequired,
+      );
+      return;
+    }
+
+    setState(() => _deviceLocation = origin);
+
+    StationRoute? route;
+    try {
+      route = await _stationRouteService.getDrivingRoute(
+        origin: origin,
+        destination: station.location,
+      );
+    } catch (_) {
+      route = null;
+    }
+
+    if (!mounted || requestId != _routeRequestId) return;
+    setState(() {
+      _selectedRoute = route;
+      _isRouteLoading = false;
+    });
+
+    if (route == null) {
+      _showMapMessage(AppLocalizations.of(context).stationRouteUnavailable);
+      return;
+    }
+
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(route.points),
+        padding: const EdgeInsets.fromLTRB(36, 132, 36, 240),
+      ),
+    );
+  }
+
+  Future<LatLng?> _getCurrentLocation() async {
+    if (!await Geolocator.isLocationServiceEnabled()) return null;
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever ||
+        permission == LocationPermission.unableToDetermine) {
+      return null;
+    }
+
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 12),
+      ),
+    );
+    return LatLng(position.latitude, position.longitude);
+  }
+
+  void _showMapMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _routeSummary(AppLocalizations l10n, StationRoute route) {
+    final distance = (route.distanceMeters / 1000).toStringAsFixed(1);
+    final duration = (route.durationSeconds / 60).round().toString();
+    return l10n.stationRouteSummary(distance, duration);
   }
 
   Future<void> _openMapsGps(StationLocationItem station) async {
@@ -194,7 +304,7 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
               maxZoom: 18.0,
               onTap: (tapPosition, point) {
                 if (_selectedStation != null) {
-                  setState(() => _selectedStation = null);
+                  _clearSelectedStation();
                 }
               },
             ),
@@ -203,6 +313,18 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.leaderpetroleum.etickets',
               ),
+              if (_selectedRoute != null)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _selectedRoute!.points,
+                      color: const Color(0xFF3478F6),
+                      strokeWidth: 6,
+                      borderColor: Colors.white,
+                      borderStrokeWidth: 2.5,
+                    ),
+                  ],
+                ),
               MarkerLayer(
                 markers: displayedStations.map((st) {
                   final isSelected = _selectedStation?.id == st.id;
@@ -220,6 +342,22 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
                   );
                 }).toList(),
               ),
+              if (_deviceLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _deviceLocation!,
+                      width: 104,
+                      height: 68,
+                      alignment: Alignment.bottomCenter,
+                      child: _RouteOriginMarker(
+                        routeSummary: _selectedRoute == null
+                            ? null
+                            : _routeSummary(l10n, _selectedRoute!),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
 
@@ -389,7 +527,7 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
           // 3. BOUTONS DE ZOOM ET DE RECENTRAGE
           Positioned(
             right: 16,
-            bottom: _selectedStation != null ? 220 : 32,
+            bottom: _selectedStation != null ? 240 : 32,
             child: Column(
               children: [
                 _MapControlButton(
@@ -416,7 +554,7 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
                   icon: Icons.my_location_rounded,
                   accentColor: AppColors.leaderGreenDark,
                   onPressed: () {
-                    setState(() => _selectedStation = null);
+                    _clearSelectedStation();
                     _mapController.move(_initialCenter, 12.5);
                   },
                 ),
@@ -424,221 +562,191 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
             ),
           ),
 
-          // 4. FICHE STATION STYLE GOOGLE MAPS
+          // 4. Station preview card over the map.
           if (_selectedStation != null && !_showListView)
             Positioned(
-              left: 14,
-              right: 14,
+              left: 16,
+              right: 16,
               bottom: 20,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 24,
-                      spreadRadius: 2,
+                      color: Colors.black.withValues(alpha: 0.16),
+                      blurRadius: 22,
                       offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 38,
-                        height: 4.5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
+                          width: 84,
+                          height: 84,
                           decoration: BoxDecoration(
-                            color: AppColors.leaderGreen.withValues(
-                              alpha: 0.12,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                            color: const Color(0xFFF1F5F1),
+                            borderRadius: BorderRadius.circular(18),
                           ),
-                          child: Text(
-                            _localizedCity(
-                              _selectedStation!.city,
-                              l10n,
-                            ).toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.leaderGreenDark,
-                              letterSpacing: 0.5,
-                            ),
+                          child: const Icon(
+                            Icons.local_gas_station_rounded,
+                            size: 42,
+                            color: AppColors.leaderGreen,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.check_circle_rounded,
-                                size: 12,
-                                color: Color(0xFF15803D),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _localizedStationName(
+                                        _selectedStation!,
+                                        l10n,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        height: 1.15,
+                                        fontWeight: FontWeight.w800,
+                                        color: scheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  InkWell(
+                                    onTap: _clearSelectedStation,
+                                    borderRadius: BorderRadius.circular(18),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        size: 19,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 4),
-                              Text(
-                                l10n.stationOpen247,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF15803D),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  _StationInfoChip(
+                                    icon: Icons.location_city_rounded,
+                                    label: _localizedCity(
+                                      _selectedStation!.city,
+                                      l10n,
+                                    ),
+                                  ),
+                                  if (_selectedStation!.is24h)
+                                    _StationInfoChip(
+                                      icon: Icons.schedule_rounded,
+                                      label: l10n.stationOpen247,
+                                      color: const Color(0xFF15803D),
+                                      backgroundColor: const Color(0xFFDCFCE7),
+                                    ),
+                                ],
+                              ),
+                              if (_isRouteLoading) ...[
+                                const SizedBox(height: 8),
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF3478F6),
+                                  ),
                                 ),
-                              ),
+                              ] else if (_selectedRoute != null) ...[
+                                const SizedBox(height: 7),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.near_me_rounded,
+                                      size: 14,
+                                      color: Color(0xFF1D4ED8),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _routeSummary(l10n, _selectedRoute!),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1D4ED8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFBFDBFE)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.near_me_rounded,
-                                size: 12,
-                                color: Color(0xFF1D4ED8),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formattedDistanceTo(
-                                  _selectedStation!.location,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1D4ED8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        InkWell(
-                          onTap: () => setState(() => _selectedStation = null),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 18,
-                              color: Colors.black54,
-                            ),
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    Divider(height: 1, color: scheme.outlineVariant),
                     const SizedBox(height: 10),
-                    Text(
-                      _localizedStationName(_selectedStation!, l10n),
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: scheme.onSurface,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on_rounded,
-                          size: 16,
+                          size: 18,
                           color: AppColors.leaderGreenDark,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             _localizedAddress(_selectedStation!, l10n),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
+                              height: 1.25,
                               color: scheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _openMapsGps(_selectedStation!),
-                            icon: const Icon(
-                              Icons.directions_rounded,
-                              size: 20,
-                            ),
-                            label: Text(
-                              l10n.stationDirectionsGoogleMaps,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.leaderGreen,
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          tooltip: l10n.stationDirectionsGoogleMaps,
+                          onPressed: () => _openMapsGps(_selectedStation!),
+                          icon: const Icon(Icons.navigation_rounded, size: 19),
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.leaderGreen,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(42, 42),
                           ),
                         ),
                         if (_selectedStation!.phone.isNotEmpty) ...[
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 6),
                           IconButton.filledTonal(
                             onPressed: () =>
                                 _callStation(_selectedStation!.phone),
-                            icon: const Icon(Icons.phone_in_talk_rounded),
+                            icon: const Icon(
+                              Icons.phone_in_talk_rounded,
+                              size: 19,
+                            ),
                             style: IconButton.styleFrom(
                               backgroundColor: scheme.surfaceContainerHighest,
                               foregroundColor: scheme.onSurface,
-                              padding: const EdgeInsets.all(14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                              minimumSize: const Size(42, 42),
                             ),
                           ),
                         ],
@@ -820,6 +928,100 @@ class _StationsMapScreenState extends State<StationsMapScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RouteOriginMarker extends StatelessWidget {
+  const _RouteOriginMarker({this.routeSummary});
+
+  final String? routeSummary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (routeSummary != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111827),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              routeSummary!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFF3478F6),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.directions_car_filled_rounded,
+            color: Colors.white,
+            size: 19,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StationInfoChip extends StatelessWidget {
+  const _StationInfoChip({
+    required this.icon,
+    required this.label,
+    this.color = AppColors.leaderGreenDark,
+    this.backgroundColor = const Color(0xFFEAF4EC),
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

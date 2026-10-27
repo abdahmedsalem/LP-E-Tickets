@@ -21,26 +21,25 @@ class AppPreferences {
 
   static Future<String> localeCode() async {
     final p = await SharedPreferences.getInstance();
-    var stored = p.getString(_kLocale);
-    if (stored == null || stored.isEmpty) {
-      _publishLocale(defaultLocaleCode);
-      return defaultLocaleCode;
+    final stored = p.getString(_kLocale);
+    if (stored == 'fr' || stored == 'ar') {
+      _publishLocale(stored!);
+      return stored;
     }
-    if (stored == 'en') {
-      await p.setString(_kLocale, 'fr');
-      _publishLocale('fr');
-      return 'fr';
+    // Keep the legacy English-to-French migration for existing users.
+    final code = stored == 'en' ? defaultLocaleCode : _systemLocaleCode();
+    await p.setString(_kLocale, code);
+    _publishLocale(code);
+    return code;
+  }
+
+  static String _systemLocaleCode() {
+    for (final locale in WidgetsBinding.instance.platformDispatcher.locales) {
+      if (locale.languageCode == 'fr' || locale.languageCode == 'ar') {
+        return locale.languageCode;
+      }
     }
-    switch (stored) {
-      case 'ar':
-      case 'fr':
-        _publishLocale(stored);
-        return stored;
-      default:
-        await p.setString(_kLocale, defaultLocaleCode);
-        _publishLocale(defaultLocaleCode);
-        return defaultLocaleCode;
-    }
+    return defaultLocaleCode;
   }
 
   static Future<void> setLocaleCode(String code) async {

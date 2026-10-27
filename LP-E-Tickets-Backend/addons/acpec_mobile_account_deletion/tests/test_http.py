@@ -76,14 +76,8 @@ class TestAccountDeletionHttp(HttpCase):
         self.assertFalse(self.env['acpec.mobile.account.deletion'].sudo().search([
             ('user_id', '=', self.user.id)]))
 
-    def _immediate_policy(self):
-        self.env['ir.config_parameter'].sudo().set_param(
-            'acpec_mobile_account_deletion.retention_notice',
-            'Test fixture: financial rows retained until the test transaction rolls back.')
-
     def test_immediate_deletion_and_unauthenticated_recovery(self):
         import uuid
-        self._immediate_policy()
         preview = self.rpc('preview')
         self.assertTrue(preview['success'], preview)
         key = str(uuid.uuid4())
@@ -108,7 +102,6 @@ class TestAccountDeletionHttp(HttpCase):
 
     def test_immediate_requires_session_confirmation_and_pin(self):
         import uuid
-        self._immediate_policy()
         report = self.rpc('preview')['data']
         params = {'confirmed': True, 'action_code': '9999', 'snapshot': report['snapshot'],
                   'waive_value': False, 'recovery_key': str(uuid.uuid4())}
@@ -124,9 +117,11 @@ class TestAccountDeletionHttp(HttpCase):
         self.assertFalse(self.rpc('execute', params)['success'])
         self.assertTrue(self.user.active)
 
-    def test_immediate_rejects_changed_wallet_and_missing_policy(self):
+    def test_immediate_rejects_changed_wallet_without_odoo_policy_configuration(self):
         import uuid
-        self._immediate_policy()
+        preview = self.rpc('preview')
+        self.assertTrue(preview['success'], preview)
+        self.assertNotIn('retention_notice', preview['data'])
         params = {'confirmed': True, 'action_code': '1234', 'snapshot': '0' * 64,
                   'waive_value': False, 'recovery_key': str(uuid.uuid4())}
         self.assertFalse(self.rpc('execute', params)['success'])
@@ -134,13 +129,12 @@ class TestAccountDeletionHttp(HttpCase):
         self.assertTrue(self.user.active)
         self.env['ir.config_parameter'].sudo().set_param(
             'acpec_mobile_account_deletion.retention_notice', '')
-        self.assertFalse(self.rpc('preview')['success'])
+        self.assertTrue(self.rpc('preview')['success'])
 
     def test_immediate_audit_failure_rolls_back_erasure(self):
         import uuid
         from unittest.mock import patch
         from odoo.addons.acpec_mobile_account_deletion.controllers.account_deletion import AccountDeletionApi
-        self._immediate_policy()
         report = self.rpc('preview')['data']
         params = {'confirmed': True, 'action_code': '1234', 'snapshot': report['snapshot'],
                   'waive_value': False, 'recovery_key': str(uuid.uuid4())}
@@ -155,7 +149,6 @@ class TestAccountDeletionHttp(HttpCase):
 
     def test_pending_device_can_delete_with_session_and_correct_pin(self):
         import uuid
-        self._immediate_policy()
         self.session.device_id._write_internal({'trust_state': 'pending_trust'})
         self.session._write_internal({'device_trust_state': 'pending_trust'})
         report = self.rpc('preview')

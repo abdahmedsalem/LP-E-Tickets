@@ -84,55 +84,71 @@ class ClientShellScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    // Keep the iPhone safe area inside the navigation surface so the bar's
+    // background reaches the physical bottom edge without leaving a gap.
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final isTabletLayout = viewportWidth >= 700;
     final destinations = _destinations(AppLocalizations.of(context));
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBody: true,
       body: navigationShell,
-      bottomNavigationBar: Container(
-        width: double.infinity,
-        height: 86 + bottomInset,
-        padding: EdgeInsets.fromLTRB(12, 8, 12, 8 + bottomInset),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(22),
-            topRight: Radius.circular(22),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
+      bottomNavigationBar: SizedBox(
+        height: (isTabletLayout ? 124 : 86) + bottomInset,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: isTabletLayout ? 640 : double.infinity,
             ),
-          ],
-          border: Border.all(color: AppColors.line.withValues(alpha: 0.8)),
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < destinations.length; i++) ...[
-              Expanded(
-                child: i == 3
-                    ? _PortfolioPopupTabButton(
-                        destination: destinations[i],
-                        selected: i == navigationShell.currentIndex,
-                        onSelected: (destination) =>
-                            _onPortfolioDestinationSelected(
-                              context,
-                              destination,
-                            ),
-                      )
-                    : _ClientTabButton(
-                        destination: destinations[i],
-                        selected: i == navigationShell.currentIndex,
-                        onTap: () => _onTabTap(i),
-                      ),
+            child: Container(
+              width: double.infinity,
+              height: (isTabletLayout ? 124 : 86) + bottomInset,
+              padding: EdgeInsets.fromLTRB(12, 8, 12, bottomInset),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(22),
+                  topRight: Radius.circular(22),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+                border: Border.all(
+                  color: AppColors.line.withValues(alpha: 0.8),
+                ),
               ),
-              if (i != destinations.length - 1) const SizedBox(width: 6),
-            ],
-          ],
+              child: Row(
+                children: [
+                  for (var i = 0; i < destinations.length; i++) ...[
+                    Expanded(
+                      child: i == 3
+                          ? _PortfolioPopupTabButton(
+                              destination: destinations[i],
+                              selected: i == navigationShell.currentIndex,
+                              onSelected: (destination) =>
+                                  _onPortfolioDestinationSelected(
+                                    context,
+                                    destination,
+                                  ),
+                            )
+                          : _ClientTabButton(
+                              destination: destinations[i],
+                              selected: i == navigationShell.currentIndex,
+                              onTap: () => _onTabTap(i),
+                            ),
+                    ),
+                    if (i != destinations.length - 1) const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -277,23 +293,24 @@ class _ClientTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeColor = AppColors.leaderGreen;
     final inactiveColor = AppColors.muted;
+    final isTabletLayout = MediaQuery.sizeOf(context).width >= 700;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           selected ? destination.selectedIcon : destination.icon,
-          size: 26,
+          size: isTabletLayout ? 42 : 26,
           color: selected ? activeColor : inactiveColor,
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: isTabletLayout ? 8 : 4),
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             destination.label,
             maxLines: 1,
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: isTabletLayout ? 16.5 : 10.5,
               height: 1.0,
               fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
               color: selected ? activeColor : inactiveColor,

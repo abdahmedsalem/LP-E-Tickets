@@ -59,7 +59,6 @@ Map<String, dynamic> reportData({
   'snapshot': List.filled(64, 'a').join(),
   'has_value': value,
   'blockers': blockers,
-  'retention_notice': 'Test financial retention policy.',
   'wallets': [],
   'carnets': [],
   'qrs': [],

@@ -37,6 +37,15 @@ class AcpecFuelPurchase(models.Model):
     )
     payment_reference = fields.Char(string='Reference paiement')
     payment_method_id = fields.Many2one('acpec.fuel.payment.method', string='Mode de paiement', readonly=True)
+    payment_method_name = fields.Char(
+        string='Nom du moyen de paiement à l’achat', readonly=True, copy=False,
+    )
+    payment_method_code = fields.Char(
+        string='Code du moyen de paiement à l’achat', readonly=True, copy=False,
+    )
+    payment_merchant_code = fields.Char(
+        string='Code commerçant à l’achat', readonly=True, copy=False,
+    )
     idempotency_key = fields.Char(string='Cle idempotence', index=True, copy=False)
     request_hash = fields.Char(string='Hash requête idempotence', index=True, copy=False)
     approval_idempotency_key = fields.Char(string='Cle idempotence validation', index=True, copy=False)
@@ -316,12 +325,46 @@ class AcpecFuelPurchase(models.Model):
             raise UserError(_(
                 'La création de lots d’achat est réservée aux flux métier internes contrôlés.'
             ))
-        for vals in vals_list:
+        prepared_vals = []
+        for incoming_vals in vals_list:
+            vals = dict(incoming_vals)
+            vals.update(self._payment_method_snapshot_values(vals))
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('acpec.fuel.purchase') or 'New'
             if not vals.get('public_code'):
                 vals['public_code'] = self._create_unique_public_code(prefix='LOT', size=16)
-        return super().create(vals_list)
+            prepared_vals.append(vals)
+        return super().create(prepared_vals)
+
+    @api.model
+    def _payment_method_snapshot_values(self, purchase_values):
+        snapshot_values = {
+            'payment_method_name': False,
+            'payment_method_code': False,
+            'payment_merchant_code': False,
+        }
+        payment_method_id = purchase_values.get('payment_method_id')
+        if not payment_method_id:
+            return snapshot_values
+
+        company = self.env['res.company'].browse(
+            purchase_values.get('company_id') or self.env.company.id
+        ).exists()
+        if not company:
+            raise ValidationError(_('Société introuvable.'))
+        payment_method = self.env['acpec.fuel.payment.method'].sudo().find_available_for_company(
+            company, payment_method_id=payment_method_id,
+        )
+        if not payment_method:
+            raise ValidationError(_('Mode de paiement indisponible.'))
+
+        # Use the source name regardless of the user's language or installed translations.
+        payment_method = payment_method.with_context(lang=False)
+        return {
+            'payment_method_name': payment_method.name,
+            'payment_method_code': payment_method.code,
+            'payment_merchant_code': payment_method.merchant_code,
+        }
 
     @api.depends('line_ids.amount_total', 'line_ids.generated_face_qty')
     def _compute_totals(self):
@@ -824,19 +867,7 @@ class AcpecFuelPurchase(models.Model):
                 'idempotency_key': idempotency_key or False,
                 'request_hash': request_hash or False,
             })
-            for item in lines:
-                carnet_type = self.env['acpec.fuel.carnet.type'].sudo().browse(int(item.get('carnet_type_id') or 0)).exists()
-                if not carnet_type:
-                    raise ValidationError(_('Type de carnet introuvable.'))
-                if not carnet_type.active:
-                    raise ValidationError(_("Type de carnet '%s' desactive.") % carnet_type.display_name)
-                if carnet_type.company_id and carnet_type.company_id != company:
-                    raise ValidationError(_("Type de carnet '%s' indisponible pour cette societe.") % carnet_type.display_name)
-                self.env['acpec.fuel.purchase.line']._create_internal({
-                    'purchase_id': purchase.id,
-                    'carnet_type_id': carnet_type.id,
-                    'carnet_qty': int(item.get('carnet_qty') or 0),
-                })
+            purchase._create_lines_from_api(lines)
             attachment = self.env['ir.attachment'].sudo().create({
                 'name': proof_filename,
                 'datas': proof_data,
@@ -850,6 +881,41 @@ class AcpecFuelPurchase(models.Model):
             })
             purchase.action_submit()
             return purchase
+
+    def _create_lines_from_api(self, lines):
+        self.ensure_one()
+        if not isinstance(lines, (list, tuple)) or not lines:
+            raise ValidationError(_('Le lot achat doit contenir au moins une ligne.'))
+
+        for line_values in lines:
+            if not isinstance(line_values, dict):
+                raise ValidationError(_('Ligne d’achat invalide.'))
+            try:
+                carnet_type_id = int(line_values.get('carnet_type_id') or 0)
+                carnet_quantity = int(line_values.get('carnet_qty') or 0)
+            except (TypeError, ValueError, OverflowError):
+                raise ValidationError(_(
+                    'Le type de carnet et la quantité doivent être des nombres entiers.'
+                )) from None
+            if carnet_quantity <= 0:
+                raise ValidationError(_('Le nombre de carnets doit etre positif.'))
+
+            carnet_type = self.env['acpec.fuel.carnet.type'].sudo().browse(
+                carnet_type_id,
+            ).exists()
+            if not carnet_type:
+                raise ValidationError(_('Type de carnet introuvable.'))
+            if not carnet_type.active:
+                raise ValidationError(_("Type de carnet '%s' desactive.") % carnet_type.display_name)
+            if carnet_type.company_id and carnet_type.company_id != self.company_id:
+                raise ValidationError(_(
+                    "Type de carnet '%s' indisponible pour cette societe."
+                ) % carnet_type.display_name)
+            self.env['acpec.fuel.purchase.line']._create_internal({
+                'purchase_id': self.id,
+                'carnet_type_id': carnet_type.id,
+                'carnet_qty': carnet_quantity,
+            })
 
 
 class AcpecFuelPurchaseLine(models.Model):

@@ -7,8 +7,8 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError
 from odoo.tests.common import tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import transfers as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
@@ -224,7 +224,7 @@ class TestTicketTransferRuntimePolicy(FuelTokenTransactionCase):
         self._assert_error_contains(self._call_transfer_tickets(controller, payload), "idempotency_key")
         self.assertFalse(self._transfer_by_key(source_wallet, "ticket-transfer-no-key-i2"))
 
-    def test_transfer_tickets_unknown_recipient_uses_transfer_refused(self):
+    def test_transfer_tickets_unknown_recipient_returns_business_error(self):
         (
             controller, _source_user, _source_login, _recipient_user, _recipient_login,
             _session, _carnet_type, _purchase, face_line, source_wallet, _dest_wallet,
@@ -235,7 +235,8 @@ class TestTicketTransferRuntimePolicy(FuelTokenTransactionCase):
             self._payload("46999999", face_line, key=key),
         )
         self.assertFalse(response["ok"])
-        self.assertEqual(response["error"]["code"], "TRANSFER_REFUSED")
+        self.assertEqual(response["error"]["code"], "RECIPIENT_NOT_FOUND")
+        self.assertEqual(response["error"]["message"], "Aucun client ne correspond à ce numéro.")
         self.assertTrue(str(response["error"].get("reference") or "").startswith("SEC-"))
         self.assertNotIn("46999999", repr(response))
         self.assertFalse(self._transfer_by_key(source_wallet, key))
@@ -263,6 +264,21 @@ class TestTicketTransferRuntimePolicy(FuelTokenTransactionCase):
         self.assertEqual(transfer.device_uid, session.device_uid)
         self.assertEqual(transfer.face_qty_total, qty)
         self.assertEqual(transfer.amount_total, qty * face_line.face_value)
+
+        transactions = self.env['acpec.fuel.transaction'].sudo().search([
+            ('ticket_transfer_id', '=', transfer.id),
+            ('wallet_id', '=', source_wallet.id),
+            ('transaction_effect', '=', 'outgoing'),
+        ])
+        self.assertEqual(len(transactions), 1)
+        self.assertEqual(
+            first_response['data']['operation_reference'],
+            transactions.operation_ref,
+        )
+        self.assertEqual(
+            second_response['data']['operation_reference'],
+            transactions.operation_ref,
+        )
 
         line = transfer.line_ids[0]
         dest_line = line.dest_face_line_id

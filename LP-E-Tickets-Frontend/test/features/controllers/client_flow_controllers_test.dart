@@ -138,7 +138,7 @@ void main() {
       );
       expect(repo.invalidations, 0);
       if (success) {
-        repo.result.complete(const QrIssueReceipt(transactionReference: 'QR1'));
+        repo.result.complete(const QrIssueReceipt(operationReference: 'QR1'));
         await pending;
       } else {
         final check = expectLater(pending, throwsStateError);

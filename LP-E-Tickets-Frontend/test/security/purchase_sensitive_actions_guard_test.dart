@@ -17,6 +17,17 @@ void main() {
     expect(identity, lessThan(callback));
     expect(reference, lessThan(callback));
     expect(source.substring(callback), isNot(contains('Uuid().v4()')));
+    final payloadIndex = source.indexOf('final purchaseRequest =');
+    expect(payloadIndex, greaterThan(reference));
+    expect(payloadIndex, lessThan(callback));
+    final confirmationEnd = source.indexOf(
+      'if (result is AcpecPurchaseCreateResult)',
+      callback,
+    );
+    final confirmation = source.substring(callback, confirmationEnd);
+    expect(confirmation, contains('...purchaseRequest'));
+    expect(confirmation, isNot(contains('_selectedPaymentMethodConfig')));
+    expect(confirmation, isNot(contains('base64Encode(proofBytes)')));
   });
   group('Patch2L3C purchase sensitive actions guard', () {
     test('purchase confirmation locks before PIN dialog', () {

@@ -18,26 +18,9 @@ class PaymentMethod {
   final String? colorHex;
   final String? logoData;
 
-  String get _compactDestination =>
-      merchantCode.trim().replaceAll(RegExp(r'[\s-]'), '');
+  String get destinationLabel => 'Code commerçant';
 
-  bool get destinationIsPhoneNumber =>
-      RegExp(r'^\d{8}$').hasMatch(_compactDestination);
-
-  bool get destinationIsMerchantCode =>
-      RegExp(r'^(?:\d{4}|\d{6})$').hasMatch(_compactDestination);
-
-  String get destinationLabel {
-    if (destinationIsPhoneNumber) return 'Numéro de téléphone';
-    if (destinationIsMerchantCode) return 'Code commerçant';
-    return 'Code commerçant / Numéro de téléphone';
-  }
-
-  String get destinationCopiedLabel {
-    if (destinationIsPhoneNumber) return 'Numéro';
-    if (destinationIsMerchantCode) return 'Code commerçant';
-    return 'Identifiant de paiement';
-  }
+  String get destinationCopiedLabel => 'Code commerçant';
 
   String get initial {
     final cleanName = name.trim();

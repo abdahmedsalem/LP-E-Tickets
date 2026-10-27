@@ -84,11 +84,13 @@ class ClientHomeWalletCard extends StatefulWidget {
     required this.amount,
     this.currency = Formatters.fallbackCurrency,
     this.loading = false,
+    this.expanded = false,
   });
 
   final int amount;
   final String currency;
   final bool loading;
+  final bool expanded;
 
   @override
   State<ClientHomeWalletCard> createState() => _ClientHomeWalletCardState();
@@ -104,6 +106,9 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
 
   @override
   Widget build(BuildContext context) {
+    final logoSide = widget.expanded ? 120.0 : _logoSide;
+    final horizontalPadding = widget.expanded ? 26.0 : 16.0;
+    final verticalPadding = widget.expanded ? 20.0 : 12.0;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(_r + 1),
@@ -142,7 +147,12 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
               ),
             ),
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 64, 12),
+              padding: EdgeInsetsDirectional.fromSTEB(
+                horizontalPadding,
+                verticalPadding,
+                widget.expanded ? 150 : 64,
+                verticalPadding,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -156,7 +166,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.88),
-                            fontSize: 9.5,
+                            fontSize: widget.expanded ? 15.5 : 9.5,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.0,
                           ),
@@ -187,7 +197,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: widget.expanded ? 22 : 14),
                   if (widget.loading)
                     const AppLoadingSkeleton(
                       style: AppLoadingSkeletonStyle.walletAmount,
@@ -204,9 +214,9 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                             _showAmount
                                 ? Formatters.numberFr(widget.amount)
                                 : '••••',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 26,
+                              fontSize: widget.expanded ? 43 : 26,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -1.0,
                               height: 1,
@@ -224,7 +234,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
                             widget.currency,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 11,
+                              fontSize: widget.expanded ? 17 : 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -241,7 +251,7 @@ class _ClientHomeWalletCardState extends State<ClientHomeWalletCard> {
               child: Center(
                 child: Opacity(
                   opacity: 0.95,
-                  child: _ClientWalletBrandLogo(size: _logoSide),
+                  child: _ClientWalletBrandLogo(size: logoSide),
                 ),
               ),
             ),

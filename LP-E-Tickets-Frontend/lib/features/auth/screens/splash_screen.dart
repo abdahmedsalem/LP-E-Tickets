@@ -82,12 +82,6 @@ class _SplashScreenState extends State<SplashScreen>
       }
     } else {
       if (!mounted) return;
-      final hasSelectedLanguage = await AppPreferences.hasSelectedLanguage();
-      if (!mounted) return;
-      if (!hasSelectedLanguage) {
-        context.go('/language-selection');
-        return;
-      }
       final pendingSignup = await PendingSignupStore.loadUsable();
       if (!mounted) return;
       if (pendingSignup != null) {

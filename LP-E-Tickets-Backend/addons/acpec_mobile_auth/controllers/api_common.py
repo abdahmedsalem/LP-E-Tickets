@@ -151,6 +151,7 @@ class AcpecMobileAuthApiCommon(http.Controller):
         'MISSING_ACTION_CODE': 'PIN requis pour confirmer cette opération.',
         'INVALID_ACTION_CODE_KEY': 'Demande invalide. Veuillez réessayer.',
         'QR_NOT_USABLE': 'QR introuvable ou non utilisable.',
+        'RECIPIENT_NOT_FOUND': 'Aucun client ne correspond à ce numéro.',
         'TRANSFER_REFUSED': 'Transfert impossible ou non autorisé.',
         'FORBIDDEN': 'Vous n’êtes pas autorisé à effectuer cette opération.',
         'REQUEST_REFUSED': 'Cette demande ne peut pas être traitée.',

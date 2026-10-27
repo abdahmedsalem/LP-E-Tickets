@@ -5,32 +5,12 @@ PaymentMethod _method(String destination) =>
     PaymentMethod(code: 'test', name: 'Test', merchantCode: destination);
 
 void main() {
-  test('8 digits are displayed as a phone number', () {
-    final method = _method('27 91-98 22');
-
-    expect(method.destinationIsPhoneNumber, isTrue);
-    expect(method.destinationIsMerchantCode, isFalse);
-    expect(method.destinationLabel, 'Numéro de téléphone');
-    expect(method.destinationCopiedLabel, 'Numéro');
-  });
-
-  test('4 or 6 digits are displayed as a merchant code', () {
-    for (final value in ['1234', '123456']) {
+  test('destinations are always displayed as merchant codes', () {
+    for (final value in ['12345', '123456', 'SEDAD-42']) {
       final method = _method(value);
 
-      expect(method.destinationIsMerchantCode, isTrue);
-      expect(method.destinationIsPhoneNumber, isFalse);
       expect(method.destinationLabel, 'Code commerçant');
       expect(method.destinationCopiedLabel, 'Code commerçant');
     }
-  });
-
-  test('other formats keep the generic compatible label', () {
-    final method = _method('ABC-123');
-
-    expect(method.destinationIsPhoneNumber, isFalse);
-    expect(method.destinationIsMerchantCode, isFalse);
-    expect(method.destinationLabel, 'Code commerçant / Numéro de téléphone');
-    expect(method.destinationCopiedLabel, 'Identifiant de paiement');
   });
 }

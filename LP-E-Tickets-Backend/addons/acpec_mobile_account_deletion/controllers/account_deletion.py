@@ -1,12 +1,21 @@
+"""Mobile API endpoints for account deletion."""
+
 from odoo import http
-from odoo.http import request
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
 
 
 class AccountDeletionApi(AcpecMobileAuthApiCommon):
-    @http.route('/api/acpec/mobile_auth/v1/account-deletion/status',
-                type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    """Expose both the support-request and immediate-deletion workflows."""
+
+    @http.route(
+        '/api/acpec/mobile_auth/v1/account-deletion/status',
+        type='jsonrpc',
+        auth='public',
+        methods=['POST'],
+        csrf=False,
+    )
     def deletion_status(self, **kwargs):
+        """Return the existing request, or the delay for a new request."""
         try:
             session = self._get_mobile_session(required=True)
             model = self._api_env()['acpec.mobile.account.deletion'].sudo()
@@ -18,9 +27,15 @@ class AccountDeletionApi(AcpecMobileAuthApiCommon):
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/account-deletion/request',
-                type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route(
+        '/api/acpec/mobile_auth/v1/account-deletion/request',
+        type='jsonrpc',
+        auth='public',
+        methods=['POST'],
+        csrf=False,
+    )
     def deletion_request(self, **kwargs):
+        """Create a support-managed request after confirming the user's PIN."""
         try:
             if kwargs.get('confirmed') is not True:
                 return self._error_response('CONFIRMATION_REQUIRED', 'Confirmation requise.')
@@ -33,28 +48,49 @@ class AccountDeletionApi(AcpecMobileAuthApiCommon):
                 exc, params=kwargs, operation='account_deletion_request',
                 endpoint='/api/acpec/mobile_auth/v1/account-deletion/request')
 
-    @http.route('/api/acpec/mobile_auth/v1/account-deletion/preview',
-                type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route(
+        '/api/acpec/mobile_auth/v1/account-deletion/preview',
+        type='jsonrpc',
+        auth='public',
+        methods=['POST'],
+        csrf=False,
+    )
     def deletion_preview(self, **kwargs):
+        """Build the wallet snapshot that the user must review before deletion."""
         try:
             user = self._require_mobile_auth()
-            return self._json_response(self._api_env()['acpec.mobile.account.deletion'].sudo()._wallet_report(user))
+            report = self._api_env()['acpec.mobile.account.deletion'].sudo()._wallet_report(user)
+            return self._json_response(report)
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/account-deletion/recover',
-                type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route(
+        '/api/acpec/mobile_auth/v1/account-deletion/recover',
+        type='jsonrpc',
+        auth='public',
+        methods=['POST'],
+        csrf=False,
+    )
     def deletion_recover(self, **kwargs):
+        """Check an opaque receipt without returning account identifiers."""
         try:
             # Opaque high-entropy receipt: no login, account identifier or PII returned.
-            return self._json_response(self._api_env()['acpec.mobile.account.deletion'].sudo()._recover_immediate(
-                kwargs.get('recovery_key')))
+            result = self._api_env()['acpec.mobile.account.deletion'].sudo()._recover_immediate(
+                kwargs.get('recovery_key')
+            )
+            return self._json_response(result)
         except Exception as exc:
             return self._handle_exception_response(exc)
 
-    @http.route('/api/acpec/mobile_auth/v1/account-deletion/execute',
-                type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    @http.route(
+        '/api/acpec/mobile_auth/v1/account-deletion/execute',
+        type='jsonrpc',
+        auth='public',
+        methods=['POST'],
+        csrf=False,
+    )
     def deletion_execute(self, **kwargs):
+        """Run immediate deletion after PIN, confirmation, and snapshot checks."""
         try:
             model = self._api_env()['acpec.mobile.account.deletion'].sudo()
             recovered = model._recover_immediate(kwargs.get('recovery_key'))
@@ -66,13 +102,28 @@ class AccountDeletionApi(AcpecMobileAuthApiCommon):
             # _sensitive_action_transaction; scrub the audit before inserting it
             # because erasure also purges the old session/device records.
             user, audit = self._require_sensitive_action_pin(
-                kwargs, purpose='account_deletion_execute', log_allowed=False, return_audit_vals=True, require_trusted_device=False)
+                kwargs,
+                purpose='account_deletion_execute',
+                log_allowed=False,
+                return_audit_vals=True,
+                require_trusted_device=False,
+            )
             with self._api_env().cr.savepoint():
-                result = model._delete_immediately(user, kwargs.get('snapshot'),
-                                                  kwargs.get('waive_value'), kwargs.get('recovery_key'))
-                audit.update({'session_id': False, 'device_uid': False, 'device_name': False,
-                              'ip_address': False, 'user_agent': False, 'debug_reason': False,
-                              'idempotency_key': False})
+                result = model._delete_immediately(
+                    user,
+                    kwargs.get('snapshot'),
+                    kwargs.get('waive_value'),
+                    kwargs.get('recovery_key'),
+                )
+                audit.update({
+                    'session_id': False,
+                    'device_uid': False,
+                    'device_name': False,
+                    'ip_address': False,
+                    'user_agent': False,
+                    'debug_reason': False,
+                    'idempotency_key': False,
+                })
                 self._audit_in_transaction(audit)
                 model._scrub_deletion_audit(user)
             return self._json_response(result)

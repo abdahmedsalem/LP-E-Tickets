@@ -23,7 +23,8 @@ void main() {
     expect(source, contains('l10n.settingsStationsMap'));
     expect(source, contains("context.push('/settings/stations-map')"));
     expect(source, contains('l10n.settingsDeleteAccount'));
-    expect(source, contains('_profileController.requestAccountDeletion(pin)'));
+    expect(source, contains('await runAccountDeletionFlow(context)'));
+    expect(source, isNot(contains('requestAccountDeletion(pin)')));
     expect(source, contains('_LogoutTile('));
     expect(source, contains('l10n.settingsDevelopedBy'));
     expect(

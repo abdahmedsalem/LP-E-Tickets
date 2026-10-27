@@ -50,7 +50,28 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
       icon: Icons.check_circle_rounded,
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _PurchasedLinesSection(lines: lines),
+      showSummaryDividers: true,
       rows: [
+        if (result.operationReference != null)
+          OperationSuccessSummaryData(
+            label: l10n.operationReference,
+            value: result.operationReference!,
+            valueColor: AppColors.ink,
+            displayAsAmount: false,
+          ),
+        if (result.paymentMethodName != null)
+          OperationSuccessSummaryData(
+            label: l10n.purchasePaymentMethod,
+            value: result.paymentMethodName!,
+            valueColor: AppColors.ink,
+          ),
+        if (result.paymentMerchantCode != null)
+          OperationSuccessSummaryData(
+            label: l10n.purchaseMerchantCode,
+            value: result.paymentMerchantCode!,
+            valueColor: AppColors.ink,
+            displayAsAmount: false,
+          ),
         OperationSuccessSummaryData(
           label: l10n.totalAmount,
           value: _totalAmount.toString(),
@@ -60,6 +81,8 @@ class PurchaseSubmitSuccessScreen extends StatelessWidget {
           label: l10n.date,
           value: Formatters.dateTimeDash(confirmedAt),
           valueColor: AppColors.ink,
+          labelFlex: 2,
+          valueFlex: 3,
         ),
       ],
     );

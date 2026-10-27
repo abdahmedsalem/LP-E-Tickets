@@ -8,6 +8,9 @@
                 <field name="partner_id"/>
                 <field name="state"/>
                 <field name="payment_method_id"/>
+                <field name="payment_method_name" readonly="1"/>
+                <field name="payment_method_code" readonly="1"/>
+                <field name="payment_merchant_code" readonly="1"/>
                 <field name="amount_total" width="130px" readonly="1"/>
                 <field name="face_qty_total"/>
                 <field name="company_id" groups="base.group_multi_company"/>
@@ -41,12 +44,25 @@
                             <field name="company_id" readonly="1" groups="base.group_multi_company"/>
                             <field name="payment_reference" readonly="1"/>
                             <field name="payment_method_id" readonly="1"/>
+                            <field name="payment_method_name" readonly="1"/>
+                            <field name="payment_method_code" readonly="1"/>
+                            <field name="payment_merchant_code" readonly="1"/>
                         </group>
                         <group>
                             <field name="amount_total" readonly="1"/>
                             <field name="face_qty_total" readonly="1"/>
-                            <field name="approved_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Dates et historique">
+                        <group>
+                            <field name="create_date" string="Créé le" readonly="1"/>
+                            <field name="submitted_at" readonly="1"/>
                             <field name="approved_at" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="approved_by" readonly="1"/>
+                            <field name="rejected_at" readonly="1"/>
+                            <field name="rejected_by" readonly="1"/>
                         </group>
                     </group>
                     <notebook>

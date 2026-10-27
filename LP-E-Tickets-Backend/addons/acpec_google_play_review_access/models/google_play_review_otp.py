@@ -20,6 +20,18 @@ class AcpecMobileAuthOtp(models.Model):
     GOOGLE_PLAY_REVIEW_OTP = '000000'
 
     @api.model
+    def _initialize_google_play_review_defaults(self):
+        """Keep existing settings, including explicit disabled/empty values."""
+        params = self.env['ir.config_parameter'].sudo()
+        defaults = {
+            self.GOOGLE_PLAY_REVIEW_ENABLED_PARAM: 'True',
+            self.GOOGLE_PLAY_REVIEW_PHONE_PARAM: '27919822,32524659',
+        }
+        for key, value in defaults.items():
+            if not params.search_count([('key', '=', key)]):
+                params.set_param(key, value)
+
+    @api.model
     def _normalize_google_play_review_phone(self, value):
         digits = ''.join(char for char in str(value or '') if char.isdigit())
         if len(digits) == 11 and digits.startswith('222'):

@@ -317,7 +317,7 @@ abstract class AppLocalizations {
   /// No description provided for @authAccountNotFound.
   ///
   /// In fr, this message translates to:
-  /// **'Aucun compte associé à ce numéro. Vérifiez le numéro ou créez un compte.'**
+  /// **'Ce compte n’existe pas. Vérifiez le numéro ou créez un compte.'**
   String get authAccountNotFound;
 
   /// Nom de l'application
@@ -1639,6 +1639,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Votre commande de carnets est en attente de validation.'**
   String get purchaseSuccessMessage;
+
+  /// No description provided for @purchasePaymentMethod.
+  ///
+  /// In fr, this message translates to:
+  /// **'Moyen de paiement'**
+  String get purchasePaymentMethod;
+
+  /// No description provided for @purchaseMerchantCode.
+  ///
+  /// In fr, this message translates to:
+  /// **'Code commerçant'**
+  String get purchaseMerchantCode;
+
+  /// No description provided for @operationReference.
+  ///
+  /// In fr, this message translates to:
+  /// **'Référence opération'**
+  String get operationReference;
 
   /// No description provided for @purchasedCarnets.
   ///
@@ -4142,6 +4160,24 @@ abstract class AppLocalizations {
   /// **'Itinéraire Google Maps'**
   String get stationDirectionsGoogleMaps;
 
+  /// No description provided for @stationLocationPermissionRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activez la localisation du téléphone et autorisez l’accès pour afficher votre position et calculer l’itinéraire.'**
+  String get stationLocationPermissionRequired;
+
+  /// No description provided for @stationRouteUnavailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Itinéraire indisponible sur la carte. Vous pouvez l’ouvrir dans Google Maps.'**
+  String get stationRouteUnavailable;
+
+  /// No description provided for @stationRouteSummary.
+  ///
+  /// In fr, this message translates to:
+  /// **'{distance} km • {duration} min'**
+  String stationRouteSummary(String distance, String duration);
+
   /// No description provided for @stationListTitle.
   ///
   /// In fr, this message translates to:
@@ -4217,7 +4253,7 @@ abstract class AppLocalizations {
   /// No description provided for @qrLimitSaved.
   ///
   /// In fr, this message translates to:
-  /// **'Plafond QR enregistré sur le serveur.'**
+  /// **'Le plafond de vos QR a bien été mis à jour.'**
   String get qrLimitSaved;
 
   /// No description provided for @qrLimitLoading.

@@ -1,0 +1,13 @@
+<odoo>
+    <!-- Seeds each payment preset with its visual identity on install/upgrade. -->
+    <function model="acpec.fuel.payment.method"
+              name="_seed_default_payment_methods">
+        <value eval="{
+            'bankily': '#008B83',
+            'sedad': '#A48625',
+            'masrivi': '#3D258C',
+            'clic': '#007EA8',
+            'bfi_cash': '#29356F'
+        }"/>
+    </function>
+</odoo>

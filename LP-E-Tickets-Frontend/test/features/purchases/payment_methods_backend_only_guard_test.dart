@@ -22,7 +22,8 @@ void main() {
     expect(model, isNot(contains("name: 'Sedad'")));
     expect(model, isNot(contains("name: 'Masrivi'")));
     expect(mapper, contains("json['merchant_code']"));
-    expect(service, contains('OdooFueltokenFacade().paymentMethods()'));
+    expect(service, contains('api ?? OdooFueltokenFacade()'));
+    expect(service, contains('.paymentMethods()'));
     expect(service, isNot(contains('fallbackMethods')));
     expect(screen, contains('List<PaymentMethod> _paymentMethods = []'));
     expect(

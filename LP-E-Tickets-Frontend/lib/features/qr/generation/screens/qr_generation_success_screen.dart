@@ -11,7 +11,7 @@ Future<void> showQrGenerationSuccessDialog(
   BuildContext context, {
   required int totalAmount,
   required DateTime confirmedAt,
-  String? transactionReference,
+  String? operationReference,
   List<QrGenerationSuccessLine> lines = const [],
 }) {
   return Navigator.of(context, rootNavigator: true).push<void>(
@@ -19,7 +19,7 @@ Future<void> showQrGenerationSuccessDialog(
       builder: (_) => QrGenerationSuccessScreen(
         totalAmount: totalAmount,
         confirmedAt: confirmedAt,
-        transactionReference: transactionReference,
+        operationReference: operationReference,
         lines: lines,
       ),
     ),
@@ -47,13 +47,13 @@ class QrGenerationSuccessScreen extends StatelessWidget {
     super.key,
     required this.totalAmount,
     required this.confirmedAt,
-    this.transactionReference,
+    this.operationReference,
     this.lines = const [],
   });
 
   final int totalAmount;
   final DateTime confirmedAt;
-  final String? transactionReference;
+  final String? operationReference;
   final List<QrGenerationSuccessLine> lines;
 
   @override
@@ -65,7 +65,15 @@ class QrGenerationSuccessScreen extends StatelessWidget {
       icon: Icons.qr_code_2_rounded,
       accentColor: const Color(0xFF2B8F3A),
       details: lines.isEmpty ? null : _GeneratedQrLinesSection(lines: lines),
+      showSummaryDividers: true,
       rows: [
+        if (operationReference != null && operationReference!.trim().isNotEmpty)
+          OperationSuccessSummaryData(
+            label: l10n.operationReference,
+            value: operationReference!.trim(),
+            valueColor: AppColors.ink,
+            displayAsAmount: false,
+          ),
         OperationSuccessSummaryData(
           label: l10n.totalAmount,
           value: totalAmount.toString(),

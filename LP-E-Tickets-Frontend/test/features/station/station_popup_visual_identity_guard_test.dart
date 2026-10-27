@@ -31,7 +31,10 @@ void main() {
     );
 
     expect(stationSuccess, contains('OperationSuccessSummaryCard('));
-    expect(clientSuccess, contains('OperationSuccessSummaryCard(rows: rows)'));
+    expect(
+      clientSuccess,
+      matches(RegExp(r'OperationSuccessSummaryCard\(\s*rows: rows,')),
+    );
     expect(summary, contains('padding: const EdgeInsets.all(18)'));
     expect(summary, contains('BorderRadius.circular(20)'));
     expect(summary, contains('const SizedBox(height: 12)'));

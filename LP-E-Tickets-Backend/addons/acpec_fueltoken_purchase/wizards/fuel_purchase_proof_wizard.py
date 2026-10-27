@@ -1,4 +1,5 @@
-from odoo import models, fields, api, _
+from odoo import fields, models
+
 
 class AcpecFuelPurchaseProofWizard(models.TransientModel):
     _name = 'acpec.fuel.purchase.proof.wizard'

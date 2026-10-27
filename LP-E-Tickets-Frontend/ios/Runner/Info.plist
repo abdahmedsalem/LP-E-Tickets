@@ -42,7 +42,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Leader Petroleum E-Tickets utilise la géolocalisation pour sécuriser les transactions en station.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Leader Petroleum E-Tickets utilise la géolocalisation pour vérifier la présence à la station lors du service de carburant.</string>
+	<string>Leader Petroleum E-Tickets utilise votre position pour vous situer sur la carte et calculer un trajet vers une station. Les coordonnées du départ et de la station sont envoyées au service de calcul OSRM. La position sert aussi à vérifier votre présence lors du service carburant.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Leader Petroleum E-Tickets enregistre les reçus et preuves de paiement dans votre galerie de photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

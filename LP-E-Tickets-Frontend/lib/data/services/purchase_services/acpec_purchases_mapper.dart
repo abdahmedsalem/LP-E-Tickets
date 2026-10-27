@@ -42,48 +42,73 @@ class AcpecPurchasesMapper {
     return fallback;
   }
 
+  static String? _optionalText(dynamic value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty || text == 'false') return null;
+    return text;
+  }
+
   /// Réponse de création de commande (`purchase_id`, `public_code`, `state`).
   static AcpecPurchaseCreateResult parseCreateResult(dynamic raw) {
     if (raw is! Map) {
       throw Exception('Réponse serveur invalide.');
     }
-    var m = Map<String, dynamic>.from(raw);
-    if (m['ok'] == false) {
-      throw Exception(_responseErrorMessage(m));
+    var responseData = Map<String, dynamic>.from(raw);
+    if (responseData['ok'] == false) {
+      throw Exception(_responseErrorMessage(responseData));
     }
-    if (m['data'] is Map) {
-      final d = Map<String, dynamic>.from(m['data'] as Map);
-      if (d['ok'] == false) {
-        throw Exception(_responseErrorMessage(d));
+    if (responseData['data'] is Map) {
+      final nestedData = Map<String, dynamic>.from(responseData['data'] as Map);
+      if (nestedData['ok'] == false) {
+        throw Exception(_responseErrorMessage(nestedData));
       }
-      m = d;
+      responseData = nestedData;
     }
 
-    final pid = (m['purchase_id'] ?? m['id'] ?? m['order_id'])
-        ?.toString()
-        .trim();
-    if (pid == null || pid.isEmpty) {
+    final purchaseId =
+        (responseData['purchase_id'] ??
+                responseData['id'] ??
+                responseData['order_id'])
+            ?.toString()
+            .trim();
+    if (purchaseId == null || (int.tryParse(purchaseId) ?? 0) <= 0) {
       throw Exception(
-        'Réponse incomplète : identifiant de commande (purchase_id) manquant.',
+        'Réponse incomplète : identifiant de commande (purchase_id) manquant ou invalide.',
       );
     }
-    final pub =
-        (m['public_code'] ?? m['publicCode'] ?? m['public_reference'])
+    final publicCode =
+        (responseData['public_code'] ??
+                responseData['publicCode'] ??
+                responseData['public_reference'])
             ?.toString()
             .trim() ??
         '';
-    if (pub.isEmpty) {
+    if (publicCode.isEmpty) {
       throw Exception(
         'Réponse incomplète : code public (public_code) manquant.',
       );
     }
-    final st = (m['state'] ?? m['status'] ?? 'submitted').toString().trim();
-    final payRef = m['payment_reference']?.toString().trim();
+    final state =
+        (responseData['state'] ?? responseData['status'] ?? 'submitted')
+            .toString()
+            .trim();
+    final paymentReference = responseData['payment_reference']
+        ?.toString()
+        .trim();
+    final operationReference = _optionalText(
+      responseData['operation_reference'],
+    );
     return AcpecPurchaseCreateResult(
-      purchaseId: pid,
-      publicCode: pub,
-      state: st.isEmpty ? 'submitted' : st,
-      paymentReference: (payRef != null && payRef.isNotEmpty) ? payRef : null,
+      purchaseId: purchaseId,
+      publicCode: publicCode,
+      state: state.isEmpty ? 'submitted' : state,
+      operationReference: operationReference,
+      paymentReference:
+          (paymentReference != null && paymentReference.isNotEmpty)
+          ? paymentReference
+          : null,
+      paymentMethodName: _optionalText(responseData['payment_method_name']),
+      paymentMerchantCode: _optionalText(responseData['payment_merchant_code']),
     );
   }
 

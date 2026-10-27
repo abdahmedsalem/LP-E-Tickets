@@ -1,3 +1,5 @@
+"""Support-managed account deletion requests and their review workflow."""
+
 import uuid
 from datetime import timedelta
 
@@ -7,6 +9,8 @@ from odoo.exceptions import AccessError, ValidationError
 
 
 class AccountDeletionRequest(models.Model):
+    """Track a deletion request until support completes and documents it."""
+
     _name = 'acpec.mobile.account.deletion'
     _description = 'Demande de suppression de compte mobile'
     _order = 'create_date desc'
@@ -16,8 +20,16 @@ class AccountDeletionRequest(models.Model):
     user_id = fields.Many2one('res.users', readonly=True, ondelete='set null')
     company_id = fields.Many2one('res.company', required=True, readonly=True)
     due_at = fields.Datetime(required=True, readonly=True)
-    state = fields.Selection([('pending', 'À traiter'), ('in_progress', 'En traitement'),
-                              ('completed', 'Traitée')], default='pending', required=True, readonly=True)
+    state = fields.Selection(
+        [
+            ('pending', 'À traiter'),
+            ('in_progress', 'En traitement'),
+            ('completed', 'Traitée'),
+        ],
+        default='pending',
+        required=True,
+        readonly=True,
+    )
     assigned_to = fields.Many2one('res.users', string='Responsable du traitement', readonly=True)
     settlement_notes = fields.Text(string='Traitement des tickets, QR et solde')
     notification_channel = fields.Selection([
@@ -32,8 +44,14 @@ class AccountDeletionRequest(models.Model):
     completed_at = fields.Datetime(readonly=True)
     completed_by = fields.Many2one('res.users', readonly=True)
 
-    _unique_user = models.Constraint('UNIQUE(user_id)', 'Une demande existe déjà pour ce compte.')
-    _unique_reference = models.Constraint('UNIQUE(reference)', 'La référence doit être unique.')
+    _unique_user = models.Constraint(
+        'UNIQUE(user_id)',
+        'Une demande existe déjà pour ce compte.',
+    )
+    _unique_reference = models.Constraint(
+        'UNIQUE(reference)',
+        'La référence doit être unique.',
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -54,7 +72,7 @@ class AccountDeletionRequest(models.Model):
     @api.model
     def _processing_days(self):
         param = self.env['ir.config_parameter'].sudo().search([
-            ('key', '=', 'acpec_mobile_account_deletion.processing_days')
+            ('key', '=', 'acpec_mobile_account_deletion.processing_days'),
         ], limit=1)
         raw = param.value if param else '7'
         try:
@@ -62,13 +80,18 @@ class AccountDeletionRequest(models.Model):
         except (ValueError, TypeError):
             days = 0
         if not 1 <= days <= 90:
-            raise ValidationError(_('Le délai de traitement des suppressions doit être configuré (1 à 90 jours).'))
+            raise ValidationError(_(
+                'Le délai de traitement des suppressions doit être configuré '
+                '(1 à 90 jours).'
+            ))
         return days
 
     @api.model
     def _get_support_email(self):
         return self.env['ir.config_parameter'].sudo().get_param(
-            'acpec_mobile_account_deletion.support_email', 'support@acpec.mr') or 'support@acpec.mr'
+            'acpec_mobile_account_deletion.support_email',
+            'support@acpec.mr',
+        ) or 'support@acpec.mr'
 
     @api.model
     def _send_mail_safe(self, email_to, subject, body_html):
@@ -95,7 +118,9 @@ class AccountDeletionRequest(models.Model):
         user_email = user.email or (user.partner_id.email if user.partner_id else '')
         due_str = self.due_at.strftime('%d/%m/%Y') if self.due_at else ''
 
-        support_subject = f"[Suppression Compte] Demande {self.reference} - {user_name}"
+        support_subject = (
+            f"[Suppression Compte] Demande {self.reference} - {user_name}"
+        )
         support_body = f"""<p>Bonjour,</p>
 <p>Une demande de suppression de compte mobile a été soumise sur l'application :</p>
 <ul>
@@ -128,7 +153,7 @@ class AccountDeletionRequest(models.Model):
         if existing:
             return existing
         record = self.sudo().create({
-            'reference': 'DEL-' + uuid.uuid4().hex.upper(),
+            'reference': f'DEL-{uuid.uuid4().hex.upper()}',
             'user_id': user.id,
             'company_id': user.company_id.id,
             'due_at': fields.Datetime.now() + timedelta(days=self._processing_days()),
@@ -138,8 +163,11 @@ class AccountDeletionRequest(models.Model):
 
     def _payload(self):
         self.ensure_one()
-        return {'reference': self.reference, 'state': self.state,
-                'due_at': self.due_at.isoformat() + 'Z'}
+        return {
+            'reference': self.reference,
+            'state': self.state,
+            'due_at': self.due_at.isoformat() + 'Z',
+        }
 
     def _check_manager(self):
         if not self.env.user.has_group('acpec_mobile_auth.group_mobile_auth_admin'):
@@ -157,7 +185,11 @@ class AccountDeletionRequest(models.Model):
         self._check_manager()
         for rec in self:
             with self.env.cr.savepoint():
-                self.env.cr.execute('SELECT id FROM acpec_mobile_account_deletion WHERE id = %s FOR UPDATE', [rec.id])
+                self.env.cr.execute(
+                    'SELECT id FROM acpec_mobile_account_deletion '
+                    'WHERE id = %s FOR UPDATE',
+                    [rec.id],
+                )
                 rec.invalidate_recordset()
                 if rec.state not in ('pending', 'in_progress'):
                     raise ValidationError(_('Cette demande ne peut plus être préparée.'))
@@ -174,7 +206,10 @@ class AccountDeletionRequest(models.Model):
                 rec.sudo().write({
                     'state': 'in_progress',
                     'assigned_to': rec.assigned_to.id or self.env.user.id,
-                    'processing_notes': rec.processing_notes or _('Accès révoqués. Suppression des données personnelles et confirmation au demandeur restant à effectuer.'),
+                    'processing_notes': rec.processing_notes or _(
+                        'Accès révoqués. La suppression des données personnelles '
+                        'et la confirmation au demandeur restent à effectuer.'
+                    ),
                 })
         return True
 
@@ -227,12 +262,15 @@ class AccountDeletionRequest(models.Model):
 
         partner = user.partner_id.with_context(active_test=False)
         if partner:
-            other_users = self.env['res.users'].sudo().with_context(
-                active_test=False,
-            ).search([
-                ('partner_id', '=', partner.id),
-                ('id', '!=', user.id),
-            ], limit=1)
+            other_users = (
+                self.env['res.users']
+                .sudo()
+                .with_context(active_test=False)
+                .search([
+                    ('partner_id', '=', partner.id),
+                    ('id', '!=', user.id),
+                ], limit=1)
+            )
             if not other_users:
                 partner_values = {'name': _('Compte supprimé')}
                 for field_name in (
@@ -249,7 +287,11 @@ class AccountDeletionRequest(models.Model):
         self._check_manager()
         with self.env.cr.savepoint():
             for rec in self.sorted('id'):
-                self.env.cr.execute('SELECT id FROM acpec_mobile_account_deletion WHERE id = %s FOR UPDATE', [rec.id])
+                self.env.cr.execute(
+                    'SELECT id FROM acpec_mobile_account_deletion '
+                    'WHERE id = %s FOR UPDATE',
+                    [rec.id],
+                )
                 rec.invalidate_recordset()
                 if rec.state != 'in_progress':
                     raise ValidationError(_('Commencez le traitement avant de clôturer la demande.'))
@@ -259,26 +301,49 @@ class AccountDeletionRequest(models.Model):
                     raise ValidationError(_('Documentez la suppression effective des données personnelles et le compte rendu.'))
                 # Records may remain even when res.users has been deleted.
                 if not (rec.retention_details or '').strip():
-                    raise ValidationError(_('Documentez les données conservées, leur justification et leur durée, ou leur absence.'))
+                    raise ValidationError(_(
+                        'Documentez les données conservées, leur justification '
+                        'et leur durée, ou leur absence.'
+                    ))
                 if not rec.notification_channel or not rec.notification_sent_at or not (rec.notification_reference or '').strip():
-                    raise ValidationError(_('Renseignez le canal, la date et la preuve de confirmation adressée au client. Un message au support ne suffit pas.'))
+                    raise ValidationError(_(
+                        'Renseignez le canal, la date et la preuve de confirmation '
+                        'adressée au client. Un message au support ne suffit pas.'
+                    ))
                 now = fields.Datetime.now()
                 if rec.notification_sent_at > now or rec.notification_sent_at < rec.create_date.replace(microsecond=0):
-                    raise ValidationError(_('La date de confirmation doit être comprise entre la demande et maintenant.'))
+                    raise ValidationError(_(
+                        'La date de confirmation doit être comprise entre la '
+                        'demande et maintenant.'
+                    ))
                 user = rec.user_id.with_context(active_test=False)
                 if user:
-                    self.env.cr.execute('SELECT id FROM res_users WHERE id = %s FOR UPDATE', [user.id])
+                    self.env.cr.execute(
+                        'SELECT id FROM res_users WHERE id = %s FOR UPDATE',
+                        [user.id],
+                    )
                     user.invalidate_recordset()
                     if user.active:
-                        raise ValidationError(_('Le compte est encore actif. Effectuez la suppression et la révocation des accès avant de clôturer.'))
-                    if self.env['acpec.mobile.session'].sudo().search_count([
-                        ('user_id', '=', user.id), ('state', 'in', ('active', 'rotated')),
-                    ]):
-                        raise ValidationError(_('Des sessions mobiles sont encore actives. Révoquez-les avant de clôturer.'))
+                        raise ValidationError(_(
+                            'Le compte est encore actif. Effectuez la suppression '
+                            'et la révocation des accès avant de clôturer.'
+                        ))
+                    active_sessions = self.env['acpec.mobile.session'].sudo().search_count([
+                        ('user_id', '=', user.id),
+                        ('state', 'in', ('active', 'rotated')),
+                    ])
+                    if active_sessions:
+                        raise ValidationError(_(
+                            'Des sessions mobiles sont encore actives. '
+                            'Révoquez-les avant de clôturer.'
+                        ))
                 rec._erase_personal_data()
-                rec.sudo().write({'state': 'completed', 'completed_at': now,
-                                  'completed_by': self.env.user.id,
-                                  'assigned_to': rec.assigned_to.id or self.env.user.id})
+                rec.sudo().write({
+                    'state': 'completed',
+                    'completed_at': now,
+                    'completed_by': self.env.user.id,
+                    'assigned_to': rec.assigned_to.id or self.env.user.id,
+                })
         return True
 
     @api.model
@@ -289,7 +354,12 @@ class AccountDeletionRequest(models.Model):
             ('due_at', '<=', fields.Datetime.now()),
         ])
         if due_requests:
-            references = ', '.join(escape(rec.reference) for rec in due_requests)
-            self._send_mail_safe(self._get_support_email(),
+            references = ', '.join(
+                escape(rec.reference) for rec in due_requests
+            )
+            self._send_mail_safe(
+                self._get_support_email(),
                 'ACPEC : demandes de suppression en retard',
-                '<p>Demandes à traiter et à confirmer au demandeur : %s</p>' % references)
+                '<p>Demandes à traiter et à confirmer au demandeur : %s</p>'
+                % references,
+            )

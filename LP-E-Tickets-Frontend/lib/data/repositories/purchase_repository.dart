@@ -12,7 +12,7 @@ class PurchaseRepository implements PurchaseRepositoryContract {
     OdooFueltokenFacade? api,
     AcpecCarnetCatalogService? catalogService,
   }) : _api = api ?? OdooFueltokenFacade(),
-       _catalogService = catalogService ?? AcpecCarnetCatalogService.instance;
+       _catalogService = catalogService ?? AcpecCarnetCatalogService(api: api);
 
   final OdooFueltokenFacade _api;
   final AcpecCarnetCatalogService _catalogService;
@@ -22,7 +22,7 @@ class PurchaseRepository implements PurchaseRepositoryContract {
   }) => _catalogService.listPurchaseOfferTypes(companyId: companyId);
   @override
   Future<List<PaymentMethod>> listPaymentMethods() =>
-      AcpecPaymentMethodsService.listActive();
+      AcpecPaymentMethodsService.listActive(api: _api);
   @override
   Future<AcpecPurchaseCreateResult> purchasesCreate(
     Map<String, dynamic> params,

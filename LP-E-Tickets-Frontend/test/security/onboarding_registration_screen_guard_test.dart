@@ -6,7 +6,7 @@ String _read(String path) => File(path).readAsStringSync();
 
 void main() {
   group('Patch2H onboarding registration screen guard', () {
-    test('splash requests language before first onboarding', () {
+    test('splash proceeds directly to first onboarding', () {
       final splash = _read('lib/features/auth/screens/splash_screen.dart');
       final prefs = _read('lib/core/settings/app_preferences.dart');
       final router = _read('lib/app/router/app_router.dart');
@@ -17,8 +17,8 @@ void main() {
       expect(prefs, contains('Future<bool> hasSeenOnboarding()'));
       expect(prefs, contains('Future<void> setHasSeenOnboarding(bool value)'));
       expect(splash, contains('PendingSignupStore.loadUsable()'));
-      expect(splash, contains('AppPreferences.hasSelectedLanguage()'));
-      expect(splash, contains("context.go('/language-selection')"));
+      expect(splash, isNot(contains('AppPreferences.hasSelectedLanguage()')));
+      expect(splash, isNot(contains("context.go('/language-selection')")));
       expect(splash, contains("context.go('/register/verify-otp')"));
       expect(splash, contains('AppPreferences.hasSeenOnboarding()'));
       expect(splash, contains("seenOnboarding ? '/login' : '/onboarding'"));

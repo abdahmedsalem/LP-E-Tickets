@@ -890,6 +890,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get purchaseSuccessMessage => 'طلب الدفاتر في انتظار الاعتماد.';
 
   @override
+  String get purchasePaymentMethod => 'وسيلة الدفع';
+
+  @override
+  String get purchaseMerchantCode => 'رمز التاجر';
+
+  @override
+  String get operationReference => 'مرجع العملية';
+
+  @override
   String get purchasedCarnets => 'الدفاتر المطلوبة';
 
   @override
@@ -2284,6 +2293,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get stationDirectionsGoogleMaps => 'الاتجاهات عبر خرائط Google';
 
   @override
+  String get stationLocationPermissionRequired =>
+      'فعّل خدمة الموقع في الهاتف واسمح للتطبيق باستخدامها لعرض موقعك وحساب المسار.';
+
+  @override
+  String get stationRouteUnavailable =>
+      'المسار غير متاح على الخريطة. يمكنك فتحه في خرائط Google.';
+
+  @override
+  String stationRouteSummary(String distance, String duration) {
+    return '$distance كم • $duration د';
+  }
+
+  @override
   String stationListTitle(int count) {
     return 'محطات ليدر بيتروليوم ($count)';
   }
@@ -2324,7 +2346,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get qrLimitApply => 'تطبيق';
 
   @override
-  String get qrLimitSaved => 'تم حفظ حد رمز QR على الخادم.';
+  String get qrLimitSaved => 'تم تحديث الحد الأقصى لمبلغ رموز QR بنجاح.';
 
   @override
   String get qrLimitLoading => 'جارٍ تحميل الحد من الخادم...';

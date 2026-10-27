@@ -1,6 +1,6 @@
 {
     'name': 'ACPEC Google Play Review Access',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': 'Reusable OTP access for the dedicated Google Play review account',
     'category': 'Tools',
     'author': 'ACPEC SARL',

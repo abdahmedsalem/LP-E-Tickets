@@ -647,7 +647,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           companyId: widget.session.companyId,
           publicErrorMessage: l10n.qrGenerationFailed,
         );
-        final transactionReference = receipt.transactionReference;
+        final operationReference = receipt.operationReference;
         if (!mounted) return;
         _refreshClientReadModelsAfterQrIssue();
         setState(() {
@@ -659,7 +659,7 @@ class _EmitQrScreenState extends State<EmitQrScreen> {
           context,
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
-          transactionReference: transactionReference,
+          operationReference: operationReference,
           lines: successLines,
         );
         if (!mounted) return;

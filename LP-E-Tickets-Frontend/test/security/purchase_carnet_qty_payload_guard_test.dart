@@ -12,14 +12,9 @@ void main() {
 
       expect(
         source,
-        contains("final cq = line.qty;"),
-        reason: 'line.qty is already a carnet quantity in the purchase UI.',
-      );
-
-      expect(
-        source,
-        contains("'carnet_qty': cq"),
-        reason: 'The backend purchase API expects carnet_qty per carnet type.',
+        contains("'carnet_qty': line.qty"),
+        reason:
+            'The selected carnet quantity is sent without ticket conversion.',
       );
 
       expect(

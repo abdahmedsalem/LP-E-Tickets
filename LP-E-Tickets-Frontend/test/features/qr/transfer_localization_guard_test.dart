@@ -25,6 +25,16 @@ void main() {
       expect(tickets, contains('l10n.transferConfirmTitle'));
       expect(tickets, contains('transferTicketsInstruction'));
       expect(tickets, isNot(contains("title: 'Transfert de tickets'")));
+      expect(tickets, contains("data['operation_reference']"));
+      expect(
+        tickets,
+        contains('operationReference: transferOperationReference'),
+      );
+      expect(carnets, contains("data['operation_reference']"));
+      expect(
+        carnets,
+        contains('operationReference: transferOperationReference'),
+      );
     });
 
     test('confirmation and success screens are localized and RTL-safe', () {
@@ -33,6 +43,8 @@ void main() {
       expect(confirmation, isNot(contains("'Bénéficiaire'")));
 
       expect(success, contains('l10n.transferSuccessTitle'));
+      expect(success, contains('operationReference'));
+      expect(success, contains('showSummaryDividers: true'));
       expect(success, contains('showQuantity: true'));
       final carnetsSuccess = File(
         'lib/features/transfer/screens/transfer_carnets_success_screen.dart',

@@ -68,6 +68,23 @@ class AcpecMobileAuthOtpApi(AcpecMobileAuthApiCommon):
                         started_at=started_at,
                     )
                 if purpose in ('login', 'reset') and debug_reason == 'auth_account_not_allowed':
+                    if purpose == 'login':
+                        # Distinguish a missing account from an existing account
+                        # that is blocked, inactive, or awaiting approval.
+                        existing = request.env['res.users'].sudo().with_context(active_test=False).search([
+                            '|', '|', ('login', '=', identifier),
+                            ('acpec_mobile_phone', '=', identifier),
+                            ('email', '=', identifier),
+                        ], limit=1)
+                        if not existing:
+                            self._apply_public_auth_min_latency(started_at)
+                            return self._with_public_auth_debug(
+                                self._error_response(
+                                    'ACCOUNT_NOT_FOUND',
+                                    'Ce compte n’existe pas. Vérifiez le numéro ou créez un compte.',
+                                ),
+                                debug_reason=debug_reason,
+                            )
                     return self._public_account_not_found_response(
                         debug_reason=debug_reason,
                         started_at=started_at,

@@ -15,7 +15,6 @@ import '../../../domain/models/purchase/carnet_catalog_load_result.dart';
 import '../../../domain/models/qr/qr_token.dart';
 import 'acpec_carnet_types_mapper.dart';
 import '../shared_services/odoo_fueltoken_facade.dart';
-import '../shared_services/odoo_jsonrpc_client.dart';
 
 /// Infère les types de carnets visibles côté mobile à partir des APIs ACPEC
 /// (`/api/acpec/fueltoken/v1/...`) : d’abord **`/mobile/carnet-types`** (`params: {}`,
@@ -34,17 +33,6 @@ class AcpecCarnetCatalogService {
 
   /// Toujours faux : le catalogue types/faces provient d’Odoo (pas de JWT catalogue séparé).
   static bool lastCatalogTypesFromAdminList = false;
-
-  int _int(dynamic v, [int d = 0]) {
-    if (v == null) return d;
-    if (v is int) return v;
-    if (v is num) return v.round();
-    final s = v.toString().trim();
-    if (s.isEmpty) return d;
-    final x = double.tryParse(s.replaceAll(',', '.'));
-    if (x != null) return x.round();
-    return int.tryParse(s.split('.').first) ?? d;
-  }
 
   static int _intValue(dynamic v, [int d = 0]) {
     if (v == null) return d;
@@ -110,7 +98,7 @@ class AcpecCarnetCatalogService {
         : (row['code']?.toString().trim().isNotEmpty == true
               ? row['code'].toString()
               : 'T$idStr');
-    final faceValue = _int(
+    final faceValue = _intValue(
       row['face_value'] ??
           row['nominal'] ??
           row['ticket_value'] ??
@@ -120,7 +108,7 @@ class AcpecCarnetCatalogService {
 
     final size = math.max(
       1,
-      _int(
+      _intValue(
         row['carnet_size'] ??
             row['size'] ??
             row['face_count'] ??
@@ -132,7 +120,10 @@ class AcpecCarnetCatalogService {
     );
     final validityDays = math.max(
       1,
-      _int(row['validity_days'] ?? row['validity_after_validation_days'], 365),
+      _intValue(
+        row['validity_days'] ?? row['validity_after_validation_days'],
+        365,
+      ),
     );
     final name = _localizedRowName(row, languageCode);
 
@@ -292,13 +283,6 @@ class AcpecCarnetCatalogService {
             usedAdminRoute: true,
           );
         }
-      } on OdooJsonRpcException catch (e) {
-        if (DiagnosticConfig.showTechnicalDiagnostics) {
-          developer.log(
-            'RPC failed: ${e.runtimeType}',
-            name: 'AcpecCarnetCatalog.adminCarnetTypesList',
-          );
-        }
       } catch (e) {
         if (DiagnosticConfig.showTechnicalDiagnostics) {
           developer.log(
@@ -319,19 +303,6 @@ class AcpecCarnetCatalogService {
         languageCode: effectiveLanguageCode,
       );
       return (list: list, err: null, preview: preview, usedAdminRoute: false);
-    } on OdooJsonRpcException catch (e) {
-      if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          'RPC failed: ${e.runtimeType}',
-          name: 'AcpecCarnetCatalog.carnetTypes',
-        );
-      }
-      return (
-        list: null,
-        err: ErrorPresenter.message(e),
-        preview: preview,
-        usedAdminRoute: false,
-      );
     } catch (e) {
       if (DiagnosticConfig.showTechnicalDiagnostics) {
         developer.log(
@@ -385,14 +356,6 @@ class AcpecCarnetCatalogService {
       _logRpc('faces.response', fRaw);
       fPreview = AcpecRpcDebug.clip(fRaw);
       _walk(_unwrapAcpec(fRaw), agg, effectiveLanguageCode);
-    } on OdooJsonRpcException catch (e) {
-      fErr = ErrorPresenter.message(e);
-      if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          'RPC failed: ${e.runtimeType}',
-          name: 'AcpecCarnetCatalog.faces',
-        );
-      }
     } catch (e) {
       fErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
@@ -412,14 +375,6 @@ class AcpecCarnetCatalogService {
       _logRpc('walletCurrent.response', wRaw);
       wPreview = AcpecRpcDebug.clip(wRaw);
       _walk(_unwrapAcpec(wRaw), agg, effectiveLanguageCode);
-    } on OdooJsonRpcException catch (e) {
-      wErr = ErrorPresenter.message(e);
-      if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          'RPC failed: ${e.runtimeType}',
-          name: 'AcpecCarnetCatalog.walletCurrent',
-        );
-      }
     } catch (e) {
       wErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
@@ -435,14 +390,6 @@ class AcpecCarnetCatalogService {
       _logRpc('purchasesList.response', pRaw);
       pPreview = AcpecRpcDebug.clip(pRaw);
       _walk(_unwrapAcpec(pRaw), agg, effectiveLanguageCode);
-    } on OdooJsonRpcException catch (e) {
-      pErr = ErrorPresenter.message(e);
-      if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          'RPC failed: ${e.runtimeType}',
-          name: 'AcpecCarnetCatalog.purchasesList',
-        );
-      }
     } catch (e) {
       pErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
@@ -524,14 +471,6 @@ class AcpecCarnetCatalogService {
       _logRpc('faces.response', fRaw);
       fPreview = AcpecRpcDebug.clip(fRaw);
       _walk(_unwrapAcpec(fRaw), agg, effectiveLanguageCode);
-    } on OdooJsonRpcException catch (e) {
-      fErr = ErrorPresenter.message(e);
-      if (DiagnosticConfig.showTechnicalDiagnostics) {
-        developer.log(
-          'RPC failed: ${e.runtimeType}',
-          name: 'AcpecCarnetCatalog.faces',
-        );
-      }
     } catch (e) {
       fErr = ErrorPresenter.message(e);
       if (DiagnosticConfig.showTechnicalDiagnostics) {
@@ -611,11 +550,14 @@ class AcpecCarnetCatalogService {
     required String companyId,
     String? languageCode,
   }) async {
-    final r = await loadCatalog(
+    final catalog = await loadCatalog(
       companyId: companyId,
       languageCode: languageCode,
     );
-    return r.types;
+    if (catalog.types.isEmpty && !catalog.hasAnyRpcSuccess) {
+      throw Exception('Catalogue des carnets indisponible. Réessayez.');
+    }
+    return catalog.types;
   }
 
   /// Tous les types connus (admin) : inférence Odoo / démo locale selon la configuration.

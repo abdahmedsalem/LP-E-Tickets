@@ -1,10 +1,14 @@
+import base64
+import binascii
+import hashlib
+import json
+import os
+
 from odoo import _, fields
 from odoo.exceptions import AccessError, ValidationError
 from odoo.http import request
 
 from odoo.addons.acpec_mobile_auth.controllers.api_common import AcpecMobileAuthApiCommon
-import hashlib
-import json
 
 
 class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
@@ -39,14 +43,105 @@ class AcpecFuelTokenApiCommon(AcpecMobileAuthApiCommon):
         'password',
     }
 
-    def _purchase_payment_method_payload(self, purchase):
-        """Expose payment-method details from their canonical related record."""
-        method = purchase.payment_method_id
+    PURCHASE_PAYMENT_PROOF_MAX_BYTES = 5 * 1024 * 1024
+    PURCHASE_PAYMENT_PROOF_BASE64_MARGIN_CHARS = 8192
+    PURCHASE_PAYMENT_PROOF_ALLOWED_EXTENSIONS = frozenset(('jpg', 'jpeg', 'png', 'pdf'))
+    PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE = bytes.fromhex('ffd8ff')
+    PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE = bytes.fromhex('89504e470d0a1a0a')
+    PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE = b'%PDF-'
+
+    def _mobile_payment_method_payload(self, payment_method):
         return {
-            'payment_method_id': method.id if method else False,
-            'payment_method_code': method.code or False if method else False,
-            'payment_method_name': method.name or False if method else False,
-            'payment_merchant_code': method.merchant_code or False if method else False,
+            'id': payment_method.id,
+            'code': payment_method.code,
+            'name': payment_method.name,
+            'display_name': payment_method.name,
+            'merchant_code': payment_method.merchant_code,
+            'logo_data': payment_method.image_128 or False,
+            'image_128': payment_method.image_128 or False,
+            'instructions': payment_method.instructions or False,
+            'color_hex': payment_method.color_hex or False,
+            'sequence': payment_method.sequence,
+            'company_id': payment_method.company_id.id if payment_method.company_id else False,
+            'company_name': payment_method.company_id.name if payment_method.company_id else False,
+        }
+
+    def _purchase_payment_proof_invalid_message(self):
+        # Lightweight controller tests may not have an Odoo request environment.
+        return 'Preuve de paiement invalide. Formats acceptés : JPG, PNG ou PDF, taille maximale 5 Mo.'
+
+    def _purchase_payment_proof_max_base64_chars(self):
+        return ((self.PURCHASE_PAYMENT_PROOF_MAX_BYTES + 2) // 3) * 4
+
+    def _validate_purchase_payment_proof(self, proof_filename, proof_data):
+        """Validate a payment proof before checking the user's action code."""
+        message = self._purchase_payment_proof_invalid_message()
+
+        def reject():
+            return False, False, message
+
+        raw_name = str(proof_filename or '').strip().replace('\\', '/')
+        filename = os.path.basename(raw_name)
+        if not filename or filename in ('.', '..') or '.' not in filename:
+            return reject()
+
+        extension = filename.rsplit('.', 1)[1].lower()
+        if extension not in self.PURCHASE_PAYMENT_PROOF_ALLOWED_EXTENSIONS:
+            return reject()
+        if proof_data in (None, False, ''):
+            return reject()
+
+        max_base64_chars = self._purchase_payment_proof_max_base64_chars()
+        max_text_chars = max_base64_chars + self.PURCHASE_PAYMENT_PROOF_BASE64_MARGIN_CHARS
+
+        # Check the input size before splitting or decoding it.
+        if isinstance(proof_data, bytes):
+            if len(proof_data) > max_text_chars:
+                return reject()
+            try:
+                proof_text = proof_data.decode('ascii')
+            except UnicodeDecodeError:
+                return reject()
+        elif isinstance(proof_data, str):
+            if len(proof_data) > max_text_chars:
+                return reject()
+            proof_text = proof_data
+        else:
+            return reject()
+
+        if proof_text.lstrip()[:5].lower() == 'data:':
+            return reject()
+
+        compact_data = ''.join(proof_text.split())
+        if not compact_data or len(compact_data) > max_base64_chars:
+            return reject()
+
+        try:
+            raw = base64.b64decode(compact_data, validate=True)
+        except (binascii.Error, ValueError):
+            return reject()
+
+        if not raw or len(raw) > self.PURCHASE_PAYMENT_PROOF_MAX_BYTES:
+            return reject()
+
+        if extension in ('jpg', 'jpeg'):
+            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_JPEG_SIGNATURE)
+        elif extension == 'png':
+            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_PNG_SIGNATURE)
+        else:
+            valid_signature = raw.startswith(self.PURCHASE_PAYMENT_PROOF_PDF_SIGNATURE)
+
+        if not valid_signature:
+            return reject()
+        return filename, compact_data, False
+
+    def _purchase_payment_method_payload(self, purchase):
+        """Return payment details recorded when the purchase was created."""
+        return {
+            'payment_method_id': purchase.payment_method_id.id or False,
+            'payment_method_code': purchase.payment_method_code or False,
+            'payment_method_name': purchase.payment_method_name or False,
+            'payment_merchant_code': purchase.payment_merchant_code or False,
         }
 
     def _requested_language_code(self):

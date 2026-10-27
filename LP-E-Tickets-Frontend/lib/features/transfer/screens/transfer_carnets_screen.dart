@@ -227,7 +227,11 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = ErrorPresenter.localizedMessage(context, e);
+        _error = ErrorPresenter.localizedMessage(
+          context,
+          e,
+          includeSupportReference: false,
+        );
       });
     }
   }
@@ -289,12 +293,17 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
         }
       } catch (e) {
         if (!mounted) return;
-        final errorMsg = ErrorPresenter.localizedMessage(context, e);
+        final errorMsg = ErrorPresenter.localizedMessage(
+          context,
+          e,
+          includeSupportReference: false,
+        );
         AppMessage.error(context, errorMsg);
         return;
       }
 
       var confirmedRecipientName = recipientName;
+      String? transferOperationReference;
 
       // Naviguer vers l'écran de confirmation
       if (!mounted) return;
@@ -323,6 +332,13 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
                 if (responseName != null && responseName.isNotEmpty) {
                   confirmedRecipientName = responseName;
                 }
+                final operationReference = data['operation_reference']
+                    ?.toString()
+                    .trim();
+                if (operationReference != null &&
+                    operationReference.isNotEmpty) {
+                  transferOperationReference = operationReference;
+                }
               },
             ),
           ),
@@ -343,6 +359,7 @@ class _TransferCarnetsScreenState extends State<TransferCarnetsScreen> {
           totalAmount: totalAmount,
           confirmedAt: DateTime.now(),
           recipientName: confirmedRecipientName,
+          operationReference: transferOperationReference,
           lines: confirmLines,
           linesTitle: l10n.transferredCarnets,
         );

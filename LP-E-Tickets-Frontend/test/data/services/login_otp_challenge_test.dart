@@ -3,6 +3,25 @@ import 'package:fueltoken_app/data/services/login_otp_challenge.dart';
 import 'package:fueltoken_app/data/services/shared_services/odoo_jsonrpc_client.dart';
 
 void main() {
+  test(
+    'missing account business error exposes a clear message without OTP',
+    () {
+      expect(
+        () => LoginOtpChallenge.fromResponse({
+          'ok': false,
+          'error': {'code': 'ACCOUNT_NOT_FOUND'},
+        }),
+        throwsA(
+          isA<OdooJsonRpcException>().having(
+            (error) => error.toString(),
+            'message',
+            contains(LoginOtpChallenge.accountUnavailableMessage),
+          ),
+        ),
+      );
+    },
+  );
+
   test('unknown account accepted response cannot open SMS verification', () {
     expect(
       () => LoginOtpChallenge.fromResponse({

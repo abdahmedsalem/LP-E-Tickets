@@ -294,6 +294,9 @@
   "purchaseMaxTickets": "الحد الأقصى {count} تذكرة لكل طلب.",
   "purchaseSuccessTitle": "تم تسجيل طلب الدفاتر",
   "purchaseSuccessMessage": "طلب الدفاتر في انتظار الاعتماد.",
+  "purchasePaymentMethod": "وسيلة الدفع",
+  "purchaseMerchantCode": "رمز التاجر",
+  "operationReference": "مرجع العملية",
   "purchasedCarnets": "الدفاتر المطلوبة",
   "totalAmount": "المبلغ الإجمالي",
   "date": "التاريخ",
@@ -720,6 +723,15 @@
   "stationSearchPlaceholder": "ابحث عن محطة ليدر...",
   "stationOpen247": "مفتوح على مدار الساعة",
   "stationDirectionsGoogleMaps": "الاتجاهات عبر خرائط Google",
+  "stationLocationPermissionRequired": "فعّل خدمة الموقع في الهاتف واسمح للتطبيق باستخدامها لعرض موقعك وحساب المسار.",
+  "stationRouteUnavailable": "المسار غير متاح على الخريطة. يمكنك فتحه في خرائط Google.",
+  "stationRouteSummary": "{distance} كم • {duration} د",
+  "@stationRouteSummary": {
+    "placeholders": {
+      "distance": {"type": "String"},
+      "duration": {"type": "String"}
+    }
+  },
   "stationListTitle": "محطات ليدر بيتروليوم ({count})",
   "@stationListTitle": {"placeholders": {"count": {"type": "int"}}},
   "stationBackToMap": "العودة إلى الخريطة",
@@ -734,7 +746,7 @@
   "qrLimitAmountHint": "مثال: ٥٬٠٠٠",
   "qrLimitInvalidAmount": "أدخل مبلغًا صحيحًا أكبر من صفر.",
   "qrLimitApply": "تطبيق",
-  "qrLimitSaved": "تم حفظ حد رمز QR على الخادم.",
+  "qrLimitSaved": "تم تحديث الحد الأقصى لمبلغ رموز QR بنجاح.",
   "qrLimitLoading": "جارٍ تحميل الحد من الخادم...",
   "qrLimitUnavailable": "حد رمز QR غير متاح من الخادم.",
   "qrLimitCurrent": "الحد الحالي: {amount} {currency}",

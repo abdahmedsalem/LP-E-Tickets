@@ -96,12 +96,12 @@ class QrGenerationRepository extends CarnetFlowRepository
       ownerName: ownerName,
       companyId: companyId,
     );
-    final reference = data['transaction_reference']?.toString().trim();
-    final name = data['name']?.toString().trim();
+    final operationReference = data['operation_reference']?.toString().trim();
     return QrIssueReceipt(
-      transactionReference: reference != null && reference.isNotEmpty
-          ? reference
-          : (name == null || name.isEmpty ? null : name),
+      operationReference:
+          operationReference == null || operationReference.isEmpty
+          ? null
+          : operationReference,
     );
   }
 

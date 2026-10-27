@@ -31,7 +31,7 @@ void main() {
     );
     expect(
       source,
-      contains("'proof_filename': fileName"),
+      contains("'proof_filename': proofFilename"),
       reason:
           'The backend requires a reliable filename/extension for proof validation.',
     );

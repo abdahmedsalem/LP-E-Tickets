@@ -31,13 +31,13 @@ import '../../../shared/widgets/single_line_card_title.dart';
 import 'purchase_confirmation_screen.dart';
 import '../../../shared/widgets/app_message.dart';
 
-const int _kMaxTicketsPerPurchase = 500;
+const int _kMaxCarnetsPerPurchase = 500;
 const double _kPurchaseOfferCardHeight = 112;
 
 Color _paymentMethodColor(PaymentMethod method) {
   final raw = method.colorHex?.trim();
   if (raw == null || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(raw)) {
-    return const Color(0xFF43A047);
+    return AppColors.primary;
   }
   return Color(int.parse('FF${raw.substring(1)}', radix: 16));
 }
@@ -81,6 +81,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   List<PaymentMethod> _paymentMethods = [];
   String? _selectedPaymentMethodCode;
   bool _loadingPaymentMethods = true;
+  bool _paymentMethodsLoadFailed = false;
 
   @override
   void initState() {
@@ -142,29 +143,30 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
     }
   }
 
-  int _totalTickets() => _qty.values.fold(0, (a, q) => a + q);
+  int _totalSelectedCarnets() =>
+      _qty.values.fold(0, (total, quantity) => total + quantity);
 
-  int _otherTickets(String exceptTypeId) {
-    var s = 0;
-    for (final t in _offerTypes) {
-      if (t.id == exceptTypeId) continue;
-      s += _qty[t.id] ?? 0;
+  int _otherSelectedCarnets(String excludedTypeId) {
+    var total = 0;
+    for (final carnetType in _offerTypes) {
+      if (carnetType.id == excludedTypeId) continue;
+      total += _qty[carnetType.id] ?? 0;
     }
-    return s;
+    return total;
   }
 
-  int _maxAllowedFor(String typeId) =>
-      math.max(0, _kMaxTicketsPerPurchase - _otherTickets(typeId));
+  int _maxCarnetsForType(String typeId) =>
+      math.max(0, _kMaxCarnetsPerPurchase - _otherSelectedCarnets(typeId));
 
   int _totalAmount() {
-    var s = 0;
-    for (final t in _offerTypes) {
-      s += (_qty[t.id] ?? 0) * t.totalAmount;
+    var total = 0;
+    for (final carnetType in _offerTypes) {
+      total += (_qty[carnetType.id] ?? 0) * carnetType.totalAmount;
     }
-    return s;
+    return total;
   }
 
-  bool get _hasSelection => _totalTickets() > 0;
+  bool get _hasSelection => _totalSelectedCarnets() > 0;
 
   PaymentMethod? get _selectedPaymentMethodConfig {
     for (final method in _paymentMethods) {
@@ -174,26 +176,39 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
   }
 
   Future<void> _reloadPaymentMethods() async {
-    if (mounted) {
-      setState(() => _loadingPaymentMethods = true);
-    }
-    final methods = await _controller.listPaymentMethods();
-    if (!mounted) return;
+    if (!mounted || _controller.isRunning('paymentMethods')) return;
     setState(() {
-      _paymentMethods = methods;
-      _loadingPaymentMethods = false;
-      if (!_paymentMethods.any(
-        (method) => method.code == _selectedPaymentMethodCode,
-      )) {
-        _selectedPaymentMethodCode = _paymentMethods.isEmpty
-            ? null
-            : _paymentMethods.first.code;
-      }
+      _loadingPaymentMethods = true;
+      _paymentMethodsLoadFailed = false;
     });
+    try {
+      final paymentMethods = await _controller.listPaymentMethods();
+      if (!mounted) return;
+      setState(() {
+        _paymentMethods = paymentMethods;
+        _loadingPaymentMethods = false;
+        final selectionIsAvailable = paymentMethods.any(
+          (method) => method.code == _selectedPaymentMethodCode,
+        );
+        if (!selectionIsAvailable) {
+          _selectedPaymentMethodCode = paymentMethods.isEmpty
+              ? null
+              : paymentMethods.first.code;
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _paymentMethods = [];
+        _selectedPaymentMethodCode = null;
+        _loadingPaymentMethods = false;
+        _paymentMethodsLoadFailed = true;
+      });
+    }
   }
 
   void _setQty(String typeId, int v) {
-    final cap = _maxAllowedFor(typeId);
+    final cap = _maxCarnetsForType(typeId);
     final clamped = math.max(0, math.min(v, cap));
     setState(() {
       _qty[typeId] = clamped;
@@ -208,7 +223,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         context,
         AppLocalizations.of(
           context,
-        ).purchaseMaxTickets(_kMaxTicketsPerPurchase),
+        ).purchaseMaxTickets(_kMaxCarnetsPerPurchase),
       );
     }
   }
@@ -323,10 +338,10 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         AppMessage.error(context, l10n.purchaseDeviceApprovalRequired);
         return;
       }
-      if (_totalTickets() > _kMaxTicketsPerPurchase) {
+      if (_totalSelectedCarnets() > _kMaxCarnetsPerPurchase) {
         AppMessage.warning(
           context,
-          l10n.purchaseMaxTickets(_kMaxTicketsPerPurchase),
+          l10n.purchaseMaxTickets(_kMaxCarnetsPerPurchase),
         );
         return;
       }
@@ -339,12 +354,13 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         return;
       }
 
-      // Construire les lignes de confirmation
       final confirmLines = <PurchaseConfirmationLine>[];
-      for (final t in _offerTypes) {
-        final q = _qty[t.id] ?? 0;
-        if (q <= 0) continue;
-        confirmLines.add(PurchaseConfirmationLine(carnetType: t, qty: q));
+      for (final carnetType in _offerTypes) {
+        final carnetQuantity = _qty[carnetType.id] ?? 0;
+        if (carnetQuantity <= 0) continue;
+        confirmLines.add(
+          PurchaseConfirmationLine(carnetType: carnetType, qty: carnetQuantity),
+        );
       }
       if (confirmLines.isEmpty) return;
 
@@ -369,10 +385,51 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
         );
         return;
       }
-      // Keep the same purchase identity when retrying this confirmation.
+      if (!widget.session.isLiveDataEnabled) {
+        AppMessage.error(context, l10n.purchaseServerRequired);
+        return;
+      }
+      if (kIsWeb) {
+        AppMessage.error(context, l10n.purchaseMobileOnlyProof);
+        return;
+      }
+      final paymentMethod = _selectedPaymentMethodConfig;
+      if (paymentMethod == null) {
+        AppMessage.error(context, l10n.purchaseNoPaymentMethods);
+        return;
+      }
+      final proofFilename = _proofFilename?.trim() ?? '';
+      if (proofFilename.isEmpty) {
+        AppMessage.error(context, l10n.purchaseProofRequired);
+        return;
+      }
+      final purchaseLines = <Map<String, dynamic>>[];
+      for (final line in confirmLines) {
+        final carnetTypeId = int.tryParse(line.carnetType.id);
+        if (carnetTypeId == null || carnetTypeId <= 0) {
+          AppMessage.error(
+            context,
+            l10n.purchaseUnknownCarnetType(line.carnetType.code),
+          );
+          return;
+        }
+        purchaseLines.add({
+          'carnet_type_id': carnetTypeId,
+          'carnet_qty': line.qty,
+        });
+      }
+
+      // Retrying confirmation must keep the same purchase content and identity.
       final payRef = 'MOBL-${DateTime.now().millisecondsSinceEpoch}';
       final idem = const Uuid().v4();
-      // Naviguer vers l'Ã©cran de confirmation
+      final purchaseRequest = {
+        'lines': purchaseLines,
+        'proof_filename': proofFilename,
+        'proof_data': base64Encode(proofBytes),
+        'payment_reference': payRef,
+        if (paymentMethod.id != null) 'payment_method_id': paymentMethod.id,
+        'idempotency_key': idem,
+      };
       final result = await Navigator.of(context, rootNavigator: true)
           .push<AcpecPurchaseCreateResult>(
             MaterialPageRoute(
@@ -382,51 +439,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                   proofPath: proofPath,
                   proofBytes: proofBytes,
                   onConfirm: (actionCode) async {
-                    // Appel API rÃ©el: les erreurs remontent au confirmation screen
-                    if (!widget.session.isLiveDataEnabled) {
-                      throw Exception(l10n.purchaseServerRequired);
-                    }
-                    if (kIsWeb) {
-                      throw Exception(l10n.purchaseMobileOnlyProof);
-                    }
-                    final rpcLines = <Map<String, dynamic>>[];
-                    for (final line in confirmLines) {
-                      final t = line.carnetType;
-                      final q = line.qty;
-                      if (q <= 0) continue;
-                      final idOdoo = int.tryParse(line.carnetType.id);
-                      if (idOdoo == null) {
-                        throw Exception(l10n.purchaseUnknownCarnetType(t.code));
-                      }
-                      final cq = line.qty;
-                      if (cq <= 0) continue;
-                      rpcLines.add({
-                        'carnet_type_id': idOdoo,
-                        'carnet_qty': cq,
-                      });
-                    }
-                    if (rpcLines.isEmpty) {
-                      throw Exception(l10n.purchaseNoValidLines);
-                    }
-                    final fileName = _proofFilename?.trim() ?? '';
-                    if (fileName.isEmpty) {
-                      throw Exception('La preuve de paiement est obligatoire.');
-                    }
-                    final paymentMethod = _selectedPaymentMethodConfig;
-                    if (paymentMethod == null) {
-                      throw Exception(
-                        AppLocalizations.of(context).purchaseNoPaymentMethods,
-                      );
-                    }
                     return _controller.purchasesCreate({
-                      'lines': rpcLines,
-                      'proof_filename': fileName,
-                      'proof_data': base64Encode(proofBytes),
-                      'payment_reference': payRef,
-                      if (paymentMethod.id != null)
-                        'payment_method_id': paymentMethod.id,
+                      ...purchaseRequest,
                       'action_code': actionCode,
-                      'idempotency_key': idem,
                     });
                   },
                 ),
@@ -625,7 +640,9 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AppLocalizations.of(context).purchaseNoPaymentMethods,
+                  _paymentMethodsLoadFailed
+                      ? AppLocalizations.of(context).serviceUnavailableTitle
+                      : AppLocalizations.of(context).purchaseNoPaymentMethods,
                   style: TextStyle(
                     color: Color(0xFF9A3412),
                     fontWeight: FontWeight.w800,
@@ -633,7 +650,11 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  AppLocalizations.of(context).purchasePaymentMethodsConfigure,
+                  _paymentMethodsLoadFailed
+                      ? AppLocalizations.of(context).serviceUnavailableMessage
+                      : AppLocalizations.of(
+                          context,
+                        ).purchasePaymentMethodsConfigure,
                   style: TextStyle(color: Color(0xFF9A3412), fontSize: 13),
                 ),
                 const SizedBox(height: 8),
@@ -707,7 +728,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(9),
                             child: SizedBox(
-                              width: 28,
+                              width: 56,
                               height: 28,
                               child: logoBytes == null
                                   ? Container(
@@ -729,7 +750,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                                     )
                                   : Image.memory(
                                       logoBytes,
-                                      fit: BoxFit.cover,
+                                      fit: BoxFit.contain,
                                       errorBuilder:
                                           (context, error, stackTrace) =>
                                               Container(
@@ -966,7 +987,7 @@ class _SubmitPurchaseScreenState extends State<SubmitPurchaseScreen> {
                       itemBuilder: (context, i) {
                         final t = _offerTypes[i];
                         final q = _qty[t.id] ?? 0;
-                        final maxAllowed = _maxAllowedFor(t.id);
+                        final maxAllowed = _maxCarnetsForType(t.id);
                         return _CarnetCard(
                           type: t,
                           quantity: q,

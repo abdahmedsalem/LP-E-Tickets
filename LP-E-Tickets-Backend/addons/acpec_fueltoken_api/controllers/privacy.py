@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from markupsafe import escape
-
 from odoo import http
 from odoo.http import request
 from odoo.modules.module import get_module_path
@@ -20,20 +18,14 @@ class LpETicketsPrivacyController(http.Controller):
         except (OSError, UnicodeError):
             return request.not_found()
 
-        # Use the same configured notice as the in-app deletion preview.
-        # Escaping keeps administrator-supplied policy text inert in public HTML.
-        notice = ''
-        if request.db:
-            notice = request.env['ir.config_parameter'].sudo().get_param(
-                'acpec_mobile_account_deletion.retention_notice', '')
-        if notice and notice.strip():
-            notice_html = '<p class="highlight">%s</p>' % escape(notice.strip())
-        else:
-            notice_html = (
-                '<p>Les catégories exactes, la justification et la durée sont '
-                'affichées dans l’application avant confirmation. Si ces informations '
-                'ne sont pas disponibles, le parcours de suppression immédiate ne démarre pas.</p>'
-            )
+        # The retention policy is fixed in the app translations and published
+        # privacy pages; deletion must not depend on a per-database setting.
+        notice_html = (
+            '<p class="highlight">Seul l’historique des mouvements, sans données '
+            'personnelles, est conservé pendant 3 jours pour le suivi des opérations, '
+            'puis supprimé automatiquement. Les données personnelles, captures et '
+            'justificatifs d’achat sont supprimés immédiatement avec le compte.</p>'
+        )
         page = page.replace('<!-- account-retention-notice -->', notice_html)
 
         headers = [
@@ -77,3 +69,14 @@ class LpETicketsPrivacyController(http.Controller):
     )
     def account_deletion(self, **kwargs):
         return self._static_privacy_response('account_deletion.html')
+
+    @http.route(
+        '/support',
+        type='http',
+        auth='none',
+        methods=['GET'],
+        csrf=False,
+        sitemap=True,
+    )
+    def support(self, **kwargs):
+        return self._static_privacy_response('support.html')

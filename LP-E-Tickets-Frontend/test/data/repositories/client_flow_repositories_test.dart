@@ -151,6 +151,26 @@ void main() {
       },
     );
   }
+  test('QR success receipt shows the operation reference', () async {
+    final api = FakeApi()
+      ..response = {
+        'ok': true,
+        'data': {
+          'public_code': 'QR-PUB-0001',
+          'operation_reference': 'TX-20261026-134604-0001',
+        },
+      };
+
+    final receipt = await QrGenerationRepository(api: api).qrIssue(
+      payload,
+      ownerId: '1',
+      ownerName: 'Client',
+      companyId: '1',
+      publicErrorMessage: 'Échec',
+    );
+
+    expect(receipt.operationReference, 'TX-20261026-134604-0001');
+  });
   test(
     'QR refuses failed issuance without retrying or losing the intent',
     () async {

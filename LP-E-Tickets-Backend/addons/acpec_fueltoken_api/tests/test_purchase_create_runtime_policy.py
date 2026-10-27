@@ -14,8 +14,8 @@ def _acpec_test_mobile_phone(label):
 
 from odoo.tests.common import tagged
 
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import common as api_mobile_common_module
-from odoo.addons.acpec_fueltoken_api.controllers.mobile import purchases as api_mobile_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_common as api_mobile_common_module
+from odoo.addons.acpec_fueltoken_api.controllers import api_mobile as api_mobile_module
 from odoo.addons.acpec_fueltoken_api.controllers.api_mobile import AcpecFuelTokenMobileApi
 from odoo.addons.acpec_fueltoken_base.tests.common import FuelTokenTransactionCase
 
@@ -234,6 +234,8 @@ class TestPurchaseCreateRuntimePolicy(FuelTokenTransactionCase):
         self.assertEqual(txs.mobile_session_id.id, session.id)
         self.assertEqual(txs.device_uid, session.device_uid)
         self.assertFalse(txs.counterparty_partner_id)
+        self.assertEqual(first_response['data']['operation_reference'], txs.operation_ref)
+        self.assertEqual(second_response['data']['operation_reference'], txs.operation_ref)
 
     def test_create_purchase_rejects_same_key_with_different_payload(self):
         controller, user, _session = self._controller_for_user("purchase-conflict-24a@example.com")
